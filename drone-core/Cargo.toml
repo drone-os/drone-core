@@ -1,0 +1,22 @@
+[package]
+name = "drone-core"
+version = "0.1.0"
+authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
+license = "MIT/Apache-2.0"
+
+
+[dependencies]
+
+[dependencies.compiler_builtins]
+git = "https://github.com/rust-lang-nursery/compiler-builtins"
+
+
+[dev-dependencies]
+
+[dev-dependencies.test]
+path = "../drone-test"
+features = ["panic_item"]
+version = "0.1"
+
+
+[lib]

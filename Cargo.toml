@@ -1,0 +1,7 @@
+[workspace]
+members = [
+  "drone",
+  "drone-core",
+  "drone-stm32f1",
+  "drone-test",
+]

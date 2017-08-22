@@ -1,0 +1,31 @@
+[package]
+name = "drone"
+version = "0.1.0"
+authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
+license = "MIT/Apache-2.0"
+
+
+[dependencies]
+
+[dependencies.drone-stm32f1]
+path = "../drone-stm32f1"
+optional = true
+version = "0.1"
+
+[dependencies.drone-core]
+path = "../drone-core"
+version = "0.1"
+
+
+[dev-dependencies]
+
+[dev-dependencies.test]
+path = "../drone-test"
+version = "0.1"
+
+
+[features]
+stm32f1 = ["drone-stm32f1"]
+
+
+[lib]
