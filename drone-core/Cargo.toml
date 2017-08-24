@@ -5,6 +5,7 @@ authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 license = "MIT/Apache-2.0"
 
 [dependencies]
+clippy = {version = "*", optional = true}
 
 [dependencies.compiler_builtins]
 git = "https://github.com/rust-lang-nursery/compiler-builtins"
@@ -15,5 +16,8 @@ git = "https://github.com/rust-lang-nursery/compiler-builtins"
 path = "../drone-test"
 features = ["panic_item"]
 version = "0.1"
+
+[features]
+default = []
 
 [lib]

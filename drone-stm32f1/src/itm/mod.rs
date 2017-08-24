@@ -17,7 +17,7 @@ pub mod port;
 /// # Safety
 ///
 /// Must be called exactly once and as early as possible.
-#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
+#[cfg_attr(feature = "clippy", allow(too_many_arguments))]
 pub unsafe fn init<A, B, C, D, E, F, G>(
   dbg_mcucr: &Reg<dbg::Mcucr, A>,
   dbg_demcr: &Reg<dbg::Demcr, B>,

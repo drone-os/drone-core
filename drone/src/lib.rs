@@ -2,7 +2,9 @@
 #![feature(lang_items)]
 #![feature(linkage)]
 #![no_std]
-#![cfg_attr(feature = "cargo-clippy", allow(precedence, doc_markdown))]
+#![cfg_attr(feature = "clippy", feature(plugin))]
+#![cfg_attr(feature = "clippy", plugin(clippy))]
+#![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
 
 extern crate drone_core;
 #[cfg(test)]

@@ -5,6 +5,7 @@ authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 license = "MIT/Apache-2.0"
 
 [dependencies]
+clippy = {version = "*", optional = true}
 
 [dependencies.drone-stm32f1]
 path = "../drone-stm32f1"
@@ -23,5 +24,6 @@ version = "0.1"
 
 [features]
 stm32f1 = ["drone-stm32f1"]
+default = ["stm32f1"]
 
 [lib]

@@ -3,6 +3,9 @@
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![no_std]
+#![cfg_attr(feature = "clippy", feature(plugin))]
+#![cfg_attr(feature = "clippy", plugin(clippy))]
+#![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
 
 #[macro_use]
 extern crate sc;

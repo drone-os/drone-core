@@ -6,8 +6,10 @@ license = "MIT/Apache-2.0"
 
 [dependencies]
 sc = "0.2"
+clippy = {version = "*", optional = true}
 
 [features]
 panic_item = []
+default = []
 
 [lib]
