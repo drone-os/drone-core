@@ -1,9 +1,7 @@
 //! The processor debug.
 
-
 use drone_core::reg::{RawBits, RawValue};
 use reg::Value;
-
 
 define_reg! {
   name => Tpiuspp,
@@ -47,7 +45,6 @@ define_reg! {
   addr => 0xE000_EDFC,
 }
 
-
 /// TPIU selected pin protocol mode.
 #[repr(u32)]
 pub enum TpiusppMode {
@@ -58,7 +55,6 @@ pub enum TpiusppMode {
   /// Serial Wire Output - NRZ.
   SwoNrz = 0b10,
 }
-
 
 /// ITM trace privilege port mask.
 #[repr(u32)]
@@ -72,7 +68,6 @@ pub enum ItmtpMask {
   /// Mask to enable/disable tracing ports 31:24.
   P24To31 = 3,
 }
-
 
 /// Debug MCU configuration register trace mode.
 #[repr(u32)]
@@ -89,14 +84,12 @@ pub enum McucrTraceMode {
   Sync4 = 0b111,
 }
 
-
 impl Value<Tpiuspp> {
   /// Selects a pin protocol.
   pub fn mode(&mut self, mode: TpiusppMode) -> &mut Value<Tpiuspp> {
     self.set(mode as u32)
   }
 }
-
 
 impl Value<Tpiuffc> {
   /// Sets `EnFCont` bit.
@@ -106,7 +99,6 @@ impl Value<Tpiuffc> {
     self.write(1, enable)
   }
 }
-
 
 impl Value<Itmtp> {
   /// Enable tracing a range of ports by mask.
@@ -119,7 +111,6 @@ impl Value<Itmtp> {
   }
 }
 
-
 impl Value<Itmtc> {
   /// Sets `ITMENA` bit.
   ///
@@ -127,7 +118,6 @@ impl Value<Itmtc> {
   pub fn itm_enable(&mut self, enable: bool) -> &mut Value<Itmtc> {
     self.write(0, enable)
   }
-
 
   /// Sets ATB ID which identifies the source of the trace data.
   ///
@@ -139,13 +129,11 @@ impl Value<Itmtc> {
     self.write_bits(id, 7, 16)
   }
 
-
   /// Returns busy status.
   pub fn busy(&self) -> bool {
     self.read(23)
   }
 }
-
 
 impl Value<Itmla> {
   /// Unlocks Write Access to the other ITM registers.
@@ -154,14 +142,12 @@ impl Value<Itmla> {
   }
 }
 
-
 impl Value<Mcucr> {
   /// Trace pin assignment control.
   pub fn trace_mode(&mut self, config: McucrTraceMode) -> &mut Value<Mcucr> {
     self.write_bits(config as u32, 3, 5)
   }
 }
-
 
 impl Value<Demcr> {
   /// Sets `TRCENA` bit.

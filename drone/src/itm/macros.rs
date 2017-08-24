@@ -10,7 +10,6 @@ macro_rules! iprint {
   };
 }
 
-
 /// Macro for printing through ITM, with a newline.
 #[macro_export]
 macro_rules! iprintln {

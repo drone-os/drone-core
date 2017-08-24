@@ -4,13 +4,10 @@ version = "0.1.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 license = "MIT/Apache-2.0"
 
-
 [dependencies]
 sc = "0.2"
 
-
 [features]
 panic_item = []
-
 
 [lib]

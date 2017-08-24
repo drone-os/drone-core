@@ -1,22 +1,17 @@
 //! Register value wrappers.
 
-
-use reg::{RawBits, marker};
-
+use reg::{marker, RawBits};
 
 /// Base register value wrapper.
 pub trait RawValue<R> {
   /// Constructs a new register value wrapper handler.
   fn new(value: u32) -> Self;
 
-
   /// Returns a raw register value.
   fn get(&self) -> u32;
 
-
   /// Replaces a raw register value.
   fn set(&mut self, value: u32) -> &mut Self;
-
 
   /// Copies any number of low order bits from a `source` into the same number
   /// of adjacent bits at any position in the stored register value.
@@ -33,7 +28,6 @@ pub trait RawValue<R> {
     self.set(value)
   }
 
-
   /// Reads any number of low order bits at any position from the stored
   /// register value.
   ///
@@ -49,7 +43,6 @@ pub trait RawValue<R> {
   }
 }
 
-
 impl<T, R> RawBits<R, marker::Value> for T
 where
   T: RawValue<R>,
@@ -61,7 +54,6 @@ where
     self.set(if set { value | mask } else { value & !mask })
   }
 
-
   fn read(&self, offset: u32) -> bool {
     assert!(offset < 0x20);
     let mask = 0b1 << offset;
@@ -69,14 +61,11 @@ where
   }
 }
 
-
 #[cfg(test)]
 mod tests {
   use super::*;
 
-
   struct TestValue(u32);
-
 
   impl RawValue<()> for TestValue {
     fn new(value: u32) -> TestValue {
@@ -93,7 +82,6 @@ mod tests {
     }
   }
 
-
   #[test]
   fn write_bits() {
     let mut x = TestValue::new(0b0);
@@ -107,7 +95,6 @@ mod tests {
     let mut x = TestValue::new(0b1111_1111);
     assert_eq!(x.write_bits(0b1011, 4, 4).get(), 0b1011_1111);
   }
-
 
   #[test]
   fn read_bits() {

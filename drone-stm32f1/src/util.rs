@@ -1,9 +1,7 @@
 //! Utility module.
 
-
 use drone_core::reg::{Delegate, ValuePointer};
-use reg::{Areg, scb};
-
+use reg::{scb, Areg};
 
 /// Wait for Interrupt.
 pub fn wait_for_interrupt() {
@@ -12,13 +10,11 @@ pub fn wait_for_interrupt() {
   }
 }
 
-
 /// Performs a system reset request.
 pub fn reset_request() {
   let reg: Areg<scb::Aircr> = Areg::new();
   reg.ptr().modify(|reg| reg.unlock().reset());
 }
-
 
 /// Spins a specified amount of CPU cycles.
 pub fn spin(mut _cycles: u32) {

@@ -1,14 +1,11 @@
 //! General-purpose and alternate-function I/Os.
 
-
 use core::marker::PhantomData;
 use drone_core::reg::{RawBits, RawValue};
-use reg::{PERIPHERAL_ALIAS_BASE, Value};
-
+use reg::{Value, PERIPHERAL_ALIAS_BASE};
 
 const BASE: usize = 0x4001_0800;
 const PORT_SIZE: usize = 0x0400;
-
 
 /// Primitive types representing GPIO ports.
 pub mod port {
@@ -21,18 +18,14 @@ pub mod port {
   pub struct G;
 }
 
-
 /// Port `T` configuration register low.
 pub struct Crl<T>(PhantomData<T>);
-
 
 /// Port `T` configuration register high.
 pub struct Crh<T>(PhantomData<T>);
 
-
 /// Port `T` bit set/reset register.
 pub struct Bsrr<T>(PhantomData<T>);
-
 
 macro_rules! define_port_regs {
   ($name:ident, $i:expr) => {
@@ -64,7 +57,6 @@ define_port_regs!(E, 4);
 define_port_regs!(F, 5);
 define_port_regs!(G, 6);
 
-
 /// Port configuration register low pin.
 #[repr(u32)]
 pub enum CrlPin {
@@ -78,7 +70,6 @@ pub enum CrlPin {
   P7 = 0x1C,
 }
 
-
 /// Port configuration register high pin.
 #[repr(u32)]
 pub enum CrhPin {
@@ -91,7 +82,6 @@ pub enum CrhPin {
   P14 = 0x18,
   P15 = 0x1C,
 }
-
 
 /// Port configuration register high mode.
 #[repr(u32)]
@@ -128,7 +118,6 @@ pub enum CrMode {
   OutAfOpDr50 = 0b11_11,
 }
 
-
 /// Port bit set/reset register pin.
 #[repr(usize)]
 pub enum BsrrPin {
@@ -150,7 +139,6 @@ pub enum BsrrPin {
   P15 = 0xf,
 }
 
-
 /// Port bit set/reset register bits.
 pub trait BsrrBits<T, U>: RawBits<Bsrr<T>, U> {
   /// Sets `pin` output.
@@ -166,7 +154,6 @@ pub trait BsrrBits<T, U>: RawBits<Bsrr<T>, U> {
   }
 }
 
-
 impl<T> Value<Crl<T>> {
   /// Sets pin mode configuration bits.
   pub fn pin_mode(
@@ -177,7 +164,6 @@ impl<T> Value<Crl<T>> {
     self.write_bits(config as u32, 4, pin as u32)
   }
 }
-
 
 impl<T> Value<Crh<T>> {
   /// Sets pin mode configuration bits.

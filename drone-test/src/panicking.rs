@@ -1,9 +1,7 @@
 //! Panicking support.
 
-
 use core::{fmt, intrinsics};
 use io;
-
 
 /// Panic handler.
 #[cfg(feature = "panic_item")]
@@ -16,7 +14,6 @@ extern "C" fn panic_fmt(
   panic_handler(args, file, line)
 }
 
-
 /// Overridden panic handler.
 #[cfg(not(feature = "panic_item"))]
 #[no_mangle]
@@ -27,7 +24,6 @@ pub extern "C" fn rust_begin_unwind(
 ) -> ! {
   panic_handler(args, file, line)
 }
-
 
 fn panic_handler(args: fmt::Arguments, file: &'static str, line: u32) -> ! {
   eprintln!();

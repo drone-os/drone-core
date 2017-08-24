@@ -1,12 +1,9 @@
 //! Flash memory interface registers.
 
-
 use drone_core::reg::{RawBits, RawValue};
-use reg::{PERIPHERAL_ALIAS_BASE, Value};
-
+use reg::{Value, PERIPHERAL_ALIAS_BASE};
 
 const BASE: usize = 0x4002_2000;
-
 
 define_reg! {
   name => Acr => AcrBits,
@@ -14,7 +11,6 @@ define_reg! {
   addr => BASE + 0x00,
   alias => PERIPHERAL_ALIAS_BASE,
 }
-
 
 /// Flash access control register latency.
 #[repr(usize)]
@@ -27,7 +23,6 @@ pub enum AcrWaitStates {
   Two = 0b010,
 }
 
-
 /// Flash access control register bits.
 pub trait AcrBits<T>: RawBits<Acr, T> {
   /// Prefetch buffer enable.
@@ -35,13 +30,11 @@ pub trait AcrBits<T>: RawBits<Acr, T> {
     self.write(4, enable)
   }
 
-
   /// Flash half cycle access enable.
   fn half_cycle(&mut self, enable: bool) -> &mut Self {
     self.write(3, enable)
   }
 }
-
 
 impl Value<Acr> {
   /// The ratio of the SYSCLK (system clock) period to the Flash access time.

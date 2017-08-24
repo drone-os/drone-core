@@ -1,13 +1,10 @@
 //! Reset and clock control.
 
-
 use core::mem::transmute;
 use drone_core::reg::{RawBits, RawValue};
-use reg::{PERIPHERAL_ALIAS_BASE, Value};
-
+use reg::{Value, PERIPHERAL_ALIAS_BASE};
 
 const BASE: usize = 0x4002_1000;
-
 
 define_reg! {
   name => Cr => CrBits,
@@ -37,7 +34,6 @@ define_reg! {
   alias => PERIPHERAL_ALIAS_BASE,
 }
 
-
 /// APB2 peripheral clock enable register port.
 #[repr(usize)]
 pub enum Apb2enrIop {
@@ -50,7 +46,6 @@ pub enum Apb2enrIop {
   G = 8,
 }
 
-
 /// Clock configuration register PLL clock source.
 pub enum CfgrPllSource {
   /// HSI oscillator clock / 2.
@@ -59,7 +54,6 @@ pub enum CfgrPllSource {
   Hse,
 }
 
-
 /// Clock configuration register PLL HSE prescaler.
 pub enum CfgrPllHsePrescaler {
   /// HSE clock not divided.
@@ -67,7 +61,6 @@ pub enum CfgrPllHsePrescaler {
   /// HSE clock divided by 2.
   Div2,
 }
-
 
 /// Clock configuration register system clock.
 #[repr(usize)]
@@ -80,7 +73,6 @@ pub enum CfgrSystemClock {
   Pll = 0b10,
 }
 
-
 /// Clock control register bits.
 pub trait CrBits<T>: RawBits<Cr, T> {
   /// PLL enable.
@@ -88,37 +80,31 @@ pub trait CrBits<T>: RawBits<Cr, T> {
     self.write(24, enable)
   }
 
-
   /// HSE clock enable.
   fn hse_enable(&mut self, enable: bool) -> &mut Self {
     self.write(16, enable)
   }
-
 
   /// External high-speed clock bypass.
   fn hse_bypass(&mut self, bypass: bool) -> &mut Self {
     self.write(18, bypass)
   }
 
-
   /// PLL clock ready flag.
   fn pll_ready(&self) -> bool {
     self.read(25)
   }
-
 
   /// External high-speed clock ready flag.
   fn hse_ready(&self) -> bool {
     self.read(17)
   }
 
-
   /// Clock security system enable.
   fn css_enable(&mut self, enable: bool) -> &mut Self {
     self.write(19, enable)
   }
 }
-
 
 /// Clock configuration register bits.
 pub trait CfgrBits<T>: RawBits<Cfgr, T> {
@@ -145,7 +131,6 @@ pub trait CfgrBits<T>: RawBits<Cfgr, T> {
   }
 }
 
-
 /// Clock interrupt register bits.
 pub trait CirBits<T>: RawBits<Cir, T> {
   /// Clock security system interrupt clear.
@@ -153,13 +138,11 @@ pub trait CirBits<T>: RawBits<Cir, T> {
     self.write(23, true)
   }
 
-
   /// Clock security system interrupt flag.
   fn css(&self) -> bool {
     self.read(7)
   }
 }
-
 
 /// APB2 peripheral clock enable register bits.
 pub trait Apb2enrBits<T>: RawBits<Apb2enr, T> {
@@ -168,7 +151,6 @@ pub trait Apb2enrBits<T>: RawBits<Apb2enr, T> {
     self.write(port as u32, enable)
   }
 }
-
 
 impl Value<Cfgr> {
   /// PLL multiplication factor.
@@ -182,12 +164,10 @@ impl Value<Cfgr> {
     self.write_bits(value - 2, 4, 18)
   }
 
-
   /// System clock switch.
   pub fn system_clock(&mut self, clock: CfgrSystemClock) -> &mut Value<Cfgr> {
     self.write_bits(clock as u32, 2, 0)
   }
-
 
   /// System clock switch status.
   pub fn system_clock_status(&mut self) -> CfgrSystemClock {

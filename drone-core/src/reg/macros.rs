@@ -61,7 +61,6 @@ macro_rules! define_reg {
   };
 }
 
-
 /// Defines and implements concrete register types.
 #[macro_export]
 macro_rules! define_reg_structs {

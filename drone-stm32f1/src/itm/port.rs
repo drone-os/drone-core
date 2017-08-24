@@ -1,16 +1,12 @@
 //! ITM stimulus ports functionality.
 
-
 use core::fmt::{self, Write};
 use core::slice;
 
-
 const ADDRESS_BASE: usize = 0xE000_0000;
-
 
 /// ITM stimulus port pointer.
 pub struct Port(usize);
-
 
 /// Types that can be transmitted through ITM stimulus port.
 pub trait Transmit: Copy {
@@ -19,7 +15,6 @@ pub trait Transmit: Copy {
   /// It retries on buffer overflow.
   fn transmit(self, address: usize);
 }
-
 
 impl Port {
   /// Constructs a new `Port`.
@@ -31,7 +26,6 @@ impl Port {
     assert!(port < 0x20);
     Port(ADDRESS_BASE + port)
   }
-
 
   /// Writes a buffer in most effective chunks, splitting it to 8- and 32-bit
   /// slices.
@@ -50,14 +44,11 @@ impl Port {
     }
     rem = end & 0b11;
     end -= rem;
-    self.write_all(
-      unsafe {
-        slice::from_raw_parts(start as *const u32, end - start >> 2)
-      },
-    );
+    self.write_all(unsafe {
+      slice::from_raw_parts(start as *const u32, end - start >> 2)
+    });
     self.write_all(unsafe { slice::from_raw_parts(end as *const u8, rem) });
   }
-
 
   /// Writes an entire buffer in chunks of `size_of::<T>() * 8` bits.
   pub fn write_all<T: Transmit>(&self, buffer: &[T]) {
@@ -66,13 +57,11 @@ impl Port {
     }
   }
 
-
   /// Writes a value into a port.
   pub fn write<T: Transmit>(&self, value: T) {
     value.transmit(self.0);
   }
 }
-
 
 impl Write for Port {
   fn write_str(&mut self, string: &str) -> fmt::Result {
@@ -80,7 +69,6 @@ impl Write for Port {
     Ok(())
   }
 }
-
 
 impl Transmit for u8 {
   fn transmit(self, address: usize) {
@@ -101,7 +89,6 @@ impl Transmit for u8 {
   }
 }
 
-
 impl Transmit for u16 {
   fn transmit(self, address: usize) {
     unsafe {
@@ -120,7 +107,6 @@ impl Transmit for u16 {
     }
   }
 }
-
 
 impl Transmit for u32 {
   fn transmit(self, address: usize) {

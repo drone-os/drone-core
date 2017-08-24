@@ -1,9 +1,7 @@
 //! Panicking support.
 
-
 use {itm, util};
 use core::fmt;
-
 
 /// Panic handler.
 ///

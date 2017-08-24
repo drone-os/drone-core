@@ -1,6 +1,5 @@
 //! Instrumentation Trace Macrocell support.
 
-
 pub use self::port::Port;
 use core::fmt::{self, Write};
 use drone_core::reg::{Delegate, ValuePointer};
@@ -8,12 +7,9 @@ use reg::{Areg, Reg};
 use reg::dbg::{self, ItmtpMask, McucrTraceMode, TpiusppMode};
 use util;
 
-
 const POST_FLUSH_WAIT: u32 = 0x18;
 
-
 pub mod port;
-
 
 
 /// Initializes ITM.
@@ -35,21 +31,14 @@ pub unsafe fn init<A, B, C, D, E, F, G>(
     .ptr()
     .modify(|reg| reg.trace_mode(McucrTraceMode::Async));
   dbg_demcr.ptr().modify(|reg| reg.trace_enable(true));
-  dbg_tpiuspp
-    .ptr()
-    .write(|reg| reg.mode(TpiusppMode::SwoNrz));
-  dbg_tpiuffc
-    .ptr()
-    .modify(|reg| reg.formatter_enable(false));
+  dbg_tpiuspp.ptr().write(|reg| reg.mode(TpiusppMode::SwoNrz));
+  dbg_tpiuffc.ptr().modify(|reg| reg.formatter_enable(false));
   dbg_itmla.ptr().write(|reg| reg.unlock());
-  dbg_itmtc
-    .ptr()
-    .modify(|reg| reg.itm_enable(true).atb_id(1));
+  dbg_itmtc.ptr().modify(|reg| reg.itm_enable(true).atb_id(1));
   dbg_itmtp
     .ptr()
     .modify(|reg| reg.trace_enable(ItmtpMask::P0To7, true));
 }
-
 
 /// Prints `str` to the ITM port #0.
 ///
@@ -59,7 +48,6 @@ pub fn write_str(string: &str) {
   Port::new(0).write_str(string).unwrap();
 }
 
-
 /// Prints `core::fmt::Arguments` to the ITM port #0.
 ///
 /// See [iprint](../macro.iprint.html) and [iprintln](../macro.iprintln.html)
@@ -67,7 +55,6 @@ pub fn write_str(string: &str) {
 pub fn write_fmt(args: fmt::Arguments) {
   Port::new(0).write_fmt(args).unwrap();
 }
-
 
 /// Waits until all pending packets will be transmitted.
 pub fn flush() {

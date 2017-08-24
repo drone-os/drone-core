@@ -1,8 +1,6 @@
 //! Basic functions for dealing with memory.
 
-
 use core::ptr;
-
 
 /// Initializes the `.bss` section.
 ///
@@ -19,7 +17,6 @@ pub unsafe fn bss_init() {
   let count = (bss_end as usize - bss_start as usize) >> 2;
   ptr::write_bytes(bss_start, 0, count);
 }
-
 
 /// Initializes the `.data` section.
 ///

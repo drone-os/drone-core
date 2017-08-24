@@ -9,7 +9,6 @@ macro_rules! eprint {
   };
 }
 
-
 /// Macro for printing to the standard error of host OS, with a newline.
 macro_rules! eprintln {
   () => {
@@ -24,7 +23,6 @@ macro_rules! eprintln {
     eprint!(concat!($fmt, "\n"), $($arg)*);
   };
 }
-
 
 /// Override of the standard `panic!` macro.
 #[macro_export]

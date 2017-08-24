@@ -2,13 +2,10 @@
 //! reload value to zero, reloads (wraps to) the value in the LOAD register on
 //! the next clock edge, then counts down on subsequent clocks.
 
-
 use drone_core::reg::{RawBits, RawValue};
 use reg::Value;
 
-
 const BASE: usize = 0xE000_E010;
-
 
 define_reg! {
   name => Ctrl,
@@ -22,7 +19,6 @@ define_reg! {
   addr => BASE + 0x04,
 }
 
-
 impl Value<Ctrl> {
   /// Sets `TICKINT` bit.
   ///
@@ -31,7 +27,6 @@ impl Value<Ctrl> {
     self.write(1, enable)
   }
 
-
   /// Sets `ENABLE` bit.
   ///
   /// Counter enable.
@@ -39,7 +34,6 @@ impl Value<Ctrl> {
     self.write(0, enable)
   }
 }
-
 
 impl Value<Load> {
   /// Specifies the start value to load into the VAL register when the counter
