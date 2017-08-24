@@ -13,7 +13,7 @@ define_reg! {
 }
 
 /// Flash access control register latency.
-#[repr(usize)]
+#[repr(u32)]
 pub enum AcrWaitStates {
   /// Zero wait state, if 0 < SYSCLK ≤ 24 MHz.
   Zero = 0b000,

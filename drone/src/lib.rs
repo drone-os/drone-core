@@ -10,7 +10,7 @@ extern crate drone_core;
 #[cfg(test)]
 #[allow(unused_imports)]
 #[macro_use]
-extern crate test;
+extern crate drone_test;
 
 #[cfg(feature = "stm32f1")]
 extern crate drone_stm32f1 as drone_imp;

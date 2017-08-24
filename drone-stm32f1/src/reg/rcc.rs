@@ -35,7 +35,7 @@ define_reg! {
 }
 
 /// APB2 peripheral clock enable register port.
-#[repr(usize)]
+#[repr(u32)]
 pub enum Apb2enrIop {
   A = 2,
   B = 3,
@@ -63,7 +63,7 @@ pub enum CfgrPllHsePrescaler {
 }
 
 /// Clock configuration register system clock.
-#[repr(usize)]
+#[repr(u32)]
 pub enum CfgrSystemClock {
   /// HSI selected as system clock.
   Hsi = 0b00,

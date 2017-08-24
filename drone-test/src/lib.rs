@@ -1,4 +1,4 @@
-//! *Drone* support code for rustc's built in unit-test and micro-benchmarking
+//! *Drone* support crate for rustc's built in unit-test and micro-benchmarking
 //! framework.
 #![feature(core_intrinsics)]
 #![feature(lang_items)]

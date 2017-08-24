@@ -119,7 +119,7 @@ pub enum CrMode {
 }
 
 /// Port bit set/reset register pin.
-#[repr(usize)]
+#[repr(u32)]
 pub enum BsrrPin {
   P0 = 0x0,
   P1 = 0x1,

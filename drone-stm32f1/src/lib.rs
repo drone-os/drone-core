@@ -10,7 +10,7 @@
 extern crate drone_core;
 #[cfg(test)]
 #[macro_use]
-extern crate test;
+extern crate drone_test;
 
 pub mod reg;
 pub mod itm;
