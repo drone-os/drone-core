@@ -2,6 +2,7 @@
 #![feature(asm)]
 #![feature(const_fn)]
 #![no_std]
+#![deny(missing_docs)]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]

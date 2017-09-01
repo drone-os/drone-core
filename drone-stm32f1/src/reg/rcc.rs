@@ -37,12 +37,19 @@ define_reg! {
 /// APB2 peripheral clock enable register port.
 #[repr(u32)]
 pub enum Apb2enrIop {
+  /// Port A.
   A = 2,
+  /// Port B.
   B = 3,
+  /// Port C.
   C = 4,
+  /// Port D.
   D = 5,
+  /// Port E.
   E = 6,
+  /// Port F.
   F = 7,
+  /// Port G.
   G = 8,
 }
 

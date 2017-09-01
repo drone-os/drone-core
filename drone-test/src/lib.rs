@@ -3,6 +3,7 @@
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![no_std]
+#![deny(missing_docs)]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
@@ -23,32 +24,32 @@ static mut TEST_PANICKED: bool = false;
 
 /// Test function with description.
 pub struct TestDescAndFn {
-  pub desc: TestDesc,
-  pub testfn: TestFn,
+  #[doc(hidden)] pub desc: TestDesc,
+  #[doc(hidden)] pub testfn: TestFn,
 }
 
 /// The definition of a single test.
 pub struct TestDesc {
-  pub name: TestName,
-  pub ignore: bool,
-  pub should_panic: ShouldPanic,
+  #[doc(hidden)] pub name: TestName,
+  #[doc(hidden)] pub ignore: bool,
+  #[doc(hidden)] pub should_panic: ShouldPanic,
 }
 
 /// The name of a test.
 pub enum TestName {
-  StaticTestName(&'static str),
+  #[doc(hidden)] StaticTestName(&'static str),
 }
 
 /// A function that runs a test.
 pub enum TestFn {
-  StaticTestFn(fn()),
+  #[doc(hidden)] StaticTestFn(fn()),
 }
 
 /// A `should_panic` attribute handler.
 #[derive(PartialEq)]
 pub enum ShouldPanic {
-  No,
-  Yes,
+  #[doc(hidden)] No,
+  #[doc(hidden)] Yes,
 }
 
 /// The test runner.

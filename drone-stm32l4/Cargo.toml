@@ -1,9 +1,9 @@
 [package]
-name = "drone"
+name = "drone-stm32l4"
 version = "0.1.1"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = """
-Real-Time Operating System written in rust.
+Drone implementation for STM32L4 microcontroller series.
 """
 readme = "README.md"
 license = "MIT/Apache-2.0"
@@ -11,16 +11,6 @@ repository = "https://github.com/valff/drone"
 
 [dependencies]
 clippy = {version = "0.0", optional = true}
-
-[dependencies.drone-stm32f1]
-path = "../drone-stm32f1"
-optional = true
-version = "0.1.1"
-
-[dependencies.drone-stm32l4]
-path = "../drone-stm32l4"
-optional = true
-version = "0.1.1"
 
 [dependencies.drone-core]
 path = "../drone-core"
@@ -30,11 +20,10 @@ version = "0.1.1"
 
 [dev-dependencies.drone-test]
 path = "../drone-test"
+features = ["panic_item"]
 version = "0.1.1"
 
 [features]
-stm32f1 = ["drone-stm32f1"]
-stm32l4 = ["drone-stm32l4"]
-default = ["stm32l4"]
+default = []
 
 [lib]

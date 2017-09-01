@@ -43,5 +43,6 @@ pub type ResetHandler = Option<extern "C" fn() -> !>;
 #[derive(Clone, Copy)]
 #[repr(usize)]
 pub enum Reserved {
+  /// The only allowed zero-value.
   Vector = 0,
 }

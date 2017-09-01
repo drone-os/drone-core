@@ -1,6 +1,6 @@
 [package]
 name = "drone-test"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = """
 Drone support crate for rustc's built in unit-test and micro-benchmarking

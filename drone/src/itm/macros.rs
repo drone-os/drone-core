@@ -1,3 +1,5 @@
+//! Collection of macros.
+
 /// Macro for printing through ITM.
 #[macro_export]
 macro_rules! iprint {

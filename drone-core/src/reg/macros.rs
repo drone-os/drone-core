@@ -1,3 +1,5 @@
+//! Collection of macros.
+
 /// Defines and implements a register type.
 #[macro_export]
 macro_rules! define_reg {
@@ -99,6 +101,7 @@ macro_rules! define_reg_structs {
     pub type Areg<R> = Reg<R, $crate::reg::marker::Atomic>;
 
     impl<R, A> Reg<R, A> {
+      /// Create a new register delegate.
       pub const fn new() -> Reg<R, A> {
         Reg {
           register: PhantomData,

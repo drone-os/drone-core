@@ -1,3 +1,5 @@
+//! Collection of macros.
+
 /// Macro for printing to the standard error of host OS.
 macro_rules! eprint {
   ($str:expr) => {

@@ -1,16 +1,18 @@
-//! *Drone* Hardware Independent Layer.
+//! *Drone* implementation for *STM32L4* microcontroller series.
 #![feature(asm)]
-#![feature(specialization)]
+#![feature(const_fn)]
 #![no_std]
 #![deny(missing_docs)]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
 
+#[macro_use]
+extern crate drone_core;
 #[cfg(test)]
 #[macro_use]
 extern crate drone_test;
 
 pub mod reg;
-pub mod memory;
-pub mod exception;
+pub mod itm;
+pub mod util;

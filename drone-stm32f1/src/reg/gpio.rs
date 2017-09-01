@@ -9,12 +9,19 @@ const PORT_SIZE: usize = 0x0400;
 
 /// Primitive types representing GPIO ports.
 pub mod port {
+  /// Port A.
   pub struct A;
+  /// Port B.
   pub struct B;
+  /// Port C.
   pub struct C;
+  /// Port D.
   pub struct D;
+  /// Port E.
   pub struct E;
+  /// Port F.
   pub struct F;
+  /// Port G.
   pub struct G;
 }
 
@@ -60,26 +67,42 @@ define_port_regs!(G, 6);
 /// Port configuration register low pin.
 #[repr(u32)]
 pub enum CrlPin {
+  /// Pin 0.
   P0 = 0x0,
+  /// Pin 1.
   P1 = 0x4,
+  /// Pin 2.
   P2 = 0x8,
+  /// Pin 3.
   P3 = 0xC,
+  /// Pin 4.
   P4 = 0x10,
+  /// Pin 5.
   P5 = 0x14,
+  /// Pin 6.
   P6 = 0x18,
+  /// Pin 7.
   P7 = 0x1C,
 }
 
 /// Port configuration register high pin.
 #[repr(u32)]
 pub enum CrhPin {
+  /// Pin 8.
   P8 = 0x0,
+  /// Pin 9.
   P9 = 0x4,
+  /// Pin 10.
   P10 = 0x8,
+  /// Pin 11.
   P11 = 0xC,
+  /// Pin 12.
   P12 = 0x10,
+  /// Pin 13.
   P13 = 0x14,
+  /// Pin 14.
   P14 = 0x18,
+  /// Pin 15.
   P15 = 0x1C,
 }
 
@@ -121,21 +144,37 @@ pub enum CrMode {
 /// Port bit set/reset register pin.
 #[repr(u32)]
 pub enum BsrrPin {
+  /// Pin 0.
   P0 = 0x0,
+  /// Pin 1.
   P1 = 0x1,
+  /// Pin 2.
   P2 = 0x2,
+  /// Pin 3.
   P3 = 0x3,
+  /// Pin 4.
   P4 = 0x4,
+  /// Pin 5.
   P5 = 0x5,
+  /// Pin 6.
   P6 = 0x6,
+  /// Pin 7.
   P7 = 0x7,
+  /// Pin 8.
   P8 = 0x8,
+  /// Pin 9.
   P9 = 0x9,
+  /// Pin 10.
   P10 = 0xa,
+  /// Pin 11.
   P11 = 0xb,
+  /// Pin 12.
   P12 = 0xc,
+  /// Pin 13.
   P13 = 0xd,
+  /// Pin 14.
   P14 = 0xe,
+  /// Pin 15.
   P15 = 0xf,
 }
 
