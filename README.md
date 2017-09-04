@@ -24,11 +24,16 @@ $ sudo udevadm control --reload-rules
 $ sudo udevadm trigger
 ```
 
-Install [Rust][rust] if it is not installed.
+[OpenOCD][openocd] is required.  It is recommended to install it from the
+source, because repository package is outdated and doesn't contain configuration
+for newer chips and boards.
 
-It is recommended to install [OpenOCD][openocd] from the source, because
-repository package is outdated and doesn't contain configuration for newer chips
-and boards.
+Install [Rust][rust] if it is not installed (nightly channel is required), and
+install [the cargo subcommand for Drone][cargo-drone]:
+
+```sh
+$ cargo intall cargo-drone
+```
 
 ## License
 
@@ -51,3 +56,4 @@ dual licensed as above, without any additional terms or conditions.
 [rtos]: https://en.wikipedia.org/wiki/Real-time_operating_system
 [openocd]: http://openocd.org/
 [rules.d]: https://github.com/texane/stlink/tree/master/etc/udev/rules.d
+[cargo-drone]: https://github.com/valff/cargo-drone
