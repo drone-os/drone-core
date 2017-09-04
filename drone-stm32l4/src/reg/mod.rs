@@ -9,6 +9,7 @@ pub const PERIPHERAL_ALIAS_BASE: usize = 0x4200_0000;
 pub mod dbg;
 pub mod flash;
 pub mod gpio;
+pub mod pwr;
 pub mod rcc;
 pub mod scb;
 pub mod stk;

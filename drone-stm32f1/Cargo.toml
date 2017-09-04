@@ -1,6 +1,6 @@
 [package]
 name = "drone-stm32f1"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = """
 Drone implementation for STM32F1 microcontroller series.
@@ -14,14 +14,14 @@ clippy = {version = "0.0", optional = true}
 
 [dependencies.drone-core]
 path = "../drone-core"
-version = "0.1.1"
+version = "0.1.2"
 
 [dev-dependencies]
 
 [dev-dependencies.drone-test]
 path = "../drone-test"
 features = ["panic_item"]
-version = "0.1.1"
+version = "0.1.2"
 
 [features]
 default = []

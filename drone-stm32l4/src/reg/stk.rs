@@ -1,6 +1,6 @@
 //! The processor has a 24-bit system timer, SysTick, that counts down from the
-//! reload value to zero, reloads (wraps to) the value in the LOAD register on
-//! the next clock edge, then counts down on subsequent clocks.
+//! reload value to zero, reloads (wraps to) the value in the STK_LOAD register
+//! on the next clock edge, then counts down on subsequent clocks.
 
 use drone_core::reg::{RawBits, RawValue};
 use reg::Value;

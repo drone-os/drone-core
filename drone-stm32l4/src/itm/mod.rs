@@ -7,7 +7,7 @@ use reg::{Areg, Reg};
 use reg::dbg::{self, ItmtpMask, McucrTraceMode, TpiusppMode};
 use util;
 
-const POST_FLUSH_WAIT: u32 = 0x18;
+const POST_FLUSH_WAIT: u32 = 0x400;
 
 pub mod port;
 
