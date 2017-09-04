@@ -26,6 +26,10 @@ $ sudo udevadm trigger
 
 Install [Rust][rust] if it is not installed.
 
+It is recommended to install [OpenOCD][openocd] from the source, because
+repository package is outdated and doesn't contain configuration for newer chips
+and boards.
+
 ## License
 
 Licensed under either of
@@ -45,4 +49,5 @@ dual licensed as above, without any additional terms or conditions.
 
 [rust]: https://www.rust-lang.org/
 [rtos]: https://en.wikipedia.org/wiki/Real-time_operating_system
+[openocd]: http://openocd.org/
 [rules.d]: https://github.com/texane/stlink/tree/master/etc/udev/rules.d
