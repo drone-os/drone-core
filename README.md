@@ -1,7 +1,30 @@
 Drone
 =====
 
-Drone is a Real-Time Operating System written in rust.
+Drone is a [Real-Time Operating System][rtos] framework written in [Rust][rust].
+
+**Warning**: It is at the early experimental stage.
+
+## Requirements
+
+Instructions will be given for Debian-based Linux systems.
+
+Install the following packages:
+
+```sh
+$ sudo apt-get install build-essential cmake libusb-1.0-0 libusb-1.0-0-dev \
+  pandoc gcc-arm-none-eabi gdb-arm-none-eabi qemu-system-arm qemu-user
+```
+
+Copy [udev rules][rules.d] for ST-Link programmer to the `/etc/udev/rules.d/`,
+and run the following commands:
+
+```sh
+$ sudo udevadm control --reload-rules
+$ sudo udevadm trigger
+```
+
+Install [Rust][rust] if it is not installed.
 
 ## License
 
@@ -19,3 +42,7 @@ at your option.
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
+
+[rust]: https://www.rust-lang.org/
+[rtos]: https://en.wikipedia.org/wiki/Real-time_operating_system
+[rules.d]: https://github.com/texane/stlink/tree/master/etc/udev/rules.d
