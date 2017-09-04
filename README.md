@@ -35,6 +35,11 @@ install [the cargo subcommand for Drone][cargo-drone]:
 $ cargo intall cargo-drone
 ```
 
+## Examples
+
+* [STM32F1](https://github.com/valff/blink-stm32f1)
+* [STM32L4](https://github.com/valff/blink-stm32l4)
+
 ## License
 
 Licensed under either of
