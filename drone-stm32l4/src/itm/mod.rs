@@ -2,7 +2,7 @@
 
 pub use self::port::Port;
 use core::fmt::{self, Write};
-use drone_core::reg::{Delegate, ValuePointer};
+use drone::reg::{Delegate, ValuePointer};
 use reg::{Areg, Reg};
 use reg::dbg::{self, ItmtpMask, McucrTraceMode, TpiusppMode};
 use util;

@@ -2,7 +2,7 @@
 //! reload value to zero, reloads (wraps to) the value in the STK_LOAD register
 //! on the next clock edge, then counts down on subsequent clocks.
 
-use drone_core::reg::{RawBits, RawValue};
+use drone::reg::{RawBits, RawValue};
 use reg::Value;
 
 const BASE: usize = 0xE000_E010;

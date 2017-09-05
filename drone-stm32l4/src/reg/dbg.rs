@@ -1,6 +1,6 @@
 //! The processor debug.
 
-use drone_core::reg::{RawBits, RawValue};
+use drone::reg::{RawBits, RawValue};
 use reg::Value;
 
 define_reg! {

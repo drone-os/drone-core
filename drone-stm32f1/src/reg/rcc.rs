@@ -1,7 +1,7 @@
 //! Reset and clock control.
 
 use core::mem::transmute;
-use drone_core::reg::{RawBits, RawValue};
+use drone::reg::{RawBits, RawValue};
 use reg::{Value, PERIPHERAL_ALIAS_BASE};
 
 const BASE: usize = 0x4002_1000;

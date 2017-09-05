@@ -1,6 +1,6 @@
 //! Flash memory interface registers.
 
-use drone_core::reg::{RawBits, RawValue};
+use drone::reg::{RawBits, RawValue};
 use reg::{Value, PERIPHERAL_ALIAS_BASE};
 
 const BASE: usize = 0x4002_2000;

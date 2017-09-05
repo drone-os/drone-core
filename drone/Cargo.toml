@@ -1,5 +1,5 @@
 [package]
-name = "drone-core"
+name = "drone"
 version = "0.1.2"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = """

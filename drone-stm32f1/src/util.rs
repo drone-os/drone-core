@@ -1,6 +1,6 @@
 //! Utility module.
 
-use drone_core::reg::{Delegate, ValuePointer};
+use drone::reg::{Delegate, ValuePointer};
 use reg::{scb, Areg};
 
 /// Wait for Interrupt.

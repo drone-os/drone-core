@@ -2,7 +2,7 @@
 //! and system control. This includes configuration, control, and reporting of
 //! the system exceptions.
 
-use drone_core::reg::{RawBits, RawValue};
+use drone::reg::{RawBits, RawValue};
 use reg::Value;
 
 const BASE: usize = 0xE000_ED00;

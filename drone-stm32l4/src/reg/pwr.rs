@@ -1,6 +1,6 @@
 //! Power registers.
 
-use drone_core::reg::RawBits;
+use drone::reg::RawBits;
 use reg::PERIPHERAL_ALIAS_BASE;
 
 const BASE: usize = 0x4000_7000;

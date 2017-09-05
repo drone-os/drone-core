@@ -12,8 +12,8 @@ repository = "https://github.com/valff/drone"
 [dependencies]
 clippy = {version = "0.0", optional = true}
 
-[dependencies.drone-core]
-path = "../drone-core"
+[dependencies.drone]
+path = "../drone"
 version = "0.1.2"
 
 [dev-dependencies]

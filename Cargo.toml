@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "drone-core",
+  "drone",
   "drone-stm32f1",
   "drone-stm32l4",
   "drone-test",

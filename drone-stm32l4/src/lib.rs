@@ -10,7 +10,7 @@
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
 
 #[macro_use]
-extern crate drone_core;
+extern crate drone;
 #[cfg(test)]
 #[macro_use]
 extern crate drone_test;

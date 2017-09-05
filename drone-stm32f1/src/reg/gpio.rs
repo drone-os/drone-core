@@ -1,7 +1,7 @@
 //! General-purpose and alternate-function I/Os.
 
 use core::marker::PhantomData;
-use drone_core::reg::{RawBits, RawValue};
+use drone::reg::{RawBits, RawValue};
 use reg::{Value, PERIPHERAL_ALIAS_BASE};
 
 const BASE: usize = 0x4001_0800;
