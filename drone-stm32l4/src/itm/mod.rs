@@ -10,6 +10,8 @@ use util;
 const POST_FLUSH_WAIT: u32 = 0x400;
 
 pub mod port;
+#[macro_use]
+pub mod macros;
 
 
 /// Initializes ITM.

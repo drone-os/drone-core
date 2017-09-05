@@ -29,9 +29,11 @@ source, because repository package is outdated and doesn't contain configuration
 for newer chips and boards.
 
 Install [Rust][rust] if it is not installed (nightly channel is required), and
-install [the cargo subcommand for Drone][cargo-drone]:
+install [the cargo subcommand for Drone][cargo-drone] and [Xargo][xargo]:
 
 ```sh
+$ rustup component add rust-src
+$ cargo intall xargo
 $ cargo intall cargo-drone
 ```
 
@@ -62,3 +64,4 @@ dual licensed as above, without any additional terms or conditions.
 [openocd]: http://openocd.org/
 [rules.d]: https://github.com/texane/stlink/tree/master/etc/udev/rules.d
 [cargo-drone]: https://github.com/valff/cargo-drone
+[xargo]: https://github.com/japaric/xargo
