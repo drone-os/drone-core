@@ -1,7 +1,8 @@
 Drone
 =====
 
-Drone is a [Real-Time Operating System][rtos] framework written in [Rust][rust].
+*Drone* is a [Real-Time Operating System][rtos] framework written in
+[Rust][rust].
 
 **Warning**: It is at the early experimental stage.
 

@@ -1,16 +1,16 @@
-//! *Drone* Hardware Independent Layer.
-#![feature(asm)]
-#![feature(specialization)]
-#![no_std]
-#![deny(missing_docs)]
+//! *Drone* is a [Real-Time Operating System][rtos] Framework.
+//! [rtos]: https://en.wikipedia.org/wiki/Real-time_operating_system
+#![feature(optin_builtin_traits)]
+#![warn(missing_docs)]
+#![cfg_attr(not(test), no_std)]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
 
-#[cfg(test)]
 #[macro_use]
-extern crate drone_test;
-
 pub mod reg;
 pub mod memory;
 pub mod exception;
+
+#[cfg(test)]
+use std as core;
