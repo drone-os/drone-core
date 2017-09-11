@@ -1,6 +1,6 @@
 [package]
 name = "drone"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = "Drone Real-Time Operating System Framework."
 readme = "README.md"

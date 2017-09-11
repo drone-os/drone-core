@@ -1,14 +1,11 @@
 //! Safe API for memory-mapped registers.
 
+pub mod prelude;
 pub mod flavor;
 
-/// Memory-mapped registers prelude.
-pub mod prelude {
-  pub use super::{RReg, Reg, RegValue, RwLocalReg, WReg};
-  pub use super::flavor::{Atomic, Flavor, Local};
-}
-
+use core::fmt::Debug;
 use core::mem::size_of;
+use core::ops::{BitAnd, BitAndAssign, BitOrAssign, Not, Shl, Shr, Sub};
 use core::ptr::{read_volatile, write_volatile};
 
 /// Memory-mapped register handler. Types which implement this trait should be
@@ -43,13 +40,13 @@ where
   }
 
   /// Reads a raw register value from its memory address.
-  fn read_raw(&self) -> usize {
+  fn read_raw(&self) -> <Self::Value as RegValue>::Raw {
     unsafe { read_volatile(self.to_ptr()) }
   }
 
   /// Returns an unsafe constant pointer to the register's memory address.
-  fn to_ptr(&self) -> *const usize {
-    Self::ADDRESS as *const usize
+  fn to_ptr(&self) -> *const <Self::Value as RegValue>::Raw {
+    Self::ADDRESS as *const <Self::Value as RegValue>::Raw
   }
 }
 
@@ -60,29 +57,29 @@ where
   T: flavor::Flavor,
 {
   /// Writes a wrapped register value to its memory address.
-  fn write(&mut self, value: Self::Value) {
+  fn write(&self, value: &Self::Value) {
     self.write_raw(value.raw());
   }
 
-  /// Calls `f` on a blank value and writes the result value to the register's
+  /// Calls `f` on a default value and writes the result to the register's
   /// memory address.
-  fn write_with<F>(&mut self, f: F)
+  fn write_with<F>(&self, f: F)
   where
     F: FnOnce(&mut Self::Value) -> &Self::Value,
   {
-    self.write_raw(f(&mut Self::Value::blank()).raw());
+    self.write(f(&mut Self::Value::default()));
   }
 
   /// Writes a raw register value to its memory address.
-  fn write_raw(&mut self, value: usize) {
+  fn write_raw(&self, value: <Self::Value as RegValue>::Raw) {
     unsafe {
       write_volatile(self.to_mut_ptr(), value);
     }
   }
 
   /// Returns an unsafe mutable pointer to the register's memory address.
-  fn to_mut_ptr(&mut self) -> *mut usize {
-    Self::ADDRESS as *mut usize
+  fn to_mut_ptr(&self) -> *mut <Self::Value as RegValue>::Raw {
+    Self::ADDRESS as *mut <Self::Value as RegValue>::Raw
   }
 }
 
@@ -92,7 +89,7 @@ where
   Self: RReg<flavor::Local> + WReg<flavor::Local>,
 {
   /// Atomically modifies a register's value.
-  fn modify<F>(&mut self, f: F)
+  fn modify<F>(&self, f: F)
   where
     F: FnOnce(&mut Self::Value) -> &Self::Value;
 }
@@ -100,30 +97,28 @@ where
 /// Wrapper for a corresponding register's value.
 pub trait RegValue
 where
-  Self: Sized,
+  Self: Sized + Default,
 {
+  /// Raw integer type.
+  type Raw: RegRaw;
+
   /// Constructs a wrapper from the raw register `value`.
-  fn new(value: usize) -> Self;
+  fn new(value: Self::Raw) -> Self;
 
   /// Returns the raw integer value.
-  fn raw(&self) -> usize;
+  fn raw(&self) -> Self::Raw;
 
   /// Returns a mutable reference to the raw integer value.
-  fn raw_mut(&mut self) -> &mut usize;
-
-  /// Constructs a blank wrapper for the value of `0`.
-  fn blank() -> Self {
-    Self::new(0)
-  }
+  fn raw_mut(&mut self) -> &mut Self::Raw;
 
   /// Checks the set state of the bit of the register's value by `offset`.
   ///
   /// # Panics
   ///
   /// If `offset` is greater than or equals to the platform's word size in bits.
-  fn bit(&self, offset: usize) -> bool {
-    assert!(offset < size_of::<usize>() * 8);
-    self.raw() & 0b1 << offset != 0
+  fn bit(&self, offset: Self::Raw) -> bool {
+    assert!(offset < Self::Raw::size_in_bits());
+    self.raw() & Self::Raw::one() << offset != Self::Raw::zero()
   }
 
   /// Sets or clears the bit of the register's value by `offset`.
@@ -131,9 +126,9 @@ where
   /// # Panics
   ///
   /// If `offset` is greater than or equals to the platform's word size in bits.
-  fn set_bit(&mut self, offset: usize, value: bool) -> &mut Self {
-    assert!(offset < size_of::<usize>() * 8);
-    let mask = 0b1 << offset;
+  fn set_bit(&mut self, offset: Self::Raw, value: bool) -> &mut Self {
+    assert!(offset < Self::Raw::size_in_bits());
+    let mask = Self::Raw::one() << offset;
     if value {
       *self.raw_mut() |= mask;
     } else {
@@ -150,10 +145,10 @@ where
   /// * If `offset` is greater than or equals to the platform's word size in
   ///   bits.
   /// * If `width + offset` is greater than the platform's word size in bits.
-  fn bits(&self, offset: usize, width: usize) -> usize {
-    assert!(offset < size_of::<usize>() * 8);
-    assert!(width <= size_of::<usize>() * 8 - offset);
-    self.raw() >> offset & (0b1 << width) - 1
+  fn bits(&self, offset: Self::Raw, width: Self::Raw) -> Self::Raw {
+    assert!(offset < Self::Raw::size_in_bits());
+    assert!(width <= Self::Raw::size_in_bits() - offset);
+    self.raw() >> offset & (Self::Raw::one() << width) - Self::Raw::one()
   }
 
   /// Copies the `width` number of low order bits from the `value` into the same
@@ -167,36 +162,87 @@ where
   /// * If `value` contains bits outside the width range.
   fn set_bits(
     &mut self,
-    offset: usize,
-    width: usize,
-    value: usize,
+    offset: Self::Raw,
+    width: Self::Raw,
+    value: Self::Raw,
   ) -> &mut Self {
-    assert!(offset < size_of::<usize>() * 8);
-    assert!(width <= size_of::<usize>() * 8 - offset);
-    assert_eq!(value & !((0b1 << width) - 1), 0);
-    *self.raw_mut() &= !((0b1 << width) - 1 << offset);
+    assert!(offset < Self::Raw::size_in_bits());
+    assert!(width <= Self::Raw::size_in_bits() - offset);
+    assert_eq!(
+      value & !((Self::Raw::one() << width) - Self::Raw::one()),
+      Self::Raw::zero()
+    );
+    *self.raw_mut() &=
+      !((Self::Raw::one() << width) - Self::Raw::one() << offset);
     *self.raw_mut() |= value << offset;
     self
   }
+}
+
+/// Raw register value type.
+pub trait RegRaw
+where
+  Self: Debug
+    + Copy
+    + Default
+    + PartialOrd
+    + BitAndAssign
+    + BitOrAssign
+    + BitAnd<Output = Self>
+    + Not<Output = Self>
+    + Sub<Output = Self>
+    + Shl<Self, Output = Self>
+    + Shr<Self, Output = Self>,
+{
+  /// Size of the type in bits.
+  fn size_in_bits() -> Self;
+
+  /// Returns zero.
+  fn zero() -> Self;
+
+  /// Returns one.
+  fn one() -> Self;
 }
 
 impl<T> RwLocalReg for T
 where
   T: RReg<flavor::Local> + WReg<flavor::Local>,
 {
-  fn modify<F>(&mut self, f: F)
+  fn modify<F>(&self, f: F)
   where
     F: FnOnce(&mut Self::Value) -> &Self::Value,
   {
-    let value = f(&mut self.read()).raw();
-    self.write_raw(value);
+    self.write(f(&mut self.read()));
   }
 }
+
+macro_rules! impl_reg_raw {
+  ($type:ty) => {
+    impl RegRaw for $type {
+      fn size_in_bits() -> $type {
+        size_of::<$type>() as $type * 8
+      }
+
+      fn zero() -> $type {
+        0
+      }
+
+      fn one() -> $type {
+        1
+      }
+    }
+  };
+}
+
+impl_reg_raw!(u64);
+impl_reg_raw!(u32);
+impl_reg_raw!(u16);
+impl_reg_raw!(u8);
 
 #[macro_export]
 macro_rules! reg {
   (
-    [$address:expr]
+    [$address:expr] $raw:ident
     $(#[$reg_meta:meta])* $reg:ident
     $(#[$value_meta:meta])* $value:ident
     $($trait:ident { $($impl:tt)* })*
@@ -207,8 +253,9 @@ macro_rules! reg {
     }
 
     $(#[$value_meta])*
+    #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default)]
     pub struct $value {
-      value: usize,
+      value: $raw,
     }
 
     impl<T: $crate::reg::flavor::Flavor> $crate::reg::Reg<T> for $reg<T> {
@@ -223,15 +270,17 @@ macro_rules! reg {
     }
 
     impl $crate::reg::RegValue for $value {
-      fn new(value: usize) -> Self {
+      type Raw = $raw;
+
+      fn new(value: $raw) -> Self {
         Self { value }
       }
 
-      fn raw(&self) -> usize {
+      fn raw(&self) -> $raw {
         self.value
       }
 
-      fn raw_mut(&mut self) -> &mut usize {
+      fn raw_mut(&mut self) -> &mut $raw {
         &mut self.value
       }
     }
@@ -248,7 +297,7 @@ macro_rules! reg {
 mod tests {
   use super::*;
 
-  reg!([0xDEAD_BEEF] TestReg TestRegValue RReg {} WReg {});
+  reg!([0xDEAD_BEEF] u32 TestReg TestRegValue RReg {} WReg {});
 
   #[test]
   fn size_of_reg() {
@@ -258,32 +307,29 @@ mod tests {
 
   #[test]
   fn size_of_reg_value() {
-    assert_eq!(size_of::<TestRegValue>(), size_of::<usize>());
+    assert_eq!(size_of::<TestRegValue>(), 4);
   }
 
   #[test]
   fn reg_value_bit() {
-    assert!(!TestRegValue::blank().bit(17));
-    assert!(!TestRegValue::blank().bit(0));
-    assert!(!TestRegValue::blank().bit(size_of::<usize>() * 8 - 1));
+    assert!(!TestRegValue::default().bit(17));
+    assert!(!TestRegValue::default().bit(0));
+    assert!(!TestRegValue::default().bit(31));
     assert!(!TestRegValue::new(0b1110_1111).bit(4));
     assert!(TestRegValue::new(0b1000_0000).bit(7));
     assert!(TestRegValue::new(0b1).bit(0));
-    assert!(
-      TestRegValue::new(0b1 << size_of::<usize>() * 8 - 1)
-        .bit(size_of::<usize>() * 8 - 1)
-    );
+    assert!(TestRegValue::new(0b1 << 31).bit(31));
   }
 
   #[test]
   #[should_panic]
   fn reg_value_bit_invalid_offset() {
-    TestRegValue::blank().bit(size_of::<usize>() * 8);
+    TestRegValue::default().bit(32);
   }
 
   #[test]
   fn reg_value_set_bit() {
-    let mut value = TestRegValue::blank();
+    let mut value = TestRegValue::default();
     value.set_bit(0, false);
     assert_eq!(value.raw(), 0b0000_0000);
     value.set_bit(6, true);
@@ -294,49 +340,45 @@ mod tests {
     assert_eq!(value.raw(), 0b0100_0001);
     value.set_bit(6, false);
     assert_eq!(value.raw(), 0b0000_0001);
-    let mut value = TestRegValue::blank();
-    value.set_bit(size_of::<usize>() * 8 - 1, true);
-    assert_eq!(value.raw(), 0b1 << size_of::<usize>() * 8 - 1);
-    value.set_bit(size_of::<usize>() * 8 - 1, false);
+    let mut value = TestRegValue::default();
+    value.set_bit(31, true);
+    assert_eq!(value.raw(), 0b1 << 31);
+    value.set_bit(31, false);
     assert_eq!(value.raw(), 0);
   }
 
   #[test]
   #[should_panic]
   fn reg_value_set_bit_invalid_offset() {
-    TestRegValue::blank().set_bit(size_of::<usize>() * 8, true);
+    TestRegValue::default().set_bit(32, true);
   }
 
   #[test]
   fn reg_value_bits() {
-    assert_eq!(TestRegValue::blank().bits(17, 3), 0);
-    assert_eq!(TestRegValue::blank().bits(0, 5), 0);
-    assert_eq!(TestRegValue::blank().bits(size_of::<usize>() * 8 - 1, 1), 0);
+    assert_eq!(TestRegValue::default().bits(17, 3), 0);
+    assert_eq!(TestRegValue::default().bits(0, 5), 0);
+    assert_eq!(TestRegValue::default().bits(31, 1), 0);
     assert_eq!(TestRegValue::new(0b1110_0111).bits(3, 2), 0);
     assert_eq!(TestRegValue::new(0b1100_0000).bits(6, 2), 0b11);
     assert_eq!(TestRegValue::new(0b101).bits(0, 3), 0b101);
-    assert_eq!(
-      TestRegValue::new(0b111 << size_of::<usize>() * 8 - 3)
-        .bits(size_of::<usize>() * 8 - 3, 3),
-      0b111
-    );
+    assert_eq!(TestRegValue::new(0b111 << 29).bits(29, 3), 0b111);
   }
 
   #[test]
   #[should_panic]
   fn reg_value_bits_invalid_offset() {
-    TestRegValue::blank().bits(size_of::<usize>() * 8, 1);
+    TestRegValue::default().bits(32, 1);
   }
 
   #[test]
   #[should_panic]
   fn reg_value_bits_invalid_width() {
-    TestRegValue::blank().bits(size_of::<usize>() * 8 - 1, 2);
+    TestRegValue::default().bits(31, 2);
   }
 
   #[test]
   fn reg_value_set_bits() {
-    let mut value = TestRegValue::blank();
+    let mut value = TestRegValue::default();
     value.set_bits(0, 2, 0);
     assert_eq!(value.raw(), 0b0000_0000);
     value.set_bits(5, 2, 0b11);
@@ -347,28 +389,28 @@ mod tests {
     assert_eq!(value.raw(), 0b0110_0001);
     value.set_bits(4, 4, 0);
     assert_eq!(value.raw(), 0b0000_0001);
-    let mut value = TestRegValue::blank();
-    value.set_bits(size_of::<usize>() * 8 - 1, 1, 0b1);
-    assert_eq!(value.raw(), 0b1 << size_of::<usize>() * 8 - 1);
-    value.set_bits(size_of::<usize>() * 8 - 1, 1, 0);
+    let mut value = TestRegValue::default();
+    value.set_bits(31, 1, 0b1);
+    assert_eq!(value.raw(), 0b1 << 31);
+    value.set_bits(31, 1, 0);
     assert_eq!(value.raw(), 0);
   }
 
   #[test]
   #[should_panic]
   fn reg_value_set_bits_invalid_offset() {
-    TestRegValue::blank().set_bits(size_of::<usize>() * 8, 1, 0);
+    TestRegValue::default().set_bits(32, 1, 0);
   }
 
   #[test]
   #[should_panic]
   fn reg_value_set_bits_invalid_width() {
-    TestRegValue::blank().set_bits(size_of::<usize>() * 8 - 1, 2, 0);
+    TestRegValue::default().set_bits(31, 2, 0);
   }
 
   #[test]
   #[should_panic]
   fn reg_value_set_bits_invalid_value() {
-    TestRegValue::blank().set_bits(0, 1, 0b10);
+    TestRegValue::default().set_bits(0, 1, 0b10);
   }
 }
