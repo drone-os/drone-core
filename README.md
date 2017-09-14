@@ -41,7 +41,7 @@ $ cargo intall cargo-drone
 ## Examples
 
 * [STM32F1](https://github.com/valff/blink-stm32f1)
-* [STM32L4](https://github.com/valff/blink-stm32l4)
+* [STM32 Nucleo L496ZG-P](https://github.com/valff/blink-nucleo)
 
 ## License
 
