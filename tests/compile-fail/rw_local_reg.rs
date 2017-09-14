@@ -11,11 +11,11 @@ reg!([0xDEAD_BEEF] u32 WoReg WoRegValue WReg {});
 fn assert_rw_local_reg<T: RwLocalReg>() {}
 
 fn main() {
-  assert_rw_local_reg::<RwReg<Atomic>>();
-  //~^ ERROR drone::reg::WReg<drone::reg::prelude::Local>` is not satisfied
-  //~| ERROR drone::reg::RReg<drone::reg::prelude::Local>` is not satisfied
-  assert_rw_local_reg::<RoReg<Local>>();
-  //~^ ERROR drone::reg::WReg<drone::reg::prelude::Local>` is not satisfied
-  assert_rw_local_reg::<WoReg<Local>>();
-  //~^ ERROR drone::reg::RReg<drone::reg::prelude::Local>` is not satisfied
+  assert_rw_local_reg::<RwReg<Ar>>();
+  //~^ ERROR drone::reg::WReg<drone::reg::Lr>` is not satisfied
+  //~| ERROR drone::reg::RReg<drone::reg::Lr>` is not satisfied
+  assert_rw_local_reg::<RoReg<Lr>>();
+  //~^ ERROR drone::reg::WReg<drone::reg::Lr>` is not satisfied
+  assert_rw_local_reg::<WoReg<Lr>>();
+  //~^ ERROR drone::reg::RReg<drone::reg::Lr>` is not satisfied
 }

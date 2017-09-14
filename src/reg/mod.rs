@@ -1,20 +1,23 @@
 //! Safe API for memory-mapped registers.
 
 pub mod prelude;
-pub mod flavor;
+
+mod flavor;
+
+pub use self::flavor::{Ar, Lr, RegFlavor};
 
 use core::fmt::Debug;
 use core::mem::size_of;
 use core::ops::{BitAnd, BitAndAssign, BitOrAssign, Not, Shl, Shr, Sub};
 use core::ptr::{read_volatile, write_volatile};
 
-/// Memory-mapped register handler. Types which implement this trait should be
+/// Memory-mapped register binding. Types which implement this trait should be
 /// zero-sized. This is a zero-cost abstraction for safely working with
 /// memory-mapped registers.
 pub trait Reg<T>
 where
   Self: Sized,
-  T: flavor::Flavor,
+  T: RegFlavor,
 {
   /// Type that wraps a raw register value.
   type Value: RegValue;
@@ -22,17 +25,17 @@ where
   /// Memory address of the register.
   const ADDRESS: usize;
 
-  /// Register handler constructor. All the safety of the memory-mapped
+  /// Register binding constructor. All the safety of the memory-mapped
   /// registers interface is based on a contract that this method must be called
   /// no more than once for a particular register in the whole program.
-  unsafe fn attach() -> Self;
+  unsafe fn bind() -> Self;
 }
 
 /// Register that can read its value.
 pub trait RReg<T>
 where
   Self: Reg<T>,
-  T: flavor::Flavor,
+  T: RegFlavor,
 {
   /// Reads and wraps a register value from its memory address.
   fn read(&self) -> Self::Value {
@@ -54,20 +57,20 @@ where
 pub trait WReg<T>
 where
   Self: Reg<T>,
-  T: flavor::Flavor,
+  T: RegFlavor,
 {
   /// Writes a wrapped register value to its memory address.
-  fn write(&self, value: &Self::Value) {
+  fn write_value(&self, value: &Self::Value) {
     self.write_raw(value.raw());
   }
 
   /// Calls `f` on a default value and writes the result to the register's
   /// memory address.
-  fn write_with<F>(&self, f: F)
+  fn write<F>(&self, f: F)
   where
     F: FnOnce(&mut Self::Value) -> &Self::Value,
   {
-    self.write(f(&mut Self::Value::default()));
+    self.write_value(f(&mut Self::Value::default()));
   }
 
   /// Writes a raw register value to its memory address.
@@ -86,7 +89,7 @@ where
 /// Register that can read and write its value in a single-threaded context.
 pub trait RwLocalReg
 where
-  Self: RReg<flavor::Local> + WReg<flavor::Local>,
+  Self: RReg<Lr> + WReg<Lr>,
 {
   /// Atomically modifies a register's value.
   fn modify<F>(&self, f: F)
@@ -168,13 +171,17 @@ where
   ) -> &mut Self {
     assert!(offset < Self::Raw::size_in_bits());
     assert!(width <= Self::Raw::size_in_bits() - offset);
-    assert_eq!(
-      value & !((Self::Raw::one() << width) - Self::Raw::one()),
-      Self::Raw::zero()
-    );
-    *self.raw_mut() &=
-      !((Self::Raw::one() << width) - Self::Raw::one() << offset);
-    *self.raw_mut() |= value << offset;
+    if width != Self::Raw::size_in_bits() {
+      assert_eq!(
+        value & !((Self::Raw::one() << width) - Self::Raw::one()),
+        Self::Raw::zero()
+      );
+      *self.raw_mut() &=
+        !((Self::Raw::one() << width) - Self::Raw::one() << offset);
+      *self.raw_mut() |= value << offset;
+    } else {
+      *self.raw_mut() = value;
+    }
     self
   }
 }
@@ -206,13 +213,13 @@ where
 
 impl<T> RwLocalReg for T
 where
-  T: RReg<flavor::Local> + WReg<flavor::Local>,
+  T: RReg<Lr> + WReg<Lr>,
 {
   fn modify<F>(&self, f: F)
   where
     F: FnOnce(&mut Self::Value) -> &Self::Value,
   {
-    self.write(f(&mut self.read()));
+    self.write_value(f(&mut self.read()));
   }
 }
 
@@ -239,6 +246,7 @@ impl_reg_raw!(u32);
 impl_reg_raw!(u16);
 impl_reg_raw!(u8);
 
+/// Define a memory-mapped register.
 #[macro_export]
 macro_rules! reg {
   (
@@ -248,7 +256,7 @@ macro_rules! reg {
     $($trait:ident { $($impl:tt)* })*
   ) => {
     $(#[$reg_meta])*
-    pub struct $reg<T: $crate::reg::flavor::Flavor> {
+    pub struct $reg<T: $crate::reg::RegFlavor> {
       flavor: ::core::marker::PhantomData<T>,
     }
 
@@ -258,12 +266,12 @@ macro_rules! reg {
       value: $raw,
     }
 
-    impl<T: $crate::reg::flavor::Flavor> $crate::reg::Reg<T> for $reg<T> {
+    impl<T: $crate::reg::RegFlavor> $crate::reg::Reg<T> for $reg<T> {
       type Value = $value;
 
       const ADDRESS: usize = $address;
 
-      unsafe fn attach() -> Self {
+      unsafe fn bind() -> Self {
         let flavor = ::core::marker::PhantomData;
         Self { flavor }
       }
@@ -285,8 +293,17 @@ macro_rules! reg {
       }
     }
 
+    #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
+    impl Clone for $reg<$crate::reg::Ar> {
+      fn clone(&self) -> Self {
+        Self { ..*self }
+      }
+    }
+
+    impl Copy for $reg<$crate::reg::Ar> {}
+
     $(
-      impl<T: $crate::reg::flavor::Flavor> $trait<T> for $reg<T> {
+      impl<T: $crate::reg::RegFlavor> $trait<T> for $reg<T> {
         $($impl)*
       }
     )*
@@ -301,8 +318,8 @@ mod tests {
 
   #[test]
   fn size_of_reg() {
-    assert_eq!(size_of::<TestReg<flavor::Local>>(), 0);
-    assert_eq!(size_of::<TestReg<flavor::Atomic>>(), 0);
+    assert_eq!(size_of::<TestReg<Lr>>(), 0);
+    assert_eq!(size_of::<TestReg<Ar>>(), 0);
   }
 
   #[test]
@@ -394,6 +411,8 @@ mod tests {
     assert_eq!(value.raw(), 0b1 << 31);
     value.set_bits(31, 1, 0);
     assert_eq!(value.raw(), 0);
+    value.set_bits(0, 32, 0xFFFF_FFFF);
+    assert_eq!(value.raw(), 0xFFFF_FFFF);
   }
 
   #[test]

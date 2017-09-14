@@ -9,5 +9,5 @@ reg!([0xDEAD_BEEF] u32 TestReg TestRegValue RReg {} WReg {});
 fn assert_rw_local_reg<T: RwLocalReg>() {}
 
 fn main() {
-  assert_rw_local_reg::<TestReg<Local>>();
+  assert_rw_local_reg::<TestReg<Lr>>();
 }

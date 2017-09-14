@@ -1,4 +1,4 @@
 //! Memory-mapped registers prelude.
 
-pub use super::{RReg, Reg, RegRaw, RegValue, RwLocalReg, WReg};
-pub use super::flavor::{Atomic, Flavor, Local};
+pub use super::{Ar, Lr, RReg, Reg, RegFlavor, RegRaw, RegValue, RwLocalReg,
+                WReg};

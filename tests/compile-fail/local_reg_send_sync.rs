@@ -10,7 +10,7 @@ fn assert_send<T: Send>() {}
 fn assert_sync<T: Sync>() {}
 
 fn main() {
-  assert_send::<TestReg<Local>>();
-  assert_sync::<TestReg<Local>>();
-  //~^ ERROR `drone::reg::prelude::Local: std::marker::Sync` is not satisfied
+  assert_send::<TestReg<Lr>>();
+  assert_sync::<TestReg<Lr>>();
+  //~^ ERROR `drone::reg::Lr: std::marker::Sync` is not satisfied
 }

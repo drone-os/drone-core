@@ -1,18 +1,16 @@
-//! Marker types and traits for register types.
-
 /// Marker trait for various register flavors.
-pub trait Flavor {}
+pub trait RegFlavor {}
 
-/// Zero-sized marker type for **thread-unsafe** registers. Does not implement
-/// `Send` and `Sync`.
-pub struct Local;
+/// Zero-sized marker type for **thread-unsafe** register bindings. "Lr" stands
+/// for "Local Register". Does not implement `Send`, `Sync`, 'Clone', 'Copy'.
+pub struct Lr;
 
-/// Zero-sized marker type for **thread-safe** registers. Does implement `Send`
-/// and `Sync`.
-pub struct Atomic;
+/// Zero-sized marker type for **thread-safe** register bindings. "Ar" stands
+/// for "Atomic register". Does implement `Send`, `Sync`, 'Clone', 'Copy'.
+pub struct Ar;
 
-impl !Sync for Local {}
+impl !Sync for Lr {}
 
-impl Flavor for Local {}
+impl RegFlavor for Lr {}
 
-impl Flavor for Atomic {}
+impl RegFlavor for Ar {}

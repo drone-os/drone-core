@@ -35,3 +35,20 @@ pub unsafe fn data_init() {
   let count = (data_end as usize - data_start as usize) >> 2;
   ptr::copy_nonoverlapping(data_const, data_start, count);
 }
+
+/// Initializes the heap.
+///
+/// # Safety
+///
+/// Must be called exactly once and as early as possible.
+#[cfg(feature = "alloc")]
+pub unsafe fn heap_init() {
+  extern "C" {
+    static HEAP_START: usize;
+    static HEAP_END: usize;
+  }
+  let heap_start = &HEAP_START as *const usize;
+  let heap_end = &HEAP_END as *const usize;
+  let count = heap_end as usize - heap_start as usize;
+  ::ALLOCATOR.lock().init(heap_start as usize, count);
+}
