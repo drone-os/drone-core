@@ -1,5 +1,6 @@
 //! Basic functions for dealing with memory.
 
+use ALLOC;
 use core::ptr;
 
 /// Initializes the `.bss` section.
@@ -41,7 +42,6 @@ pub unsafe fn data_init() {
 /// # Safety
 ///
 /// Must be called exactly once and as early as possible.
-#[cfg(feature = "alloc")]
 pub unsafe fn heap_init() {
   extern "C" {
     static HEAP_START: usize;
@@ -50,5 +50,5 @@ pub unsafe fn heap_init() {
   let heap_start = &HEAP_START as *const usize;
   let heap_end = &HEAP_END as *const usize;
   let count = heap_end as usize - heap_start as usize;
-  ::ALLOCATOR.lock().init(heap_start as usize, count);
+  ALLOC.lock().init(heap_start as usize, count);
 }

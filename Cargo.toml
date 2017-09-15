@@ -1,6 +1,6 @@
 [package]
 name = "drone"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = "Drone Real-Time Operating System Framework."
 readme = "README.md"
@@ -8,15 +8,11 @@ license = "MIT/Apache-2.0"
 repository = "https://github.com/valff/drone"
 
 [features]
-default = ["alloc"]
-alloc = ["linked_list_allocator"]
+default = []
+test = []
 
 [dependencies]
-spin = "0.4"
-
-[dependencies.linked_list_allocator]
-version = "0.4"
-optional = true
+linked_list_allocator = "0.4"
 
 [dependencies.clippy]
 version = "0.0"
