@@ -1,86 +1,69 @@
 //! Routine handling.
 
+use collections::LinkedList;
 use core::ops::Generator;
 use core::ops::GeneratorState::*;
-use core::ptr;
-use core::sync::atomic::AtomicPtr;
-use core::sync::atomic::Ordering::*;
 use prelude::*;
 
-/// Linked list of routines.
-pub struct RoutineList {
-  ptr: AtomicPtr<Routine>,
-}
-
-/// Routine node.
+/// A routine chain.
 pub struct Routine {
-  thread: Box<Generator<Yield = (), Return = ()>>,
-  next: RoutineList,
+  list: LinkedList<Node>,
 }
 
-impl RoutineList {
-  /// Constructs a vacant link.
-  pub const fn vacant() -> Self {
+struct Node {
+  thread: Box<Generator<Yield = (), Return = ()>>,
+}
+
+impl<T> From<T> for Node
+where
+  T: Generator<Yield = (), Return = ()>,
+  T: Send + 'static,
+{
+  #[inline]
+  fn from(generator: T) -> Self {
+    let thread = Box::new(generator);
+    Self { thread }
+  }
+}
+
+impl Routine {
+  /// Constructs an empty `Routine`.
+  #[inline]
+  pub const fn new() -> Self {
     Self {
-      ptr: AtomicPtr::new(ptr::null_mut()),
+      list: LinkedList::new(),
     }
   }
 
-  /// Constructs an occupied link.
-  pub const fn new(ptr: *mut Routine) -> Self {
-    Self {
-      ptr: AtomicPtr::new(ptr),
-    }
-  }
-
-  /// Hardware invokes the routine chain with this method.
+  /// Hardware invokes a routine chain with this method.
   ///
   /// # Safety
   ///
   /// Must not be called concurrently.
   pub unsafe fn invoke(&mut self) {
-    let mut node = self;
-    loop {
-      let routine = node.ptr.load(Relaxed);
-      if routine.is_null() {
-        break;
-      }
-      match (*routine).thread.resume() {
-        Yielded(()) => {
-          node = &mut (*routine).next;
-        }
-        Complete(()) => {
-          let next = (*routine).next.ptr.load(Relaxed);
-          drop(Box::from_raw(routine));
-          while node.ptr.compare_and_swap(routine, next, Relaxed) != routine {
-            node = &mut (*node.ptr.load(Relaxed)).next;
-          }
-        }
-      }
-    }
+    self
+      .list
+      .drain_filter(|node| match node.thread.resume() {
+        Yielded(()) => false,
+        Complete(()) => true,
+      })
+      .for_each(|_| {});
   }
 
   /// Adds generator `g` first in the routine chain.
   pub fn push<G>(&mut self, g: G)
   where
-    G: Generator<Yield = (), Return = ()> + Send + 'static,
+    G: Generator<Yield = (), Return = ()>,
+    G: Send + 'static,
   {
-    let routine = Box::into_raw(Box::new(Routine::new(g)));
-    loop {
-      let current = self.ptr.load(Relaxed);
-      unsafe {
-        (*routine).next = RoutineList::new(current);
-      }
-      if self.ptr.compare_and_swap(current, routine, Relaxed) == current {
-        break;
-      }
-    }
+    self.list.push_front(g.into());
   }
 
   /// Adds closure `f` first in the routine chain.
   pub fn push_callback<F>(&mut self, f: F)
   where
-    F: FnOnce() + Send + 'static,
+    F: FnOnce(),
+    F: Send + 'static,
   {
     self.push(|| {
       if false {
@@ -91,25 +74,12 @@ impl RoutineList {
   }
 }
 
-impl Routine {
-  /// Allocates a new routine thread.
-  pub fn new<G>(g: G) -> Self
-  where
-    G: Generator<Yield = (), Return = ()> + Send + 'static,
-  {
-    Routine {
-      thread: Box::new(g),
-      next: RoutineList::vacant(),
-    }
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use super::*;
-  use alloc::arc::Arc;
   use core::cell::Cell;
   use core::mem::size_of;
+  use core_alloc::arc::Arc;
 
   struct Counter(Cell<i8>);
 
@@ -124,13 +94,13 @@ mod tests {
   }
 
   #[test]
-  fn size_of_routine_list() {
-    assert_eq!(size_of::<RoutineList>(), size_of::<usize>());
+  fn size_of_routine() {
+    assert_eq!(size_of::<Routine>(), size_of::<usize>());
   }
 
   #[test]
   fn generator() {
-    let mut routine = RoutineList::vacant();
+    let mut routine = Routine::new();
     let counter = Arc::new(Counter(Cell::new(0)));
     let wrapper = Wrapper(Arc::clone(&counter));
     routine.push(move || loop {
@@ -159,7 +129,7 @@ mod tests {
 
   #[test]
   fn callback() {
-    let mut routine = RoutineList::vacant();
+    let mut routine = Routine::new();
     let counter = Arc::new(Counter(Cell::new(0)));
     let wrapper = Wrapper(Arc::clone(&counter));
     routine.push_callback(move || {

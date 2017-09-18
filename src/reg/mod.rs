@@ -38,16 +38,19 @@ where
   T: RegFlavor,
 {
   /// Reads and wraps a register value from its memory address.
+  #[inline]
   fn read(&self) -> Self::Value {
     Self::Value::new(self.read_raw())
   }
 
   /// Reads a raw register value from its memory address.
+  #[inline]
   fn read_raw(&self) -> <Self::Value as RegValue>::Raw {
     unsafe { read_volatile(self.to_ptr()) }
   }
 
   /// Returns an unsafe constant pointer to the register's memory address.
+  #[inline]
   fn to_ptr(&self) -> *const <Self::Value as RegValue>::Raw {
     Self::ADDRESS as *const <Self::Value as RegValue>::Raw
   }
@@ -60,12 +63,14 @@ where
   T: RegFlavor,
 {
   /// Writes a wrapped register value to its memory address.
+  #[inline]
   fn write_value(&self, value: &Self::Value) {
     self.write_raw(value.raw());
   }
 
   /// Calls `f` on a default value and writes the result to the register's
   /// memory address.
+  #[inline]
   fn write<F>(&self, f: F)
   where
     F: FnOnce(&mut Self::Value) -> &Self::Value,
@@ -74,6 +79,7 @@ where
   }
 
   /// Writes a raw register value to its memory address.
+  #[inline]
   fn write_raw(&self, value: <Self::Value as RegValue>::Raw) {
     unsafe {
       write_volatile(self.to_mut_ptr(), value);
@@ -81,6 +87,7 @@ where
   }
 
   /// Returns an unsafe mutable pointer to the register's memory address.
+  #[inline]
   fn to_mut_ptr(&self) -> *mut <Self::Value as RegValue>::Raw {
     Self::ADDRESS as *mut <Self::Value as RegValue>::Raw
   }
@@ -92,6 +99,7 @@ where
   Self: RReg<Lr> + WReg<Lr>,
 {
   /// Atomically modifies a register's value.
+  #[inline]
   fn modify<F>(&self, f: F)
   where
     F: FnOnce(&mut Self::Value) -> &Self::Value;
@@ -119,6 +127,7 @@ where
   /// # Panics
   ///
   /// If `offset` is greater than or equals to the platform's word size in bits.
+  #[inline]
   fn bit(&self, offset: Self::Raw) -> bool {
     assert!(offset < Self::Raw::size_in_bits());
     self.raw() & Self::Raw::one() << offset != Self::Raw::zero()
@@ -129,6 +138,7 @@ where
   /// # Panics
   ///
   /// If `offset` is greater than or equals to the platform's word size in bits.
+  #[inline]
   fn set_bit(&mut self, offset: Self::Raw, value: bool) -> &mut Self {
     assert!(offset < Self::Raw::size_in_bits());
     let mask = Self::Raw::one() << offset;
@@ -148,6 +158,7 @@ where
   /// * If `offset` is greater than or equals to the platform's word size in
   ///   bits.
   /// * If `width + offset` is greater than the platform's word size in bits.
+  #[inline]
   fn bits(&self, offset: Self::Raw, width: Self::Raw) -> Self::Raw {
     assert!(offset < Self::Raw::size_in_bits());
     assert!(width <= Self::Raw::size_in_bits() - offset);
@@ -163,6 +174,7 @@ where
   ///   bits.
   /// * If `width + offset` is greater than the platform's word size in bits.
   /// * If `value` contains bits outside the width range.
+  #[inline]
   fn set_bits(
     &mut self,
     offset: Self::Raw,
@@ -215,6 +227,7 @@ impl<T> RwLocalReg for T
 where
   T: RReg<Lr> + WReg<Lr>,
 {
+  #[inline]
   fn modify<F>(&self, f: F)
   where
     F: FnOnce(&mut Self::Value) -> &Self::Value,
@@ -226,14 +239,17 @@ where
 macro_rules! impl_reg_raw {
   ($type:ty) => {
     impl RegRaw for $type {
+      #[inline]
       fn size_in_bits() -> $type {
         size_of::<$type>() as $type * 8
       }
 
+      #[inline]
       fn zero() -> $type {
         0
       }
 
+      #[inline]
       fn one() -> $type {
         1
       }
@@ -271,6 +287,7 @@ macro_rules! reg {
 
       const ADDRESS: usize = $address;
 
+      #[inline]
       unsafe fn bind() -> Self {
         let flavor = ::core::marker::PhantomData;
         Self { flavor }
@@ -280,14 +297,17 @@ macro_rules! reg {
     impl $crate::reg::RegValue for $value {
       type Raw = $raw;
 
+      #[inline]
       fn new(value: $raw) -> Self {
         Self { value }
       }
 
+      #[inline]
       fn raw(&self) -> $raw {
         self.value
       }
 
+      #[inline]
       fn raw_mut(&mut self) -> &mut $raw {
         &mut self.value
       }
@@ -295,6 +315,7 @@ macro_rules! reg {
 
     #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
     impl Clone for $reg<$crate::reg::Ar> {
+      #[inline]
       fn clone(&self) -> Self {
         Self { ..*self }
       }

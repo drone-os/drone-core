@@ -1,6 +1,6 @@
 [package]
 name = "drone"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = "Drone Real-Time Operating System Framework."
 readme = "README.md"
@@ -9,7 +9,7 @@ repository = "https://github.com/valff/drone"
 
 [features]
 default = []
-test = []
+std = []
 
 [dependencies]
 linked_list_allocator = "0.4"

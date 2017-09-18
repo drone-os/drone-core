@@ -1,0 +1,427 @@
+//! An atomic single-linked list with owned nodes.
+
+use core::marker::PhantomData;
+use core::ops::{Deref, DerefMut};
+use core::ptr;
+use core::sync::atomic::AtomicPtr;
+use core::sync::atomic::Ordering::*;
+use prelude::*;
+
+/// A linked list handler.
+pub struct LinkedList<T> {
+  ptr: AtomicPtr<Node<T>>,
+  marker: PhantomData<Box<Node<T>>>,
+}
+
+/// A linked list node.
+pub struct Node<T> {
+  element: T,
+  next: LinkedList<T>,
+}
+
+/// An iterator over the elements of a `LinkedList`.
+///
+/// This `struct` is created by the [`iter`] method on [`LinkedList`]. See its
+/// documentation for more.
+///
+/// [`iter`]: struct.LinkedList.html#method.iter
+/// [`LinkedList`]: struct.LinkedList.html
+pub struct Iter<'a, T: 'a> {
+  head: &'a LinkedList<T>,
+}
+
+/// A mutable iterator over the elements of a `LinkedList`.
+///
+/// This `struct` is created by the [`iter_mut`] method on [`LinkedList`]. See
+/// its documentation for more.
+///
+/// [`iter_mut`]: struct.LinkedList.html#method.iter_mut
+/// [`LinkedList`]: struct.LinkedList.html
+pub struct IterMut<'a, T: 'a> {
+  head: &'a mut LinkedList<T>,
+}
+
+/// An iterator produced by calling `drain_filter` on `LinkedList`.
+pub struct DrainFilter<'a, T: 'a, F>
+where
+  F: FnMut(&mut T) -> bool,
+{
+  head: &'a mut LinkedList<T>,
+  pred: F,
+}
+
+impl<T> From<*mut Node<T>> for LinkedList<T> {
+  fn from(ptr: *mut Node<T>) -> Self {
+    Self {
+      ptr: AtomicPtr::new(ptr),
+      marker: PhantomData,
+    }
+  }
+}
+
+impl<T> LinkedList<T> {
+  /// Creates an empty `LinkedList`.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use drone::collections::LinkedList;
+  ///
+  /// let list: LinkedList<u32> = LinkedList::new();
+  /// ```
+  #[inline]
+  pub const fn new() -> Self {
+    Self {
+      ptr: AtomicPtr::new(ptr::null_mut()),
+      marker: PhantomData,
+    }
+  }
+
+  /// Returns `true` if the `LinkedList` is empty.
+  ///
+  /// This operation should compute in O(1) time.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use drone::collections::LinkedList;
+  ///
+  /// let mut dl = LinkedList::new();
+  /// assert!(dl.is_empty());
+  ///
+  /// dl.push_front("foo");
+  /// assert!(!dl.is_empty());
+  /// ```
+  #[inline]
+  pub fn is_empty(&self) -> bool {
+    self.ptr.load(Relaxed).is_null()
+  }
+
+  /// Provides a reference to the front element, or `None` if the list is empty.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use drone::collections::LinkedList;
+  ///
+  /// let mut dl = LinkedList::new();
+  /// assert_eq!(dl.front(), None);
+  ///
+  /// dl.push_front(1);
+  /// assert_eq!(dl.front(), Some(&1));
+  /// ```
+  #[inline]
+  pub fn front(&self) -> Option<&T> {
+    let node = self.ptr.load(Relaxed);
+    if node.is_null() {
+      None
+    } else {
+      unsafe { Some(&(*node).element) }
+    }
+  }
+
+  /// Provides a mutable reference to the front element, or `None` if the list
+  /// is empty.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use drone::collections::LinkedList;
+  ///
+  /// let mut dl = LinkedList::new();
+  /// assert_eq!(dl.front(), None);
+  ///
+  /// dl.push_front(1);
+  /// assert_eq!(dl.front(), Some(&1));
+  ///
+  /// match dl.front_mut() {
+  ///     None => {},
+  ///     Some(x) => *x = 5,
+  /// }
+  /// assert_eq!(dl.front(), Some(&5));
+  /// ```
+  #[inline]
+  pub fn front_mut(&mut self) -> Option<&mut T> {
+    let node = self.ptr.load(Relaxed);
+    if node.is_null() {
+      None
+    } else {
+      unsafe { Some(&mut (*node).element) }
+    }
+  }
+
+  /// Adds an element first in the list.
+  ///
+  /// This operation should compute in O(1) time.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use drone::collections::LinkedList;
+  ///
+  /// let mut dl = LinkedList::new();
+  ///
+  /// dl.push_front(2);
+  /// assert_eq!(dl.front().unwrap(), &2);
+  ///
+  /// dl.push_front(1);
+  /// assert_eq!(dl.front().unwrap(), &1);
+  /// ```
+  pub fn push_front(&mut self, element: T) {
+    let node = Box::into_raw(Box::new(Node::new(element)));
+    loop {
+      let current = self.ptr.load(Relaxed);
+      unsafe {
+        (*node).next = current.into();
+      }
+      if self.ptr.compare_and_swap(current, node, Relaxed) == current {
+        break;
+      }
+    }
+  }
+
+  /// Removes the first element and returns it, or `None` if the list is empty.
+  ///
+  /// This operation should compute in O(1) time.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use drone::collections::LinkedList;
+  ///
+  /// let mut d = LinkedList::new();
+  /// assert_eq!(d.pop_front().map(|x| **x), None);
+  ///
+  /// d.push_front(1);
+  /// d.push_front(3);
+  /// assert_eq!(d.pop_front().map(|x| **x), Some(3));
+  /// assert_eq!(d.pop_front().map(|x| **x), Some(1));
+  /// assert_eq!(d.pop_front().map(|x| **x), None);
+  /// ```
+  pub fn pop_front(&mut self) -> Option<Box<Node<T>>> {
+    loop {
+      let node = self.ptr.load(Relaxed);
+      if node.is_null() {
+        return None;
+      }
+      unsafe {
+        let next = (*node).next.ptr.load(Relaxed);
+        if self.ptr.compare_and_swap(node, next, Relaxed) == node {
+          return Some(Box::from_raw(node));
+        }
+      }
+    }
+  }
+
+  /// Removes all elements from the `LinkedList`.
+  ///
+  /// This operation should compute in O(n) time.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use drone::collections::LinkedList;
+  ///
+  /// let mut dl = LinkedList::new();
+  ///
+  /// dl.push_front(2);
+  /// dl.push_front(1);
+  /// assert!(!dl.is_empty());
+  /// assert_eq!(dl.front(), Some(&1));
+  ///
+  /// dl.clear();
+  /// assert!(dl.is_empty());
+  /// assert_eq!(dl.front(), None);
+  /// ```
+  pub fn clear(&mut self) {
+    loop {
+      let mut node = self.ptr.load(Relaxed);
+      if node.is_null() {
+        break;
+      }
+      if self.ptr.compare_and_swap(node, ptr::null_mut(), Relaxed) == node {
+        while !node.is_null() {
+          let boxed = unsafe { Box::from_raw(node) };
+          node = boxed.next.ptr.load(Relaxed);
+          drop(boxed);
+        }
+        break;
+      }
+    }
+  }
+
+  /// Returns `true` if the `LinkedList` contains an element equal to the given
+  /// value.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use drone::collections::LinkedList;
+  ///
+  /// let mut list: LinkedList<u32> = LinkedList::new();
+  ///
+  /// list.push_front(0);
+  /// list.push_front(1);
+  /// list.push_front(2);
+  ///
+  /// assert_eq!(list.contains(&0), true);
+  /// assert_eq!(list.contains(&10), false);
+  /// ```
+  pub fn contains(&self, x: &T) -> bool
+  where
+    T: PartialEq<T>,
+  {
+    self.iter().any(|e| e == x)
+  }
+
+  /// Provides a forward iterator.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use drone::collections::LinkedList;
+  ///
+  /// let mut list: LinkedList<u32> = LinkedList::new();
+  ///
+  /// list.push_front(0);
+  /// list.push_front(1);
+  /// list.push_front(2);
+  ///
+  /// let mut iter = list.iter();
+  /// assert_eq!(iter.next(), Some(&2));
+  /// assert_eq!(iter.next(), Some(&1));
+  /// assert_eq!(iter.next(), Some(&0));
+  /// assert_eq!(iter.next(), None);
+  /// ```
+  #[inline]
+  pub fn iter(&self) -> Iter<T> {
+    Iter { head: self }
+  }
+
+  /// Provides a forward iterator with mutable references.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use drone::collections::LinkedList;
+  ///
+  /// let mut list: LinkedList<u32> = LinkedList::new();
+  ///
+  /// list.push_front(0);
+  /// list.push_front(1);
+  /// list.push_front(2);
+  ///
+  /// for element in list.iter_mut() {
+  ///     *element += 10;
+  /// }
+  ///
+  /// let mut iter = list.iter();
+  /// assert_eq!(iter.next(), Some(&12));
+  /// assert_eq!(iter.next(), Some(&11));
+  /// assert_eq!(iter.next(), Some(&10));
+  /// assert_eq!(iter.next(), None);
+  /// ```
+  #[inline]
+  pub fn iter_mut(&mut self) -> IterMut<T> {
+    IterMut { head: self }
+  }
+
+  /// Creates an iterator which uses a closure to determine if an element should
+  /// be removed.
+  ///
+  /// # Safety
+  ///
+  /// Must not be called concurrently.
+  #[inline]
+  pub unsafe fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<T, F>
+  where
+    F: FnMut(&mut T) -> bool,
+  {
+    DrainFilter {
+      head: self,
+      pred: filter,
+    }
+  }
+}
+
+impl<T> Deref for Node<T> {
+  type Target = T;
+
+  fn deref(&self) -> &T {
+    &self.element
+  }
+}
+
+impl<T> DerefMut for Node<T> {
+  fn deref_mut(&mut self) -> &mut T {
+    &mut self.element
+  }
+}
+
+impl<T> Node<T> {
+  /// Creates a detached `Node`.
+  pub fn new(element: T) -> Self {
+    let next = LinkedList::new();
+    Self { element, next }
+  }
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+  type Item = &'a T;
+
+  fn next(&mut self) -> Option<&'a T> {
+    let node = self.head.ptr.load(Relaxed);
+    if node.is_null() {
+      None
+    } else {
+      unsafe {
+        self.head = &(*node).next;
+        Some(&(*node).element)
+      }
+    }
+  }
+}
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+  type Item = &'a mut T;
+
+  fn next(&mut self) -> Option<&'a mut T> {
+    let node = self.head.ptr.load(Relaxed);
+    if node.is_null() {
+      None
+    } else {
+      unsafe {
+        self.head = &mut (*node).next;
+        Some(&mut (*node).element)
+      }
+    }
+  }
+}
+
+impl<'a, T, F> Iterator for DrainFilter<'a, T, F>
+where
+  F: FnMut(&mut T) -> bool,
+{
+  type Item = Box<Node<T>>;
+
+  fn next(&mut self) -> Option<Box<Node<T>>> {
+    loop {
+      let node = self.head.ptr.load(Relaxed);
+      if node.is_null() {
+        return None;
+      }
+      unsafe {
+        if (self.pred)(&mut (*node).element) {
+          let next = (*node).next.ptr.load(Relaxed);
+          while self.head.ptr.compare_and_swap(node, next, Relaxed) != node {
+            let next = self.head.ptr.load(Relaxed);
+            self.head = &mut (*next).next;
+          }
+          return Some(Box::from_raw(node));
+        } else {
+          self.head = &mut (*node).next;
+        }
+      }
+    }
+  }
+}
