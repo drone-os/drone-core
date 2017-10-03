@@ -10,10 +10,10 @@ struct Pool {
 
 pub fn heap(input: TokenStream) -> TokenStream {
   let input = syn::parse_token_trees(&input.to_string()).unwrap();
+  let mut input = input.into_iter();
   let mut attributes = Vec::new();
   let mut pools = Vec::new();
   let mut size = 0;
-  let mut input = input.into_iter();
   while let Some(token) = input.next() {
     match token {
       syn::TokenTree::Token(token) => match token {
@@ -46,7 +46,8 @@ pub fn heap(input: TokenStream) -> TokenStream {
   }
 
   let output = quote! {
-    use ::alloc::allocator::{Alloc, AllocErr, Layout};
+    use ::alloc::allocator::{Alloc, AllocErr, CannotReallocInPlace, Excess,
+                             Layout};
     use ::core::slice::SliceIndex;
     use ::drone::heap::{Allocator, Pool};
 
@@ -91,6 +92,54 @@ pub fn heap(input: TokenStream) -> TokenStream {
 
       unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
         (**self).dealloc(ptr, layout)
+      }
+
+      #[inline]
+      fn usable_size(&self, layout: &Layout) -> (usize, usize) {
+        (**self).usable_size(layout)
+      }
+
+      unsafe fn realloc(
+        &mut self,
+        ptr: *mut u8,
+        layout: Layout,
+        new_layout: Layout
+      ) -> Result<*mut u8, AllocErr> {
+        (**self).realloc(ptr, layout, new_layout)
+      }
+
+      unsafe fn alloc_excess(
+        &mut self,
+        layout: Layout,
+      ) -> Result<Excess, AllocErr> {
+        (**self).alloc_excess(layout)
+      }
+
+      unsafe fn realloc_excess(
+        &mut self,
+        ptr: *mut u8,
+        layout: Layout,
+        new_layout: Layout
+      ) -> Result<Excess, AllocErr> {
+        (**self).realloc_excess(ptr, layout, new_layout)
+      }
+
+      unsafe fn grow_in_place(
+        &mut self,
+        ptr: *mut u8,
+        layout: Layout,
+        new_layout: Layout
+      ) -> Result<(), CannotReallocInPlace> {
+        (**self).grow_in_place(ptr, layout, new_layout)
+      }
+
+      unsafe fn shrink_in_place(
+        &mut self,
+        ptr: *mut u8,
+        layout: Layout,
+        new_layout: Layout
+      ) -> Result<(), CannotReallocInPlace> {
+        (**self).shrink_in_place(ptr, layout, new_layout)
       }
     }
 

@@ -4,4 +4,4 @@ mod pool;
 mod allocator;
 
 pub use self::allocator::Allocator;
-pub use self::pool::Pool;
+pub use self::pool::{Pool, PoolFit};

@@ -5,20 +5,43 @@ use core::sync::atomic::Ordering::*;
 
 /// Heap memory pool.
 pub struct Pool {
-  size: usize,
-  start: usize,
-  end: AtomicUsize,
   free: LinkedList<()>,
+  start: AtomicUsize,
+  end: usize,
+  size: usize,
+}
+
+/// Trait for pool queries.
+pub trait PoolFit<T>
+where
+  T: Copy,
+{
+  /// Checks if the pool can fit the value.
+  fn fits(&self, value: T) -> bool;
+}
+
+impl<'a> PoolFit<&'a Layout> for Pool {
+  #[inline]
+  fn fits(&self, layout: &Layout) -> bool {
+    self.size >= layout.size()
+  }
+}
+
+impl PoolFit<*mut u8> for Pool {
+  #[inline]
+  fn fits(&self, ptr: *mut u8) -> bool {
+    self.end > ptr as usize
+  }
 }
 
 impl Pool {
   /// Initializes new pool.
   pub const fn new(start: usize, size: usize, capacity: usize) -> Self {
     Self {
-      size,
-      start,
-      end: AtomicUsize::new(start + size * capacity),
       free: LinkedList::new(),
+      start: AtomicUsize::new(start),
+      end: start + size * capacity,
+      size,
     }
   }
 
@@ -35,14 +58,8 @@ impl Pool {
   #[inline]
   pub unsafe fn init(&mut self, start: &mut usize) {
     let offset = start as *mut _ as usize;
-    self.start += offset;
-    *self.end.get_mut() += offset;
-  }
-
-  /// Checks if the pool can fit `layout`.
-  #[inline]
-  pub fn fits(&self, layout: &Layout) -> bool {
-    self.size >= layout.size()
+    *self.start.get_mut() += offset;
+    self.end += offset;
   }
 
   /// Allocates a block of memory.
@@ -52,13 +69,13 @@ impl Pool {
       Some(ptr as *mut _)
     } else {
       loop {
-        let current = self.end.load(Relaxed);
-        if current == self.start {
+        let current = self.start.load(Relaxed);
+        if current == self.end {
           return None;
         }
-        let new = current - self.size;
-        if self.end.compare_and_swap(current, new, Relaxed) == current {
-          return Some(new as *mut _);
+        let new = current + self.size;
+        if self.start.compare_and_swap(current, new, Relaxed) == current {
+          return Some(current as *mut _);
         }
       }
     }

@@ -1,6 +1,6 @@
 //! *Drone* auxiliary macros.
 #![feature(proc_macro)]
-#![recursion_limit = "128"]
+#![recursion_limit = "256"]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
@@ -14,7 +14,7 @@ mod heap;
 
 use proc_macro::TokenStream;
 
-/// Configure a global allocator.
+/// Configure a heap allocator.
 #[proc_macro]
 pub fn heap(input: TokenStream) -> TokenStream {
   heap::heap(input)

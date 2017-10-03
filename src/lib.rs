@@ -2,7 +2,11 @@
 //! [rtos]: https://en.wikipedia.org/wiki/Real-time_operating_system
 #![feature(alloc)]
 #![feature(allocator_api)]
+#![feature(const_atomic_ptr_new)]
+#![feature(const_atomic_usize_new)]
 #![feature(const_fn)]
+#![feature(const_ptr_null_mut)]
+#![feature(core_intrinsics)]
 #![feature(generators)]
 #![feature(generator_trait)]
 #![feature(iterator_for_each)]
