@@ -1,12 +1,15 @@
-#[macro_use]
+#![feature(proc_macro)]
+
 extern crate drone;
+extern crate drone_macros;
 
 use drone::reg::prelude::*;
+use drone_macros::reg;
 use std as core;
 
-reg!([0xDEAD_BEEF] u32 RwReg RwRegValue RReg {} WReg {});
-reg!([0xDEAD_BEEF] u32 RoReg RoRegValue RReg {});
-reg!([0xDEAD_BEEF] u32 WoReg WoRegValue WReg {});
+reg!(0xDEAD_BEEF 0x20 RwReg RReg WReg);
+reg!(0xDEAD_BEEF 0x20 RoReg RReg);
+reg!(0xDEAD_BEEF 0x20 WoReg WReg);
 
 fn assert_rw_local_reg<T: RwLocalReg>() {}
 

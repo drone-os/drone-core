@@ -21,7 +21,6 @@
 extern crate alloc;
 
 pub mod prelude;
-#[macro_use]
 pub mod reg;
 pub mod heap;
 pub mod mem;

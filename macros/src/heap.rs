@@ -221,105 +221,99 @@ fn parse_pools(
   pools: &mut Vec<Pool>,
 ) {
   match input.next() {
-    Some(syn::TokenTree::Token(syn::Token::Eq)) => match input.next() {
-      Some(
-        syn::TokenTree::Delimited(syn::Delimited {
-          delim: syn::DelimToken::Bracket,
-          tts: pools_tokens,
-        }),
-      ) => {
-        let mut pools_tokens = pools_tokens.into_iter();
-        while let Some(token) = pools_tokens.next() {
-          match token {
-            syn::TokenTree::Delimited(syn::Delimited {
-              delim: syn::DelimToken::Bracket,
-              tts: pool_tokens,
-            }) => {
-              let mut pool_tokens = pool_tokens.into_iter();
-              let token = pool_tokens.next();
-              if let Some(
+    Some(syn::TokenTree::Token(syn::Token::Eq)) => (),
+    token => panic!("Invalid tokens after `pools`: {:?}", token),
+  }
+  match input.next() {
+    Some(
+      syn::TokenTree::Delimited(syn::Delimited {
+        delim: syn::DelimToken::Bracket,
+        tts: pools_tokens,
+      }),
+    ) => {
+      let mut pools_tokens = pools_tokens.into_iter();
+      while let Some(token) = pools_tokens.next() {
+        match token {
+          syn::TokenTree::Delimited(syn::Delimited {
+            delim: syn::DelimToken::Bracket,
+            tts: pool_tokens,
+          }) => {
+            let mut pool_tokens = pool_tokens.into_iter();
+            let size = match pool_tokens.next() {
+              Some(
                 syn::TokenTree::Token(
                   syn::Token::Literal(
                     syn::Lit::Int(size, syn::IntTy::Unsuffixed),
                   ),
                 ),
-              ) = token
-              {
-                let token = pool_tokens.next();
-                if let Some(syn::TokenTree::Token(syn::Token::Semi)) = token {
-                  let token = pool_tokens.next();
-                  if let Some(
-                    syn::TokenTree::Token(
-                      syn::Token::Literal(
-                        syn::Lit::Int(capacity, syn::IntTy::Unsuffixed),
-                      ),
-                    ),
-                  ) = token
-                  {
-                    if let Some(token) = pool_tokens.next() {
-                      panic!(
-                        "Invalid tokens after `pools = [... [{}; {}`: {:?}",
-                        size,
-                        capacity,
-                        token
-                      );
-                    } else {
-                      if size == 0 || size > u32::MAX as u64 {
-                        panic!("Invalid pool size: {}", size);
-                      }
-                      if capacity == 0 || capacity > u32::MAX as u64 {
-                        panic!("Invalid pool capacity: {}", capacity);
-                      }
-                      pools.push(Pool {
-                        size: size as u32,
-                        capacity: capacity as u32,
-                      });
-                    }
-                  } else {
-                    panic!(
-                      "Invalid tokens after `pools = [... [{};`: {:?}",
-                      size,
-                      token
-                    );
-                  }
-                } else {
-                  panic!(
-                    "Invalid tokens after `pools = [... [{}`: {:?}",
-                    size,
-                    token
-                  );
-                }
-              } else {
-                panic!("Invalid tokens after `pools = [... [`: {:?}", token);
+              ) => size,
+              token => {
+                panic!("Invalid tokens after `pools = [... [`: {:?}", token)
               }
-              match pools_tokens.next() {
-                Some(syn::TokenTree::Token(syn::Token::Comma)) | None => (),
-                token => panic!(
-                  "Invalid tokens after `pools = [... {}`: {:?}",
-                  pools.last().unwrap(),
-                  token
-                ),
-              }
-            }
-            token => if let Some(pool) = pools.last() {
-              panic!(
-                "Invalid tokens after `pools = [... {}`: {:?}",
-                pool,
+            };
+            match pool_tokens.next() {
+              Some(syn::TokenTree::Token(syn::Token::Semi)) => (),
+              token => panic!(
+                "Invalid tokens after `pools = [... [{}`: {:?}",
+                size,
                 token
-              )
-            } else {
-              panic!("Invalid tokens after `pools = [`: {:?}", token)
-            },
+              ),
+            }
+            let capacity = match pool_tokens.next() {
+              Some(
+                syn::TokenTree::Token(
+                  syn::Token::Literal(
+                    syn::Lit::Int(capacity, syn::IntTy::Unsuffixed),
+                  ),
+                ),
+              ) => capacity,
+              token => panic!(
+                "Invalid tokens after `pools = [... [{};`: {:?}",
+                size,
+                token
+              ),
+            };
+            match pool_tokens.next() {
+              Some(token) => panic!(
+                "Invalid tokens after `pools = [... [{}; {}`: {:?}",
+                size,
+                capacity,
+                token
+              ),
+              None => (),
+            }
+            if size == 0 || size > u32::MAX as u64 {
+              panic!("Invalid pool size: {}", size);
+            }
+            if capacity == 0 || capacity > u32::MAX as u64 {
+              panic!("Invalid pool capacity: {}", capacity);
+            }
+            pools.push(Pool {
+              size: size as u32,
+              capacity: capacity as u32,
+            });
+            match pools_tokens.next() {
+              Some(syn::TokenTree::Token(syn::Token::Comma)) | None => (),
+              token => panic!(
+                "Invalid tokens after `pools = [... {}`: {:?}",
+                pools.last().unwrap(),
+                token
+              ),
+            }
           }
-        }
-        match input.next() {
-          Some(syn::TokenTree::Token(syn::Token::Semi)) => (),
-          token => panic!("Invalid tokens after `pools = [...]`: {:?}", token),
+          token => if let Some(pool) = pools.last() {
+            panic!("Invalid tokens after `pools = [... {}`: {:?}", pool, token)
+          } else {
+            panic!("Invalid tokens after `pools = [`: {:?}", token)
+          },
         }
       }
-      token => panic!("Invalid tokens after `pools =`: {:?}", token),
-    },
-    token => panic!("Invalid tokens after `pools`: {:?}", token),
+      match input.next() {
+        Some(syn::TokenTree::Token(syn::Token::Semi)) => (),
+        token => panic!("Invalid tokens after `pools = [...]`: {:?}", token),
+      }
+    }
+    token => panic!("Invalid tokens after `pools =`: {:?}", token),
   }
 }
 

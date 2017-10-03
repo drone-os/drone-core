@@ -11,6 +11,7 @@ extern crate quote;
 extern crate syn;
 
 mod heap;
+mod reg;
 
 use proc_macro::TokenStream;
 
@@ -18,4 +19,10 @@ use proc_macro::TokenStream;
 #[proc_macro]
 pub fn heap(input: TokenStream) -> TokenStream {
   heap::heap(input)
+}
+
+/// Define a memory-mapped register.
+#[proc_macro]
+pub fn reg(input: TokenStream) -> TokenStream {
+  reg::reg(input)
 }
