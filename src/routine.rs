@@ -77,9 +77,9 @@ impl Routine {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use alloc::arc::Arc;
   use core::cell::Cell;
   use core::mem::size_of;
-  use core_alloc::arc::Arc;
 
   struct Counter(Cell<i8>);
 

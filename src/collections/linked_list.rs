@@ -1,7 +1,6 @@
 //! An atomic single-linked list with owned nodes.
 
 use core::marker::PhantomData;
-use core::ops::{Deref, DerefMut};
 use core::ptr;
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::*;
@@ -167,13 +166,23 @@ impl<T> LinkedList<T> {
   /// dl.push_front(1);
   /// assert_eq!(dl.front().unwrap(), &1);
   /// ```
-  pub fn push_front(&mut self, element: T) {
-    let node = Box::into_raw(Box::new(Node::new(element)));
+  pub fn push_front(&self, element: T) {
+    unsafe {
+      self.push_front_raw(Box::into_raw(Box::new(Node::new(element))));
+    }
+  }
+
+  /// Adds a raw pointer to an element first in the list.
+  ///
+  /// This operation should compute in O(1) time.
+  ///
+  /// # Safety
+  ///
+  /// Caller should pass an ownership of the pointer.
+  pub unsafe fn push_front_raw(&self, node: *mut Node<T>) {
     loop {
       let current = self.ptr.load(Relaxed);
-      unsafe {
-        (*node).next = current.into();
-      }
+      (*node).next = current.into();
       if self.ptr.compare_and_swap(current, node, Relaxed) == current {
         break;
       }
@@ -190,25 +199,35 @@ impl<T> LinkedList<T> {
   /// use drone::collections::LinkedList;
   ///
   /// let mut d = LinkedList::new();
-  /// assert_eq!(d.pop_front().map(|x| **x), None);
+  /// assert_eq!(d.pop_front(), None);
   ///
   /// d.push_front(1);
   /// d.push_front(3);
-  /// assert_eq!(d.pop_front().map(|x| **x), Some(3));
-  /// assert_eq!(d.pop_front().map(|x| **x), Some(1));
-  /// assert_eq!(d.pop_front().map(|x| **x), None);
+  /// assert_eq!(d.pop_front(), Some(3));
+  /// assert_eq!(d.pop_front(), Some(1));
+  /// assert_eq!(d.pop_front(), None);
   /// ```
-  pub fn pop_front(&mut self) -> Option<Box<Node<T>>> {
+  pub fn pop_front(&self) -> Option<T> {
+    unsafe { self.pop_front_raw().map(|ptr| Node::unbox_element(ptr)) }
+  }
+
+  /// Removes the first element and returns the raw pointer to it, or `None` if
+  /// the list is empty.
+  ///
+  /// This operation should compute in O(1) time.
+  ///
+  /// # Safety
+  ///
+  /// Caller should free the returned pointer manually.
+  pub unsafe fn pop_front_raw(&self) -> Option<*mut Node<T>> {
     loop {
       let node = self.ptr.load(Relaxed);
       if node.is_null() {
         return None;
       }
-      unsafe {
-        let next = (*node).next.ptr.load(Relaxed);
-        if self.ptr.compare_and_swap(node, next, Relaxed) == node {
-          return Some(Box::from_raw(node));
-        }
+      let next = (*node).next.ptr.load(Relaxed);
+      if self.ptr.compare_and_swap(node, next, Relaxed) == node {
+        return Some(node);
       }
     }
   }
@@ -233,7 +252,7 @@ impl<T> LinkedList<T> {
   /// assert!(dl.is_empty());
   /// assert_eq!(dl.front(), None);
   /// ```
-  pub fn clear(&mut self) {
+  pub fn clear(&self) {
     loop {
       let mut node = self.ptr.load(Relaxed);
       if node.is_null() {
@@ -344,25 +363,20 @@ impl<T> LinkedList<T> {
   }
 }
 
-impl<T> Deref for Node<T> {
-  type Target = T;
-
-  fn deref(&self) -> &T {
-    &self.element
-  }
-}
-
-impl<T> DerefMut for Node<T> {
-  fn deref_mut(&mut self) -> &mut T {
-    &mut self.element
-  }
-}
-
 impl<T> Node<T> {
   /// Creates a detached `Node`.
   pub fn new(element: T) -> Self {
     let next = LinkedList::new();
     Self { element, next }
+  }
+
+  /// Takes an ownership of the `ptr` memory and returns the inner element.
+  ///
+  /// # Safety
+  ///
+  /// `ptr` should be a valid pointer to a node.
+  pub unsafe fn unbox_element(ptr: *mut Self) -> T {
+    Box::from_raw(ptr).element
   }
 }
 
@@ -402,9 +416,9 @@ impl<'a, T, F> Iterator for DrainFilter<'a, T, F>
 where
   F: FnMut(&mut T) -> bool,
 {
-  type Item = Box<Node<T>>;
+  type Item = T;
 
-  fn next(&mut self) -> Option<Box<Node<T>>> {
+  fn next(&mut self) -> Option<T> {
     loop {
       let node = self.head.ptr.load(Relaxed);
       if node.is_null() {
@@ -417,11 +431,22 @@ where
             let next = self.head.ptr.load(Relaxed);
             self.head = &mut (*next).next;
           }
-          return Some(Box::from_raw(node));
+          return Some(Node::unbox_element(node));
         } else {
           self.head = &mut (*node).next;
         }
       }
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use std::mem;
+
+  #[test]
+  fn unit_list() {
+    assert_eq!(mem::size_of::<Node<()>>(), mem::size_of::<usize>());
   }
 }

@@ -8,7 +8,7 @@ use core::ptr;
 ///
 /// Must be called exactly once and as early as possible.
 #[inline]
-pub unsafe fn bss_init(start: &mut u8, end: &u8) {
+pub unsafe fn bss_init(start: &mut usize, end: &usize) {
   let start = start as *mut _;
   let end = end as *const _;
   let count = end as usize - start as usize;
@@ -21,7 +21,7 @@ pub unsafe fn bss_init(start: &mut u8, end: &u8) {
 ///
 /// Must be called exactly once and as early as possible.
 #[inline]
-pub unsafe fn data_init(start: &mut u8, end: &u8, data: &u8) {
+pub unsafe fn data_init(start: &mut usize, end: &usize, data: &usize) {
   let start = start as *mut _;
   let end = end as *const _;
   let data = data as *const _;

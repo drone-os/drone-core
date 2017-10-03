@@ -1,3 +1,3 @@
 //! The Rust Prelude.
 
-pub use core_alloc::boxed::Box;
+pub use alloc::boxed::Box;
