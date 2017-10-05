@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote;
-use std::{fmt, vec, u32};
+use std::{fmt, vec};
 use syn;
 
 struct Pool {
@@ -201,7 +201,7 @@ fn parse_size(input: &mut vec::IntoIter<syn::TokenTree>, size: &mut u32) {
           syn::Token::Literal(syn::Lit::Int(int, syn::IntTy::Unsuffixed)),
         ),
       ) => {
-        if int > u32::MAX as u64 {
+        if int > u32::max_value() as u64 {
           panic!("Invalid size: {}", int);
         }
         *size = int as u32;
@@ -282,10 +282,10 @@ fn parse_pools(
               ),
               None => (),
             }
-            if size == 0 || size > u32::MAX as u64 {
+            if size == 0 || size > u32::max_value() as u64 {
               panic!("Invalid pool size: {}", size);
             }
-            if capacity == 0 || capacity > u32::MAX as u64 {
+            if capacity == 0 || capacity > u32::max_value() as u64 {
               panic!("Invalid pool capacity: {}", capacity);
             }
             pools.push(Pool {

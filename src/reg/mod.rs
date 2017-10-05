@@ -5,6 +5,7 @@ pub mod prelude;
 mod flavor;
 
 pub use self::flavor::{Ar, Lr, RegFlavor};
+pub use drone_macros::reg_imp;
 
 use core::fmt::Debug;
 use core::mem::size_of;
@@ -261,3 +262,8 @@ impl_reg_raw!(u64);
 impl_reg_raw!(u32);
 impl_reg_raw!(u16);
 impl_reg_raw!(u8);
+
+/// Define a memory-mapped register.
+pub macro reg($($tokens:tt)*) {
+  $crate::reg::reg_imp!($($tokens)*);
+}

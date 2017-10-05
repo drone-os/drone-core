@@ -16,14 +16,3 @@ quote = "0.3"
 [dependencies.syn]
 version = "0.11"
 features = ["full", "parsing", "printing"]
-
-[dependencies.drone]
-version = "0.5.0"
-path = ".."
-
-[dev-dependencies]
-glob = "0.2"
-
-[dev-dependencies.compiletest_rs]
-version = "0.2"
-features = ["tmp"]

@@ -1,14 +1,14 @@
 #![feature(alloc)]
 #![feature(allocator_api)]
 #![feature(const_fn)]
-#![feature(proc_macro)]
+#![feature(decl_macro)]
 #![feature(slice_get_slice)]
 
 extern crate alloc;
 extern crate drone;
-extern crate drone_macros;
 
-use drone_macros::heap;
+use core::mem::size_of;
+use drone::heap;
 use std as core;
 
 heap! {
@@ -21,4 +21,7 @@ heap! {
   ];
 }
 
-fn main() {}
+#[test]
+fn size() {
+  assert_eq!(size_of::<Heap>(), size_of::<heap::Pool>() * 2);
+}

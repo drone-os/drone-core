@@ -1,10 +1,9 @@
-#![feature(proc_macro)]
+#![feature(decl_macro)]
 
 extern crate drone;
-extern crate drone_macros;
 
+use drone::reg;
 use drone::reg::prelude::*;
-use drone_macros::reg;
 use std as core;
 use std::mem::size_of;
 

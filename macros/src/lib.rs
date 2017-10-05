@@ -15,14 +15,12 @@ mod reg;
 
 use proc_macro::TokenStream;
 
-/// Configure a heap allocator.
 #[proc_macro]
-pub fn heap(input: TokenStream) -> TokenStream {
+pub fn heap_imp(input: TokenStream) -> TokenStream {
   heap::heap(input)
 }
 
-/// Define a memory-mapped register.
 #[proc_macro]
-pub fn reg(input: TokenStream) -> TokenStream {
+pub fn reg_imp(input: TokenStream) -> TokenStream {
   reg::reg(input)
 }

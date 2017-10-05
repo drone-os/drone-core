@@ -88,7 +88,7 @@ impl<T> LinkedList<T> {
   /// let mut dl = LinkedList::new();
   /// assert!(dl.is_empty());
   ///
-  /// dl.push_front("foo");
+  /// dl.push("foo");
   /// assert!(!dl.is_empty());
   /// ```
   #[inline]
@@ -96,7 +96,7 @@ impl<T> LinkedList<T> {
     self.ptr.load(Relaxed).is_null()
   }
 
-  /// Provides a reference to the front element, or `None` if the list is empty.
+  /// Provides a reference to the first element, or `None` if the list is empty.
   ///
   /// # Examples
   ///
@@ -104,13 +104,13 @@ impl<T> LinkedList<T> {
   /// use drone::collections::LinkedList;
   ///
   /// let mut dl = LinkedList::new();
-  /// assert_eq!(dl.front(), None);
+  /// assert_eq!(dl.first(), None);
   ///
-  /// dl.push_front(1);
-  /// assert_eq!(dl.front(), Some(&1));
+  /// dl.push(1);
+  /// assert_eq!(dl.first(), Some(&1));
   /// ```
   #[inline]
-  pub fn front(&self) -> Option<&T> {
+  pub fn first(&self) -> Option<&T> {
     let node = self.ptr.load(Relaxed);
     if node.is_null() {
       None
@@ -119,7 +119,7 @@ impl<T> LinkedList<T> {
     }
   }
 
-  /// Provides a mutable reference to the front element, or `None` if the list
+  /// Provides a mutable reference to the first element, or `None` if the list
   /// is empty.
   ///
   /// # Examples
@@ -128,19 +128,19 @@ impl<T> LinkedList<T> {
   /// use drone::collections::LinkedList;
   ///
   /// let mut dl = LinkedList::new();
-  /// assert_eq!(dl.front(), None);
+  /// assert_eq!(dl.first(), None);
   ///
-  /// dl.push_front(1);
-  /// assert_eq!(dl.front(), Some(&1));
+  /// dl.push(1);
+  /// assert_eq!(dl.first(), Some(&1));
   ///
-  /// match dl.front_mut() {
+  /// match dl.first_mut() {
   ///     None => {},
   ///     Some(x) => *x = 5,
   /// }
-  /// assert_eq!(dl.front(), Some(&5));
+  /// assert_eq!(dl.first(), Some(&5));
   /// ```
   #[inline]
-  pub fn front_mut(&mut self) -> Option<&mut T> {
+  pub fn first_mut(&mut self) -> Option<&mut T> {
     let node = self.ptr.load(Relaxed);
     if node.is_null() {
       None
@@ -160,15 +160,15 @@ impl<T> LinkedList<T> {
   ///
   /// let mut dl = LinkedList::new();
   ///
-  /// dl.push_front(2);
-  /// assert_eq!(dl.front().unwrap(), &2);
+  /// dl.push(2);
+  /// assert_eq!(dl.first().unwrap(), &2);
   ///
-  /// dl.push_front(1);
-  /// assert_eq!(dl.front().unwrap(), &1);
+  /// dl.push(1);
+  /// assert_eq!(dl.first().unwrap(), &1);
   /// ```
-  pub fn push_front(&self, element: T) {
+  pub fn push(&self, element: T) {
     unsafe {
-      self.push_front_raw(Box::into_raw(Box::new(Node::new(element))));
+      self.push_raw(Box::into_raw(Box::new(Node::new(element))));
     }
   }
 
@@ -179,7 +179,7 @@ impl<T> LinkedList<T> {
   /// # Safety
   ///
   /// Caller should pass an ownership of the pointer.
-  pub unsafe fn push_front_raw(&self, node: *mut Node<T>) {
+  pub unsafe fn push_raw(&self, node: *mut Node<T>) {
     loop {
       let current = self.ptr.load(Relaxed);
       (*node).next = current.into();
@@ -199,16 +199,16 @@ impl<T> LinkedList<T> {
   /// use drone::collections::LinkedList;
   ///
   /// let mut d = LinkedList::new();
-  /// assert_eq!(d.pop_front(), None);
+  /// assert_eq!(d.pop(), None);
   ///
-  /// d.push_front(1);
-  /// d.push_front(3);
-  /// assert_eq!(d.pop_front(), Some(3));
-  /// assert_eq!(d.pop_front(), Some(1));
-  /// assert_eq!(d.pop_front(), None);
+  /// d.push(1);
+  /// d.push(3);
+  /// assert_eq!(d.pop(), Some(3));
+  /// assert_eq!(d.pop(), Some(1));
+  /// assert_eq!(d.pop(), None);
   /// ```
-  pub fn pop_front(&self) -> Option<T> {
-    unsafe { self.pop_front_raw().map(|ptr| Node::unbox_element(ptr)) }
+  pub fn pop(&self) -> Option<T> {
+    unsafe { self.pop_raw().map(|ptr| Node::unbox_element(ptr)) }
   }
 
   /// Removes the first element and returns the raw pointer to it, or `None` if
@@ -219,7 +219,7 @@ impl<T> LinkedList<T> {
   /// # Safety
   ///
   /// Caller should free the returned pointer manually.
-  pub unsafe fn pop_front_raw(&self) -> Option<*mut Node<T>> {
+  pub unsafe fn pop_raw(&self) -> Option<*mut Node<T>> {
     loop {
       let node = self.ptr.load(Relaxed);
       if node.is_null() {
@@ -243,14 +243,14 @@ impl<T> LinkedList<T> {
   ///
   /// let mut dl = LinkedList::new();
   ///
-  /// dl.push_front(2);
-  /// dl.push_front(1);
+  /// dl.push(2);
+  /// dl.push(1);
   /// assert!(!dl.is_empty());
-  /// assert_eq!(dl.front(), Some(&1));
+  /// assert_eq!(dl.first(), Some(&1));
   ///
   /// dl.clear();
   /// assert!(dl.is_empty());
-  /// assert_eq!(dl.front(), None);
+  /// assert_eq!(dl.first(), None);
   /// ```
   pub fn clear(&self) {
     loop {
@@ -279,9 +279,9 @@ impl<T> LinkedList<T> {
   ///
   /// let mut list: LinkedList<u32> = LinkedList::new();
   ///
-  /// list.push_front(0);
-  /// list.push_front(1);
-  /// list.push_front(2);
+  /// list.push(0);
+  /// list.push(1);
+  /// list.push(2);
   ///
   /// assert_eq!(list.contains(&0), true);
   /// assert_eq!(list.contains(&10), false);
@@ -302,9 +302,9 @@ impl<T> LinkedList<T> {
   ///
   /// let mut list: LinkedList<u32> = LinkedList::new();
   ///
-  /// list.push_front(0);
-  /// list.push_front(1);
-  /// list.push_front(2);
+  /// list.push(0);
+  /// list.push(1);
+  /// list.push(2);
   ///
   /// let mut iter = list.iter();
   /// assert_eq!(iter.next(), Some(&2));
@@ -326,9 +326,9 @@ impl<T> LinkedList<T> {
   ///
   /// let mut list: LinkedList<u32> = LinkedList::new();
   ///
-  /// list.push_front(0);
-  /// list.push_front(1);
-  /// list.push_front(2);
+  /// list.push(0);
+  /// list.push(1);
+  /// list.push(2);
   ///
   /// for element in list.iter_mut() {
   ///     *element += 10;
@@ -347,12 +347,8 @@ impl<T> LinkedList<T> {
 
   /// Creates an iterator which uses a closure to determine if an element should
   /// be removed.
-  ///
-  /// # Safety
-  ///
-  /// Must not be called concurrently.
   #[inline]
-  pub unsafe fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<T, F>
+  pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<T, F>
   where
     F: FnMut(&mut T) -> bool,
   {

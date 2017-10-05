@@ -56,7 +56,7 @@ impl Routine {
     G: Generator<Yield = (), Return = ()>,
     G: Send + 'static,
   {
-    self.list.push_front(g.into());
+    self.list.push(g.into());
   }
 
   /// Adds closure `f` first in the routine chain.

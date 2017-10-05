@@ -1,9 +1,11 @@
+//! Rust allocator interface.
+
 use super::{Pool, PoolFit};
 use alloc::allocator::{AllocErr, CannotReallocInPlace, Excess, Layout};
-use core::{cmp, intrinsics, ptr};
+use core::{cmp, ptr};
 use core::slice::SliceIndex;
 
-/// Heap allocator.
+/// Heap allocator based on multiple memory pools.
 ///
 /// It should store pools sorted by size.
 pub trait Allocator {
@@ -23,7 +25,7 @@ pub trait Allocator {
 
   #[doc(hidden)]
   #[inline]
-  fn pool<T>(&self, value: T) -> Option<&Pool>
+  fn search<T>(&self, value: T) -> usize
   where
     T: Copy,
     Pool: PoolFit<T>,
@@ -38,34 +40,30 @@ pub trait Allocator {
         left = middle + 1;
       }
     }
-    if left < Self::POOL_COUNT {
-      Some(unsafe { self.get_pool_unchecked(left) })
-    } else {
-      None
-    }
+    left
   }
 
   #[doc(hidden)]
   #[inline]
-  fn alloc_with<F, T>(
-    &self,
-    layout: Layout,
-    pool: Option<&Pool>,
-    f: F,
-  ) -> Result<T, AllocErr>
+  fn alloc_with<F, T>(&self, layout: Layout, f: F) -> Result<T, AllocErr>
   where
     F: FnOnce(*mut u8, &Pool) -> T,
   {
-    if let Some(pool) = pool {
-      if let Some(ptr) = pool.alloc() {
-        Ok(f(ptr, pool))
-      } else {
-        Err(AllocErr::Exhausted { request: layout })
-      }
-    } else {
-      Err(AllocErr::Unsupported {
+    let mut pool_idx = self.search(&layout);
+    if pool_idx == Self::POOL_COUNT {
+      return Err(AllocErr::Unsupported {
         details: "No memory pool for the given size",
-      })
+      });
+    }
+    loop {
+      let pool = unsafe { self.get_pool_unchecked(pool_idx) };
+      if let Some(ptr) = pool.alloc() {
+        return Ok(f(ptr, pool));
+      }
+      pool_idx += 1;
+      if pool_idx == Self::POOL_COUNT {
+        return Err(AllocErr::Exhausted { request: layout });
+      }
     }
   }
 
@@ -79,18 +77,15 @@ pub trait Allocator {
     f: F,
   ) -> Result<T, AllocErr>
   where
-    F: FnOnce(*mut u8, &Pool) -> T,
+    F: Fn(*mut u8, &Pool) -> T,
   {
     let (new_size, old_size) = (new_layout.size(), layout.size());
-    let new_pool = self.pool(&new_layout);
-    let g = |ptr| {
-      let new_pool = match new_pool {
-        Some(pool) => pool,
-        None => unsafe { intrinsics::unreachable() },
-      };
-      f(ptr, new_pool)
-    };
     if layout.align() == new_layout.align() {
+      let g = |ptr| {
+        f(ptr, unsafe {
+          self.get_pool_unchecked(self.search(&new_layout))
+        })
+      };
       if new_size < old_size {
         return Ok(g(ptr));
       } else if let Ok(()) =
@@ -99,33 +94,29 @@ pub trait Allocator {
         return Ok(g(ptr));
       }
     }
-    self
-      .alloc_with(new_layout, new_pool, |ptr, _| ptr)
-      .map(|new_ptr| {
-        unsafe {
-          ptr::copy_nonoverlapping(
-            ptr as *const u8,
-            new_ptr,
-            cmp::min(old_size, new_size),
-          );
-        }
-        self.dealloc(ptr, layout);
-        g(new_ptr)
-      })
+    self.alloc_with(new_layout, |new_ptr, pool| {
+      unsafe {
+        ptr::copy_nonoverlapping(
+          ptr as *const usize,
+          new_ptr as *mut usize,
+          cmp::min(old_size, new_size),
+        );
+      }
+      self.dealloc(ptr, layout);
+      f(new_ptr, pool)
+    })
   }
 
   #[doc(hidden)]
   #[inline]
   fn alloc(&self, layout: Layout) -> Result<*mut u8, AllocErr> {
-    let pool = self.pool(&layout);
-    self.alloc_with(layout, pool, |ptr, _| ptr)
+    self.alloc_with(layout, |ptr, _| ptr)
   }
 
   #[doc(hidden)]
   #[inline]
   fn alloc_excess(&self, layout: Layout) -> Result<Excess, AllocErr> {
-    let pool = self.pool(&layout);
-    self.alloc_with(layout, pool, |ptr, pool| Excess(ptr, pool.size()))
+    self.alloc_with(layout, |ptr, pool| Excess(ptr, pool.size()))
   }
 
   #[doc(hidden)]
@@ -158,36 +149,33 @@ pub trait Allocator {
   #[doc(hidden)]
   #[inline]
   fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-    match self.pool(ptr) {
-      Some(pool) => pool.dealloc(ptr),
-      None => unsafe { intrinsics::unreachable() },
-    }
+    let pool_idx = self.search(ptr);
+    let pool = unsafe { self.get_pool_unchecked(pool_idx) };
+    pool.dealloc(ptr);
   }
 
   #[doc(hidden)]
   #[inline]
   fn usable_size(&self, layout: &Layout) -> (usize, usize) {
-    match self.pool(layout) {
-      Some(pool) => (0, pool.size()),
-      None => unsafe { intrinsics::unreachable() },
-    }
+    let pool_idx = self.search(layout);
+    let pool = unsafe { self.get_pool_unchecked(pool_idx) };
+    (0, pool.size())
   }
 
   #[doc(hidden)]
   #[inline]
   fn grow_in_place(
     &self,
-    _ptr: *mut u8,
-    layout: Layout,
+    ptr: *mut u8,
+    _layout: Layout,
     new_layout: Layout,
   ) -> Result<(), CannotReallocInPlace> {
-    match self.pool(&layout) {
-      Some(pool) => if pool.fits(&new_layout) {
-        Ok(())
-      } else {
-        Err(CannotReallocInPlace)
-      },
-      None => unsafe { intrinsics::unreachable() },
+    let pool_idx = self.search(ptr);
+    let pool = unsafe { self.get_pool_unchecked(pool_idx) };
+    if pool.fits(&new_layout) {
+      Ok(())
+    } else {
+      Err(CannotReallocInPlace)
     }
   }
 
@@ -240,13 +228,21 @@ mod tests {
 
   impl TestHeap {
     fn search_layout(&self, size: usize) -> Option<usize> {
-      self
-        .pool(&Layout::from_size_align(size, 4).unwrap())
-        .map(Pool::size)
+      let pool_idx = self.search(&Layout::from_size_align(size, 4).unwrap());
+      if pool_idx < TestHeap::POOL_COUNT {
+        unsafe { Some(self.get_pool_unchecked(pool_idx).size()) }
+      } else {
+        None
+      }
     }
 
     fn search_ptr(&self, ptr: usize) -> Option<usize> {
-      self.pool(ptr as *mut u8).map(Pool::size)
+      let pool_idx = self.search(ptr as *mut u8);
+      if pool_idx < TestHeap::POOL_COUNT {
+        unsafe { Some(self.get_pool_unchecked(pool_idx).size()) }
+      } else {
+        None
+      }
     }
   }
 
