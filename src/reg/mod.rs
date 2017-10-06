@@ -1,4 +1,24 @@
-//! Safe API for memory-mapped registers.
+//! Memory-mapped registers support.
+//!
+//! # Definition
+//!
+//! ```
+//! # #![feature(decl_macro)]
+//! # fn main() {}
+//! # use std as core;
+//! use drone::reg;
+//! use drone::reg::prelude::*;
+//!
+//! reg! {
+//!   //! SysTick control and status register.
+//!   0xE000_E010 // memory address
+//!   0x20 // bit size
+//!   Ctrl // register's name
+//!   RReg WReg // list of marker traits to implement
+//! }
+//! ```
+//!
+//! [`reg!`]: ../macro.reg.html
 
 pub mod prelude;
 
@@ -264,6 +284,10 @@ impl_reg_raw!(u16);
 impl_reg_raw!(u8);
 
 /// Define a memory-mapped register.
+///
+/// See the [`module-level documentation`] for more details.
+///
+/// [`module-level documentation`]: reg/index.html
 pub macro reg($($tokens:tt)*) {
   $crate::reg::reg_imp!($($tokens)*);
 }

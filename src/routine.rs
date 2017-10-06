@@ -1,11 +1,17 @@
-//! Routine handling.
+//! An interrupt service routine tasks chain.
+//!
+//! See [`Routine`] for more details.
+//!
+//! [`Routine`]: struct.Routine.html
 
 use collections::LinkedList;
 use core::ops::Generator;
 use core::ops::GeneratorState::*;
 use prelude::*;
 
-/// A routine chain.
+/// An interrupt service routine tasks chain.
+///
+/// A lock-free data-structure to associate a task with an interrupt.
 pub struct Routine {
   list: LinkedList<Node>,
 }
@@ -27,7 +33,7 @@ where
 }
 
 impl Routine {
-  /// Constructs an empty `Routine`.
+  /// Creates an empty `Routine`.
   #[inline]
   pub const fn new() -> Self {
     Self {
@@ -35,7 +41,7 @@ impl Routine {
     }
   }
 
-  /// Hardware invokes a routine chain with this method.
+  /// The method is invoked by hardware to run the routine chain.
   ///
   /// # Safety
   ///
@@ -50,7 +56,7 @@ impl Routine {
       .for_each(|_| {});
   }
 
-  /// Adds generator `g` first in the routine chain.
+  /// Adds a generator first in the chain.
   pub fn push<G>(&mut self, g: G)
   where
     G: Generator<Yield = (), Return = ()>,
@@ -59,7 +65,7 @@ impl Routine {
     self.list.push(g.into());
   }
 
-  /// Adds closure `f` first in the routine chain.
+  /// Adds a closure first in the chain.
   pub fn push_callback<F>(&mut self, f: F)
   where
     F: FnOnce(),

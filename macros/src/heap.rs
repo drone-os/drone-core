@@ -8,7 +8,7 @@ struct Pool {
   capacity: u32,
 }
 
-pub fn heap(input: TokenStream) -> TokenStream {
+pub(crate) fn heap(input: TokenStream) -> TokenStream {
   let input = syn::parse_token_trees(&input.to_string()).unwrap();
   let mut input = input.into_iter();
   let mut attributes = Vec::new();
@@ -53,7 +53,7 @@ pub fn heap(input: TokenStream) -> TokenStream {
 
     /// The heap allocator.
     pub struct Heap {
-      pools: [Pool; #pool_count],
+      pools: [Pool<u8>; #pool_count],
     }
 
     #(#attributes)*
@@ -71,7 +71,7 @@ pub fn heap(input: TokenStream) -> TokenStream {
       #[inline]
       unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
       where
-        I: SliceIndex<[Pool]>,
+        I: SliceIndex<[Pool<u8>]>,
       {
         self.pools.get_unchecked(index)
       }
@@ -79,7 +79,7 @@ pub fn heap(input: TokenStream) -> TokenStream {
       #[inline]
       unsafe fn get_pool_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
       where
-        I: SliceIndex<[Pool]>,
+        I: SliceIndex<[Pool<u8>]>,
       {
         self.pools.get_unchecked_mut(index)
       }
@@ -96,7 +96,7 @@ pub fn heap(input: TokenStream) -> TokenStream {
 
       #[inline]
       fn usable_size(&self, layout: &Layout) -> (usize, usize) {
-        (**self).usable_size(layout)
+        unsafe { (**self).usable_size(layout) }
       }
 
       unsafe fn realloc(

@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use syn;
 
-pub fn reg(input: TokenStream) -> TokenStream {
+pub(crate) fn reg(input: TokenStream) -> TokenStream {
   let input = syn::parse_token_trees(&input.to_string()).unwrap();
   let mut input = input.into_iter();
   let mut attributes = Vec::new();

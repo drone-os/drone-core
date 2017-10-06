@@ -1,5 +1,9 @@
 //! Basic functions for dealing with memory.
 
+pub(crate) mod manually_drop;
+
+pub(crate) use self::manually_drop::ManuallyDrop;
+
 use core::ptr;
 
 /// Initializes the `.bss` section.

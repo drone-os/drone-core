@@ -1,40 +1,58 @@
-//! Rust allocator interface.
+//! A lock-free allocator that composes multiple memory pools.
+//!
+//! See [`Allocator`] for more details.
+//!
+//! [`Allocator`]: trait.Allocator.html
 
-use super::{Pool, PoolFit};
+use super::pool::{Fits, Pool};
 use alloc::allocator::{AllocErr, CannotReallocInPlace, Excess, Layout};
 use core::{cmp, ptr};
 use core::slice::SliceIndex;
 
-/// Heap allocator based on multiple memory pools.
+/// A lock-free allocator that composes multiple memory pools.
 ///
-/// It should store pools sorted by size.
+/// An `Allocator` maintains a sort-order of its pools, so they can be
+/// effectively accessed with [`binary_search`].
+///
+/// [`binary_search`]: trait.Allocator.html#method.binary_search
 pub trait Allocator {
   /// Number of memory pools.
   const POOL_COUNT: usize;
 
+  /// Initializes the pools with `start` address.
+  ///
+  /// # Safety
+  ///
+  /// Must be called exactly once and before using the allocator.
+  #[inline]
+  unsafe fn init(&mut self, start: &mut usize) {
+    for i in 0..Self::POOL_COUNT {
+      self.get_pool_unchecked_mut(i).init(start);
+    }
+  }
+
   /// Returns a reference to a pool or subslice, without doing bounds checking.
   unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
   where
-    I: SliceIndex<[Pool]>;
+    I: SliceIndex<[Pool<u8>]>;
 
   /// Returns a mutable reference to a pool or subslice, without doing bounds
   /// checking.
   unsafe fn get_pool_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
   where
-    I: SliceIndex<[Pool]>;
+    I: SliceIndex<[Pool<u8>]>;
 
-  #[doc(hidden)]
+  /// Binary searches the pools for a least-sized one which fits `value`.
   #[inline]
-  fn search<T>(&self, value: T) -> usize
+  fn binary_search<T>(&self, value: T) -> usize
   where
-    T: Copy,
-    Pool: PoolFit<T>,
+    T: Fits<u8>,
   {
     let (mut left, mut right) = (0, Self::POOL_COUNT);
     while right > left {
       let middle = left + ((right - left) >> 1);
       let pool = unsafe { self.get_pool_unchecked(middle) };
-      if pool.fits(value) {
+      if value.fits(pool) {
         right = middle;
       } else {
         left = middle + 1;
@@ -45,18 +63,18 @@ pub trait Allocator {
 
   #[doc(hidden)]
   #[inline]
-  fn alloc_with<F, T>(&self, layout: Layout, f: F) -> Result<T, AllocErr>
+  unsafe fn alloc_with<F, T>(&self, layout: Layout, f: F) -> Result<T, AllocErr>
   where
-    F: FnOnce(*mut u8, &Pool) -> T,
+    F: FnOnce(*mut u8, &Pool<u8>) -> T,
   {
-    let mut pool_idx = self.search(&layout);
+    let mut pool_idx = self.binary_search(&layout);
     if pool_idx == Self::POOL_COUNT {
       return Err(AllocErr::Unsupported {
         details: "No memory pool for the given size",
       });
     }
     loop {
-      let pool = unsafe { self.get_pool_unchecked(pool_idx) };
+      let pool = self.get_pool_unchecked(pool_idx);
       if let Some(ptr) = pool.alloc() {
         return Ok(f(ptr, pool));
       }
@@ -69,7 +87,7 @@ pub trait Allocator {
 
   #[doc(hidden)]
   #[inline]
-  fn realloc_with<F, T>(
+  unsafe fn realloc_with<F, T>(
     &self,
     ptr: *mut u8,
     layout: Layout,
@@ -77,14 +95,15 @@ pub trait Allocator {
     f: F,
   ) -> Result<T, AllocErr>
   where
-    F: Fn(*mut u8, &Pool) -> T,
+    F: Fn(*mut u8, &Pool<u8>) -> T,
   {
     let (new_size, old_size) = (new_layout.size(), layout.size());
     if layout.align() == new_layout.align() {
       let g = |ptr| {
-        f(ptr, unsafe {
-          self.get_pool_unchecked(self.search(&new_layout))
-        })
+        f(
+          ptr,
+          self.get_pool_unchecked(self.binary_search(&new_layout)),
+        )
       };
       if new_size < old_size {
         return Ok(g(ptr));
@@ -95,13 +114,11 @@ pub trait Allocator {
       }
     }
     self.alloc_with(new_layout, |new_ptr, pool| {
-      unsafe {
-        ptr::copy_nonoverlapping(
-          ptr as *const usize,
-          new_ptr as *mut usize,
-          cmp::min(old_size, new_size),
-        );
-      }
+      ptr::copy_nonoverlapping(
+        ptr as *const usize,
+        new_ptr as *mut usize,
+        cmp::min(old_size, new_size),
+      );
       self.dealloc(ptr, layout);
       f(new_ptr, pool)
     })
@@ -109,19 +126,19 @@ pub trait Allocator {
 
   #[doc(hidden)]
   #[inline]
-  fn alloc(&self, layout: Layout) -> Result<*mut u8, AllocErr> {
+  unsafe fn alloc(&self, layout: Layout) -> Result<*mut u8, AllocErr> {
     self.alloc_with(layout, |ptr, _| ptr)
   }
 
   #[doc(hidden)]
   #[inline]
-  fn alloc_excess(&self, layout: Layout) -> Result<Excess, AllocErr> {
+  unsafe fn alloc_excess(&self, layout: Layout) -> Result<Excess, AllocErr> {
     self.alloc_with(layout, |ptr, pool| Excess(ptr, pool.size()))
   }
 
   #[doc(hidden)]
   #[inline]
-  fn realloc(
+  unsafe fn realloc(
     &self,
     ptr: *mut u8,
     layout: Layout,
@@ -132,7 +149,7 @@ pub trait Allocator {
 
   #[doc(hidden)]
   #[inline]
-  fn realloc_excess(
+  unsafe fn realloc_excess(
     &self,
     ptr: *mut u8,
     layout: Layout,
@@ -148,31 +165,31 @@ pub trait Allocator {
 
   #[doc(hidden)]
   #[inline]
-  fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-    let pool_idx = self.search(ptr);
-    let pool = unsafe { self.get_pool_unchecked(pool_idx) };
+  unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+    let pool_idx = self.binary_search(ptr);
+    let pool = self.get_pool_unchecked(pool_idx);
     pool.dealloc(ptr);
   }
 
   #[doc(hidden)]
   #[inline]
-  fn usable_size(&self, layout: &Layout) -> (usize, usize) {
-    let pool_idx = self.search(layout);
-    let pool = unsafe { self.get_pool_unchecked(pool_idx) };
+  unsafe fn usable_size(&self, layout: &Layout) -> (usize, usize) {
+    let pool_idx = self.binary_search(layout);
+    let pool = self.get_pool_unchecked(pool_idx);
     (0, pool.size())
   }
 
   #[doc(hidden)]
   #[inline]
-  fn grow_in_place(
+  unsafe fn grow_in_place(
     &self,
     ptr: *mut u8,
     _layout: Layout,
     new_layout: Layout,
   ) -> Result<(), CannotReallocInPlace> {
-    let pool_idx = self.search(ptr);
-    let pool = unsafe { self.get_pool_unchecked(pool_idx) };
-    if pool.fits(&new_layout) {
+    let pool_idx = self.binary_search(ptr);
+    let pool = self.get_pool_unchecked(pool_idx);
+    if new_layout.fits(pool) {
       Ok(())
     } else {
       Err(CannotReallocInPlace)
@@ -181,21 +198,13 @@ pub trait Allocator {
 
   #[doc(hidden)]
   #[inline]
-  fn shrink_in_place(
+  unsafe fn shrink_in_place(
     &self,
     _ptr: *mut u8,
     _layout: Layout,
     _new_layout: Layout,
   ) -> Result<(), CannotReallocInPlace> {
     Ok(())
-  }
-
-  #[doc(hidden)]
-  #[inline]
-  unsafe fn init(&mut self, start: &mut usize) {
-    for i in 0..Self::POOL_COUNT {
-      self.get_pool_unchecked_mut(i).init(start);
-    }
   }
 }
 
@@ -205,7 +214,7 @@ mod tests {
   use std::mem;
 
   struct TestHeap {
-    pools: [Pool; 10],
+    pools: [Pool<u8>; 10],
   }
 
   impl Allocator for TestHeap {
@@ -213,14 +222,14 @@ mod tests {
 
     unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
     where
-      I: SliceIndex<[Pool]>,
+      I: SliceIndex<[Pool<u8>]>,
     {
       self.pools.get_unchecked(index)
     }
 
     unsafe fn get_pool_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
     where
-      I: SliceIndex<[Pool]>,
+      I: SliceIndex<[Pool<u8>]>,
     {
       self.pools.get_unchecked_mut(index)
     }
@@ -228,7 +237,8 @@ mod tests {
 
   impl TestHeap {
     fn search_layout(&self, size: usize) -> Option<usize> {
-      let pool_idx = self.search(&Layout::from_size_align(size, 4).unwrap());
+      let pool_idx =
+        self.binary_search(&Layout::from_size_align(size, 4).unwrap());
       if pool_idx < TestHeap::POOL_COUNT {
         unsafe { Some(self.get_pool_unchecked(pool_idx).size()) }
       } else {
@@ -237,7 +247,7 @@ mod tests {
     }
 
     fn search_ptr(&self, ptr: usize) -> Option<usize> {
-      let pool_idx = self.search(ptr as *mut u8);
+      let pool_idx = self.binary_search(ptr as *mut u8);
       if pool_idx < TestHeap::POOL_COUNT {
         unsafe { Some(self.get_pool_unchecked(pool_idx).size()) }
       } else {

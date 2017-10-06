@@ -1,62 +1,76 @@
-//! Memory pools.
+//! A lock-free fixed-size blocks allocator.
+//!
+//! See [`Pool`] for more details.
+//!
+//! [`Pool`]: struct.Pool.html
 
 use alloc::allocator::Layout;
 use collections::LinkedList;
-use core::sync::atomic::AtomicUsize;
+use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::*;
+use mem::ManuallyDrop;
 
-/// Heap memory pool.
-pub struct Pool {
+/// A lock-free fixed-size blocks allocator.
+///
+/// The `Pool` allows lock-free O(1) allocations, deallocations, and
+/// initialization.
+///
+/// A `Pool` consists of `capacity` number of fixed-size blocks. It maintains a
+/// *free list* of deallocated blocks.
+pub struct Pool<T> {
   /// Free List of previously allocated blocks.
-  free: LinkedList<()>,
+  free: ManuallyDrop<LinkedList<()>>,
   /// Growing inclusive pointer to the left edge of the uninitialized area.
-  head: AtomicUsize,
+  head: AtomicPtr<T>,
   /// Non-inclusive right edge of the pool.
-  edge: usize,
+  edge: *mut T,
   /// Size of blocks in the pool.
   size: usize,
 }
 
-/// Trait for checking if `T` fits the pool.
-pub trait PoolFit<T>
+/// Trait for values that can be checked against a `Pool`.
+pub trait Fits<T>
 where
-  T: Copy,
+  Self: Copy,
 {
-  /// Checks if the pool can fit `value`.
-  fn fits(&self, value: T) -> bool;
+  /// The method tests that `self` fits `pool`.
+  fn fits(self, pool: &Pool<T>) -> bool;
 }
 
-impl<'a> PoolFit<&'a Layout> for Pool {
+impl<'a, T> Fits<T> for &'a Layout {
   #[inline]
-  fn fits(&self, layout: &Layout) -> bool {
-    self.size >= layout.size()
+  fn fits(self, pool: &Pool<T>) -> bool {
+    self.size() <= pool.size
   }
 }
 
-impl PoolFit<*mut u8> for Pool {
+impl<T> Fits<T> for *mut T {
   #[inline]
-  fn fits(&self, ptr: *mut u8) -> bool {
-    self.edge > ptr as usize
+  fn fits(self, pool: &Pool<T>) -> bool {
+    self < pool.edge
   }
 }
 
-impl Pool {
-  /// Initializes new pool.
-  pub const fn new(start: usize, size: usize, capacity: usize) -> Self {
+impl<T> Pool<T> {
+  /// Creates an empty `Pool`.
+  ///
+  /// The returned pool needs to be further initialized with [`init`] method.
+  /// Resulting location of the pool should be the sum of `offset` argument
+  /// provided to the current method and `start` argument for [`init`] method.
+  ///
+  /// [`init`]: struct.Pool.html#method.init
+  pub const fn new(offset: usize, size: usize, capacity: usize) -> Self {
     Self {
-      free: LinkedList::new(),
-      head: AtomicUsize::new(start),
-      edge: start + size * capacity,
+      free: ManuallyDrop::new(LinkedList::new()),
+      head: AtomicPtr::new(offset as *mut T),
+      edge: (offset + size * capacity) as *mut T,
       size,
     }
   }
 
-  /// Returns the pool size.
-  pub fn size(&self) -> usize {
-    self.size
-  }
-
-  /// Initializes the pool.
+  /// Initializes the pool with `start` address.
+  ///
+  /// This operation should compute in O(1) time.
   ///
   /// # Safety
   ///
@@ -64,34 +78,48 @@ impl Pool {
   #[inline]
   pub unsafe fn init(&mut self, start: &mut usize) {
     let offset = start as *mut _ as usize;
-    *self.head.get_mut() += offset;
-    self.edge += offset;
+    let head = self.head.get_mut();
+    *head = head.add(offset);
+    self.edge = self.edge.add(offset);
   }
 
-  /// Allocates a block of memory.
+  /// Returns the pool size.
+  pub fn size(&self) -> usize {
+    self.size
+  }
+
+  /// Allocates a fixed-size block of memory. Returns `None` if the pool is
+  /// exhausted.
+  ///
+  /// This operation should compute in O(1) time.
   #[inline]
-  pub fn alloc(&self) -> Option<*mut u8> {
-    if let Some(ptr) = unsafe { self.free.pop_raw() } {
-      Some(ptr as *mut _)
+  pub fn alloc(&self) -> Option<*mut T> {
+    let ptr = unsafe { self.free.pop_raw() };
+    if !ptr.is_null() {
+      Some(ptr)
     } else {
       loop {
         let current = self.head.load(Relaxed);
         if current == self.edge {
           return None;
         }
-        let new = current + self.size;
+        let new = unsafe { current.add(self.size) };
         if self.head.compare_and_swap(current, new, Relaxed) == current {
-          return Some(current as *mut _);
+          return Some(current);
         }
       }
     }
   }
 
-  /// Deallocates the block of memory referenced by `ptr`.
+  /// Deallocates a fixed-size block of memory referenced by `ptr`.
+  ///
+  /// This operation should compute in O(1) time.
+  ///
+  /// # Safety
+  ///
+  /// `ptr` should not be used after deallocation.
   #[inline]
-  pub fn dealloc(&self, ptr: *mut u8) {
-    unsafe {
-      self.free.push_raw(ptr as *mut _);
-    }
+  pub unsafe fn dealloc(&self, ptr: *mut T) {
+    self.free.push_raw(ptr);
   }
 }

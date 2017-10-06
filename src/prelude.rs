@@ -1,3 +1,3 @@
-//! The Rust Prelude.
+//! The Drone Prelude.
 
 pub use alloc::boxed::Box;
