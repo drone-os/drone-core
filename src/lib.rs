@@ -12,14 +12,14 @@
 //!
 //! # Platforms
 //!
-//! * [ARM Cortex-M](https://github.com/valff/drone-cortex-m)
+//! * [ARM Cortex-M](https://github.com/drone-os/drone-cortex-m)
 //!
 //! # Example Applications
 //!
-//! * [STM32 Nucleo L496ZG-P](https://github.com/valff/blink-nucleo)
+//! * [STM32 Nucleo L496ZG-P](https://github.com/drone-os/blink-nucleo)
 //!
 //! [Rust]: https://www.rust-lang.org/
-//! [cargo-drone]: https://github.com/valff/cargo-drone
+//! [cargo-drone]: https://github.com/drone-os/cargo-drone
 //! [xargo]: https://github.com/japaric/xargo
 #![feature(alloc)]
 #![feature(allocator_api)]

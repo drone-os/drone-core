@@ -1,5 +1,7 @@
 # {{crate}}
 
+## [Documentation](https://docs.rs/{{crate}})
+
 {{readme}}
 
 ## License
