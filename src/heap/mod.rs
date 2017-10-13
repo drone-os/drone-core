@@ -1,4 +1,4 @@
-//! Dynamic memory allocation support.
+//! Dynamic memory allocation.
 //!
 //! Drone provides an efficient lock-free allocator based on an array of
 //! fixed-size memory pools. It allows deterministic constant time allocations
@@ -57,7 +57,7 @@
 //! # mod symbols { #[no_mangle] static HEAP_START: usize = 0; }
 //! use drone::heap;
 //!
-//! heap!(); // Provides `heap_init` function in the scope.
+//! heap!(); // Provides `init` function inside the current scope.
 //!
 //! fn main() {
 //!   extern "C" {
@@ -67,7 +67,7 @@
 //!   }
 //!
 //!   unsafe {
-//!     heap_init(&mut HEAP_START);
+//!     init(&mut HEAP_START);
 //!   }
 //! }
 //! ```

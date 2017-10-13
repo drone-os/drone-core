@@ -1,6 +1,9 @@
-//! Memory-mapped registers support.
+//! Memory-mapped registers.
 //!
-//! # Definition
+//! # Mapping
+//!
+//! Most of registers should be already mapped by platform crates. These crates
+//! should map registers with [`reg!`] macro as follows:
 //!
 //! ```
 //! # #![feature(decl_macro)]
@@ -18,14 +21,41 @@
 //! }
 //! ```
 //!
+//! # Binding
+//!
+//! It is strongly encouraged to bind registers with a single [`bind!`] block at
+//! the very beginning of the application entry point.
+//!
+//! ```
+//! # #![feature(decl_macro)]
+//! # use std as core;
+//! # mod stk {
+//! #   use drone::reg;
+//! #   use drone::reg::prelude::*;
+//! #   reg!(0xE000_E010 0x20 Ctrl RReg WReg);
+//! # }
+//! # fn main() {
+//! use drone::reg;
+//! use drone::reg::prelude::*;
+//! use core::mem::size_of_val;
+//!
+//! reg::bind! {
+//!   stk_ctrl: stk::Ctrl<Lr>,
+//! }
+//!
+//! // Use the bindings inside the current scope.
+//! assert_eq!(size_of_val(&stk_ctrl), 0);
+//! # }
+//! ```
+//!
+//! [`bind!`]: ../macro.bind.html
 //! [`reg!`]: ../macro.reg.html
 
 pub mod prelude;
-
-mod flavor;
+pub mod flavor;
 
 pub use self::flavor::{Ar, Lr, RegFlavor};
-pub use drone_macros::reg_imp;
+pub use drone_macros::{bind_imp, reg_imp};
 
 use core::fmt::Debug;
 use core::mem::size_of;
@@ -102,9 +132,7 @@ where
   /// Writes a raw register value to its memory address.
   #[inline]
   fn write_raw(&self, value: <Self::Value as RegValue>::Raw) {
-    unsafe {
-      write_volatile(self.to_mut_ptr(), value);
-    }
+    unsafe { write_volatile(self.to_mut_ptr(), value) };
   }
 
   /// Returns an unsafe mutable pointer to the register's memory address.
@@ -282,6 +310,15 @@ impl_reg_raw!(u64);
 impl_reg_raw!(u32);
 impl_reg_raw!(u16);
 impl_reg_raw!(u8);
+
+/// Define a memory-mapped register.
+///
+/// See the [`module-level documentation`] for more details.
+///
+/// [`module-level documentation`]: reg/index.html
+pub macro bind($($tokens:tt)*) {
+  $crate::reg::bind_imp!($($tokens)*);
+}
 
 /// Define a memory-mapped register.
 ///

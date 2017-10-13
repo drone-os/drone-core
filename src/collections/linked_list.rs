@@ -12,7 +12,6 @@ use core::ptr;
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::*;
 use mem::ManuallyDrop;
-use prelude::*;
 
 /// A lock-free single-linked list with owned nodes.
 ///
@@ -203,9 +202,7 @@ impl<T> LinkedList<T> {
   /// assert_eq!(dl.first().unwrap(), &1);
   /// ```
   pub fn push(&self, element: T) {
-    unsafe {
-      self.push_raw(Box::into_raw(Box::new(Node::new(element))));
-    }
+    unsafe { self.push_raw(Box::into_raw(Box::new(Node::new(element)))) };
   }
 
   /// Adds a raw pointer to an element first in the list.

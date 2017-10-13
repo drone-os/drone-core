@@ -10,7 +10,8 @@ use core::ptr;
 ///
 /// # Safety
 ///
-/// Must be called exactly once and as early as possible.
+/// * Must be called no more than once.
+/// * Must be called before accessing `static`s.
 #[inline]
 pub unsafe fn bss_init(start: &mut usize, end: &usize) {
   let start = start as *mut _;
@@ -23,7 +24,8 @@ pub unsafe fn bss_init(start: &mut usize, end: &usize) {
 ///
 /// # Safety
 ///
-/// Must be called exactly once and as early as possible.
+/// * Must be called no more than once.
+/// * Must be called before accessing `static`s.
 #[inline]
 pub unsafe fn data_init(start: &mut usize, end: &usize, data: &usize) {
   let start = start as *mut _;

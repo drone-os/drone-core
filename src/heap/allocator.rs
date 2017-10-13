@@ -23,7 +23,9 @@ pub trait Allocator {
   ///
   /// # Safety
   ///
-  /// Must be called exactly once and before using the allocator.
+  /// * Must be called no more than once.
+  /// * Must be called before using the allocator.
+  /// * `start` must be word-aligned.
   #[inline]
   unsafe fn init(&mut self, start: &mut usize) {
     for i in 0..Self::POOL_COUNT {

@@ -51,7 +51,7 @@ pub(crate) fn heap(input: TokenStream) -> TokenStream {
     use ::core::slice::SliceIndex;
     use ::drone::heap::{Allocator, Pool};
 
-    /// The heap allocator.
+    #[doc(hidden)]
     pub struct Heap {
       pools: [Pool<u8>; #pool_count],
     }
@@ -143,14 +143,14 @@ pub(crate) fn heap(input: TokenStream) -> TokenStream {
       }
     }
 
-    /// Initializes the heap.
+    /// Initializes the allocator.
     ///
-    /// # Safety
+    /// See [`Allocator::init()`] for more details.
     ///
-    /// * Must be called exactly once and before using the allocator.
-    /// * `start` must have the word-size alignment.
+    /// [`Allocator::init()`]:
+    /// ../../drone/heap/allocator/trait.Allocator.html#method.init
     #[inline]
-    pub unsafe fn heap_init(start: &mut usize) {
+    pub unsafe fn init(start: &mut usize) {
       ALLOC.init(start)
     }
   };

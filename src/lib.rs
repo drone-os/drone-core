@@ -23,18 +23,26 @@
 //! [xargo]: https://github.com/japaric/xargo
 #![feature(alloc)]
 #![feature(allocator_api)]
+#![feature(const_atomic_bool_new)]
 #![feature(const_atomic_ptr_new)]
 #![feature(const_atomic_usize_new)]
 #![feature(const_fn)]
+#![feature(const_max_value)]
+#![feature(const_min_value)]
 #![feature(const_ptr_null_mut)]
+#![feature(const_unsafe_cell_new)]
+#![feature(core_intrinsics)]
 #![feature(decl_macro)]
 #![feature(fused)]
 #![feature(generators)]
 #![feature(generator_trait)]
+#![feature(integer_atomics)]
 #![feature(iterator_for_each)]
 #![feature(optin_builtin_traits)]
 #![feature(pointer_methods)]
+#![feature(prelude_import)]
 #![feature(proc_macro)]
+#![feature(slice_concat_ext)]
 #![feature(slice_get_slice)]
 #![feature(untagged_unions)]
 #![warn(missing_docs)]
@@ -44,17 +52,26 @@
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
 
 extern crate alloc;
+#[macro_use]
+extern crate bitflags;
 extern crate drone_macros;
+extern crate futures;
 
-pub mod prelude;
-pub mod reg;
+pub mod collections;
 pub mod heap;
 pub mod mem;
-pub mod routine;
-pub mod collections;
+pub mod prelude;
+pub mod reg;
+pub mod sync;
+pub mod task;
+pub mod thread;
 
 pub use heap::heap;
 pub use reg::reg;
+
+#[prelude_import]
+#[allow(unused_imports)]
+use prelude::*;
 
 #[cfg(feature = "std")]
 use std as core;

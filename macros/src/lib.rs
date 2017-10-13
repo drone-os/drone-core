@@ -12,10 +12,18 @@ extern crate proc_macro;
 extern crate quote;
 extern crate syn;
 
+mod bind;
 mod heap;
 mod reg;
+mod thread_local;
 
 use proc_macro::TokenStream;
+
+/// See `drone` documentation for details.
+#[proc_macro]
+pub fn bind_imp(input: TokenStream) -> TokenStream {
+  bind::bind(input)
+}
 
 /// See `drone` documentation for details.
 #[proc_macro]
@@ -27,4 +35,9 @@ pub fn heap_imp(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn reg_imp(input: TokenStream) -> TokenStream {
   reg::reg(input)
+}
+/// See `drone` documentation for details.
+#[proc_macro]
+pub fn thread_local_imp(input: TokenStream) -> TokenStream {
+  thread_local::thread_local(input)
 }

@@ -74,7 +74,8 @@ impl<T> Pool<T> {
   ///
   /// # Safety
   ///
-  /// Must be called exactly once and before using the pool.
+  /// * Must be called no more than once.
+  /// * Must be called before using the pool.
   #[inline]
   pub unsafe fn init(&mut self, start: &mut usize) {
     let offset = start as *mut _ as usize;
