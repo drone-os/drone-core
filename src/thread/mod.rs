@@ -3,17 +3,23 @@
 //! # The threading model
 //!
 //! A Drone application consists of a static collection of threads. Each thread
-//! consists of a dynamic list of routines, which are executing sequentially
+//! consists of a dynamic chain of routines, which are executing sequentially
 //! within a thread context.
 
-pub mod routine;
+#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
+mod chain;
+#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
+mod executor;
+#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
+mod future;
 
-pub use self::routine::Routine;
+pub use self::chain::Chain;
+pub use self::executor::Executor;
+pub use self::future::ThreadFuture;
 pub use drone_macros::thread_local_imp;
 
-use collections::LinkedList;
 use core::ops::Generator;
-use task::ThreadFuture;
+use futures::{task, Async, Future};
 
 /// A pointer to the current running thread.
 static mut CURRENT_ID: usize = 0;
@@ -40,16 +46,38 @@ where
   unsafe { T::get_unchecked(current_id()) }
 }
 
+/// Initialize the `futures` task system.
+///
+/// # Safety
+///
+/// Must be called before using `futures`.
+#[inline]
+pub unsafe fn init<T>() -> bool
+where
+  T: Thread + 'static,
+{
+  task::init(get_task::<T>, set_task::<T>)
+}
+
+/// Configure a thread-local storage.
+///
+/// See the [`module-level documentation`] for more details.
+///
+/// [`module-level documentation`]: thread/index.html
+pub macro thread_local($($tokens:tt)*) {
+  $crate::thread::thread_local_imp!($($tokens)*);
+}
+
 /// A thread interface.
 pub trait Thread: Sized {
   /// Returns a reference to a thread by `id`.
   unsafe fn get_unchecked(id: usize) -> &'static Self;
 
-  /// Provides a reference to the list of routines.
-  fn list(&self) -> &LinkedList<Routine>;
+  /// Provides a reference to the chain of routines.
+  fn chain(&self) -> &Chain;
 
-  /// Provides a mutable reference to the list of routines.
-  fn list_mut(&mut self) -> &mut LinkedList<Routine>;
+  /// Provides a mutable reference to the chain of routines.
+  fn chain_mut(&mut self) -> &mut Chain;
 
   /// Returns the id of the thread preempted by the current one.
   fn preempted_id(&self) -> usize;
@@ -73,7 +101,7 @@ pub trait Thread: Sized {
 
   /// Runs associated routines sequentially.
   ///
-  /// Completed routines are dropped.
+  /// Completed routines will be dropped.
   ///
   /// # Safety
   ///
@@ -81,29 +109,26 @@ pub trait Thread: Sized {
   unsafe fn run(&mut self, id: usize) {
     self.set_preempted_id(current_id());
     set_current_id(id);
-    self
-      .list_mut()
-      .drain_filter(Routine::resume)
-      .for_each(|_| {});
+    self.chain_mut().drain();
     set_current_id(self.preempted_id());
   }
 
-  /// Spawns a new generator within the thread.
-  fn spawn<G>(&self, g: G)
+  /// Attaches a new routine to the thread.
+  fn routine<G>(&self, g: G)
   where
     G: Generator<Yield = (), Return = ()>,
     G: Send + 'static,
   {
-    self.list().push(g.into());
+    self.chain().push(g);
   }
 
-  /// Spawns a new closure within the thread.
-  fn spawn_fn<F>(&self, f: F)
+  /// Attaches a new closure to the thread.
+  fn callback<F>(&self, f: F)
   where
     F: FnOnce(),
     F: Send + 'static,
   {
-    self.spawn(|| {
+    self.routine(|| {
       if false {
         yield;
       }
@@ -111,7 +136,7 @@ pub trait Thread: Sized {
     });
   }
 
-  /// Spawns a new future within the thread.
+  /// Attaches a new future to the thread.
   fn future<G, R, E>(&self, g: G) -> ThreadFuture<R, E>
   where
     G: Generator<Yield = (), Return = Result<R, E>>,
@@ -121,13 +146,37 @@ pub trait Thread: Sized {
   {
     ThreadFuture::new(self, g)
   }
+
+  /// Attaches a new future executor to the thread.
+  fn exec<F>(&self, f: F)
+  where
+    F: Future<Item = (), Error = ()>,
+    F: Send + 'static,
+  {
+    let mut executor = Executor::new(f);
+    self.routine(move || loop {
+      match executor.poll() {
+        Ok(Async::NotReady) => (),
+        Ok(Async::Ready(())) | Err(()) => break,
+      }
+      yield;
+    });
+  }
 }
 
-/// Configure a thread-local storage.
-///
-/// See the [`module-level documentation`] for more details.
-///
-/// [`module-level documentation`]: thread/index.html
-pub macro thread_local($($tokens:tt)*) {
-  $crate::thread::thread_local_imp!($($tokens)*);
+#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
+fn get_task<T>() -> *mut u8
+where
+  T: Thread + 'static,
+{
+  current::<T>().task()
+}
+
+#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
+#[cfg_attr(feature = "clippy", allow(not_unsafe_ptr_arg_deref))]
+fn set_task<T>(task: *mut u8)
+where
+  T: Thread + 'static,
+{
+  unsafe { current::<T>().set_task(task) }
 }

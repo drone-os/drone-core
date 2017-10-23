@@ -1,9 +1,3 @@
-//! A lock-free allocator that composes multiple memory pools.
-//!
-//! See [`Allocator`] for more details.
-//!
-//! [`Allocator`]: trait.Allocator.html
-
 use super::pool::{Fits, Pool};
 use alloc::allocator::{AllocErr, CannotReallocInPlace, Excess, Layout};
 use core::{cmp, ptr};
@@ -36,19 +30,19 @@ pub trait Allocator {
   /// Returns a reference to a pool or subslice, without doing bounds checking.
   unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
   where
-    I: SliceIndex<[Pool<u8>]>;
+    I: SliceIndex<[Pool]>;
 
   /// Returns a mutable reference to a pool or subslice, without doing bounds
   /// checking.
   unsafe fn get_pool_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
   where
-    I: SliceIndex<[Pool<u8>]>;
+    I: SliceIndex<[Pool]>;
 
   /// Binary searches the pools for a least-sized one which fits `value`.
   #[inline]
   fn binary_search<T>(&self, value: T) -> usize
   where
-    T: Fits<u8>,
+    T: Fits,
   {
     let (mut left, mut right) = (0, Self::POOL_COUNT);
     while right > left {
@@ -67,7 +61,7 @@ pub trait Allocator {
   #[inline]
   unsafe fn alloc_with<F, T>(&self, layout: Layout, f: F) -> Result<T, AllocErr>
   where
-    F: FnOnce(*mut u8, &Pool<u8>) -> T,
+    F: FnOnce(*mut u8, &Pool) -> T,
   {
     let mut pool_idx = self.binary_search(&layout);
     if pool_idx == Self::POOL_COUNT {
@@ -78,7 +72,7 @@ pub trait Allocator {
     loop {
       let pool = self.get_pool_unchecked(pool_idx);
       if let Some(ptr) = pool.alloc() {
-        return Ok(f(ptr, pool));
+        return Ok(f(ptr.get(), pool));
       }
       pool_idx += 1;
       if pool_idx == Self::POOL_COUNT {
@@ -97,7 +91,7 @@ pub trait Allocator {
     f: F,
   ) -> Result<T, AllocErr>
   where
-    F: Fn(*mut u8, &Pool<u8>) -> T,
+    F: Fn(*mut u8, &Pool) -> T,
   {
     let (new_size, old_size) = (new_layout.size(), layout.size());
     if layout.align() == new_layout.align() {
@@ -216,7 +210,7 @@ mod tests {
   use std::mem;
 
   struct TestHeap {
-    pools: [Pool<u8>; 10],
+    pools: [Pool; 10],
   }
 
   impl Allocator for TestHeap {
@@ -224,14 +218,14 @@ mod tests {
 
     unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
     where
-      I: SliceIndex<[Pool<u8>]>,
+      I: SliceIndex<[Pool]>,
     {
       self.pools.get_unchecked(index)
     }
 
     unsafe fn get_pool_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
     where
-      I: SliceIndex<[Pool<u8>]>,
+      I: SliceIndex<[Pool]>,
     {
       self.pools.get_unchecked_mut(index)
     }

@@ -52,7 +52,9 @@
 //! [`reg!`]: ../macro.reg.html
 
 pub mod prelude;
-pub mod flavor;
+
+#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
+mod flavor;
 
 pub use self::flavor::{Ar, Lr, RegFlavor};
 pub use drone_macros::{bind_imp, reg_imp};
@@ -61,6 +63,24 @@ use core::fmt::Debug;
 use core::mem::size_of;
 use core::ops::{BitAnd, BitAndAssign, BitOrAssign, Not, Shl, Shr, Sub};
 use core::ptr::{read_volatile, write_volatile};
+
+/// Define a memory-mapped register.
+///
+/// See the [`module-level documentation`] for more details.
+///
+/// [`module-level documentation`]: reg/index.html
+pub macro bind($($tokens:tt)*) {
+  $crate::reg::bind_imp!($($tokens)*);
+}
+
+/// Define a memory-mapped register.
+///
+/// See the [`module-level documentation`] for more details.
+///
+/// [`module-level documentation`]: reg/index.html
+pub macro reg($($tokens:tt)*) {
+  $crate::reg::reg_imp!($($tokens)*);
+}
 
 /// Memory-mapped register binding. Types which implement this trait should be
 /// zero-sized. This is a zero-cost abstraction for safely working with
@@ -285,46 +305,26 @@ where
   }
 }
 
-macro_rules! impl_reg_raw {
-  ($type:ty) => {
-    impl RegRaw for $type {
-      #[inline]
-      fn size_in_bits() -> $type {
-        size_of::<$type>() as $type * 8
-      }
-
-      #[inline]
-      fn zero() -> $type {
-        0
-      }
-
-      #[inline]
-      fn one() -> $type {
-        1
-      }
+macro impl_reg_raw($type:ty) {
+  impl RegRaw for $type {
+    #[inline]
+    fn size_in_bits() -> $type {
+      size_of::<$type>() as $type * 8
     }
-  };
+
+    #[inline]
+    fn zero() -> $type {
+      0
+    }
+
+    #[inline]
+    fn one() -> $type {
+      1
+    }
+  }
 }
 
 impl_reg_raw!(u64);
 impl_reg_raw!(u32);
 impl_reg_raw!(u16);
 impl_reg_raw!(u8);
-
-/// Define a memory-mapped register.
-///
-/// See the [`module-level documentation`] for more details.
-///
-/// [`module-level documentation`]: reg/index.html
-pub macro bind($($tokens:tt)*) {
-  $crate::reg::bind_imp!($($tokens)*);
-}
-
-/// Define a memory-mapped register.
-///
-/// See the [`module-level documentation`] for more details.
-///
-/// [`module-level documentation`]: reg/index.html
-pub macro reg($($tokens:tt)*) {
-  $crate::reg::reg_imp!($($tokens)*);
-}

@@ -88,12 +88,11 @@ pub(crate) fn thread_local(input: TokenStream) -> TokenStream {
   let output = quote! {
     use core::cell::Cell;
     use core::ptr;
-    use drone::collections::LinkedList;
-    use drone::thread::{Routine, Thread};
+    use drone::thread::{self, Chain, Thread};
 
     #(#attributes)*
     pub struct ThreadLocal {
-      list: LinkedList<Routine>,
+      chain: Chain,
       preempted_id: usize,
       task: Cell<*mut u8>,
       #(
@@ -107,7 +106,7 @@ pub(crate) fn thread_local(input: TokenStream) -> TokenStream {
       #[allow(dead_code)]
       pub const fn new(_id: usize) -> Self {
         Self {
-          list: LinkedList::new(),
+          chain: Chain::new(),
           preempted_id: 0,
           task: Cell::new(ptr::null_mut()),
           #(
@@ -124,13 +123,13 @@ pub(crate) fn thread_local(input: TokenStream) -> TokenStream {
       }
 
       #[inline]
-      fn list(&self) -> &LinkedList<Routine> {
-        &self.list
+      fn chain(&self) -> &Chain {
+        &self.chain
       }
 
       #[inline]
-      fn list_mut(&mut self) -> &mut LinkedList<Routine> {
-        &mut self.list
+      fn chain_mut(&mut self) -> &mut Chain {
+        &mut self.chain
       }
 
       #[inline]
@@ -152,6 +151,16 @@ pub(crate) fn thread_local(input: TokenStream) -> TokenStream {
       unsafe fn set_task(&self, task: *mut u8) {
         self.task.set(task);
       }
+    }
+
+    /// Initialize the `futures` task system.
+    ///
+    /// See [`thread::init()`] for more details.
+    ///
+    /// [`thread::init()`]: ../../drone/thread/fn.init.html
+    #[inline]
+    pub unsafe fn init() {
+      thread::init::<ThreadLocal>();
     }
   };
   output.parse().unwrap()

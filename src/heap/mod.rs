@@ -54,15 +54,15 @@
 //! # extern crate alloc;
 //! # extern crate drone;
 //! # use std as core;
-//! # mod symbols { #[no_mangle] static HEAP_START: usize = 0; }
+//! # pub mod symbols { #[no_mangle] pub static HEAP_START: usize = 0; }
 //! use drone::heap;
 //!
 //! heap!(); // Provides `init` function inside the current scope.
 //!
 //! fn main() {
 //!   extern "C" {
-//!     // A symbol defined in the linker-script. Represents the beginning of the
-//!     // heap region.
+//!     // A symbol defined in the linker-script. Represents the beginning of
+//!     // the heap region.
 //!     static mut HEAP_START: usize;
 //!   }
 //!
@@ -94,8 +94,10 @@
 //!
 //! [`heap!`]: ../macro.heap.html
 
-pub mod pool;
-pub mod allocator;
+#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
+mod pool;
+#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
+mod allocator;
 
 pub use self::allocator::Allocator;
 pub use self::pool::Pool;

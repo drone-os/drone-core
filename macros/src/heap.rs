@@ -53,7 +53,7 @@ pub(crate) fn heap(input: TokenStream) -> TokenStream {
 
     #[doc(hidden)]
     pub struct Heap {
-      pools: [Pool<u8>; #pool_count],
+      pools: [Pool; #pool_count],
     }
 
     #(#attributes)*
@@ -71,7 +71,7 @@ pub(crate) fn heap(input: TokenStream) -> TokenStream {
       #[inline]
       unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
       where
-        I: SliceIndex<[Pool<u8>]>,
+        I: SliceIndex<[Pool]>,
       {
         self.pools.get_unchecked(index)
       }
@@ -79,7 +79,7 @@ pub(crate) fn heap(input: TokenStream) -> TokenStream {
       #[inline]
       unsafe fn get_pool_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
       where
-        I: SliceIndex<[Pool<u8>]>,
+        I: SliceIndex<[Pool]>,
       {
         self.pools.get_unchecked_mut(index)
       }

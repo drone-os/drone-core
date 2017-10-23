@@ -1,8 +1,9 @@
 //! Useful synchronization primitives.
 
-pub mod mutex;
-pub mod rwlock;
 pub mod oneshot;
+
+mod mutex;
+mod rwlock;
 
 pub use self::mutex::{Mutex, MutexGuard};
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};

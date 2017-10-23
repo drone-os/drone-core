@@ -38,6 +38,7 @@
 #![feature(generator_trait)]
 #![feature(integer_atomics)]
 #![feature(iterator_for_each)]
+#![feature(nonzero)]
 #![feature(optin_builtin_traits)]
 #![feature(pointer_methods)]
 #![feature(prelude_import)]
@@ -57,13 +58,14 @@ extern crate bitflags;
 extern crate drone_macros;
 extern crate futures;
 
-pub mod collections;
+#[cfg(feature = "std")]
+extern crate core;
+
 pub mod heap;
 pub mod mem;
 pub mod prelude;
 pub mod reg;
 pub mod sync;
-pub mod task;
 pub mod thread;
 
 pub use heap::heap;
@@ -72,6 +74,3 @@ pub use reg::reg;
 #[prelude_import]
 #[allow(unused_imports)]
 use prelude::*;
-
-#[cfg(feature = "std")]
-use std as core;

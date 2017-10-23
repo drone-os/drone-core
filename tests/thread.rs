@@ -35,11 +35,11 @@ impl Drop for Wrapper {
 }
 
 #[test]
-fn generator() {
+fn routine() {
   let counter = Arc::new(Counter(Cell::new(0)));
   let wrapper = Wrapper(Arc::clone(&counter));
   unsafe {
-    THREADS[0].spawn(move || loop {
+    THREADS[0].routine(move || loop {
       {
         (wrapper.0).0.set((wrapper.0).0.get() + 1);
         if (wrapper.0).0.get() == 2 {
@@ -59,11 +59,11 @@ fn generator() {
 }
 
 #[test]
-fn closure() {
+fn callback() {
   let counter = Arc::new(Counter(Cell::new(0)));
   let wrapper = Wrapper(Arc::clone(&counter));
   unsafe {
-    THREADS[0].spawn_fn(move || {
+    THREADS[0].callback(move || {
       (wrapper.0).0.set((wrapper.0).0.get() + 1);
     });
     assert_eq!(counter.0.get(), 0);

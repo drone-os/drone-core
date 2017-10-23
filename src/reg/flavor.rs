@@ -1,5 +1,3 @@
-//! Marker traits and types related to memory-mapped registers.
-
 /// Marker trait for various register flavors.
 pub trait RegFlavor {}
 

@@ -4,7 +4,7 @@ use alloc::arc::Arc;
 use core::cell::UnsafeCell;
 use core::sync::atomic::{AtomicU8, Ordering};
 use core::sync::atomic::Ordering::*;
-use futures::{Async, Poll};
+use futures::{Async, Future, Poll};
 use futures::task::{self, Task};
 
 /// Represents the completion half of a oneshot through which the result of a

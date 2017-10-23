@@ -1,22 +1,17 @@
-//! A future for result from another thread.
-//!
-//! See [`ThreadFuture`] for more details.
-//!
-//! [`ThreadFuture`]: struct.ThreadFuture.html
-
 use core::intrinsics;
 use core::ops::Generator;
 use core::ops::GeneratorState::*;
-use futures::{Async, Poll};
+use futures::{Async, Future, Poll};
 use sync::oneshot::{channel, Receiver};
+use thread::Thread;
 
 /// A future for result from another thread.
 ///
 /// This future is created by the [`future`] method on [`Thread`]. See its
 /// documentation for more.
 ///
-/// [`Thread`]: ../../thread/trait.Thread.html
-/// [`future`]: ../../thread/trait.Thread.html#method.future
+/// [`Thread`]: ../trait.Thread.html
+/// [`future`]: ../trait.Thread.html#method.future
 #[must_use]
 pub struct ThreadFuture<R, E> {
   rx: Receiver<Result<R, E>>,
@@ -33,7 +28,7 @@ impl<R, E> ThreadFuture<R, E> {
     E: Send + 'static,
   {
     let (tx, rx) = channel();
-    thread.spawn(move || loop {
+    thread.routine(move || loop {
       if tx.is_canceled() {
         break;
       }

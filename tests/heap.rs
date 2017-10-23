@@ -23,5 +23,5 @@ heap! {
 
 #[test]
 fn size() {
-  assert_eq!(size_of::<Heap>(), size_of::<heap::Pool<u8>>() * 2);
+  assert_eq!(size_of::<Heap>(), size_of::<heap::Pool>() * 2);
 }
