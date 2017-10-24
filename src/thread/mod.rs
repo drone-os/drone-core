@@ -9,13 +9,16 @@
 #[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod chain;
 #[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
+mod exec_future;
+#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod executor;
 #[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
-mod future;
+mod thread_future;
 
 pub use self::chain::Chain;
+pub use self::exec_future::ExecFuture;
 pub use self::executor::Executor;
-pub use self::future::ThreadFuture;
+pub use self::thread_future::ThreadFuture;
 pub use drone_macros::thread_local_imp;
 
 use core::ops::Generator;
@@ -136,7 +139,7 @@ pub trait Thread: Sized {
     });
   }
 
-  /// Attaches a new future to the thread.
+  /// Attaches a new routine to the thread, and returns a future for it.
   fn future<G, R, E>(&self, g: G) -> ThreadFuture<R, E>
   where
     G: Generator<Yield = (), Return = Result<R, E>>,
@@ -161,6 +164,17 @@ pub trait Thread: Sized {
       }
       yield;
     });
+  }
+
+  /// Attaches a new future executor to the thread, and returns a future for it.
+  fn exec_future<R, E, F>(&self, f: F) -> ExecFuture<R, E>
+  where
+    F: Future<Item = R, Error = E>,
+    F: Send + 'static,
+    R: Send + 'static,
+    E: Send + 'static,
+  {
+    ExecFuture::new(self, f)
   }
 }
 
