@@ -8,10 +8,10 @@ use std as core;
 
 reg!(0xDEAD_BEEF 0x20 TestReg);
 
-fn assert_send<T: Send>() {}
-fn assert_sync<T: Sync>() {}
+fn assert_copy<T: Copy>() {}
+fn assert_clone<T: Clone>() {}
 
 fn main() {
-  assert_send::<TestReg<Ar>>();
-  assert_sync::<TestReg<Ar>>();
+  assert_copy::<TestReg<Cr>>();
+  assert_clone::<TestReg<Cr>>();
 }

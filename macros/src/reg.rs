@@ -76,34 +76,31 @@ pub(crate) fn reg(input: TokenStream) -> TokenStream {
       }
     }
 
-    impl RegValue for #value {
+    impl From<#raw> for #value {
+      #[inline]
+      fn from(value: #raw) -> Self {
+        Self { value }
+      }
+    }
+
+    impl RegVal for #value {
       type Raw = #raw;
 
       #[inline]
-      fn new(value: #raw) -> Self {
-        Self { value }
-      }
-
-      #[inline]
-      fn raw(&self) -> #raw {
+      fn into_raw(self) -> #raw {
         self.value
-      }
-
-      #[inline]
-      fn raw_mut(&mut self) -> &mut #raw {
-        &mut self.value
       }
     }
 
     #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-    impl Clone for #reg<::drone::reg::Ar> {
+    impl Clone for #reg<::drone::reg::Cr> {
       #[inline]
       fn clone(&self) -> Self {
         Self { ..*self }
       }
     }
 
-    impl Copy for #reg<::drone::reg::Ar> {}
+    impl Copy for #reg<::drone::reg::Cr> {}
 
     #(
       impl<T: RegFlavor> #trait_name<T> for #trait_reg<T> {}

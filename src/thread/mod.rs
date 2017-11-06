@@ -126,7 +126,7 @@ pub trait Thread: Sized {
   }
 
   /// Attaches a new closure to the thread.
-  fn callback<F>(&self, f: F)
+  fn routine_fn<F>(&self, f: F)
   where
     F: FnOnce(),
     F: Send + 'static,
@@ -148,6 +148,22 @@ pub trait Thread: Sized {
     E: Send + 'static,
   {
     ThreadFuture::new(self, g)
+  }
+
+  /// Attaches a new closure to the thread, and returns a future for it.
+  fn future_fn<F, R, E>(&self, f: F) -> ThreadFuture<R, E>
+  where
+    F: FnOnce() -> Result<R, E>,
+    F: Send + 'static,
+    R: Send + 'static,
+    E: Send + 'static,
+  {
+    self.future(|| {
+      if false {
+        yield;
+      }
+      f()
+    })
   }
 
   /// Attaches a new future executor to the thread.

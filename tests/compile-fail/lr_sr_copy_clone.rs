@@ -16,4 +16,8 @@ fn main() {
   //~^ ERROR `TestReg<drone::reg::Lr>: std::marker::Copy` is not satisfied
   assert_clone::<TestReg<Lr>>();
   //~^ ERROR `TestReg<drone::reg::Lr>: std::clone::Clone` is not satisfied
+  assert_copy::<TestReg<Sr>>();
+  //~^ ERROR `TestReg<drone::reg::Sr>: std::marker::Copy` is not satisfied
+  assert_clone::<TestReg<Sr>>();
+  //~^ ERROR `TestReg<drone::reg::Sr>: std::clone::Clone` is not satisfied
 }

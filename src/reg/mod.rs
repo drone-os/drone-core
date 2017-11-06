@@ -56,12 +56,12 @@ pub mod prelude;
 #[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod flavor;
 
-pub use self::flavor::{Ar, Lr, RegFlavor};
+pub use self::flavor::*;
 pub use drone_macros::{bind_imp, reg_imp};
 
 use core::fmt::Debug;
 use core::mem::size_of;
-use core::ops::{BitAnd, BitAndAssign, BitOrAssign, Not, Shl, Shr, Sub};
+use core::ops::{BitAnd, BitOr, Not, Shl, Shr, Sub};
 use core::ptr::{read_volatile, write_volatile};
 
 /// Define a memory-mapped register.
@@ -91,14 +91,16 @@ where
   T: RegFlavor,
 {
   /// Type that wraps a raw register value.
-  type Value: RegValue;
+  type Value: RegVal;
 
   /// Memory address of the register.
   const ADDRESS: usize;
 
-  /// Register binding constructor. All the safety of the memory-mapped
-  /// registers interface is based on a contract that this method must be called
-  /// no more than once for a particular register in the whole program.
+  /// Creates a binding.
+  ///
+  /// # Safety
+  ///
+  /// Must be called no more than once.
   unsafe fn bind() -> Self;
 }
 
@@ -111,19 +113,19 @@ where
   /// Reads and wraps a register value from its memory address.
   #[inline]
   fn read(&self) -> Self::Value {
-    Self::Value::new(self.read_raw())
+    unsafe { self.read_raw().into() }
   }
 
   /// Reads a raw register value from its memory address.
   #[inline]
-  fn read_raw(&self) -> <Self::Value as RegValue>::Raw {
-    unsafe { read_volatile(self.to_ptr()) }
+  unsafe fn read_raw(&self) -> <Self::Value as RegVal>::Raw {
+    read_volatile(self.to_ptr())
   }
 
   /// Returns an unsafe constant pointer to the register's memory address.
   #[inline]
-  fn to_ptr(&self) -> *const <Self::Value as RegValue>::Raw {
-    Self::ADDRESS as *const <Self::Value as RegValue>::Raw
+  fn to_ptr(&self) -> *const <Self::Value as RegVal>::Raw {
+    Self::ADDRESS as *const <Self::Value as RegVal>::Raw
   }
 }
 
@@ -133,63 +135,57 @@ where
   Self: Reg<T>,
   T: RegFlavor,
 {
-  /// Writes a wrapped register value to its memory address.
-  #[inline]
-  fn write_value(&self, value: &Self::Value) {
-    self.write_raw(value.raw());
-  }
-
   /// Calls `f` on a default value and writes the result to the register's
   /// memory address.
   #[inline]
   fn write<F>(&self, f: F)
   where
-    F: FnOnce(&mut Self::Value) -> &Self::Value,
+    F: FnOnce(Self::Value) -> Self::Value,
   {
-    self.write_value(f(&mut Self::Value::default()));
+    self.write_val(f(Self::Value::default()));
+  }
+
+  /// Writes a wrapped register value to its memory address.
+  #[inline]
+  fn write_val(&self, value: Self::Value) {
+    unsafe { self.write_raw(value.into_raw()) };
   }
 
   /// Writes a raw register value to its memory address.
   #[inline]
-  fn write_raw(&self, value: <Self::Value as RegValue>::Raw) {
-    unsafe { write_volatile(self.to_mut_ptr(), value) };
+  unsafe fn write_raw(&self, value: <Self::Value as RegVal>::Raw) {
+    write_volatile(self.to_mut_ptr(), value);
   }
 
   /// Returns an unsafe mutable pointer to the register's memory address.
   #[inline]
-  fn to_mut_ptr(&self) -> *mut <Self::Value as RegValue>::Raw {
-    Self::ADDRESS as *mut <Self::Value as RegValue>::Raw
+  fn to_mut_ptr(&self) -> *mut <Self::Value as RegVal>::Raw {
+    Self::ADDRESS as *mut <Self::Value as RegVal>::Raw
   }
 }
 
 /// Register that can read and write its value in a single-threaded context.
-pub trait RwLocalReg
+pub trait URegLocal
 where
   Self: RReg<Lr> + WReg<Lr>,
 {
-  /// Atomically modifies a register's value.
-  #[inline]
-  fn modify<F>(&self, f: F)
+  /// Atomically updates a register's value.
+  fn update<F>(&self, f: F)
   where
-    F: FnOnce(&mut Self::Value) -> &Self::Value;
+    F: FnOnce(Self::Value) -> Self::Value;
 }
 
 /// Wrapper for a corresponding register's value.
-pub trait RegValue
+pub trait RegVal
 where
   Self: Sized + Default,
+  Self: From<<Self as RegVal>::Raw>,
 {
   /// Raw integer type.
   type Raw: RegRaw;
 
-  /// Constructs a wrapper from the raw register `value`.
-  fn new(value: Self::Raw) -> Self;
-
   /// Returns the raw integer value.
-  fn raw(&self) -> Self::Raw;
-
-  /// Returns a mutable reference to the raw integer value.
-  fn raw_mut(&mut self) -> &mut Self::Raw;
+  fn into_raw(self) -> Self::Raw;
 
   /// Checks the set state of the bit of the register's value by `offset`.
   ///
@@ -197,9 +193,9 @@ where
   ///
   /// If `offset` is greater than or equals to the platform's word size in bits.
   #[inline]
-  fn bit(&self, offset: Self::Raw) -> bool {
-    assert!(offset < Self::Raw::size_in_bits());
-    self.raw() & Self::Raw::one() << offset != Self::Raw::zero()
+  unsafe fn bit(self, offset: Self::Raw) -> bool {
+    assert!(offset < Self::Raw::size());
+    self.into_raw() & Self::Raw::one() << offset != Self::Raw::zero()
   }
 
   /// Sets or clears the bit of the register's value by `offset`.
@@ -208,15 +204,14 @@ where
   ///
   /// If `offset` is greater than or equals to the platform's word size in bits.
   #[inline]
-  fn set_bit(&mut self, offset: Self::Raw, value: bool) -> &mut Self {
-    assert!(offset < Self::Raw::size_in_bits());
+  unsafe fn set_bit(self, offset: Self::Raw, value: bool) -> Self {
+    assert!(offset < Self::Raw::size());
     let mask = Self::Raw::one() << offset;
     if value {
-      *self.raw_mut() |= mask;
+      self.into_raw() | mask
     } else {
-      *self.raw_mut() &= !mask;
-    }
-    self
+      self.into_raw() & !mask
+    }.into()
   }
 
   /// Reads the `width` number of low order bits at the `offset` position from
@@ -228,10 +223,10 @@ where
   ///   bits.
   /// * If `width + offset` is greater than the platform's word size in bits.
   #[inline]
-  fn bits(&self, offset: Self::Raw, width: Self::Raw) -> Self::Raw {
-    assert!(offset < Self::Raw::size_in_bits());
-    assert!(width <= Self::Raw::size_in_bits() - offset);
-    self.raw() >> offset & (Self::Raw::one() << width) - Self::Raw::one()
+  unsafe fn bits(self, offset: Self::Raw, width: Self::Raw) -> Self::Raw {
+    assert!(offset < Self::Raw::size());
+    assert!(width <= Self::Raw::size() - offset);
+    self.into_raw() >> offset & (Self::Raw::one() << width) - Self::Raw::one()
   }
 
   /// Copies the `width` number of low order bits from the `value` into the same
@@ -244,26 +239,25 @@ where
   /// * If `width + offset` is greater than the platform's word size in bits.
   /// * If `value` contains bits outside the width range.
   #[inline]
-  fn set_bits(
-    &mut self,
+  unsafe fn set_bits(
+    self,
     offset: Self::Raw,
     width: Self::Raw,
     value: Self::Raw,
-  ) -> &mut Self {
-    assert!(offset < Self::Raw::size_in_bits());
-    assert!(width <= Self::Raw::size_in_bits() - offset);
-    if width != Self::Raw::size_in_bits() {
+  ) -> Self {
+    assert!(offset < Self::Raw::size());
+    assert!(width <= Self::Raw::size() - offset);
+    if width != Self::Raw::size() {
       assert_eq!(
         value & !((Self::Raw::one() << width) - Self::Raw::one()),
         Self::Raw::zero()
       );
-      *self.raw_mut() &=
-        !((Self::Raw::one() << width) - Self::Raw::one() << offset);
-      *self.raw_mut() |= value << offset;
+      self.into_raw()
+        & !((Self::Raw::one() << width) - Self::Raw::one() << offset)
+        | value << offset
     } else {
-      *self.raw_mut() = value;
-    }
-    self
+      value
+    }.into()
   }
 }
 
@@ -274,16 +268,15 @@ where
     + Copy
     + Default
     + PartialOrd
-    + BitAndAssign
-    + BitOrAssign
-    + BitAnd<Output = Self>
     + Not<Output = Self>
     + Sub<Output = Self>
+    + BitOr<Output = Self>
+    + BitAnd<Output = Self>
     + Shl<Self, Output = Self>
     + Shr<Self, Output = Self>,
 {
   /// Size of the type in bits.
-  fn size_in_bits() -> Self;
+  fn size() -> Self;
 
   /// Returns zero.
   fn zero() -> Self;
@@ -292,23 +285,23 @@ where
   fn one() -> Self;
 }
 
-impl<T> RwLocalReg for T
+impl<T> URegLocal for T
 where
   T: RReg<Lr> + WReg<Lr>,
 {
   #[inline]
-  fn modify<F>(&self, f: F)
+  fn update<F>(&self, f: F)
   where
-    F: FnOnce(&mut Self::Value) -> &Self::Value,
+    F: FnOnce(Self::Value) -> Self::Value,
   {
-    self.write_value(f(&mut self.read()));
+    self.write_val(f(self.read()));
   }
 }
 
 macro impl_reg_raw($type:ty) {
   impl RegRaw for $type {
     #[inline]
-    fn size_in_bits() -> $type {
+    fn size() -> $type {
       size_of::<$type>() as $type * 8
     }
 

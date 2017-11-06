@@ -59,11 +59,11 @@ fn routine() {
 }
 
 #[test]
-fn callback() {
+fn routine_fn() {
   let counter = Arc::new(Counter(Cell::new(0)));
   let wrapper = Wrapper(Arc::clone(&counter));
   unsafe {
-    THREADS[0].callback(move || {
+    THREADS[0].routine_fn(move || {
       (wrapper.0).0.set((wrapper.0).0.get() + 1);
     });
     assert_eq!(counter.0.get(), 0);
