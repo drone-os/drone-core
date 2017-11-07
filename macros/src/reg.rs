@@ -38,9 +38,15 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
     ) => Ident::new(format!("u{}", raw)),
     token => bail!("Invalid tokens after {:?}: {:?}", address, token),
   };
+  let reset = match input.next() {
+    Some(
+      TokenTree::Token(Token::Literal(Lit::Int(reset, IntTy::Unsuffixed))),
+    ) => Lit::Int(reset, IntTy::Usize),
+    token => bail!("Invalid tokens after {}: {:?}", raw, token),
+  };
   let reg = match input.next() {
     Some(TokenTree::Token(Token::Ident(reg))) => reg,
-    token => bail!("Invalid tokens after {}: {:?}", raw, token),
+    token => bail!("Invalid tokens after {:?}: {:?}", reset, token),
   };
   let value = Ident::new(format!("{}Val", reg));
   for token in input {
@@ -58,7 +64,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
     }
 
     #(#value_attributes)*
-    #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default)]
+    #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
     pub struct #value {
       value: #raw,
     }
@@ -88,6 +94,13 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
       #[inline]
       fn into_raw(self) -> #raw {
         self.value
+      }
+    }
+
+    impl Default for #value {
+      #[inline]
+      fn default() -> Self {
+        (#reset as #raw).into()
       }
     }
 

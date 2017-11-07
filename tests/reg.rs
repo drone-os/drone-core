@@ -10,7 +10,16 @@ use std::mem::size_of;
 reg! {
   //! Test doc attribute
   #![doc = "test attribute"]
-  0xDEAD_BEEF 0x20 TestReg RReg WReg
+  0xDEAD_BEEF 0x20 0x0000_0000 TestReg RReg WReg
+}
+
+#[test]
+fn reg_val_default() {
+  reg! {
+    #![allow(dead_code)]
+    0xDEAD_BEEF 0x20 0xBEEF_CACE TestRegReset
+  };
+  assert_eq!(TestRegResetVal::default().into_raw(), 0xBEEF_CACE);
 }
 
 #[test]
@@ -21,12 +30,12 @@ fn size_of_reg() {
 }
 
 #[test]
-fn size_of_reg_value() {
+fn size_of_reg_val() {
   assert_eq!(size_of::<TestRegVal>(), 4);
 }
 
 #[test]
-fn reg_value_bit() {
+fn reg_val_bit() {
   unsafe {
     assert!(!TestRegVal::default().bit(17));
     assert!(!TestRegVal::default().bit(0));
@@ -40,14 +49,14 @@ fn reg_value_bit() {
 
 #[test]
 #[should_panic]
-fn reg_value_bit_invalid_offset() {
+fn reg_val_bit_invalid_offset() {
   unsafe {
     TestRegVal::default().bit(32);
   }
 }
 
 #[test]
-fn reg_value_set_bit() {
+fn reg_val_set_bit() {
   unsafe {
     let mut value = TestRegVal::default();
     value = value.set_bit(0, false);
@@ -70,14 +79,14 @@ fn reg_value_set_bit() {
 
 #[test]
 #[should_panic]
-fn reg_value_set_bit_invalid_offset() {
+fn reg_val_set_bit_invalid_offset() {
   unsafe {
     TestRegVal::default().set_bit(32, true);
   }
 }
 
 #[test]
-fn reg_value_bits() {
+fn reg_val_bits() {
   unsafe {
     assert_eq!(TestRegVal::default().bits(17, 3), 0);
     assert_eq!(TestRegVal::default().bits(0, 5), 0);
@@ -91,7 +100,7 @@ fn reg_value_bits() {
 
 #[test]
 #[should_panic]
-fn reg_value_bits_invalid_offset() {
+fn reg_val_bits_invalid_offset() {
   unsafe {
     TestRegVal::default().bits(32, 1);
   }
@@ -99,14 +108,14 @@ fn reg_value_bits_invalid_offset() {
 
 #[test]
 #[should_panic]
-fn reg_value_bits_invalid_width() {
+fn reg_val_bits_invalid_width() {
   unsafe {
     TestRegVal::default().bits(31, 2);
   }
 }
 
 #[test]
-fn reg_value_set_bits() {
+fn reg_val_set_bits() {
   unsafe {
     let mut value = TestRegVal::default();
     value = value.set_bits(0, 2, 0);
@@ -131,7 +140,7 @@ fn reg_value_set_bits() {
 
 #[test]
 #[should_panic]
-fn reg_value_set_bits_invalid_offset() {
+fn reg_val_set_bits_invalid_offset() {
   unsafe {
     TestRegVal::default().set_bits(32, 1, 0);
   }
@@ -139,7 +148,7 @@ fn reg_value_set_bits_invalid_offset() {
 
 #[test]
 #[should_panic]
-fn reg_value_set_bits_invalid_width() {
+fn reg_val_set_bits_invalid_width() {
   unsafe {
     TestRegVal::default().set_bits(31, 2, 0);
   }
@@ -147,7 +156,7 @@ fn reg_value_set_bits_invalid_width() {
 
 #[test]
 #[should_panic]
-fn reg_value_set_bits_invalid_value() {
+fn reg_val_set_bits_invalid_value() {
   unsafe {
     TestRegVal::default().set_bits(0, 1, 0b10);
   }

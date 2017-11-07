@@ -16,6 +16,7 @@
 //!   //! SysTick control and status register.
 //!   0xE000_E010 // memory address
 //!   0x20 // bit size
+//!   0x0000_0000 // reset value
 //!   Ctrl // register's name
 //!   RReg WReg // list of marker traits to implement
 //! }
@@ -32,7 +33,7 @@
 //! # mod stk {
 //! #   use drone::reg;
 //! #   use drone::reg::prelude::*;
-//! #   reg!(0xE000_E010 0x20 Ctrl RReg WReg);
+//! #   reg!(0xE000_E010 0x20 0x0000_0000 Ctrl RReg WReg);
 //! # }
 //! # fn main() {
 //! use drone::reg;
@@ -135,7 +136,7 @@ where
   Self: Reg<T>,
   T: RegFlavor,
 {
-  /// Calls `f` on a default value and writes the result to the register's
+  /// Updates a new reset value with `f` and writes the result to the register's
   /// memory address.
   #[inline]
   fn write<F>(&self, f: F)
@@ -266,7 +267,6 @@ pub trait RegRaw
 where
   Self: Debug
     + Copy
-    + Default
     + PartialOrd
     + Not<Output = Self>
     + Sub<Output = Self>
