@@ -159,6 +159,7 @@ pub trait Allocator {
     )
   }
 
+  #[cfg_attr(feature = "clippy", allow(needless_pass_by_value))]
   #[doc(hidden)]
   #[inline]
   unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
@@ -175,6 +176,7 @@ pub trait Allocator {
     (0, pool.size())
   }
 
+  #[cfg_attr(feature = "clippy", allow(needless_pass_by_value))]
   #[doc(hidden)]
   #[inline]
   unsafe fn grow_in_place(
@@ -192,6 +194,7 @@ pub trait Allocator {
     }
   }
 
+  #[cfg_attr(feature = "clippy", allow(needless_pass_by_value))]
   #[doc(hidden)]
   #[inline]
   unsafe fn shrink_in_place(

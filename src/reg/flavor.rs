@@ -1,12 +1,15 @@
-/// Marker trait for all register flavors.
+/// Marker trait for all registers.
 pub trait RegFlavor {}
 
-/// Marker trait for shared register flavors.
+/// Marker trait for owned registers.
+pub trait RegOwned: RegFlavor {}
+
+/// Marker trait for shared registers.
 pub trait RegShared: RegFlavor {}
 
-/// Zero-sized marker type for **thread-unsafe** register bindings. "Lr" stands
-/// for "Local Register". Does not implement `Send`, `Sync`, 'Clone', 'Copy'.
-pub struct Lr;
+/// Zero-sized marker type for **thread-unsafe** register bindings. "Ur" stands
+/// for "Unique Register". Does not implement `Send`, `Sync`, 'Clone', 'Copy'.
+pub struct Ur;
 
 /// Zero-sized marker type for **thread-safe** register bindings. "Sr" stands
 /// for "Shared register". Does implement `Send` and `Sync`, but not 'Clone' and
@@ -17,10 +20,12 @@ pub struct Sr;
 /// for "Copyable register". Does implement `Send`, `Sync`, 'Clone', 'Copy'.
 pub struct Cr;
 
-impl !Sync for Lr {}
-impl RegFlavor for Lr {}
+impl !Sync for Ur {}
+impl RegFlavor for Ur {}
+impl RegOwned for Ur {}
 
 impl RegFlavor for Sr {}
+impl RegOwned for Sr {}
 impl RegShared for Sr {}
 
 impl RegFlavor for Cr {}

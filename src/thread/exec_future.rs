@@ -27,22 +27,24 @@ impl<R, E> ExecFuture<R, E> {
   {
     let (tx, rx) = channel();
     let mut executor = Executor::new(future);
-    thread.routine(move || loop {
-      if tx.is_canceled() {
-        break;
-      }
-      match executor.poll() {
-        Ok(Async::NotReady) => (),
-        Ok(Async::Ready(ready)) => {
-          tx.send(Ok(ready)).ok();
+    thread.routine(move || {
+      loop {
+        if tx.is_canceled() {
           break;
         }
-        Err(err) => {
-          tx.send(Err(err)).ok();
-          break;
+        match executor.poll() {
+          Ok(Async::NotReady) => (),
+          Ok(Async::Ready(ready)) => {
+            tx.send(Ok(ready)).ok();
+            break;
+          }
+          Err(err) => {
+            tx.send(Err(err)).ok();
+            break;
+          }
         }
+        yield;
       }
-      yield;
     });
     Self { rx }
   }

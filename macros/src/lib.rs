@@ -1,43 +1,55 @@
 //! Drone procedural macros.
 //!
 //! See `drone` documentation for details.
+#![feature(decl_macro)]
 #![feature(proc_macro)]
 #![recursion_limit = "256"]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
 
+#[macro_use]
+extern crate error_chain;
 extern crate proc_macro;
 #[macro_use]
 extern crate quote;
 extern crate syn;
 
 mod bind;
+mod errors;
 mod heap;
 mod reg;
 mod thread_local;
 
 use proc_macro::TokenStream;
 
-/// See `drone` documentation for details.
+#[doc(hidden)]
 #[proc_macro]
-pub fn bind_imp(input: TokenStream) -> TokenStream {
-  bind::bind(input)
+pub fn bind_impl(input: TokenStream) -> TokenStream {
+  tokens!(bind::bind(input))
 }
 
-/// See `drone` documentation for details.
+#[doc(hidden)]
 #[proc_macro]
-pub fn heap_imp(input: TokenStream) -> TokenStream {
-  heap::heap(input)
+pub fn heap_impl(input: TokenStream) -> TokenStream {
+  tokens!(heap::heap(input))
 }
 
-/// See `drone` documentation for details.
+#[doc(hidden)]
 #[proc_macro]
-pub fn reg_imp(input: TokenStream) -> TokenStream {
-  reg::reg(input)
+pub fn reg_impl(input: TokenStream) -> TokenStream {
+  tokens!(reg::reg(input))
 }
-/// See `drone` documentation for details.
+
+#[doc(hidden)]
 #[proc_macro]
-pub fn thread_local_imp(input: TokenStream) -> TokenStream {
-  thread_local::thread_local(input)
+pub fn thread_local_impl(input: TokenStream) -> TokenStream {
+  tokens!(thread_local::thread_local(input))
+}
+
+macro tokens($tokens:expr) {
+  match $tokens {
+    Ok(tokens) => tokens.parse().unwrap(),
+    Err(message) => panic!(message),
+  }
 }

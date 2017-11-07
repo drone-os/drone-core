@@ -19,7 +19,7 @@ pub use self::chain::Chain;
 pub use self::exec_future::ExecFuture;
 pub use self::executor::Executor;
 pub use self::thread_future::ThreadFuture;
-pub use drone_macros::thread_local_imp;
+pub use drone_macros::thread_local_impl;
 
 use core::ops::Generator;
 use futures::{task, Async, Future};
@@ -68,7 +68,7 @@ where
 ///
 /// [`module-level documentation`]: thread/index.html
 pub macro thread_local($($tokens:tt)*) {
-  $crate::thread::thread_local_imp!($($tokens)*);
+  $crate::thread::thread_local_impl!($($tokens)*);
 }
 
 /// A thread interface.
@@ -173,12 +173,14 @@ pub trait Thread: Sized {
     F: Send + 'static,
   {
     let mut executor = Executor::new(f);
-    self.routine(move || loop {
-      match executor.poll() {
-        Ok(Async::NotReady) => (),
-        Ok(Async::Ready(())) | Err(()) => break,
+    self.routine(move || {
+      loop {
+        match executor.poll() {
+          Ok(Async::NotReady) => (),
+          Ok(Async::Ready(())) | Err(()) => break,
+        }
+        yield;
       }
-      yield;
     });
   }
 

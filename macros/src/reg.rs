@@ -1,58 +1,57 @@
+use errors::*;
 use proc_macro::TokenStream;
-use syn;
+use quote::Tokens;
+use syn::{parse_token_trees, Ident, IntTy, Lit, Token, TokenTree};
 
-pub(crate) fn reg(input: TokenStream) -> TokenStream {
-  let input = syn::parse_token_trees(&input.to_string()).unwrap();
+pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
+  let input = parse_token_trees(&input.to_string())?;
   let mut input = input.into_iter();
   let mut attributes = Vec::new();
+  let mut trait_name = Vec::new();
   let address = loop {
     match input.next() {
-      Some(syn::TokenTree::Token(syn::Token::DocComment(string))) => {
+      Some(TokenTree::Token(Token::DocComment(string))) => {
         let string = string.trim_left_matches("//!");
         attributes.push(quote!(#[doc = #string]));
       }
-      Some(syn::TokenTree::Token(syn::Token::Pound)) => match input.next() {
-        Some(syn::TokenTree::Token(syn::Token::Not)) => match input.next() {
-          Some(syn::TokenTree::Delimited(delimited)) => {
+      Some(TokenTree::Token(Token::Pound)) => match input.next() {
+        Some(TokenTree::Token(Token::Not)) => match input.next() {
+          Some(TokenTree::Delimited(delimited)) => {
             attributes.push(quote!(# #delimited))
           }
-          token => panic!("Invalid tokens after `#!`: {:?}", token),
+          token => bail!("Invalid tokens after `#!`: {:?}", token),
         },
-        token => panic!("Invalid tokens after `#`: {:?}", token),
+        token => bail!("Invalid tokens after `#`: {:?}", token),
       },
-      Some(
-        syn::TokenTree::Token(
-          syn::Token::Literal(syn::Lit::Int(address, syn::IntTy::Unsuffixed)),
-        ),
-      ) => {
-        break syn::Lit::Int(address, syn::IntTy::Usize);
+      Some(TokenTree::Token(
+        Token::Literal(Lit::Int(address, IntTy::Unsuffixed)),
+      )) => {
+        break Lit::Int(address, IntTy::Usize);
       }
-      token => panic!("Invalid token: {:?}", token),
+      token => bail!("Invalid token: {:?}", token),
     }
   };
   let value_attributes = attributes.clone();
   let raw = match input.next() {
     Some(
-      syn::TokenTree::Token(
-        syn::Token::Literal(syn::Lit::Int(raw, syn::IntTy::Unsuffixed)),
-      ),
-    ) => syn::Ident::new(format!("u{}", raw)),
-    token => panic!("Invalid tokens after {:?}: {:?}", address, token),
+      TokenTree::Token(Token::Literal(Lit::Int(raw, IntTy::Unsuffixed))),
+    ) => Ident::new(format!("u{}", raw)),
+    token => bail!("Invalid tokens after {:?}: {:?}", address, token),
   };
   let reg = match input.next() {
-    Some(syn::TokenTree::Token(syn::Token::Ident(reg))) => reg,
-    token => panic!("Invalid tokens after {}: {:?}", raw, token),
+    Some(TokenTree::Token(Token::Ident(reg))) => reg,
+    token => bail!("Invalid tokens after {}: {:?}", raw, token),
   };
-  let value = syn::Ident::new(format!("{}Val", reg));
-  let trait_name = input
-    .map(|token| match token {
-      syn::TokenTree::Token(syn::Token::Ident(name)) => name,
-      token => panic!("Trait name expected, got {:?}", token),
-    })
-    .collect::<Vec<_>>();
+  let value = Ident::new(format!("{}Val", reg));
+  for token in input {
+    match token {
+      TokenTree::Token(Token::Ident(name)) => trait_name.push(name),
+      token => bail!("Trait name expected, got {:?}", token),
+    }
+  }
   let trait_reg = trait_name.iter().map(|_| reg.clone()).collect::<Vec<_>>();
 
-  let output = quote! {
+  Ok(quote! {
     #(#attributes)*
     pub struct #reg<T: RegFlavor> {
       flavor: ::core::marker::PhantomData<T>,
@@ -105,6 +104,5 @@ pub(crate) fn reg(input: TokenStream) -> TokenStream {
     #(
       impl<T: RegFlavor> #trait_name<T> for #trait_reg<T> {}
     )*
-  };
-  output.parse().unwrap()
+  })
 }

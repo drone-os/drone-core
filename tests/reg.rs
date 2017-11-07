@@ -15,7 +15,7 @@ reg! {
 
 #[test]
 fn size_of_reg() {
-  assert_eq!(size_of::<TestReg<Lr>>(), 0);
+  assert_eq!(size_of::<TestReg<Ur>>(), 0);
   assert_eq!(size_of::<TestReg<Sr>>(), 0);
   assert_eq!(size_of::<TestReg<Cr>>(), 0);
 }

@@ -28,18 +28,20 @@ impl<R, E> ThreadFuture<R, E> {
     E: Send + 'static,
   {
     let (tx, rx) = channel();
-    thread.routine(move || loop {
-      if tx.is_canceled() {
-        break;
-      }
-      match generator.resume() {
-        Yielded(()) => (),
-        Complete(complete) => {
-          tx.send(complete).ok();
+    thread.routine(move || {
+      loop {
+        if tx.is_canceled() {
           break;
         }
+        match generator.resume() {
+          Yielded(()) => (),
+          Complete(complete) => {
+            tx.send(complete).ok();
+            break;
+          }
+        }
+        yield;
       }
-      yield;
     });
     Self { rx }
   }

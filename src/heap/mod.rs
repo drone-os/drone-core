@@ -101,7 +101,7 @@ mod allocator;
 
 pub use self::allocator::Allocator;
 pub use self::pool::Pool;
-pub use drone_macros::heap_imp;
+pub use drone_macros::heap_impl;
 
 /// Configure a heap allocator.
 ///
@@ -109,5 +109,5 @@ pub use drone_macros::heap_imp;
 ///
 /// [`module-level documentation`]: heap/index.html
 pub macro heap($($tokens:tt)*) {
-  $crate::heap::heap_imp!($($tokens)*);
+  $crate::heap::heap_impl!($($tokens)*);
 }

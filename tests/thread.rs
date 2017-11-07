@@ -39,14 +39,16 @@ fn routine() {
   let counter = Arc::new(Counter(Cell::new(0)));
   let wrapper = Wrapper(Arc::clone(&counter));
   unsafe {
-    THREADS[0].routine(move || loop {
-      {
-        (wrapper.0).0.set((wrapper.0).0.get() + 1);
-        if (wrapper.0).0.get() == 2 {
-          break;
+    THREADS[0].routine(move || {
+      loop {
+        {
+          (wrapper.0).0.set((wrapper.0).0.get() + 1);
+          if (wrapper.0).0.get() == 2 {
+            break;
+          }
         }
+        yield;
       }
-      yield;
     });
     assert_eq!(counter.0.get(), 0);
     THREADS[0].run(0);

@@ -11,6 +11,7 @@ repository = "https://github.com/drone-os/drone"
 proc-macro = true
 
 [dependencies]
+error-chain = "0.11"
 quote = "0.3"
 
 [dependencies.syn]

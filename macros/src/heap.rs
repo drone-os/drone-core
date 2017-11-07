@@ -1,38 +1,41 @@
+use errors::*;
 use proc_macro::TokenStream;
 use quote;
+use quote::Tokens;
 use std::{fmt, vec};
-use syn;
+use syn::{parse_token_trees, DelimToken, Delimited, IntTy, Lit, Token,
+          TokenTree};
 
 struct Pool {
   size: u32,
   capacity: u32,
 }
 
-pub(crate) fn heap(input: TokenStream) -> TokenStream {
-  let input = syn::parse_token_trees(&input.to_string()).unwrap();
+pub(crate) fn heap(input: TokenStream) -> Result<Tokens> {
+  let input = parse_token_trees(&input.to_string())?;
   let mut input = input.into_iter();
   let mut attributes = Vec::new();
   let mut pools = Vec::new();
   let mut size = 0;
   while let Some(token) = input.next() {
     match token {
-      syn::TokenTree::Token(token) => match token {
-        syn::Token::DocComment(string) => parse_doc(&string, &mut attributes),
-        syn::Token::Pound => parse_attr(&mut input, &mut attributes),
-        syn::Token::Ident(ident) => if ident == "size" {
-          parse_size(&mut input, &mut size);
+      TokenTree::Token(token) => match token {
+        Token::DocComment(string) => parse_doc(&string, &mut attributes),
+        Token::Pound => parse_attr(&mut input, &mut attributes)?,
+        Token::Ident(ident) => if ident == "size" {
+          parse_size(&mut input, &mut size)?;
         } else if ident == "pools" {
-          parse_pools(&mut input, &mut pools);
+          parse_pools(&mut input, &mut pools)?;
         } else {
-          panic!("Invalid ident: {}", ident);
+          bail!("Invalid ident: {}", ident);
         },
-        token => panic!("Invalid root token: {:?}", token),
+        token => bail!("Invalid root token: {:?}", token),
       },
-      token => panic!("Invalid root token tree: {:?}", token),
+      token => bail!("Invalid root token tree: {:?}", token),
     }
   }
 
-  normalize_pools(&mut pools, size);
+  normalize_pools(&mut pools, size)?;
   let mut pool_start = Vec::new();
   let mut pool_size = Vec::new();
   let mut pool_capacity = Vec::new();
@@ -45,7 +48,7 @@ pub(crate) fn heap(input: TokenStream) -> TokenStream {
     offset += pool.length();
   }
 
-  let output = quote! {
+  Ok(quote! {
     use ::alloc::allocator::{Alloc, AllocErr, CannotReallocInPlace, Excess,
                              Layout};
     use ::core::slice::SliceIndex;
@@ -153,24 +156,24 @@ pub(crate) fn heap(input: TokenStream) -> TokenStream {
     pub unsafe fn init(start: &mut usize) {
       ALLOC.init(start)
     }
-  };
-  output.parse().unwrap()
+  })
 }
 
-fn normalize_pools(pools: &mut Vec<Pool>, size: u32) {
+fn normalize_pools(pools: &mut Vec<Pool>, size: u32) -> Result<()> {
   pools.sort_by_key(|pool| pool.size);
   let free = pools
     .iter()
     .map(Pool::length)
     .fold(size as i64, |a, e| a - e as i64);
   if free != 0 {
-    panic!(
+    bail!(
       "`pools` not matches `size`. Difference is {}. Consider setting `size` \
        to {}.",
       -free,
       size as i64 - free
     );
   }
+  Ok(())
 }
 
 fn parse_doc(input: &str, attributes: &mut Vec<quote::Tokens>) {
@@ -179,102 +182,95 @@ fn parse_doc(input: &str, attributes: &mut Vec<quote::Tokens>) {
 }
 
 fn parse_attr(
-  input: &mut vec::IntoIter<syn::TokenTree>,
+  input: &mut vec::IntoIter<TokenTree>,
   attributes: &mut Vec<quote::Tokens>,
-) {
+) -> Result<()> {
   match input.next() {
-    Some(syn::TokenTree::Token(syn::Token::Not)) => match input.next() {
-      Some(syn::TokenTree::Delimited(delimited)) => {
+    Some(TokenTree::Token(Token::Not)) => match input.next() {
+      Some(TokenTree::Delimited(delimited)) => {
         attributes.push(quote!(# #delimited))
       }
-      token => panic!("Invalid tokens after `#!`: {:?}", token),
+      token => bail!("Invalid tokens after `#!`: {:?}", token),
     },
-    token => panic!("Invalid tokens after `#`: {:?}", token),
+    token => bail!("Invalid tokens after `#`: {:?}", token),
   }
+  Ok(())
 }
 
-fn parse_size(input: &mut vec::IntoIter<syn::TokenTree>, size: &mut u32) {
+fn parse_size(
+  input: &mut vec::IntoIter<TokenTree>,
+  size: &mut u32,
+) -> Result<()> {
   match input.next() {
-    Some(syn::TokenTree::Token(syn::Token::Eq)) => match input.next() {
+    Some(TokenTree::Token(Token::Eq)) => match input.next() {
       Some(
-        syn::TokenTree::Token(
-          syn::Token::Literal(syn::Lit::Int(int, syn::IntTy::Unsuffixed)),
-        ),
+        TokenTree::Token(Token::Literal(Lit::Int(int, IntTy::Unsuffixed))),
       ) => {
         if int > u32::max_value() as u64 {
-          panic!("Invalid size: {}", int);
+          bail!("Invalid size: {}", int);
         }
         *size = int as u32;
         match input.next() {
-          Some(syn::TokenTree::Token(syn::Token::Semi)) => (),
-          token => panic!("Invalid tokens after `size = {}`: {:?}", int, token),
+          Some(TokenTree::Token(Token::Semi)) => (),
+          token => bail!("Invalid tokens after `size = {}`: {:?}", int, token),
         }
       }
-      token => panic!("Invalid tokens after `size =`: {:?}", token),
+      token => bail!("Invalid tokens after `size =`: {:?}", token),
     },
-    token => panic!("Invalid tokens after `size`: {:?}", token),
+    token => bail!("Invalid tokens after `size`: {:?}", token),
   }
+  Ok(())
 }
 
 fn parse_pools(
-  input: &mut vec::IntoIter<syn::TokenTree>,
+  input: &mut vec::IntoIter<TokenTree>,
   pools: &mut Vec<Pool>,
-) {
+) -> Result<()> {
   match input.next() {
-    Some(syn::TokenTree::Token(syn::Token::Eq)) => (),
-    token => panic!("Invalid tokens after `pools`: {:?}", token),
+    Some(TokenTree::Token(Token::Eq)) => (),
+    token => bail!("Invalid tokens after `pools`: {:?}", token),
   }
   match input.next() {
-    Some(
-      syn::TokenTree::Delimited(syn::Delimited {
-        delim: syn::DelimToken::Bracket,
-        tts: pools_tokens,
-      }),
-    ) => {
+    Some(TokenTree::Delimited(Delimited {
+      delim: DelimToken::Bracket,
+      tts: pools_tokens,
+    })) => {
       let mut pools_tokens = pools_tokens.into_iter();
       while let Some(token) = pools_tokens.next() {
         match token {
-          syn::TokenTree::Delimited(syn::Delimited {
-            delim: syn::DelimToken::Bracket,
+          TokenTree::Delimited(Delimited {
+            delim: DelimToken::Bracket,
             tts: pool_tokens,
           }) => {
             let mut pool_tokens = pool_tokens.into_iter();
             let size = match pool_tokens.next() {
-              Some(
-                syn::TokenTree::Token(
-                  syn::Token::Literal(
-                    syn::Lit::Int(size, syn::IntTy::Unsuffixed),
-                  ),
-                ),
-              ) => size,
+              Some(TokenTree::Token(
+                Token::Literal(Lit::Int(size, IntTy::Unsuffixed)),
+              )) => size,
               token => {
-                panic!("Invalid tokens after `pools = [... [`: {:?}", token)
+                bail!("Invalid tokens after `pools = [... [`: {:?}", token)
               }
             };
             match pool_tokens.next() {
-              Some(syn::TokenTree::Token(syn::Token::Semi)) => (),
-              token => panic!(
+              Some(TokenTree::Token(Token::Semi)) => (),
+              token => bail!(
                 "Invalid tokens after `pools = [... [{}`: {:?}",
                 size,
                 token
               ),
             }
             let capacity = match pool_tokens.next() {
-              Some(
-                syn::TokenTree::Token(
-                  syn::Token::Literal(
-                    syn::Lit::Int(capacity, syn::IntTy::Unsuffixed),
-                  ),
-                ),
-              ) => capacity,
-              token => panic!(
+              Some(TokenTree::Token(
+                Token::Literal(Lit::Int(capacity, IntTy::Unsuffixed)),
+              )) => capacity,
+              token => bail!(
                 "Invalid tokens after `pools = [... [{};`: {:?}",
                 size,
                 token
               ),
             };
             match pool_tokens.next() {
-              Some(token) => panic!(
+              Some(token) => bail!(
                 "Invalid tokens after `pools = [... [{}; {}`: {:?}",
                 size,
                 capacity,
@@ -283,18 +279,18 @@ fn parse_pools(
               None => (),
             }
             if size == 0 || size > u32::max_value() as u64 {
-              panic!("Invalid pool size: {}", size);
+              bail!("Invalid pool size: {}", size);
             }
             if capacity == 0 || capacity > u32::max_value() as u64 {
-              panic!("Invalid pool capacity: {}", capacity);
+              bail!("Invalid pool capacity: {}", capacity);
             }
             pools.push(Pool {
               size: size as u32,
               capacity: capacity as u32,
             });
             match pools_tokens.next() {
-              Some(syn::TokenTree::Token(syn::Token::Comma)) | None => (),
-              token => panic!(
+              Some(TokenTree::Token(Token::Comma)) | None => (),
+              token => bail!(
                 "Invalid tokens after `pools = [... {}`: {:?}",
                 pools.last().unwrap(),
                 token
@@ -302,19 +298,20 @@ fn parse_pools(
             }
           }
           token => if let Some(pool) = pools.last() {
-            panic!("Invalid tokens after `pools = [... {}`: {:?}", pool, token)
+            bail!("Invalid tokens after `pools = [... {}`: {:?}", pool, token)
           } else {
-            panic!("Invalid tokens after `pools = [`: {:?}", token)
+            bail!("Invalid tokens after `pools = [`: {:?}", token)
           },
         }
       }
       match input.next() {
-        Some(syn::TokenTree::Token(syn::Token::Semi)) => (),
-        token => panic!("Invalid tokens after `pools = [...]`: {:?}", token),
+        Some(TokenTree::Token(Token::Semi)) => (),
+        token => bail!("Invalid tokens after `pools = [...]`: {:?}", token),
       }
     }
-    token => panic!("Invalid tokens after `pools =`: {:?}", token),
+    token => bail!("Invalid tokens after `pools =`: {:?}", token),
   }
+  Ok(())
 }
 
 impl fmt::Display for Pool {
@@ -330,11 +327,11 @@ impl Pool {
 }
 
 trait IntExt {
-  fn as_usize_lit(self) -> syn::Token;
+  fn as_usize_lit(self) -> Token;
 }
 
 impl IntExt for u32 {
-  fn as_usize_lit(self) -> syn::Token {
-    syn::Token::Literal(syn::Lit::Int(self as u64, syn::IntTy::Usize))
+  fn as_usize_lit(self) -> Token {
+    Token::Literal(Lit::Int(self as u64, IntTy::Usize))
   }
 }

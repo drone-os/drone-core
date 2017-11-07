@@ -218,12 +218,14 @@ impl<T> Inner<T> {
         lock.insert(Lock::COMPLETE);
         Some(locked)
       })
-      .map(|locked| if locked {
-        unsafe { (*self.rx_task.get()).take().map(|task| task.notify()) };
-        self.update(Release, |lock| {
-          lock.toggle(Lock::RX_LOCK);
-          Some(())
-        });
+      .map(|locked| {
+        if locked {
+          unsafe { (*self.rx_task.get()).take().map(|task| task.notify()) };
+          self.update(Release, |lock| {
+            lock.toggle(Lock::RX_LOCK);
+            Some(())
+          });
+        }
       });
   }
 
@@ -254,12 +256,14 @@ impl<T> Inner<T> {
         lock.insert(Lock::COMPLETE);
         Some(locked)
       })
-      .map(|locked| if locked {
-        unsafe { (*self.tx_task.get()).take().map(|task| task.notify()) };
-        self.update(Release, |lock| {
-          lock.toggle(Lock::TX_LOCK);
-          Some(())
-        });
+      .map(|locked| {
+        if locked {
+          unsafe { (*self.tx_task.get()).take().map(|task| task.notify()) };
+          self.update(Release, |lock| {
+            lock.toggle(Lock::TX_LOCK);
+            Some(())
+          });
+        }
       });
   }
 

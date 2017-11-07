@@ -1,8 +1,10 @@
+use errors::*;
 use proc_macro::TokenStream;
-use syn;
+use quote::Tokens;
+use syn::{parse_token_trees, DelimToken, Delimited, Ident, Token, TokenTree};
 
-pub(crate) fn thread_local(input: TokenStream) -> TokenStream {
-  let input = syn::parse_token_trees(&input.to_string()).unwrap();
+pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens> {
+  let input = parse_token_trees(&input.to_string())?;
   let mut input = input.into_iter();
   let mut attributes = Vec::new();
   let mut field_visiblity = Vec::new();
@@ -15,7 +17,7 @@ pub(crate) fn thread_local(input: TokenStream) -> TokenStream {
     let mut inner_attributes = Vec::new();
     loop {
       match input.next() {
-        Some(syn::TokenTree::Token(syn::Token::DocComment(string))) => {
+        Some(TokenTree::Token(Token::DocComment(string))) => {
           if string.starts_with("//!") {
             let string = string.trim_left_matches("//!");
             attributes.push(quote!(#[doc = #string]));
@@ -24,51 +26,47 @@ pub(crate) fn thread_local(input: TokenStream) -> TokenStream {
             inner_attributes.push(quote!(#[doc = #string]));
           }
         }
-        Some(syn::TokenTree::Token(syn::Token::Pound)) => match input.next() {
-          Some(syn::TokenTree::Token(syn::Token::Not)) => match input.next() {
-            Some(syn::TokenTree::Delimited(delimited)) => {
+        Some(TokenTree::Token(Token::Pound)) => match input.next() {
+          Some(TokenTree::Token(Token::Not)) => match input.next() {
+            Some(TokenTree::Delimited(delimited)) => {
               attributes.push(quote!(# #delimited))
             }
-            token => panic!("Invalid tokens after `#!`: {:?}", token),
+            token => bail!("Invalid tokens after `#!`: {:?}", token),
           },
-          Some(syn::TokenTree::Delimited(delimited)) => {
+          Some(TokenTree::Delimited(delimited)) => {
             inner_attributes.push(quote!(# #delimited))
           }
-          token => panic!("Invalid tokens after `#`: {:?}", token),
+          token => bail!("Invalid tokens after `#`: {:?}", token),
         },
-        Some(syn::TokenTree::Token(syn::Token::Ident(ref ident)))
-          if ident == "pub" =>
-        {
+        Some(TokenTree::Token(Token::Ident(ref ident))) if ident == "pub" => {
           public = true;
         }
-        Some(syn::TokenTree::Token(syn::Token::Ident(name))) => {
+        Some(TokenTree::Token(Token::Ident(name))) => {
           match input.next() {
-            Some(syn::TokenTree::Token(syn::Token::Colon)) => (),
-            token => panic!("Invalid token after `{}`: {:?}", name, token),
+            Some(TokenTree::Token(Token::Colon)) => (),
+            token => bail!("Invalid token after `{}`: {:?}", name, token),
           }
           let mut ty = Vec::new();
           loop {
             match input.next() {
-              Some(syn::TokenTree::Token(syn::Token::Eq)) => break,
-              Some(syn::TokenTree::Token(token)) => ty.push(token),
+              Some(TokenTree::Token(Token::Eq)) => break,
+              Some(TokenTree::Token(token)) => ty.push(token),
               token => {
-                panic!("Invalid token after `{}: {:?}`: {:?}", name, ty, token)
+                bail!("Invalid token after `{}: {:?}`: {:?}", name, ty, token)
               }
             }
           }
           let init = match input.next() {
-            Some(
-              syn::TokenTree::Delimited(syn::Delimited {
-                delim: syn::DelimToken::Brace,
-                tts,
-              }),
-            ) => tts,
+            Some(TokenTree::Delimited(Delimited {
+              delim: DelimToken::Brace,
+              tts,
+            })) => tts,
             token => {
-              panic!("Invalid token after `{}: {:?} =`: {:?}", name, ty, token)
+              bail!("Invalid token after `{}: {:?} =`: {:?}", name, ty, token)
             }
           };
           field_visiblity.push(if public {
-            Some(syn::Ident::new("pub"))
+            Some(Ident::new("pub"))
           } else {
             None
           });
@@ -79,13 +77,13 @@ pub(crate) fn thread_local(input: TokenStream) -> TokenStream {
           break;
         }
         None => break 'outer,
-        token => panic!("Invalid token: {:?}", token),
+        token => bail!("Invalid token: {:?}", token),
       }
     }
   }
   let field_name2 = field_name.clone();
 
-  let output = quote! {
+  Ok(quote! {
     use core::cell::Cell;
     use core::ptr;
     use drone::thread::{self, Chain, Thread};
@@ -162,6 +160,5 @@ pub(crate) fn thread_local(input: TokenStream) -> TokenStream {
     pub unsafe fn init() {
       thread::init::<ThreadLocal>();
     }
-  };
-  output.parse().unwrap()
+  })
 }

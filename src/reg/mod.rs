@@ -40,7 +40,7 @@
 //! use core::mem::size_of_val;
 //!
 //! reg::bind! {
-//!   stk_ctrl: stk::Ctrl<Lr>,
+//!   stk_ctrl: stk::Ctrl<Ur>,
 //! }
 //!
 //! // Use the bindings inside the current scope.
@@ -57,7 +57,7 @@ pub mod prelude;
 mod flavor;
 
 pub use self::flavor::*;
-pub use drone_macros::{bind_imp, reg_imp};
+pub use drone_macros::{bind_impl, reg_impl};
 
 use core::fmt::Debug;
 use core::mem::size_of;
@@ -70,7 +70,7 @@ use core::ptr::{read_volatile, write_volatile};
 ///
 /// [`module-level documentation`]: reg/index.html
 pub macro bind($($tokens:tt)*) {
-  $crate::reg::bind_imp!($($tokens)*);
+  $crate::reg::bind_impl!($($tokens)*);
 }
 
 /// Define a memory-mapped register.
@@ -79,7 +79,7 @@ pub macro bind($($tokens:tt)*) {
 ///
 /// [`module-level documentation`]: reg/index.html
 pub macro reg($($tokens:tt)*) {
-  $crate::reg::reg_imp!($($tokens)*);
+  $crate::reg::reg_impl!($($tokens)*);
 }
 
 /// Memory-mapped register binding. Types which implement this trait should be
@@ -165,9 +165,9 @@ where
 }
 
 /// Register that can read and write its value in a single-threaded context.
-pub trait URegLocal
+pub trait URegUnique
 where
-  Self: RReg<Lr> + WReg<Lr>,
+  Self: RReg<Ur> + WReg<Ur>,
 {
   /// Atomically updates a register's value.
   fn update<F>(&self, f: F)
@@ -285,9 +285,9 @@ where
   fn one() -> Self;
 }
 
-impl<T> URegLocal for T
+impl<T> URegUnique for T
 where
-  T: RReg<Lr> + WReg<Lr>,
+  T: RReg<Ur> + WReg<Ur>,
 {
   #[inline]
   fn update<F>(&self, f: F)
