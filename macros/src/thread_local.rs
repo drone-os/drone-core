@@ -4,8 +4,7 @@ use quote::Tokens;
 use syn::{parse_token_trees, DelimToken, Delimited, Ident, Token, TokenTree};
 
 pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens> {
-  let input = parse_token_trees(&input.to_string())?;
-  let mut input = input.into_iter();
+  let mut input = parse_token_trees(&input.to_string())?.into_iter();
   let mut attributes = Vec::new();
   let mut field_visiblity = Vec::new();
   let mut field_attributes = Vec::new();
@@ -17,14 +16,17 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens> {
     let mut inner_attributes = Vec::new();
     loop {
       match input.next() {
-        Some(TokenTree::Token(Token::DocComment(string))) => {
-          if string.starts_with("//!") {
-            let string = string.trim_left_matches("//!");
-            attributes.push(quote!(#[doc = #string]));
-          } else {
-            let string = string.trim_left_matches("///");
-            inner_attributes.push(quote!(#[doc = #string]));
-          }
+        Some(TokenTree::Token(Token::DocComment(ref string)))
+          if string.starts_with("//!") =>
+        {
+          let string = string.trim_left_matches("//!");
+          attributes.push(quote!(#[doc = #string]));
+        }
+        Some(TokenTree::Token(Token::DocComment(ref string)))
+          if string.starts_with("///") =>
+        {
+          let string = string.trim_left_matches("///");
+          inner_attributes.push(quote!(#[doc = #string]));
         }
         Some(TokenTree::Token(Token::Pound)) => match input.next() {
           Some(TokenTree::Token(Token::Not)) => match input.next() {

@@ -12,15 +12,16 @@ struct Pool {
 }
 
 pub(crate) fn heap(input: TokenStream) -> Result<Tokens> {
-  let input = parse_token_trees(&input.to_string())?;
-  let mut input = input.into_iter();
+  let mut input = parse_token_trees(&input.to_string())?.into_iter();
   let mut attributes = Vec::new();
   let mut pools = Vec::new();
   let mut size = 0;
   while let Some(token) = input.next() {
     match token {
       TokenTree::Token(token) => match token {
-        Token::DocComment(string) => parse_doc(&string, &mut attributes),
+        Token::DocComment(ref string) if string.starts_with("//!") => {
+          parse_doc(&string, &mut attributes)
+        }
         Token::Pound => parse_attr(&mut input, &mut attributes)?,
         Token::Ident(ident) => if ident == "size" {
           parse_size(&mut input, &mut size)?;

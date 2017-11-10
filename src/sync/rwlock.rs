@@ -54,12 +54,14 @@ where
   lock: &'a RwLock<T>,
 }
 
-unsafe impl<T: Send + Sync> Send for RwLock<T> {}
+unsafe impl<T: Send> Send for RwLock<T> {}
 unsafe impl<T: Send + Sync> Sync for RwLock<T> {}
 
 impl<'a, T> !Send for RwLockReadGuard<'a, T> {}
+unsafe impl<'a, T: Sync> Sync for RwLockReadGuard<'a, T> {}
 
 impl<'a, T> !Send for RwLockWriteGuard<'a, T> {}
+unsafe impl<'a, T: Sync> Sync for RwLockWriteGuard<'a, T> {}
 
 impl<T> RwLock<T> {
   /// Creates a new instance of an `RwLock<T>` which is unlocked.

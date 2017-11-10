@@ -12,7 +12,10 @@ proc-macro = true
 
 [dependencies]
 error-chain = "0.11"
+lazy_static = "0.2"
+regex = "0.2"
 quote = "0.3"
+Inflector = "0.10"
 
 [dependencies.syn]
 version = "0.11"

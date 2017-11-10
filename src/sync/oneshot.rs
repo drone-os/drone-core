@@ -94,7 +94,7 @@ impl<T> Sender<T> {
   /// Polls this [`Sender`] half to detect whether the [`Receiver`] this has
   /// paired with has gone away.
   ///
-  /// This function can be used to learn about when the [`Receiver`] (consumer)
+  /// This function can be used to learn about when the [`Receiver`] \(consumer)
   /// half has gone away and nothing will be able to receive a message sent from
   /// [`send`].
   ///
@@ -126,7 +126,7 @@ impl<T> Sender<T> {
   /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has gone
   /// away.
   ///
-  /// This function can be used to learn about when the [`Receiver`] (consumer)
+  /// This function can be used to learn about when the [`Receiver`] \(consumer)
   /// half has gone away and nothing will be able to receive a message sent from
   /// [`send`].
   ///

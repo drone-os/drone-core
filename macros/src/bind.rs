@@ -4,8 +4,7 @@ use quote::Tokens;
 use syn::{parse_token_trees, Token, TokenTree};
 
 pub(crate) fn bind(input: TokenStream) -> Result<Tokens> {
-  let input = parse_token_trees(&input.to_string())?;
-  let mut input = input.into_iter().fuse();
+  let mut input = parse_token_trees(&input.to_string())?.into_iter().fuse();
   let mut names = Vec::new();
   let mut regs = Vec::new();
   'outer: loop {
@@ -38,7 +37,8 @@ pub(crate) fn bind(input: TokenStream) -> Result<Tokens> {
 
   Ok(quote! {
     #(
-      let #names = unsafe {
+      #[allow(unused_mut)]
+      let mut #names = unsafe {
         type Register = #(#regs)*;
         Register::bind()
       };

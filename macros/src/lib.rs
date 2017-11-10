@@ -3,16 +3,20 @@
 //! See `drone` documentation for details.
 #![feature(decl_macro)]
 #![feature(proc_macro)]
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
 
 #[macro_use]
 extern crate error_chain;
+extern crate inflector;
+#[macro_use]
+extern crate lazy_static;
 extern crate proc_macro;
 #[macro_use]
 extern crate quote;
+extern crate regex;
 extern crate syn;
 
 mod bind;
@@ -21,6 +25,7 @@ mod heap;
 mod reg;
 mod thread_local;
 
+use errors::*;
 use proc_macro::TokenStream;
 
 #[doc(hidden)]
@@ -50,6 +55,7 @@ pub fn thread_local_impl(input: TokenStream) -> TokenStream {
 macro tokens($tokens:expr) {
   match $tokens {
     Ok(tokens) => tokens.parse().unwrap(),
-    Err(message) => panic!(message),
+    Err(Error(ErrorKind::Msg(message), _)) => panic!(message),
+    Err(_) => unreachable!(),
   }
 }
