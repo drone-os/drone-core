@@ -6,7 +6,7 @@ use drone::reg;
 use drone::reg::prelude::*;
 use std as core;
 
-reg!(0xDEAD_BEEF 0x20 0xBEEF_CACE TEST_REG RReg WReg);
+reg!(TEST_REG 0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg);
 
 fn assert_ureg_unique<'a, T: URegUnique<'a>>() {}
 

@@ -10,14 +10,14 @@ use test_reg::Val;
 reg! {
   //! Test doc attribute
   #![doc = "test attribute"]
-  0xDEAD_BEEF 0x20 0x0000_0000 TEST_REG RReg WReg
+  TEST_REG 0xDEAD_BEEF 0x20 0x0000_0000 RReg WReg
   TEST_BIT { 0 1 }
   TEST_BITS { 1 3 }
 }
 
 reg! {
   #![allow(dead_code)]
-  0xDEAD_BEEF 0x20 0xBEEF_CACE TEST_RESET
+  TEST_RESET 0xDEAD_BEEF 0x20 0xBEEF_CACE
 }
 
 #[test]

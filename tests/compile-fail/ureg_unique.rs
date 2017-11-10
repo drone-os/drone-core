@@ -5,9 +5,9 @@ extern crate drone;
 use drone::reg;
 use drone::reg::prelude::*;
 
-reg!(0xDEAD_BEEF 0x20 0xBEEF_CACE RW_REG RReg WReg);
-reg!(0xDEAD_BEEF 0x20 0xBEEF_CACE RO_REG RReg);
-reg!(0xDEAD_BEEF 0x20 0xBEEF_CACE WO_REG WReg);
+reg!(RW_REG 0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg);
+reg!(RO_REG 0xDEAD_BEEF 0x20 0xBEEF_CACE RReg);
+reg!(WO_REG 0xDEAD_BEEF 0x20 0xBEEF_CACE WReg);
 
 fn assert_ureg_unique<'a, T: URegUnique<'a>>() {}
 

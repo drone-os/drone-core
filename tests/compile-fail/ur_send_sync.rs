@@ -5,7 +5,7 @@ extern crate drone;
 use drone::reg;
 use drone::reg::prelude::*;
 
-reg!(0xDEAD_BEEF 0x20 0xBEEF_CACE TEST_REG);
+reg!(TEST_REG 0xDEAD_BEEF 0x20 0xBEEF_CACE);
 
 fn assert_send<T: Send>() {}
 fn assert_sync<T: Sync>() {}

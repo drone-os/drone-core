@@ -23,6 +23,7 @@ mod bind;
 mod errors;
 mod heap;
 mod reg;
+mod reg_block;
 mod thread_local;
 
 use errors::*;
@@ -44,6 +45,12 @@ pub fn heap_impl(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn reg_impl(input: TokenStream) -> TokenStream {
   tokens!(reg::reg(input))
+}
+
+#[doc(hidden)]
+#[proc_macro]
+pub fn reg_block_impl(input: TokenStream) -> TokenStream {
+  tokens!(reg_block::reg_block(input))
 }
 
 #[doc(hidden)]

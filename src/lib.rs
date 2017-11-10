@@ -69,7 +69,7 @@ pub mod sync;
 pub mod thread;
 
 pub use heap::heap;
-pub use reg::reg;
+pub use reg::{reg, reg_block};
 
 #[prelude_import]
 #[allow(unused_imports)]

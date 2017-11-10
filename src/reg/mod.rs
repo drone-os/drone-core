@@ -8,20 +8,26 @@
 //! ```
 //! # #![feature(decl_macro)]
 //! # fn main() {}
-//! use drone::reg;
+//! use drone::{reg, reg_block};
 //! use drone::reg::prelude::*;
 //!
-//! reg! {
-//!   //! SysTick control and status register.
-//!   0xE000_E010 // memory address
-//!   0x20 // bit size
-//!   0x0000_0000 // reset value
-//!   CTRL // register's name
-//!   RReg WReg // list of marker traits to implement
-//!   /// Counter enable.
-//!   ENABLE { // field name
-//!     0 // offset
-//!     1 // width
+//! reg_block! {
+//!   //! SysTick timer.
+//!   STK // peripheral name
+//!
+//!   reg! {
+//!     //! SysTick control and status register.
+//!     CTRL // register name
+//!     0xE000_E010 // memory address
+//!     0x20 // bit size
+//!     0x0000_0000 // reset value
+//!     RReg WReg // list of marker traits to implement
+//!
+//!     /// Counter enable.
+//!     ENABLE { // field name
+//!       0 // offset
+//!       1 // width
+//!     }
 //!   }
 //! }
 //! ```
@@ -34,10 +40,9 @@
 //! ```
 //! # #![feature(decl_macro)]
 //! # use std as core;
-//! # mod stk {
-//! #   use drone::reg;
-//! #   use drone::reg::prelude::*;
-//! #   reg!(0xE000_E010 0x20 0x0000_0000 CTRL RReg WReg);
+//! # drone::reg_block! {
+//! #   STK
+//! #   reg!(CTRL 0xE000_E010 0x20 0x0000_0000 RReg WReg);
 //! # }
 //! # fn main() {
 //! use drone::reg;
@@ -62,14 +67,14 @@ pub mod prelude;
 mod flavor;
 
 pub use self::flavor::*;
-pub use drone_macros::{bind_impl, reg_impl};
+pub use drone_macros::{bind_impl, reg_block_impl, reg_impl};
 
 use core::fmt::Debug;
 use core::mem::size_of;
 use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr, Sub};
 use core::ptr::{read_volatile, write_volatile};
 
-/// Define a memory-mapped register.
+/// Binds memory-mapped registers.
 ///
 /// See the [`module-level documentation`] for more details.
 ///
@@ -78,13 +83,22 @@ pub macro bind($($tokens:tt)*) {
   $crate::reg::bind_impl!($($tokens)*);
 }
 
-/// Define a memory-mapped register.
+/// Defines a memory-mapped register.
 ///
 /// See the [`module-level documentation`] for more details.
 ///
 /// [`module-level documentation`]: reg/index.html
 pub macro reg($($tokens:tt)*) {
   $crate::reg::reg_impl!($($tokens)*);
+}
+
+/// Defines a block of memory-mapped registers.
+///
+/// See the [`module-level documentation`] for more details.
+///
+/// [`module-level documentation`]: reg/index.html
+pub macro reg_block($($tokens:tt)*) {
+  $crate::reg::reg_block_impl!($($tokens)*);
 }
 
 /// Disambiguation for `Reg::Hold::Val`

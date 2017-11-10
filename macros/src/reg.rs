@@ -26,7 +26,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
   let mut field_name = Vec::new();
   let mut field_offset = Vec::new();
   let mut field_width = Vec::new();
-  let address = loop {
+  let name = loop {
     match input.next() {
       Some(TokenTree::Token(Token::DocComment(ref string)))
         if string.starts_with("//!") =>
@@ -43,13 +43,15 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
         },
         token => bail!("Invalid tokens after `#`: {:?}", token),
       },
-      Some(TokenTree::Token(
-        Token::Literal(Lit::Int(address, IntTy::Unsuffixed)),
-      )) => {
-        break Lit::Int(address, IntTy::Usize);
-      }
+      Some(TokenTree::Token(Token::Ident(name))) => break name,
       token => bail!("Invalid token: {:?}", token),
     }
+  };
+  let address = match input.next() {
+    Some(
+      TokenTree::Token(Token::Literal(Lit::Int(address, IntTy::Unsuffixed))),
+    ) => Lit::Int(address, IntTy::Usize),
+    token => bail!("Invalid tokens after {:?}: {:?}", name, token),
   };
   let raw = match input.next() {
     Some(
@@ -62,10 +64,6 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
       TokenTree::Token(Token::Literal(Lit::Int(reset, IntTy::Unsuffixed))),
     ) => Lit::Int(reset, IntTy::Usize),
     token => bail!("Invalid tokens after {}: {:?}", raw, token),
-  };
-  let name = match input.next() {
-    Some(TokenTree::Token(Token::Ident(name))) => name,
-    token => bail!("Invalid tokens after {:?}: {:?}", reset, token),
   };
   'outer: loop {
     let mut attrs = Vec::new();
