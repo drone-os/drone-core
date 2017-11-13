@@ -46,16 +46,17 @@ pub(crate) fn reg_block(input: TokenStream) -> Result<Tokens> {
       token => bail!("Invalid token: {:?}", token),
     }
   }
-  for reg in &regs {
-    let mut name = None;
-    for token in reg {
+  for reg in &mut regs {
+    let mut reg_name = None;
+    for (i, token) in reg.iter().enumerate() {
       if let TokenTree::Token(Token::Ident(ref ident)) = *token {
-        name = Some(ident.as_ref().to_owned());
+        reg_name = Some((ident.as_ref().to_owned(), i));
         break;
       }
     }
-    let name = name.ok_or("Register name not found")?;
-    reg_names.push(name);
+    let (reg_name, i) = reg_name.ok_or("Register name not found")?;
+    reg.insert(i, TokenTree::Token(Token::Ident(name.to_owned())));
+    reg_names.push(reg_name);
   }
   let mod_name = Ident::new(name.as_ref().to_snake_case());
   let mod_names = reg_names

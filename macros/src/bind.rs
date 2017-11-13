@@ -40,7 +40,7 @@ pub(crate) fn bind(input: TokenStream) -> Result<Tokens> {
       #[allow(unused_mut)]
       let mut #names = unsafe {
         type Register = #(#regs)*;
-        Register::bind()
+        <Register as ::drone::reg::Reg<_>>::Fields::bind().into_reg()
       };
     )*
   })

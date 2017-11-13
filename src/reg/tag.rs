@@ -1,11 +1,11 @@
-/// Register flavor trait.
-pub trait RegFlavor: Sized + Default {}
+/// Register tag trait.
+pub trait RegTag: Sized + Default {}
 
 /// Marker trait for owned registers.
-pub trait RegOwned: RegFlavor {}
+pub trait RegOwned: RegTag {}
 
 /// Marker trait for shared registers.
-pub trait RegShared: RegFlavor {}
+pub trait RegShared: RegTag {}
 
 /// Zero-sized marker type for **thread-unsafe** register bindings. "Ur" stands
 /// for "Unique Register". Does implement `Send`, but not `Sync`, 'Clone', and
@@ -14,7 +14,7 @@ pub trait RegShared: RegFlavor {}
 pub struct Ur;
 
 impl !Sync for Ur {}
-impl RegFlavor for Ur {}
+impl RegTag for Ur {}
 impl RegOwned for Ur {}
 
 /// Zero-sized marker type for **thread-safe** register bindings. "Sr" stands
@@ -23,7 +23,7 @@ impl RegOwned for Ur {}
 #[derive(Default)]
 pub struct Sr;
 
-impl RegFlavor for Sr {}
+impl RegTag for Sr {}
 impl RegOwned for Sr {}
 impl RegShared for Sr {}
 
@@ -32,5 +32,5 @@ impl RegShared for Sr {}
 #[derive(Clone, Copy, Default)]
 pub struct Cr;
 
-impl RegFlavor for Cr {}
+impl RegTag for Cr {}
 impl RegShared for Cr {}

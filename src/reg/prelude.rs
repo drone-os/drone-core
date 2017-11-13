@@ -1,6 +1,8 @@
 //! Memory-mapped registers prelude.
 
-pub use super::{Cr, RReg, RRegFieldBit, RRegFieldBits, Reg, RegField,
-                RegFieldBit, RegFieldBits, RegFlavor, RegHold, RegOwned,
-                RegShared, RegVal, Sr, URegUnique, Ur, WReg, WRegFieldBit,
-                WRegFieldBits};
+pub use super::{Cr, RReg, RRegField, RRegFieldBit, RRegFieldBits, Reg,
+                RegField, RegFieldBit, RegFieldBits, RegFields, RegHold,
+                RegOwned, RegShared, RegTag, RegVal, RoReg, RoRegField,
+                RwRegUnique, Sr, Ur, WReg, WRegField, WRegFieldBit,
+                WRegFieldBits, WoReg, WoRegField, WoWoRegField,
+                WoWoRegFieldBit, WoWoRegFieldBits};

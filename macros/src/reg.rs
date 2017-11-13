@@ -26,7 +26,9 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
   let mut field_name = Vec::new();
   let mut field_offset = Vec::new();
   let mut field_width = Vec::new();
-  let name = loop {
+  let mut field_trait_attrs = Vec::new();
+  let mut field_trait_name = Vec::new();
+  let block = loop {
     match input.next() {
       Some(TokenTree::Token(Token::DocComment(ref string)))
         if string.starts_with("//!") =>
@@ -43,9 +45,13 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
         },
         token => bail!("Invalid tokens after `#`: {:?}", token),
       },
-      Some(TokenTree::Token(Token::Ident(name))) => break name,
+      Some(TokenTree::Token(Token::Ident(block))) => break block,
       token => bail!("Invalid token: {:?}", token),
     }
+  };
+  let name = match input.next() {
+    Some(TokenTree::Token(Token::Ident(name))) => name,
+    token => bail!("Invalid tokens after {:?}: {:?}", block, token),
   };
   let address = match input.next() {
     Some(
@@ -65,7 +71,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
     ) => Lit::Int(reset, IntTy::Usize),
     token => bail!("Invalid tokens after {}: {:?}", raw, token),
   };
-  'outer: loop {
+  'fields: loop {
     let mut attrs = Vec::new();
     loop {
       match input.next() {
@@ -112,41 +118,87 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
                   bail!("Invalid tokens after `{{ {:?}`: {:?}", offset, token)
                 }
               };
-              if let Some(token) = field_tokens.next() {
-                bail!(
-                  "Invalid tokens after `{{ {:?} {:?}`: {:?}",
-                  offset,
-                  width,
-                  token
-                );
+              let mut trait_attrs = Vec::new();
+              let mut trait_name = Vec::new();
+              'traits: loop {
+                let mut attrs = Vec::new();
+                loop {
+                  match field_tokens.next() {
+                    Some(TokenTree::Token(Token::DocComment(ref string)))
+                      if string.starts_with("///") =>
+                    {
+                      let string = string.trim_left_matches("///");
+                      attrs.push(quote!(#[doc = #string]));
+                    }
+                    Some(TokenTree::Token(Token::Pound)) => {
+                      match input.next() {
+                        Some(TokenTree::Delimited(delimited)) => {
+                          attrs.push(quote!(# #delimited))
+                        }
+                        token => bail!("Invalid tokens after `#`: {:?}", token),
+                      }
+                    }
+                    Some(TokenTree::Token(Token::Ident(name))) => {
+                      trait_attrs.push(attrs);
+                      trait_name.push(name);
+                      break;
+                    }
+                    None => break 'traits,
+                    token => bail!("Invalid token: {:?}", token),
+                  }
+                }
               }
               field_width.push(width);
               field_offset.push(offset);
+              field_trait_attrs.push(trait_attrs);
+              field_trait_name.push(trait_name);
             }
             None => bail!("Unexpected block: `{ ... }`"),
           }
           break;
         }
-        None => break 'outer,
+        None => {
+          if field_name.len() == 0 {
+            bail!("No fields defined");
+          }
+          break 'fields;
+        }
         token => bail!("Invalid token: {:?}", token),
       }
     }
   }
+  let block = block.as_ref().to_snake_case();
+  let reg_name = Ident::new(name.as_ref().to_pascal_case());
+  let mod_name = name.as_ref().to_snake_case();
   let field_field = field_name
     .iter()
-    .map(|x| Ident::new(reserved_check(x.as_ref().to_snake_case())))
+    .map(|x| x.as_ref().to_snake_case())
+    .collect::<Vec<_>>();
+  let field_full_field = field_field
+    .iter()
+    .map(|x| Ident::new(format!("{}_{}_{}", block, mod_name, x)))
+    .collect::<Vec<_>>();
+  let field_field = field_field
+    .into_iter()
+    .map(|x| Ident::new(reserved_check(x)))
     .collect::<Vec<_>>();
   let field_name = field_name
     .iter()
     .map(|x| Ident::new(x.as_ref().to_pascal_case()))
     .collect::<Vec<_>>();
-  let reg_name = Ident::new(name.as_ref().to_pascal_case());
-  let mod_name = Ident::new(reserved_check(name.as_ref().to_snake_case()));
+  let mod_name = Ident::new(reserved_check(mod_name));
   let attrs2 = attrs.clone();
   let attrs3 = attrs.clone();
   let attrs4 = attrs.clone();
+  let attrs5 = attrs.clone();
+  let field_attrs2 = field_attrs.clone();
   let field_name2 = field_name.clone();
+  let field_name3 = field_name.clone();
   let field_field2 = field_field.clone();
+  let field_field3 = field_field.clone();
+  let field_full_field2 = field_full_field.clone();
+  let field_full_field3 = field_full_field.clone();
+  let field_full_field4 = field_full_field.clone();
 
   let field_tokens = field_attrs
     .iter()
@@ -154,140 +206,148 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
     .zip(field_field.iter())
     .zip(field_width.iter())
     .zip(field_offset.iter())
-    .flat_map(|((((attrs, name), field), &width), offset)| {
-      let mut tokens = Vec::new();
-      let unprefixed_field = field.as_ref().trim_left_matches("_");
-      tokens.push(quote! {
-        #(#attrs)*
-        pub struct #name<TFlavor>
-        where
-          TFlavor: reg::RegFlavor
-        {
-          _flavor: TFlavor,
-        }
-
-        impl<'a, TFlavor> reg::RegField<'a, TFlavor> for self::#name<TFlavor>
-        where
-          TFlavor: reg::RegFlavor + 'a
-        {
-          type Reg = self::Reg<TFlavor>;
-
-          const OFFSET: usize = #offset as usize;
-          const WIDTH: usize = #width as usize;
-
-          #[inline]
-          unsafe fn bind() -> Self {
-            Self { _flavor: TFlavor::default() }
-          }
-        }
-
-        #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-        impl Clone for self::#name<reg::Cr> {
-          #[inline]
-          fn clone(&self) -> Self {
-            Self { ..*self }
-          }
-        }
-
-        impl Copy for self::#name<reg::Cr> {}
-      });
-      if width == 1 {
-        let set_field = Ident::new(format!("set_{}", unprefixed_field));
-        let clear_field = Ident::new(format!("clear_{}", unprefixed_field));
-        let toggle_field = Ident::new(format!("toggle_{}", unprefixed_field));
+    .zip(field_trait_attrs.into_iter())
+    .zip(field_trait_name.into_iter())
+    .flat_map(
+      |(
+        (((((attrs, name), field), &width), offset), mut trait_attrs),
+        mut trait_name,
+      )| {
+        let mut tokens = Vec::new();
+        let unprefixed_field = field.as_ref().trim_left_matches("_");
         tokens.push(quote! {
-          impl<'a, TFlavor> reg::RegFieldBit<'a, TFlavor>
-          for self::#name<TFlavor>
+          #(#attrs)*
+          pub struct #name<Tag>
           where
-            TFlavor: reg::RegFlavor + 'a
+            Tag: reg::RegTag
           {
+            _tag: Tag,
           }
-        });
-        if trait_name.iter().any(|name| name == "RReg") {
-          tokens.push(quote! {
-            impl<'a, TFlavor> self::Hold<'a, TFlavor>
-            where
-              TFlavor: reg::RegFlavor + 'a
-            {
-              #(#attrs)*
-              #[inline]
-              pub fn #field(&self) -> bool {
-                self.reg.#field.read(self.val)
-              }
-            }
-          });
-        }
-        if trait_name.iter().any(|name| name == "WReg") {
-          tokens.push(quote! {
-            impl<'a, TFlavor> self::Hold<'a, TFlavor>
-            where
-              TFlavor: reg::RegFlavor + 'a
-            {
-              #(#attrs)*
-              #[inline]
-              pub fn #set_field(&mut self) -> &mut Self {
-                self.val = self.reg.#field.set(self.val);
-                self
-              }
 
-              #(#attrs)*
-              #[inline]
-              pub fn #clear_field(&mut self) -> &mut Self {
-                self.val = self.reg.#field.clear(self.val);
-                self
-              }
-
-              #(#attrs)*
-              #[inline]
-              pub fn #toggle_field(&mut self) -> &mut Self {
-                self.val = self.reg.#field.toggle(self.val);
-                self
-              }
-            }
-          });
-        }
-      } else {
-        let set_field = Ident::new(format!("set_{}", unprefixed_field));
-        tokens.push(quote! {
-          impl<'a, TFlavor> reg::RegFieldBits<'a, TFlavor>
-          for self::#name<TFlavor>
+          impl<'a, Tag> reg::RegField<'a, Tag> for self::#name<Tag>
           where
-            TFlavor: reg::RegFlavor + 'a
+            Tag: reg::RegTag + 'a
           {
+            type Reg = self::Reg<Tag>;
+
+            const OFFSET: usize = #offset as usize;
+            const WIDTH: usize = #width as usize;
+
+            #[inline]
+            unsafe fn bind() -> Self {
+              Self { _tag: Tag::default() }
+            }
           }
+
+          #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
+          impl Clone for self::#name<reg::Cr> {
+            #[inline]
+            fn clone(&self) -> Self {
+              Self { ..*self }
+            }
+          }
+
+          impl Copy for self::#name<reg::Cr> {}
         });
-        if trait_name.iter().any(|name| name == "RReg") {
-          tokens.push(quote! {
-            impl<'a, TFlavor> self::Hold<'a, TFlavor>
-            where
-              TFlavor: reg::RegFlavor + 'a
-            {
-              #(#attrs)*
-              #[inline]
-              pub fn #field(&self) -> #raw {
-                self.reg.#field.read(self.val)
+        if width == 1 {
+          let set_field = Ident::new(format!("set_{}", unprefixed_field));
+          let clear_field = Ident::new(format!("clear_{}", unprefixed_field));
+          let toggle_field = Ident::new(format!("toggle_{}", unprefixed_field));
+          trait_attrs.push(Vec::new());
+          trait_name.push(Ident::new("RegFieldBit"));
+          if trait_name.iter().any(|name| name == "RRegField") {
+            tokens.push(quote! {
+              impl<'a, Tag> self::Hold<'a, Tag>
+              where
+                Tag: reg::RegTag + 'a
+              {
+                #(#attrs)*
+                #[inline]
+                pub fn #field(&self) -> bool {
+                  self.reg.#field.read(&self.val)
+                }
               }
+            });
+          }
+          if trait_name.iter().any(|name| name == "WRegField") {
+            tokens.push(quote! {
+              impl<'a, Tag> self::Hold<'a, Tag>
+              where
+                Tag: reg::RegTag + 'a
+              {
+                #(#attrs)*
+                #[inline]
+                pub fn #set_field(&mut self) -> &mut Self {
+                  self.reg.#field.set(&mut self.val);
+                  self
+                }
+
+                #(#attrs)*
+                #[inline]
+                pub fn #clear_field(&mut self) -> &mut Self {
+                  self.reg.#field.clear(&mut self.val);
+                  self
+                }
+
+                #(#attrs)*
+                #[inline]
+                pub fn #toggle_field(&mut self) -> &mut Self {
+                  self.reg.#field.toggle(&mut self.val);
+                  self
+                }
+              }
+            });
+          }
+        } else {
+          let write_field = Ident::new(format!("write_{}", unprefixed_field));
+          trait_attrs.push(Vec::new());
+          trait_name.push(Ident::new("RegFieldBits"));
+          if trait_name.iter().any(|name| name == "RRegField") {
+            tokens.push(quote! {
+              impl<'a, Tag> self::Hold<'a, Tag>
+              where
+                Tag: reg::RegTag + 'a
+              {
+                #(#attrs)*
+                #[inline]
+                pub fn #field(&self) -> #raw {
+                  self.reg.#field.read(&self.val)
+                }
+              }
+            });
+          }
+          if trait_name.iter().any(|name| name == "WRegField") {
+            tokens.push(quote! {
+              impl<'a, Tag> self::Hold<'a, Tag>
+              where
+                Tag: reg::RegTag + 'a
+              {
+                #(#attrs)*
+                #[inline]
+                pub fn #write_field(&mut self, bits: #raw) -> &mut Self {
+                  self.reg.#field.write(&mut self.val, bits);
+                  self
+                }
+              }
+            });
+          }
+        }
+        for (trait_attrs, trait_name) in
+          trait_attrs.iter().zip(trait_name.iter())
+        {
+          tokens.push(quote! {
+            #(#trait_attrs)*
+            impl<'a, Tag> reg::#trait_name<'a, Tag>
+            for self::#name<Tag>
+            where
+              Tag: reg::RegTag + 'a
+            {
             }
           });
         }
-        if trait_name.iter().any(|name| name == "WReg") {
-          tokens.push(quote! {
-            impl<'a, TFlavor> self::Hold<'a, TFlavor>
-            where
-              TFlavor: reg::RegFlavor + 'a
-            {
-              #(#attrs)*
-              #[inline]
-              pub fn #set_field(&mut self, bits: #raw) -> &mut Self {
-                self.val = self.reg.#field.write(self.val, bits);
-                self
-              }
-            }
-          });
-        }
-      }
-      tokens
-    })
+        tokens
+      },
+    )
     .collect::<Vec<_>>();
 
   Ok(quote! {
@@ -298,31 +358,31 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
       use ::drone::reg;
 
       #(#attrs2)*
-      pub struct Reg<TFlavor>
+      pub struct Reg<Tag>
       where
-        TFlavor: reg::RegFlavor
+        Tag: reg::RegTag
       {
-        _flavor: TFlavor,
+        _tag: Tag,
         #(
           #(#field_attrs)*
-          pub #field_field: self::#field_name<TFlavor>,
+          pub #field_field: self::#field_name<Tag>,
         )*
       }
 
-      impl<'a, TFlavor> reg::Reg<'a, TFlavor> for self::Reg<TFlavor>
+      impl<'a, Tag> reg::Reg<'a, Tag> for self::Reg<Tag>
       where
-        TFlavor: reg::RegFlavor + 'a
+        Tag: reg::RegTag + 'a
       {
-        type Hold = self::Hold<'a, TFlavor>;
+        type Hold = self::Hold<'a, Tag>;
+        type Fields = self::Fields<Tag>;
 
         const ADDRESS: usize = #address;
 
         #[inline]
-        unsafe fn bind() -> Self {
-          Self {
-            _flavor: TFlavor::default(),
+        fn into_fields(self) -> self::Fields<Tag> {
+          self::Fields {
             #(
-              #field_field2: self::#field_name2::bind(),
+              #field_full_field: self.#field_field2,
             )*
           }
         }
@@ -330,9 +390,9 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
 
       #(
         #(#trait_attrs)*
-        impl<'a, TFlavor> #trait_name<'a, TFlavor> for self::Reg<TFlavor>
+        impl<'a, Tag> #trait_name<'a, Tag> for self::Reg<Tag>
         where
-          TFlavor: reg::RegFlavor + 'a
+          Tag: reg::RegTag + 'a
         {
         }
       )*
@@ -348,23 +408,59 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
       impl Copy for self::Reg<reg::Cr> {}
 
       #(#attrs3)*
-      pub struct Hold<'a, TFlavor>
+      pub struct Fields<Tag>
       where
-        TFlavor: reg::RegFlavor + 'a
+        Tag: reg::RegTag
       {
-        reg: &'a self::Reg<TFlavor>,
+        #(
+          #(#field_attrs2)*
+          pub #field_full_field2: self::#field_name3<Tag>,
+        )*
+      }
+
+      impl<'a, Tag> reg::RegFields<'a, Tag, self::Reg<Tag>>
+      for self::Fields<Tag>
+      where
+        Tag: reg::RegTag + 'a
+      {
+        #[inline]
+        unsafe fn bind() -> Self {
+          self::Fields {
+            #(
+              #field_full_field3: self::#field_name2::bind(),
+            )*
+          }
+        }
+
+        #[inline]
+        fn into_reg(self) -> self::Reg<Tag> {
+          self::Reg {
+            _tag: Tag::default(),
+            #(
+              #field_field3: self.#field_full_field4,
+            )*
+          }
+        }
+      }
+
+      #(#attrs4)*
+      pub struct Hold<'a, Tag>
+      where
+        Tag: reg::RegTag + 'a
+      {
+        reg: &'a self::Reg<Tag>,
         val: self::Val,
       }
 
-      impl<'a, TFlavor> reg::RegHold<'a, TFlavor, self::Reg<TFlavor>>
-      for self::Hold<'a, TFlavor>
+      impl<'a, Tag> reg::RegHold<'a, Tag, self::Reg<Tag>>
+      for self::Hold<'a, Tag>
       where
-        TFlavor: reg::RegFlavor + 'a
+        Tag: reg::RegTag + 'a
       {
         type Val = self::Val;
 
         #[inline]
-        unsafe fn hold(reg: &'a self::Reg<TFlavor>, val: self::Val) -> Self {
+        unsafe fn hold(reg: &'a self::Reg<Tag>, val: self::Val) -> Self {
           Self { reg, val }
         }
 
@@ -379,7 +475,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
         }
       }
 
-      #(#attrs4)*
+      #(#attrs5)*
       #[derive(Clone, Copy)]
       pub struct Val {
         raw: #raw,
@@ -399,8 +495,13 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
         }
 
         #[inline]
-        fn raw(self) -> #raw {
+        fn raw(&self) -> #raw {
           self.raw
+        }
+
+        #[inline]
+        fn raw_mut(&mut self) -> &mut #raw {
+          &mut self.raw
         }
       }
 
