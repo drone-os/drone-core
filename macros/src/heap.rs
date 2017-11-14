@@ -72,7 +72,7 @@ pub(crate) fn heap(input: TokenStream) -> Result<Tokens> {
     impl Allocator for Heap {
       const POOL_COUNT: usize = #pool_count;
 
-      #[inline]
+      #[inline(always)]
       unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
       where
         I: SliceIndex<[Pool]>,
@@ -80,7 +80,7 @@ pub(crate) fn heap(input: TokenStream) -> Result<Tokens> {
         self.pools.get_unchecked(index)
       }
 
-      #[inline]
+      #[inline(always)]
       unsafe fn get_pool_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
       where
         I: SliceIndex<[Pool]>,
@@ -98,7 +98,7 @@ pub(crate) fn heap(input: TokenStream) -> Result<Tokens> {
         (**self).dealloc(ptr, layout)
       }
 
-      #[inline]
+      #[inline(always)]
       fn usable_size(&self, layout: &Layout) -> (usize, usize) {
         unsafe { (**self).usable_size(layout) }
       }
@@ -153,7 +153,7 @@ pub(crate) fn heap(input: TokenStream) -> Result<Tokens> {
     ///
     /// [`Allocator::init()`]:
     /// ../../drone/heap/allocator/trait.Allocator.html#method.init
-    #[inline]
+    #[inline(always)]
     pub unsafe fn init(start: &mut usize) {
       ALLOC.init(start)
     }

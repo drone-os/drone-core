@@ -26,7 +26,7 @@ where
   ///
   /// `offset` must be greater than or equals to the platform's word size in
   /// bits.
-  #[inline]
+  #[inline(always)]
   unsafe fn read_bit(&self, offset: Self::Raw) -> bool {
     self.raw() & Self::Raw::one() << offset != Self::Raw::zero()
   }
@@ -37,7 +37,7 @@ where
   ///
   /// `offset` must be greater than or equals to the platform's word size in
   /// bits.
-  #[inline]
+  #[inline(always)]
   unsafe fn set_bit(&mut self, offset: Self::Raw) {
     *self.raw_mut() = self.raw() | Self::Raw::one() << offset;
   }
@@ -48,7 +48,7 @@ where
   ///
   /// `offset` must be greater than or equals to the platform's word size in
   /// bits.
-  #[inline]
+  #[inline(always)]
   unsafe fn clear_bit(&mut self, offset: Self::Raw) {
     *self.raw_mut() = self.raw() & !(Self::Raw::one() << offset);
   }
@@ -59,7 +59,7 @@ where
   ///
   /// `offset` must be greater than or equals to the platform's word size in
   /// bits.
-  #[inline]
+  #[inline(always)]
   unsafe fn toggle_bit(&mut self, offset: Self::Raw) {
     *self.raw_mut() = self.raw() ^ Self::Raw::one() << offset;
   }
@@ -71,7 +71,7 @@ where
   /// * `offset` must be greater than or equals to the platform's word size in
   ///   bits.
   /// * `width + offset` must be greater than the platform's word size in bits.
-  #[inline]
+  #[inline(always)]
   unsafe fn read_bits(&self, offset: Self::Raw, width: Self::Raw) -> Self::Raw {
     self.raw() >> offset & (Self::Raw::one() << width) - Self::Raw::one()
   }
@@ -85,7 +85,7 @@ where
   ///   bits.
   /// * `width + offset` must be greater than the platform's word size in bits.
   /// * `bits` must not contain bits outside the width range.
-  #[inline]
+  #[inline(always)]
   unsafe fn write_bits(
     &mut self,
     offset: Self::Raw,

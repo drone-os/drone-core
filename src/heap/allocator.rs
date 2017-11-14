@@ -20,7 +20,7 @@ pub trait Allocator {
   /// * Must be called no more than once.
   /// * Must be called before using the allocator.
   /// * `start` must be word-aligned.
-  #[inline]
+  #[inline(always)]
   unsafe fn init(&mut self, start: &mut usize) {
     for i in 0..Self::POOL_COUNT {
       self.get_pool_unchecked_mut(i).init(start);
@@ -39,7 +39,7 @@ pub trait Allocator {
     I: SliceIndex<[Pool]>;
 
   /// Binary searches the pools for a least-sized one which fits `value`.
-  #[inline]
+  #[inline(always)]
   fn binary_search<T>(&self, value: T) -> usize
   where
     T: Fits,
@@ -58,7 +58,7 @@ pub trait Allocator {
   }
 
   #[doc(hidden)]
-  #[inline]
+  #[inline(always)]
   unsafe fn alloc_with<F, T>(&self, layout: Layout, f: F) -> Result<T, AllocErr>
   where
     F: FnOnce(*mut u8, &Pool) -> T,
@@ -82,7 +82,7 @@ pub trait Allocator {
   }
 
   #[doc(hidden)]
-  #[inline]
+  #[inline(always)]
   unsafe fn realloc_with<F, T>(
     &self,
     ptr: *mut u8,
@@ -121,19 +121,19 @@ pub trait Allocator {
   }
 
   #[doc(hidden)]
-  #[inline]
+  #[inline(always)]
   unsafe fn alloc(&self, layout: Layout) -> Result<*mut u8, AllocErr> {
     self.alloc_with(layout, |ptr, _| ptr)
   }
 
   #[doc(hidden)]
-  #[inline]
+  #[inline(always)]
   unsafe fn alloc_excess(&self, layout: Layout) -> Result<Excess, AllocErr> {
     self.alloc_with(layout, |ptr, pool| Excess(ptr, pool.size()))
   }
 
   #[doc(hidden)]
-  #[inline]
+  #[inline(always)]
   unsafe fn realloc(
     &self,
     ptr: *mut u8,
@@ -144,7 +144,7 @@ pub trait Allocator {
   }
 
   #[doc(hidden)]
-  #[inline]
+  #[inline(always)]
   unsafe fn realloc_excess(
     &self,
     ptr: *mut u8,
@@ -161,7 +161,7 @@ pub trait Allocator {
 
   #[cfg_attr(feature = "clippy", allow(needless_pass_by_value))]
   #[doc(hidden)]
-  #[inline]
+  #[inline(always)]
   unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
     let pool_idx = self.binary_search(ptr);
     let pool = self.get_pool_unchecked(pool_idx);
@@ -169,7 +169,7 @@ pub trait Allocator {
   }
 
   #[doc(hidden)]
-  #[inline]
+  #[inline(always)]
   unsafe fn usable_size(&self, layout: &Layout) -> (usize, usize) {
     let pool_idx = self.binary_search(layout);
     let pool = self.get_pool_unchecked(pool_idx);
@@ -178,7 +178,7 @@ pub trait Allocator {
 
   #[cfg_attr(feature = "clippy", allow(needless_pass_by_value))]
   #[doc(hidden)]
-  #[inline]
+  #[inline(always)]
   unsafe fn grow_in_place(
     &self,
     ptr: *mut u8,
@@ -196,7 +196,7 @@ pub trait Allocator {
 
   #[cfg_attr(feature = "clippy", allow(needless_pass_by_value))]
   #[doc(hidden)]
-  #[inline]
+  #[inline(always)]
   unsafe fn shrink_in_place(
     &self,
     _ptr: *mut u8,

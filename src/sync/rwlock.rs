@@ -101,7 +101,7 @@ impl<T> RwLock<T> {
   ///   None => unreachable!(),
   /// };
   /// ```
-  #[inline]
+  #[inline(always)]
   pub fn try_read(&self) -> Option<RwLockReadGuard<T>> {
     loop {
       let current = self.lock.load(Relaxed);
@@ -135,7 +135,7 @@ impl<T> RwLock<T> {
   ///
   /// assert!(lock.try_write().is_none());
   /// ```
-  #[inline]
+  #[inline(always)]
   pub fn try_write(&self) -> Option<RwLockWriteGuard<T>> {
     if self.lock.compare_and_swap(NO_LOCK, WRITE_LOCK, Acquire) == NO_LOCK {
       Some(RwLockWriteGuard { lock: self })
@@ -184,7 +184,7 @@ impl<T> RwLock<T> {
 
 impl<T: Default> Default for RwLock<T> {
   /// Creates a new `RwLock<T>`, with the `Default` value for T.
-  #[inline]
+  #[inline(always)]
   fn default() -> RwLock<T> {
     RwLock::new(Default::default())
   }
@@ -193,7 +193,7 @@ impl<T: Default> Default for RwLock<T> {
 impl<'a, T> Deref for RwLockReadGuard<'a, T> {
   type Target = T;
 
-  #[inline]
+  #[inline(always)]
   fn deref(&self) -> &T {
     unsafe { &*self.lock.data.get() }
   }
@@ -202,28 +202,28 @@ impl<'a, T> Deref for RwLockReadGuard<'a, T> {
 impl<'a, T> Deref for RwLockWriteGuard<'a, T> {
   type Target = T;
 
-  #[inline]
+  #[inline(always)]
   fn deref(&self) -> &T {
     unsafe { &*self.lock.data.get() }
   }
 }
 
 impl<'a, T> DerefMut for RwLockWriteGuard<'a, T> {
-  #[inline]
+  #[inline(always)]
   fn deref_mut(&mut self) -> &mut T {
     unsafe { &mut *self.lock.data.get() }
   }
 }
 
 impl<'a, T> Drop for RwLockReadGuard<'a, T> {
-  #[inline]
+  #[inline(always)]
   fn drop(&mut self) {
     self.lock.lock.fetch_sub(1, Release);
   }
 }
 
 impl<'a, T> Drop for RwLockWriteGuard<'a, T> {
-  #[inline]
+  #[inline(always)]
   fn drop(&mut self) {
     self.lock.lock.store(NO_LOCK, Release);
   }

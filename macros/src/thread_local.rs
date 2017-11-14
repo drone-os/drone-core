@@ -117,37 +117,37 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens> {
     }
 
     impl Thread for ThreadLocal {
-      #[inline]
+      #[inline(always)]
       unsafe fn get_unchecked(id: usize) -> &'static Self {
         THREADS.get_unchecked(id)
       }
 
-      #[inline]
+      #[inline(always)]
       fn chain(&self) -> &Chain {
         &self.chain
       }
 
-      #[inline]
+      #[inline(always)]
       fn chain_mut(&mut self) -> &mut Chain {
         &mut self.chain
       }
 
-      #[inline]
+      #[inline(always)]
       fn preempted_id(&self) -> usize {
         self.preempted_id
       }
 
-      #[inline]
+      #[inline(always)]
       unsafe fn set_preempted_id(&mut self, id: usize) {
         self.preempted_id = id;
       }
 
-      #[inline]
+      #[inline(always)]
       fn task(&self) -> *mut u8 {
         self.task.get()
       }
 
-      #[inline]
+      #[inline(always)]
       unsafe fn set_task(&self, task: *mut u8) {
         self.task.set(task);
       }
@@ -158,7 +158,7 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens> {
     /// See [`thread::init()`] for more details.
     ///
     /// [`thread::init()`]: ../../drone/thread/fn.init.html
-    #[inline]
+    #[inline(always)]
     pub unsafe fn init() {
       thread::init::<ThreadLocal>();
     }

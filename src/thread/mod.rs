@@ -54,7 +54,7 @@ where
 /// # Safety
 ///
 /// Must be called before using `futures`.
-#[inline]
+#[inline(always)]
 pub unsafe fn init<T>() -> bool
 where
   T: Thread + 'static,

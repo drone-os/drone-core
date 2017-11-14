@@ -18,7 +18,7 @@ pub struct ThreadFuture<R, E> {
 }
 
 impl<R, E> ThreadFuture<R, E> {
-  #[inline]
+  #[inline(always)]
   pub(crate) fn new<T, G>(thread: &T, mut generator: G) -> Self
   where
     T: Thread,

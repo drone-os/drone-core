@@ -74,7 +74,7 @@ where
   T: RegTag + 'a,
 {
   /// Reads a register value from its memory address.
-  #[inline]
+  #[inline(always)]
   fn load_val(&self) -> RegFieldRegHoldVal<'a, T, Self> {
     unsafe {
       RegFieldRegHoldVal::<'a, T, Self>::from_raw(read_volatile(
@@ -228,12 +228,12 @@ where
   U: WoRegField<'a, T>,
   U::Reg: WoReg<'a, T>,
 {
-  #[inline]
+  #[inline(always)]
   fn reset_val(&self) -> RegFieldRegHoldVal<'a, T, Self> {
     unsafe { RegFieldRegHoldVal::<'a, T, Self>::reset() }
   }
 
-  #[inline]
+  #[inline(always)]
   fn store_val(&self, val: RegFieldRegHoldVal<'a, T, Self>) {
     unsafe {
       write_volatile(
@@ -243,7 +243,7 @@ where
     }
   }
 
-  #[inline]
+  #[inline(always)]
   fn reset<F>(&self, f: F)
   where
     F: Fn(&mut RegFieldRegHoldVal<'a, T, Self>),
@@ -260,7 +260,7 @@ where
   U: RegFieldBit<'a, T> + RRegField<'a, T>,
   U::Reg: RReg<'a, T>,
 {
-  #[inline]
+  #[inline(always)]
   fn read(&self, val: &RegFieldRegHoldVal<'a, T, Self>) -> bool {
     unsafe {
       val.read_bit(RegFieldRegHoldValRaw::<'a, T, Self>::from_usize(
@@ -269,7 +269,7 @@ where
     }
   }
 
-  #[inline]
+  #[inline(always)]
   fn read_bit(&self) -> bool {
     self.read(&self.load_val())
   }
@@ -281,7 +281,7 @@ where
   U: RegFieldBit<'a, T> + WRegField<'a, T>,
   U::Reg: WReg<'a, T>,
 {
-  #[inline]
+  #[inline(always)]
   fn set(&self, val: &mut RegFieldRegHoldVal<'a, T, Self>) {
     unsafe {
       val.set_bit(RegFieldRegHoldValRaw::<'a, T, Self>::from_usize(
@@ -290,7 +290,7 @@ where
     }
   }
 
-  #[inline]
+  #[inline(always)]
   fn clear(&self, val: &mut RegFieldRegHoldVal<'a, T, Self>) {
     unsafe {
       val.clear_bit(RegFieldRegHoldValRaw::<'a, T, Self>::from_usize(
@@ -299,7 +299,7 @@ where
     }
   }
 
-  #[inline]
+  #[inline(always)]
   fn toggle(&self, val: &mut RegFieldRegHoldVal<'a, T, Self>) {
     unsafe {
       val.toggle_bit(RegFieldRegHoldValRaw::<'a, T, Self>::from_usize(
@@ -315,21 +315,21 @@ where
   U: RegFieldBit<'a, T> + WoRegField<'a, T>,
   U::Reg: WoReg<'a, T>,
 {
-  #[inline]
+  #[inline(always)]
   fn set_bit(&self) {
     let mut val = self.reset_val();
     self.set(&mut val);
     self.store_val(val);
   }
 
-  #[inline]
+  #[inline(always)]
   fn clear_bit(&self) {
     let mut val = self.reset_val();
     self.clear(&mut val);
     self.store_val(val);
   }
 
-  #[inline]
+  #[inline(always)]
   fn toggle_bit(&self) {
     let mut val = self.reset_val();
     self.toggle(&mut val);
@@ -343,7 +343,7 @@ where
   U: RegFieldBits<'a, T> + RRegField<'a, T>,
   U::Reg: RReg<'a, T>,
 {
-  #[inline]
+  #[inline(always)]
   fn read(
     &self,
     val: &RegFieldRegHoldVal<'a, T, Self>,
@@ -356,7 +356,7 @@ where
     }
   }
 
-  #[inline]
+  #[inline(always)]
   fn read_bits(&self) -> RegFieldRegHoldValRaw<'a, T, Self> {
     self.read(&self.load_val())
   }
@@ -368,7 +368,7 @@ where
   U: RegFieldBits<'a, T> + WRegField<'a, T>,
   U::Reg: WReg<'a, T>,
 {
-  #[inline]
+  #[inline(always)]
   fn write(
     &self,
     val: &mut RegFieldRegHoldVal<'a, T, Self>,
@@ -390,7 +390,7 @@ where
   U: RegFieldBits<'a, T> + WoRegField<'a, T>,
   U::Reg: WoReg<'a, T>,
 {
-  #[inline]
+  #[inline(always)]
   fn write_bits(&self, bits: RegFieldRegHoldValRaw<'a, T, Self>) {
     let mut val = self.reset_val();
     self.write(&mut val, bits);

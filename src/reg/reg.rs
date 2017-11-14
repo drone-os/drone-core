@@ -49,19 +49,19 @@ where
   T: RegTag + 'a,
 {
   /// Reads and wraps a register value from its memory address.
-  #[inline]
+  #[inline(always)]
   fn load(&'a self) -> Self::Hold {
     unsafe { self.hold(RegHoldVal::<'a, T, Self>::from_raw(self.load_raw())) }
   }
 
   /// Reads a raw register value from its memory address.
-  #[inline]
+  #[inline(always)]
   unsafe fn load_raw(&self) -> RegHoldValRaw<'a, T, Self> {
     read_volatile(self.to_ptr())
   }
 
   /// Returns an unsafe constant pointer to the register's memory address.
-  #[inline]
+  #[inline(always)]
   fn to_ptr(&self) -> *const RegHoldValRaw<'a, T, Self> {
     Self::ADDRESS as *const RegHoldValRaw<'a, T, Self>
   }
@@ -75,7 +75,7 @@ where
 {
   /// Updates a new reset value with `f` and writes the result to the register's
   /// memory address.
-  #[inline]
+  #[inline(always)]
   fn reset<F>(&'a self, f: F)
   where
     F: FnOnce(&mut Self::Hold) -> &mut Self::Hold,
@@ -86,25 +86,25 @@ where
   }
 
   /// Writes the holded value `val`.
-  #[inline]
+  #[inline(always)]
   fn store(&self, val: &Self::Hold) {
     self.store_val(val.val());
   }
 
   /// Writes the unbound value `val`.
-  #[inline]
+  #[inline(always)]
   fn store_val(&self, val: RegHoldVal<'a, T, Self>) {
     unsafe { self.store_raw(val.raw()) };
   }
 
   /// Writes a raw register value to its memory address.
-  #[inline]
+  #[inline(always)]
   unsafe fn store_raw(&self, raw: RegHoldValRaw<'a, T, Self>) {
     write_volatile(self.to_mut_ptr(), raw);
   }
 
   /// Returns an unsafe mutable pointer to the register's memory address.
-  #[inline]
+  #[inline(always)]
   fn to_mut_ptr(&self) -> *mut RegHoldValRaw<'a, T, Self> {
     Self::ADDRESS as *mut RegHoldValRaw<'a, T, Self>
   }
@@ -141,7 +141,7 @@ impl<'a, T> RwRegUnique<'a> for T
 where
   T: RReg<'a, Ur> + WReg<'a, Ur>,
 {
-  #[inline]
+  #[inline(always)]
   fn update<F>(&'a mut self, f: F)
   where
     F: FnOnce(&mut Self::Hold) -> &mut Self::Hold,

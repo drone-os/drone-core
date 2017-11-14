@@ -16,14 +16,14 @@ struct Routine {
 
 impl Chain {
   /// Creates an empty `Chain`.
-  #[inline]
+  #[inline(always)]
   pub const fn new() -> Self {
     Self {
       head: AtomicPtr::new(ptr::null_mut()),
     }
   }
 
-  #[inline]
+  #[inline(always)]
   pub(crate) fn push<G>(&self, g: G)
   where
     G: Generator<Yield = (), Return = ()>,
@@ -39,7 +39,7 @@ impl Chain {
     }
   }
 
-  #[inline]
+  #[inline(always)]
   pub(crate) fn drain(&mut self) {
     let mut prev = ptr::null_mut();
     let mut curr = self.head.load(Acquire);
@@ -77,7 +77,7 @@ impl Chain {
 }
 
 impl Routine {
-  #[inline]
+  #[inline(always)]
   fn new<G>(g: G) -> Self
   where
     G: Generator<Yield = (), Return = ()>,

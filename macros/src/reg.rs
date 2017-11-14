@@ -54,9 +54,9 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
     token => bail!("Invalid tokens after {:?}: {:?}", block, token),
   };
   let address = match input.next() {
-    Some(
-      TokenTree::Token(Token::Literal(Lit::Int(address, IntTy::Unsuffixed))),
-    ) => Lit::Int(address, IntTy::Usize),
+    Some(TokenTree::Token(
+      Token::Literal(address @ Lit::Int(_, IntTy::Unsuffixed)),
+    )) => address,
     token => bail!("Invalid tokens after {:?}: {:?}", name, token),
   };
   let raw = match input.next() {
@@ -106,13 +106,13 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
               field_name.push(name);
               let offset = match field_tokens.next() {
                 Some(TokenTree::Token(
-                  Token::Literal(Lit::Int(offset, IntTy::Unsuffixed)),
+                  Token::Literal(offset @ Lit::Int(_, IntTy::Unsuffixed)),
                 )) => offset,
                 token => bail!("Invalid tokens after `{{`: {:?}", token),
               };
               let width = match field_tokens.next() {
                 Some(TokenTree::Token(
-                  Token::Literal(Lit::Int(width, IntTy::Unsuffixed)),
+                  Token::Literal(width @ Lit::Int(_, IntTy::Unsuffixed)),
                 )) => width,
                 token => {
                   bail!("Invalid tokens after `{{ {:?}`: {:?}", offset, token)
@@ -210,7 +210,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
     .zip(field_trait_name.into_iter())
     .flat_map(
       |(
-        (((((attrs, name), field), &width), offset), mut trait_attrs),
+        (((((attrs, name), field), width), offset), mut trait_attrs),
         mut trait_name,
       )| {
         let mut tokens = Vec::new();
@@ -230,10 +230,10 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
           {
             type Reg = self::Reg<Tag>;
 
-            const OFFSET: usize = #offset as usize;
-            const WIDTH: usize = #width as usize;
+            const OFFSET: usize = #offset;
+            const WIDTH: usize = #width;
 
-            #[inline]
+            #[inline(always)]
             unsafe fn bind() -> Self {
               Self { _tag: Tag::default() }
             }
@@ -241,7 +241,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
 
           #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
           impl Clone for self::#name<reg::Cr> {
-            #[inline]
+            #[inline(always)]
             fn clone(&self) -> Self {
               Self { ..*self }
             }
@@ -249,7 +249,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
 
           impl Copy for self::#name<reg::Cr> {}
         });
-        if width == 1 {
+        if let &Lit::Int(1, _) = width {
           let set_field = Ident::new(format!("set_{}", unprefixed_field));
           let clear_field = Ident::new(format!("clear_{}", unprefixed_field));
           let toggle_field = Ident::new(format!("toggle_{}", unprefixed_field));
@@ -262,7 +262,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
                 Tag: reg::RegTag + 'a
               {
                 #(#attrs)*
-                #[inline]
+                #[inline(always)]
                 pub fn #field(&self) -> bool {
                   self.reg.#field.read(&self.val)
                 }
@@ -276,21 +276,21 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
                 Tag: reg::RegTag + 'a
               {
                 #(#attrs)*
-                #[inline]
+                #[inline(always)]
                 pub fn #set_field(&mut self) -> &mut Self {
                   self.reg.#field.set(&mut self.val);
                   self
                 }
 
                 #(#attrs)*
-                #[inline]
+                #[inline(always)]
                 pub fn #clear_field(&mut self) -> &mut Self {
                   self.reg.#field.clear(&mut self.val);
                   self
                 }
 
                 #(#attrs)*
-                #[inline]
+                #[inline(always)]
                 pub fn #toggle_field(&mut self) -> &mut Self {
                   self.reg.#field.toggle(&mut self.val);
                   self
@@ -309,7 +309,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
                 Tag: reg::RegTag + 'a
               {
                 #(#attrs)*
-                #[inline]
+                #[inline(always)]
                 pub fn #field(&self) -> #raw {
                   self.reg.#field.read(&self.val)
                 }
@@ -323,7 +323,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
                 Tag: reg::RegTag + 'a
               {
                 #(#attrs)*
-                #[inline]
+                #[inline(always)]
                 pub fn #write_field(&mut self, bits: #raw) -> &mut Self {
                   self.reg.#field.write(&mut self.val, bits);
                   self
@@ -378,7 +378,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
 
         const ADDRESS: usize = #address;
 
-        #[inline]
+        #[inline(always)]
         fn into_fields(self) -> self::Fields<Tag> {
           self::Fields {
             #(
@@ -399,7 +399,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
 
       #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
       impl Clone for self::Reg<reg::Cr> {
-        #[inline]
+        #[inline(always)]
         fn clone(&self) -> Self {
           Self { ..*self }
         }
@@ -423,7 +423,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
       where
         Tag: reg::RegTag + 'a
       {
-        #[inline]
+        #[inline(always)]
         unsafe fn bind() -> Self {
           self::Fields {
             #(
@@ -432,7 +432,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
           }
         }
 
-        #[inline]
+        #[inline(always)]
         fn into_reg(self) -> self::Reg<Tag> {
           self::Reg {
             _tag: Tag::default(),
@@ -459,17 +459,17 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
       {
         type Val = self::Val;
 
-        #[inline]
+        #[inline(always)]
         unsafe fn hold(reg: &'a self::Reg<Tag>, val: self::Val) -> Self {
           Self { reg, val }
         }
 
-        #[inline]
+        #[inline(always)]
         fn val(&self) -> self::Val {
           self.val
         }
 
-        #[inline]
+        #[inline(always)]
         fn set_val(&mut self, val: self::Val) {
           self.val = val;
         }
@@ -484,22 +484,22 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
       impl reg::RegVal for self::Val {
         type Raw = #raw;
 
-        #[inline]
+        #[inline(always)]
         unsafe fn reset() -> Self {
           Self::from_raw(#reset as #raw)
         }
 
-        #[inline]
+        #[inline(always)]
         unsafe fn from_raw(raw: #raw) -> Self {
           Self { raw }
         }
 
-        #[inline]
+        #[inline(always)]
         fn raw(&self) -> #raw {
           self.raw
         }
 
-        #[inline]
+        #[inline(always)]
         fn raw_mut(&mut self) -> &mut #raw {
           &mut self.raw
         }

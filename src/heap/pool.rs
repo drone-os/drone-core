@@ -32,14 +32,14 @@ where
 }
 
 impl<'a> Fits for &'a Layout {
-  #[inline]
+  #[inline(always)]
   fn fits(self, pool: &Pool) -> bool {
     self.size() <= pool.size
   }
 }
 
 impl Fits for *mut u8 {
-  #[inline]
+  #[inline(always)]
   fn fits(self, pool: &Pool) -> bool {
     self < pool.edge
   }
@@ -53,6 +53,7 @@ impl Pool {
   /// provided to the current method and `start` argument for [`init`] method.
   ///
   /// [`init`]: struct.Pool.html#method.init
+  #[inline(always)]
   pub const fn new(offset: usize, size: usize, capacity: usize) -> Self {
     Self {
       free: AtomicPtr::new(ptr::null_mut()),
@@ -70,7 +71,7 @@ impl Pool {
   ///
   /// * Must be called no more than once.
   /// * Must be called before using the pool.
-  #[inline]
+  #[inline(always)]
   pub unsafe fn init(&mut self, start: &mut usize) {
     let offset = start as *mut _ as usize;
     let head = self.head.get_mut();
@@ -79,6 +80,7 @@ impl Pool {
   }
 
   /// Returns the pool size.
+  #[inline(always)]
   pub fn size(&self) -> usize {
     self.size
   }
@@ -87,7 +89,7 @@ impl Pool {
   /// exhausted.
   ///
   /// This operation should compute in O(1) time.
-  #[inline]
+  #[inline(always)]
   pub fn alloc(&self) -> Option<NonZero<*mut u8>> {
     unsafe { self.alloc_free().or_else(|| self.alloc_head()) }
   }
@@ -99,7 +101,7 @@ impl Pool {
   /// # Safety
   ///
   /// `ptr` should not be used after deallocation.
-  #[inline]
+  #[inline(always)]
   pub unsafe fn dealloc(&self, ptr: *mut u8) {
     loop {
       let head = self.free.load(Relaxed);
@@ -110,7 +112,7 @@ impl Pool {
     }
   }
 
-  #[inline]
+  #[inline(always)]
   unsafe fn alloc_free(&self) -> Option<NonZero<*mut u8>> {
     loop {
       let head = self.free.load(Acquire);
@@ -124,7 +126,7 @@ impl Pool {
     }
   }
 
-  #[inline]
+  #[inline(always)]
   unsafe fn alloc_head(&self) -> Option<NonZero<*mut u8>> {
     loop {
       let current = self.head.load(Relaxed);

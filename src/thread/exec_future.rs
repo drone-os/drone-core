@@ -16,7 +16,7 @@ pub struct ExecFuture<R, E> {
 }
 
 impl<R, E> ExecFuture<R, E> {
-  #[inline]
+  #[inline(always)]
   pub(crate) fn new<T, F>(thread: &T, future: F) -> Self
   where
     T: Thread,

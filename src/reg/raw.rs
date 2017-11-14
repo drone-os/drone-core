@@ -32,22 +32,22 @@ where
 
 macro impl_reg_raw($type:ty) {
   impl RegRaw for $type {
-    #[inline]
+    #[inline(always)]
     fn from_usize(raw: usize) -> Self {
       raw as $type
     }
 
-    #[inline]
+    #[inline(always)]
     fn size() -> $type {
       size_of::<$type>() as $type * 8
     }
 
-    #[inline]
+    #[inline(always)]
     fn zero() -> $type {
       0
     }
 
-    #[inline]
+    #[inline(always)]
     fn one() -> $type {
       1
     }

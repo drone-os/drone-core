@@ -50,7 +50,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
-#![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
+#![cfg_attr(feature = "clippy", allow(precedence, doc_markdown, inline_always))]
 
 extern crate alloc;
 #[macro_use]
