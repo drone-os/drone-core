@@ -73,6 +73,7 @@ impl<T> RwLock<T> {
   ///
   /// let lock = RwLock::new(5);
   /// ```
+  #[inline(always)]
   pub const fn new(t: T) -> Self {
     Self {
       lock: AtomicUsize::new(NO_LOCK),
@@ -158,6 +159,7 @@ impl<T> RwLock<T> {
   /// }
   /// assert_eq!(lock.into_inner(), "modified");
   /// ```
+  #[inline(always)]
   pub fn into_inner(self) -> T {
     let Self { data, .. } = self;
     unsafe { data.into_inner() }
@@ -177,6 +179,7 @@ impl<T> RwLock<T> {
   /// *lock.get_mut() = 10;
   /// assert_eq!(*lock.try_read().unwrap(), 10);
   /// ```
+  #[inline(always)]
   pub fn get_mut(&mut self) -> &mut T {
     unsafe { &mut *self.data.get() }
   }

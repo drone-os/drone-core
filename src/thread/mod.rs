@@ -14,12 +14,14 @@ mod exec_future;
 mod executor;
 #[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod thread_future;
+#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
+mod thread_stream;
 
 pub use self::chain::Chain;
 pub use self::exec_future::ExecFuture;
 pub use self::executor::Executor;
 pub use self::thread_future::ThreadFuture;
-pub use drone_macros::thread_local_impl;
+pub use drone_macros::thread_local;
 
 use core::ops::Generator;
 use futures::{task, Async, Future};
@@ -60,15 +62,6 @@ where
   T: Thread + 'static,
 {
   task::init(get_task::<T>, set_task::<T>)
-}
-
-/// Configure a thread-local storage.
-///
-/// See the [`module-level documentation`] for more details.
-///
-/// [`module-level documentation`]: thread/index.html
-pub macro thread_local($($tokens:tt)*) {
-  $crate::thread::thread_local_impl!($($tokens)*);
 }
 
 /// A thread interface.

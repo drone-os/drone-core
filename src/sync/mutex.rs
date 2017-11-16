@@ -53,6 +53,7 @@ impl<T> Mutex<T> {
   ///
   /// let mutex = Mutex::new(0);
   /// ```
+  #[inline(always)]
   pub const fn new(t: T) -> Self {
     Self {
       lock: AtomicBool::new(false),

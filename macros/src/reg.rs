@@ -234,7 +234,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
             const WIDTH: usize = #width;
 
             #[inline(always)]
-            unsafe fn bind() -> Self {
+            unsafe fn __bind() -> Self {
               Self { _tag: Tag::default() }
             }
           }
@@ -424,10 +424,10 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
         Tag: reg::RegTag + 'a
       {
         #[inline(always)]
-        unsafe fn bind() -> Self {
+        unsafe fn __bind() -> Self {
           self::Fields {
             #(
-              #field_full_field3: self::#field_name2::bind(),
+              #field_full_field3: self::#field_name2::__bind(),
             )*
           }
         }

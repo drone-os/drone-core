@@ -9,7 +9,7 @@
 //!
 //! # Configuration
 //!
-//! Allocator is configured statically by [`heap!`] macro.
+//! Allocator is configured statically by `heap!` macro.
 //!
 //! ```
 //! # #![feature(alloc)]
@@ -91,8 +91,6 @@
 //!
 //! 2. Mark a block as free in the pool. This step should compute in *O(1)*
 //!    time.
-//!
-//! [`heap!`]: ../macro.heap.html
 
 #[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod pool;
@@ -101,13 +99,3 @@ mod allocator;
 
 pub use self::allocator::Allocator;
 pub use self::pool::Pool;
-pub use drone_macros::heap_impl;
-
-/// Configure a heap allocator.
-///
-/// See the [`module-level documentation`] for more details.
-///
-/// [`module-level documentation`]: heap/index.html
-pub macro heap($($tokens:tt)*) {
-  $crate::heap::heap_impl!($($tokens)*);
-}

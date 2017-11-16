@@ -22,10 +22,6 @@ path = "macros"
 version = "0.1"
 default-features = false
 
-[dependencies.bitflags]
-version = "1"
-default-features = false
-
 [dependencies.clippy]
 version = "0.0"
 optional = true

@@ -1,6 +1,6 @@
 use core::intrinsics;
 use futures::{Async, Future, Poll};
-use sync::oneshot::{channel, Receiver};
+use sync::spsc::oneshot::{channel, Receiver, RecvError};
 use thread::{Executor, Thread};
 
 /// A future for result from another thread future executor.
@@ -12,7 +12,7 @@ use thread::{Executor, Thread};
 /// [`exec_future`]: ../trait.Thread.html#method.exec_future
 #[must_use]
 pub struct ExecFuture<R, E> {
-  rx: Receiver<Result<R, E>>,
+  rx: Receiver<R, E>,
 }
 
 impl<R, E> ExecFuture<R, E> {
@@ -55,12 +55,9 @@ impl<R, E> Future for ExecFuture<R, E> {
   type Error = E;
 
   fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-    match self.rx.poll() {
-      Ok(async) => match async {
-        Async::NotReady => Ok(Async::NotReady),
-        Async::Ready(complete) => complete.map(Async::Ready),
-      },
-      Err(_) => unsafe { intrinsics::unreachable() },
-    }
+    self.rx.poll().map_err(|err| match err {
+      RecvError::Complete(err) => err,
+      RecvError::Canceled => unsafe { intrinsics::unreachable() },
+    })
   }
 }

@@ -1,9 +1,16 @@
 use errors::*;
 use proc_macro::TokenStream;
 use quote::Tokens;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::*;
 use syn::{parse_token_trees, Token, TokenTree};
 
+static USED: AtomicBool = AtomicBool::new(false);
+
 pub(crate) fn bind(input: TokenStream) -> Result<Tokens> {
+  if USED.swap(true, Relaxed) {
+    bail!("The macro must be used no more than once");
+  }
   let mut input = parse_token_trees(&input.to_string())?.into_iter().fuse();
   let mut names = Vec::new();
   let mut regs = Vec::new();
@@ -40,7 +47,7 @@ pub(crate) fn bind(input: TokenStream) -> Result<Tokens> {
       #[allow(unused_mut)]
       let mut #names = unsafe {
         type Register = #(#regs)*;
-        <Register as ::drone::reg::Reg<_>>::Fields::bind().into_reg()
+        <Register as ::drone::reg::Reg<_>>::Fields::__bind().into_reg()
       };
     )*
   })

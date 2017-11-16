@@ -53,8 +53,6 @@
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown, inline_always))]
 
 extern crate alloc;
-#[macro_use]
-extern crate bitflags;
 extern crate drone_macros;
 extern crate futures;
 
@@ -68,8 +66,7 @@ pub mod reg;
 pub mod sync;
 pub mod thread;
 
-pub use heap::heap;
-pub use reg::{reg, reg_block};
+pub use drone_macros::{heap, reg, reg_block};
 
 #[prelude_import]
 #[allow(unused_imports)]

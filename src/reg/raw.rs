@@ -30,6 +30,7 @@ where
   fn one() -> Self;
 }
 
+#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 macro impl_reg_raw($type:ty) {
   impl RegRaw for $type {
     #[inline(always)]

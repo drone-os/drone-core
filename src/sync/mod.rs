@@ -1,6 +1,6 @@
 //! Useful synchronization primitives.
 
-pub mod oneshot;
+pub mod spsc;
 
 mod mutex;
 mod rwlock;

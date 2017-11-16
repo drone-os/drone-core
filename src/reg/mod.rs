@@ -3,7 +3,7 @@
 //! # Mapping
 //!
 //! Most of registers should be already mapped by platform crates. These crates
-//! should map registers with [`reg!`] macro as follows:
+//! should map registers with `reg!` macro as follows:
 //!
 //! ```
 //! # #![feature(decl_macro)]
@@ -35,7 +35,7 @@
 //!
 //! # Binding
 //!
-//! It is strongly encouraged to bind registers with a single [`bind!`] block at
+//! It is strongly recommended to bind registers with a single `bind!` block at
 //! the very beginning of the application entry point.
 //!
 //! ```
@@ -61,9 +61,6 @@
 //! assert_eq!(size_of_val(&stk_ctrl), 0);
 //! # }
 //! ```
-//!
-//! [`bind!`]: ../macro.bind.html
-//! [`reg!`]: ../macro.reg.html
 
 pub mod prelude;
 
@@ -87,31 +84,4 @@ pub use self::raw::*;
 pub use self::reg::*;
 pub use self::tag::*;
 pub use self::val::*;
-pub use drone_macros::{bind_impl, reg_block_impl, reg_impl};
-
-/// Binds memory-mapped registers.
-///
-/// See the [`module-level documentation`] for more details.
-///
-/// [`module-level documentation`]: reg/index.html
-pub macro bind($($tokens:tt)*) {
-  $crate::reg::bind_impl!($($tokens)*);
-}
-
-/// Defines a memory-mapped register.
-///
-/// See the [`module-level documentation`] for more details.
-///
-/// [`module-level documentation`]: reg/index.html
-pub macro reg($($tokens:tt)*) {
-  $crate::reg::reg_impl!($($tokens)*);
-}
-
-/// Defines a block of memory-mapped registers.
-///
-/// See the [`module-level documentation`] for more details.
-///
-/// [`module-level documentation`]: reg/index.html
-pub macro reg_block($($tokens:tt)*) {
-  $crate::reg::reg_block_impl!($($tokens)*);
-}
+pub use drone_macros::bind;

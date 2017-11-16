@@ -26,7 +26,7 @@ where
   U: Reg<'a, T>,
 {
   #[doc(hidden)]
-  unsafe fn bind() -> Self;
+  unsafe fn __bind() -> Self;
 
   /// Converts the set of fields into the register.
   fn into_reg(self) -> U;
@@ -47,7 +47,7 @@ where
   const WIDTH: usize;
 
   #[doc(hidden)]
-  unsafe fn bind() -> Self;
+  unsafe fn __bind() -> Self;
 }
 
 /// Single-bit register field.
