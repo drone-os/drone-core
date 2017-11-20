@@ -15,7 +15,7 @@ pub struct Sender<T, E> {
 /// Error returned from [`Sender::send`].
 ///
 /// [`Sender::send`]: struct.Sender.html#method.send
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SendError<T> {
   /// Value which wasn't sent.
   pub value: T,

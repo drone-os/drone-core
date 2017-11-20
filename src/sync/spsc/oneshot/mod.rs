@@ -89,3 +89,55 @@ impl<T, E> SpscInner<AtomicU8, u8> for Inner<T, E> {
     &mut *self.rx_task.get()
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use alloc::arc::Arc;
+  use core::sync::atomic::{AtomicUsize, Ordering};
+  use futures::Async;
+  use futures::executor::{self, Notify};
+
+  thread_local! {
+    static COUNTER: Arc<Counter> = Arc::new(Counter(AtomicUsize::new(0)));
+  }
+
+  struct Counter(AtomicUsize);
+
+  impl Notify for Counter {
+    fn notify(&self, _id: usize) {
+      self.0.fetch_add(1, Ordering::Relaxed);
+    }
+  }
+
+  #[test]
+  fn send_sync() {
+    let (tx, rx) = channel::<usize, ()>();
+    assert_eq!(tx.send(Ok(314)), Ok(()));
+    let mut executor = executor::spawn(rx);
+    COUNTER.with(|counter| {
+      counter.0.store(0, Ordering::Relaxed);
+      assert_eq!(
+        executor.poll_future_notify(counter, 0),
+        Ok(Async::Ready(314))
+      );
+      assert_eq!(counter.0.load(Ordering::Relaxed), 0);
+    });
+  }
+
+  #[test]
+  fn send_async() {
+    let (tx, rx) = channel::<usize, ()>();
+    let mut executor = executor::spawn(rx);
+    COUNTER.with(|counter| {
+      counter.0.store(0, Ordering::Relaxed);
+      assert_eq!(executor.poll_future_notify(counter, 0), Ok(Async::NotReady));
+      assert_eq!(tx.send(Ok(314)), Ok(()));
+      assert_eq!(
+        executor.poll_future_notify(counter, 0),
+        Ok(Async::Ready(314))
+      );
+      assert_eq!(counter.0.load(Ordering::Relaxed), 1);
+    });
+  }
+}

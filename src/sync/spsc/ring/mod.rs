@@ -22,12 +22,12 @@ use sync::spsc::SpscInner;
 pub const MAX_CAPACITY: usize = (1 << INDEX_BITS) - 1;
 
 const INDEX_MASK: usize = (1 << INDEX_BITS) - 1;
-const INDEX_BITS: usize = (mem::size_of::<usize>() - LOCK_BITS) / 2;
+const INDEX_BITS: usize = (mem::size_of::<usize>() * 8 - LOCK_BITS) / 2;
 const LOCK_BITS: usize = 4;
-const _RESERVED: usize = 1 << 3;
-const COMPLETE: usize = 1 << 2;
-const TX_LOCK: usize = 1 << 1;
-const RX_LOCK: usize = 1;
+const _RESERVED: usize = 1 << mem::size_of::<usize>() * 8 - 1;
+const COMPLETE: usize = 1 << mem::size_of::<usize>() * 8 - 2;
+const TX_LOCK: usize = 1 << mem::size_of::<usize>() * 8 - 3;
+const RX_LOCK: usize = 1 << mem::size_of::<usize>() * 8 - 4;
 
 // Layout of the state field:
 //     LLLL_BBBB_CCCC
@@ -136,5 +136,68 @@ impl<T, E> SpscInner<AtomicUsize, usize> for Inner<T, E> {
   #[inline(always)]
   unsafe fn rx_task_mut(&self) -> &mut Option<Task> {
     &mut *self.rx_task.get()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use alloc::arc::Arc;
+  use core::sync::atomic::{AtomicUsize, Ordering};
+  use futures::Async;
+  use futures::executor::{self, Notify};
+
+  thread_local! {
+    static COUNTER: Arc<Counter> = Arc::new(Counter(AtomicUsize::new(0)));
+  }
+
+  struct Counter(AtomicUsize);
+
+  impl Notify for Counter {
+    fn notify(&self, _id: usize) {
+      self.0.fetch_add(1, Ordering::Relaxed);
+    }
+  }
+
+  #[test]
+  fn send_sync() {
+    let (mut tx, rx) = channel::<usize, ()>(10);
+    assert_eq!(tx.send(314), Ok(()));
+    drop(tx);
+    let mut executor = executor::spawn(rx);
+    COUNTER.with(|counter| {
+      counter.0.store(0, Ordering::Relaxed);
+      assert_eq!(
+        executor.poll_stream_notify(counter, 0),
+        Ok(Async::Ready(Some(314)))
+      );
+      assert_eq!(
+        executor.poll_stream_notify(counter, 0),
+        Ok(Async::Ready(None))
+      );
+      assert_eq!(counter.0.load(Ordering::Relaxed), 0);
+    });
+  }
+
+  #[test]
+  fn send_async() {
+    let (mut tx, rx) = channel::<usize, ()>(10);
+    let mut executor = executor::spawn(rx);
+    COUNTER.with(|counter| {
+      counter.0.store(0, Ordering::Relaxed);
+      assert_eq!(executor.poll_stream_notify(counter, 0), Ok(Async::NotReady));
+      assert_eq!(tx.send(314), Ok(()));
+      assert_eq!(
+        executor.poll_stream_notify(counter, 0),
+        Ok(Async::Ready(Some(314)))
+      );
+      assert_eq!(executor.poll_stream_notify(counter, 0), Ok(Async::NotReady));
+      drop(tx);
+      assert_eq!(
+        executor.poll_stream_notify(counter, 0),
+        Ok(Async::Ready(None))
+      );
+      assert_eq!(counter.0.load(Ordering::Relaxed), 2);
+    });
   }
 }

@@ -12,7 +12,7 @@ repository = "https://github.com/drone-os/drone"
 
 [features]
 default = []
-std = []
+std = ['futures/use_std']
 
 [dependencies.drone-macros]
 version = "0.7.0"

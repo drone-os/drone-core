@@ -18,7 +18,7 @@ use futures::task::Task;
 use sync::spsc::SpscInner;
 
 /// Maximum capacity of the channel.
-pub const MAX_CAPACITY: usize = 1 << size_of::<usize>() - LOCK_BITS;
+pub const MAX_CAPACITY: usize = 1 << size_of::<usize>() * 8 - LOCK_BITS;
 
 const LOCK_MASK: usize = (1 << LOCK_BITS) - 1;
 const LOCK_BITS: usize = 3;
@@ -96,5 +96,68 @@ impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
   #[inline(always)]
   unsafe fn rx_task_mut(&self) -> &mut Option<Task> {
     &mut *self.rx_task.get()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use alloc::arc::Arc;
+  use core::sync::atomic::{AtomicUsize, Ordering};
+  use futures::Async;
+  use futures::executor::{self, Notify};
+
+  thread_local! {
+    static COUNTER: Arc<Counter> = Arc::new(Counter(AtomicUsize::new(0)));
+  }
+
+  struct Counter(AtomicUsize);
+
+  impl Notify for Counter {
+    fn notify(&self, _id: usize) {
+      self.0.fetch_add(1, Ordering::Relaxed);
+    }
+  }
+
+  #[test]
+  fn send_sync() {
+    let (mut tx, rx) = channel::<()>();
+    assert_eq!(tx.send(), Ok(()));
+    drop(tx);
+    let mut executor = executor::spawn(rx);
+    COUNTER.with(|counter| {
+      counter.0.store(0, Ordering::Relaxed);
+      assert_eq!(
+        executor.poll_stream_notify(counter, 0),
+        Ok(Async::Ready(Some(())))
+      );
+      assert_eq!(
+        executor.poll_stream_notify(counter, 0),
+        Ok(Async::Ready(None))
+      );
+      assert_eq!(counter.0.load(Ordering::Relaxed), 0);
+    });
+  }
+
+  #[test]
+  fn send_async() {
+    let (mut tx, rx) = channel::<()>();
+    let mut executor = executor::spawn(rx);
+    COUNTER.with(|counter| {
+      counter.0.store(0, Ordering::Relaxed);
+      assert_eq!(executor.poll_stream_notify(counter, 0), Ok(Async::NotReady));
+      assert_eq!(tx.send(), Ok(()));
+      assert_eq!(
+        executor.poll_stream_notify(counter, 0),
+        Ok(Async::Ready(Some(())))
+      );
+      assert_eq!(executor.poll_stream_notify(counter, 0), Ok(Async::NotReady));
+      drop(tx);
+      assert_eq!(
+        executor.poll_stream_notify(counter, 0),
+        Ok(Async::Ready(None))
+      );
+      assert_eq!(counter.0.load(Ordering::Relaxed), 2);
+    });
   }
 }
