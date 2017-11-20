@@ -23,7 +23,6 @@ impl Chain {
     }
   }
 
-  #[inline(always)]
   pub(crate) fn push<G>(&self, g: G)
   where
     G: Generator<Yield = (), Return = ()>,
@@ -39,7 +38,6 @@ impl Chain {
     }
   }
 
-  #[inline(always)]
   pub(crate) fn drain(&mut self) {
     let mut prev = ptr::null_mut();
     let mut curr = self.head.load(Acquire);

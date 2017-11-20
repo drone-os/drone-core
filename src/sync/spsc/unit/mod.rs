@@ -1,20 +1,24 @@
-//! A single-producer, single-consumer tick channel.
+//! A single-producer, single-consumer channel for `()`.
 //!
-//! See [`tick::channel`] documentation for more details.
+//! See [`unit::channel`] documentation for more details.
 //!
-//! [`tick::channel`]: fn.channel.html
+//! [`unit::channel`]: fn.channel.html
 
 mod receiver;
 mod sender;
 
-pub use self::receiver::*;
-pub use self::sender::*;
+pub use self::receiver::Receiver;
+pub use self::sender::{SendError, Sender};
 
 use alloc::arc::Arc;
 use core::cell::UnsafeCell;
+use core::mem::size_of;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use futures::task::Task;
 use sync::spsc::SpscInner;
+
+/// Maximum capacity of the channel.
+pub const MAX_CAPACITY: usize = 1 << size_of::<usize>() - LOCK_BITS;
 
 const LOCK_MASK: usize = (1 << LOCK_BITS) - 1;
 const LOCK_BITS: usize = 3;
@@ -22,6 +26,9 @@ const COMPLETE: usize = 1 << 2;
 const TX_LOCK: usize = 1 << 1;
 const RX_LOCK: usize = 1;
 
+// Layout of the state field:
+//     CCCC_LLLL
+// Where C is counter bits, and L is lock bits.
 struct Inner<E> {
   state: AtomicUsize,
   err: UnsafeCell<Option<E>>,
@@ -30,8 +37,7 @@ struct Inner<E> {
 }
 
 /// Creates a new asynchronous channel, returning the sender/receiver halves.
-/// [`Receiver`] will receive exactly the same number of ticks that [`Sender`]
-/// sent, but no data can be associated with the ticks.
+/// All units sent on the [`Sender`] will become available on the [`Receiver`].
 ///
 /// Only one ['Sender']/[`Receiver`] is supported.
 ///
@@ -48,12 +54,7 @@ pub fn channel<E>() -> (Sender<E>, Receiver<E>) {
 unsafe impl<E: Send> Send for Inner<E> {}
 unsafe impl<E: Send> Sync for Inner<E> {}
 
-impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
-  const ZERO: usize = 0;
-  const TX_LOCK: usize = TX_LOCK;
-  const RX_LOCK: usize = RX_LOCK;
-  const COMPLETE: usize = COMPLETE;
-
+impl<E> Inner<E> {
   #[inline(always)]
   fn new() -> Self {
     Self {
@@ -63,6 +64,13 @@ impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
       rx_task: UnsafeCell::new(None),
     }
   }
+}
+
+impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
+  const ZERO: usize = 0;
+  const TX_LOCK: usize = TX_LOCK;
+  const RX_LOCK: usize = RX_LOCK;
+  const COMPLETE: usize = COMPLETE;
 
   #[inline(always)]
   fn state_load(&self, order: Ordering) -> usize {

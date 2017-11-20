@@ -7,9 +7,10 @@ use futures::{Async, Poll};
 use futures::task::{self, Task};
 
 pub mod oneshot;
-pub mod tick;
+pub mod ring;
+pub mod unit;
 
-pub(crate) trait SpscInner<A, I>
+pub(self) trait SpscInner<A, I>
 where
   I: Copy
     + Eq
@@ -22,8 +23,6 @@ where
   const TX_LOCK: I;
   const RX_LOCK: I;
   const COMPLETE: I;
-
-  fn new() -> Self;
 
   fn state_load(&self, order: Ordering) -> I;
 

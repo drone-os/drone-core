@@ -5,9 +5,9 @@ use futures::{Async, Poll, Stream};
 use futures::task;
 use sync::spsc::SpscInner;
 
-/// The receiving-half of [`tick::channel`].
+/// The receiving-half of [`unit::channel`].
 ///
-/// [`tick::channel`]: fn.channel.html
+/// [`unit::channel`]: fn.channel.html
 #[must_use]
 pub struct Receiver<E> {
   inner: Arc<Inner<E>>,
@@ -35,7 +35,7 @@ impl<E> Stream for Receiver<E> {
 
   #[inline]
   fn poll(&mut self) -> Poll<Option<()>, E> {
-    self.inner.recv_tick()
+    self.inner.recv()
   }
 }
 
@@ -48,24 +48,11 @@ impl<E> Drop for Receiver<E> {
 
 impl<E> Inner<E> {
   #[inline(always)]
-  fn recv_tick(&self) -> Poll<Option<()>, E> {
-    fn take_tick(state: &mut usize) -> bool {
-      let lock = *state & LOCK_MASK;
-      *state >>= LOCK_BITS;
-      let took = if *state == 0 {
-        false
-      } else {
-        *state = state.wrapping_sub(1);
-        true
-      };
-      *state <<= LOCK_BITS;
-      *state |= lock;
-      took
-    }
-    let some_tick = || || Ok(Async::Ready(Some(())));
+  fn recv(&self) -> Poll<Option<()>, E> {
+    let some_unit = || || Ok(Async::Ready(Some(())));
     self
       .update(self.state_load(Acquire), Acquire, Acquire, |state| {
-        if take_tick(state) {
+        if Self::take(state) {
           Ok(None)
         } else if *state & COMPLETE == 0 {
           *state |= RX_LOCK;
@@ -75,19 +62,19 @@ impl<E> Inner<E> {
         }
       })
       .and_then(|state| {
-        state.map_or_else(some_tick(), |state| {
+        state.map_or_else(some_unit(), |state| {
           unsafe { (*self.rx_task.get()).get_or_insert_with(task::current) };
           self
             .update(state, AcqRel, Relaxed, |state| {
               *state ^= RX_LOCK;
-              if take_tick(state) {
+              if Self::take(state) {
                 Ok(None)
               } else {
                 Ok(Some(*state))
               }
             })
             .and_then(|state| {
-              state.map_or_else(some_tick(), |state| {
+              state.map_or_else(some_unit(), |state| {
                 if state & COMPLETE == 0 {
                   Ok(Async::NotReady)
                 } else {
@@ -101,5 +88,20 @@ impl<E> Inner<E> {
         let err = unsafe { &mut *self.err.get() };
         err.take().map_or_else(|| Ok(Async::Ready(None)), Err)
       })
+  }
+
+  #[inline(always)]
+  fn take(state: &mut usize) -> bool {
+    let lock = *state & LOCK_MASK;
+    *state >>= LOCK_BITS;
+    let took = if *state == 0 {
+      false
+    } else {
+      *state = state.wrapping_sub(1);
+      true
+    };
+    *state <<= LOCK_BITS;
+    *state |= lock;
+    took
   }
 }

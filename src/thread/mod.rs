@@ -6,44 +6,37 @@
 //! consists of a dynamic chain of routines, which are executing sequentially
 //! within a thread context.
 
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod chain;
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
-mod exec_future;
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
-mod executor;
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
-mod thread_future;
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
-mod thread_stream;
+mod routine_future;
+mod stream_ring;
+mod stream_unit;
 
 pub use self::chain::Chain;
-pub use self::exec_future::ExecFuture;
-pub use self::executor::Executor;
-pub use self::thread_future::ThreadFuture;
+pub use self::routine_future::RoutineFuture;
 pub use drone_macros::thread_local;
 
+use self::stream_ring::{stream_ring, stream_ring_overwrite};
+use self::stream_unit::stream_unit;
 use core::ops::Generator;
-use futures::{task, Async, Future};
+use futures::task;
+use sync::spsc::{ring, unit};
 
 /// A pointer to the current running thread.
 static mut CURRENT_ID: usize = 0;
 
 /// Returns the id of the thread that invokes it.
+#[inline(always)]
 pub fn current_id() -> usize {
   unsafe { CURRENT_ID }
 }
 
-/// Sets the id of the current thread.
-///
-/// # Safety
-///
-/// Calling this outside Drone internals is unpredictable.
+#[inline(always)]
 unsafe fn set_current_id(id: usize) {
   CURRENT_ID = id;
 }
 
 /// Returns a reference to the thread that invokes it.
+#[inline(always)]
 pub fn current<T>() -> &'static T
 where
   T: Thread,
@@ -64,25 +57,43 @@ where
   task::init(get_task::<T>, set_task::<T>)
 }
 
+fn get_task<T>() -> *mut u8
+where
+  T: Thread + 'static,
+{
+  current::<T>().task()
+}
+
+fn set_task<T>(task: *mut u8)
+where
+  T: Thread + 'static,
+{
+  unsafe { current::<T>().set_task(task) }
+}
+
 /// A thread interface.
 pub trait Thread: Sized {
-  /// Returns a reference to a thread by `id`.
-  unsafe fn get_unchecked(id: usize) -> &'static Self;
-
-  /// Provides a reference to the chain of routines.
-  fn chain(&self) -> &Chain;
-
-  /// Provides a mutable reference to the chain of routines.
-  fn chain_mut(&mut self) -> &mut Chain;
-
-  /// Returns the id of the thread preempted by the current one.
-  fn preempted_id(&self) -> usize;
-
-  /// Saves the id of the thread preempted by the current one.
+  /// Returns a reference to a thread by its `id`.
   ///
   /// # Safety
   ///
-  /// Calling this outside Drone internals is unpredictable.
+  /// `id` must be a valid index.
+  unsafe fn get_unchecked(id: usize) -> &'static Self;
+
+  /// Returns a reference to the routines chain.
+  fn chain(&self) -> &Chain;
+
+  /// Returns a mutable reference to the routines chain.
+  fn chain_mut(&mut self) -> &mut Chain;
+
+  /// Returns the id of the thread preempted by the current thread.
+  fn preempted_id(&self) -> usize;
+
+  /// Sets the id of the thread preempted by the current thread.
+  ///
+  /// # Safety
+  ///
+  /// Calling this method outside of the Drone internals is very dangerous.
   unsafe fn set_preempted_id(&mut self, id: usize);
 
   /// Returns the current thread-local value of the task system's pointer.
@@ -92,24 +103,27 @@ pub trait Thread: Sized {
   ///
   /// # Safety
   ///
-  /// Calling this outside Drone internals is unpredictable.
+  /// Calling this method outside of the Drone internals is very dangerous.
   unsafe fn set_task(&self, task: *mut u8);
 
-  /// Runs associated routines sequentially.
+  /// Resumes associated routines sequentially.
   ///
   /// Completed routines will be dropped.
-  ///
-  /// # Safety
-  ///
-  /// Must not be called concurrently.
-  unsafe fn run(&mut self, id: usize) {
-    self.set_preempted_id(current_id());
-    set_current_id(id);
+  #[inline]
+  fn resume(&mut self, id: usize) {
+    unsafe {
+      self.set_preempted_id(current_id());
+      set_current_id(id);
+    }
     self.chain_mut().drain();
-    set_current_id(self.preempted_id());
+    unsafe {
+      set_current_id(self.preempted_id());
+    }
   }
 
-  /// Attaches a new routine to the thread.
+  /// Adds a new routine to the beginning of the chain. This method accepts a
+  /// generator.
+  #[inline]
   fn routine<G>(&self, g: G)
   where
     G: Generator<Yield = (), Return = ()>,
@@ -118,7 +132,9 @@ pub trait Thread: Sized {
     self.chain().push(g);
   }
 
-  /// Attaches a new closure to the thread.
+  /// Adds a new routine to the beginning of the chain. This method accepts a
+  /// closure.
+  #[inline]
   fn routine_fn<F>(&self, f: F)
   where
     F: FnOnce(),
@@ -132,23 +148,27 @@ pub trait Thread: Sized {
     });
   }
 
-  /// Attaches a new routine to the thread, and returns a future for it.
-  fn future<G, R, E>(&self, g: G) -> ThreadFuture<R, E>
+  /// Adds a new routine to the beginning of the chain. Returns a `Future` of
+  /// the routine's return value. This method accepts a generator.
+  #[inline]
+  fn future<G, T, E>(&self, g: G) -> RoutineFuture<T, E>
   where
-    G: Generator<Yield = (), Return = Result<R, E>>,
+    G: Generator<Yield = (), Return = Result<T, E>>,
     G: Send + 'static,
-    R: Send + 'static,
+    T: Send + 'static,
     E: Send + 'static,
   {
-    ThreadFuture::new(self, g)
+    RoutineFuture::new(self, g)
   }
 
-  /// Attaches a new closure to the thread, and returns a future for it.
-  fn future_fn<F, R, E>(&self, f: F) -> ThreadFuture<R, E>
+  /// Adds a new routine to the beginning of the chain. Returns a `Future` of
+  /// the routine's return value. This method accepts a closure.
+  #[inline]
+  fn future_fn<F, T, E>(&self, f: F) -> RoutineFuture<T, E>
   where
-    F: FnOnce() -> Result<R, E>,
+    F: FnOnce() -> Result<T, E>,
     F: Send + 'static,
-    R: Send + 'static,
+    T: Send + 'static,
     E: Send + 'static,
   {
     self.future(|| {
@@ -159,49 +179,86 @@ pub trait Thread: Sized {
     })
   }
 
-  /// Attaches a new future executor to the thread.
-  fn exec<F>(&self, f: F)
+  /// Adds a new routine to the beginning of the chain. Returns a `Stream` of
+  /// routine's yielded values. If `overflow` returns `Ok(())`, current value
+  /// will be skipped. This method only accepts `()` as values.
+  #[inline]
+  fn stream<G, E, O>(&self, overflow: O, g: G) -> unit::Receiver<E>
   where
-    F: Future<Item = (), Error = ()>,
-    F: Send + 'static,
+    G: Generator<Yield = Option<()>, Return = Result<Option<()>, E>>,
+    O: Fn() -> Result<(), E>,
+    G: Send + 'static,
+    E: Send + 'static,
+    O: Send + 'static,
   {
-    let mut executor = Executor::new(f);
-    self.routine(move || {
-      loop {
-        match executor.poll() {
-          Ok(Async::NotReady) => (),
-          Ok(Async::Ready(())) | Err(()) => break,
-        }
-        yield;
-      }
-    });
+    stream_unit(self, g, overflow)
   }
 
-  /// Attaches a new future executor to the thread, and returns a future for it.
-  fn exec_future<R, E, F>(&self, f: F) -> ExecFuture<R, E>
+  /// Adds a new routine to the beginning of the chain. Returns a `Stream` of
+  /// routine's yielded values. Values will be skipped on overflow. This method
+  /// only accepts `()` as values.
+  #[inline]
+  fn stream_skip<G, E>(&self, g: G) -> unit::Receiver<E>
   where
-    F: Future<Item = R, Error = E>,
-    F: Send + 'static,
-    R: Send + 'static,
+    G: Generator<Yield = Option<()>, Return = Result<Option<()>, E>>,
+    G: Send + 'static,
     E: Send + 'static,
   {
-    ExecFuture::new(self, f)
+    stream_unit(self, g, || Ok(()))
   }
-}
 
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
-fn get_task<T>() -> *mut u8
-where
-  T: Thread + 'static,
-{
-  current::<T>().task()
-}
+  /// Adds a new routine to the beginning of the chain. Returns a `Stream` of
+  /// routine's yielded values. If `overflow` returns `Ok(())`, currenct value
+  /// will be skipped.
+  #[inline]
+  fn stream_ring<G, T, E, O>(
+    &self,
+    capacity: usize,
+    overflow: O,
+    g: G,
+  ) -> ring::Receiver<T, E>
+  where
+    G: Generator<Yield = Option<T>, Return = Result<Option<T>, E>>,
+    O: Fn(T) -> Result<(), E>,
+    G: Send + 'static,
+    T: Send + 'static,
+    E: Send + 'static,
+    O: Send + 'static,
+  {
+    stream_ring(self, capacity, g, overflow)
+  }
 
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
-#[cfg_attr(feature = "clippy", allow(not_unsafe_ptr_arg_deref))]
-fn set_task<T>(task: *mut u8)
-where
-  T: Thread + 'static,
-{
-  unsafe { current::<T>().set_task(task) }
+  /// Adds a new routine to the beginning of the chain. Returns a `Stream` of
+  /// routine's yielded values. New values will be skipped on overflow.
+  #[inline]
+  fn stream_ring_skip<G, T, E>(
+    &self,
+    capacity: usize,
+    g: G,
+  ) -> ring::Receiver<T, E>
+  where
+    G: Generator<Yield = Option<T>, Return = Result<Option<T>, E>>,
+    G: Send + 'static,
+    T: Send + 'static,
+    E: Send + 'static,
+  {
+    stream_ring(self, capacity, g, |_| Ok(()))
+  }
+
+  /// Adds a new routine to the beginning of the chain. Returns a `Stream` of
+  /// routine's yielded values. Old values will be overwritten on overflow.
+  #[inline]
+  fn stream_ring_overwrite<G, T, E>(
+    &self,
+    capacity: usize,
+    g: G,
+  ) -> ring::Receiver<T, E>
+  where
+    G: Generator<Yield = Option<T>, Return = Result<Option<T>, E>>,
+    G: Send + 'static,
+    T: Send + 'static,
+    E: Send + 'static,
+  {
+    stream_ring_overwrite(self, capacity, g)
+  }
 }

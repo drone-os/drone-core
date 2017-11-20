@@ -13,11 +13,11 @@ use thread::Thread;
 /// [`Thread`]: ../trait.Thread.html
 /// [`future`]: ../trait.Thread.html#method.future
 #[must_use]
-pub struct ThreadFuture<R, E> {
+pub struct RoutineFuture<R, E> {
   rx: Receiver<R, E>,
 }
 
-impl<R, E> ThreadFuture<R, E> {
+impl<R, E> RoutineFuture<R, E> {
   #[inline(always)]
   pub(crate) fn new<T, G>(thread: &T, mut generator: G) -> Self
   where
@@ -34,7 +34,7 @@ impl<R, E> ThreadFuture<R, E> {
           break;
         }
         match generator.resume() {
-          Yielded(()) => (),
+          Yielded(()) => {}
           Complete(complete) => {
             tx.send(complete).ok();
             break;
@@ -47,11 +47,12 @@ impl<R, E> ThreadFuture<R, E> {
   }
 }
 
-impl<R, E> Future for ThreadFuture<R, E> {
+impl<R, E> Future for RoutineFuture<R, E> {
   type Item = R;
   type Error = E;
 
-  fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+  #[inline]
+  fn poll(&mut self) -> Poll<R, E> {
     self.rx.poll().map_err(|err| match err {
       RecvError::Complete(err) => err,
       RecvError::Canceled => unsafe { intrinsics::unreachable() },

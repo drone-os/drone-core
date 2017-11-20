@@ -104,6 +104,7 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens> {
     impl ThreadLocal {
       /// Creates a blank `ThreadLocal`.
       #[allow(dead_code)]
+      #[inline(always)]
       pub const fn new(_id: usize) -> Self {
         Self {
           chain: Chain::new(),

@@ -7,8 +7,8 @@
 mod receiver;
 mod sender;
 
-pub use self::receiver::*;
-pub use self::sender::*;
+pub use self::receiver::{Receiver, RecvError};
+pub use self::sender::Sender;
 
 use alloc::arc::Arc;
 use core::cell::UnsafeCell;
@@ -20,9 +20,9 @@ const COMPLETE: u8 = 1 << 2;
 const TX_LOCK: u8 = 1 << 1;
 const RX_LOCK: u8 = 1;
 
-struct Inner<R, E> {
+struct Inner<T, E> {
   state: AtomicU8,
-  data: UnsafeCell<Option<Result<R, E>>>,
+  data: UnsafeCell<Option<Result<T, E>>>,
   tx_task: UnsafeCell<Option<Task>>,
   rx_task: UnsafeCell<Option<Task>>,
 }
@@ -35,22 +35,17 @@ struct Inner<R, E> {
 /// [`Sender`]: struct.Sender.html
 /// [`Receiver`]: struct.Receiver.html
 #[inline]
-pub fn channel<R, E>() -> (Sender<R, E>, Receiver<R, E>) {
+pub fn channel<T, E>() -> (Sender<T, E>, Receiver<T, E>) {
   let inner = Arc::new(Inner::new());
   let sender = Sender::new(Arc::clone(&inner));
   let receiver = Receiver::new(inner);
   (sender, receiver)
 }
 
-unsafe impl<R: Send, E: Send> Send for Inner<R, E> {}
-unsafe impl<R: Send, E: Send> Sync for Inner<R, E> {}
+unsafe impl<T: Send, E: Send> Send for Inner<T, E> {}
+unsafe impl<T: Send, E: Send> Sync for Inner<T, E> {}
 
-impl<R, E> SpscInner<AtomicU8, u8> for Inner<R, E> {
-  const ZERO: u8 = 0;
-  const TX_LOCK: u8 = TX_LOCK;
-  const RX_LOCK: u8 = RX_LOCK;
-  const COMPLETE: u8 = COMPLETE;
-
+impl<T, E> Inner<T, E> {
   #[inline(always)]
   fn new() -> Self {
     Self {
@@ -60,6 +55,13 @@ impl<R, E> SpscInner<AtomicU8, u8> for Inner<R, E> {
       rx_task: UnsafeCell::new(None),
     }
   }
+}
+
+impl<T, E> SpscInner<AtomicU8, u8> for Inner<T, E> {
+  const ZERO: u8 = 0;
+  const TX_LOCK: u8 = TX_LOCK;
+  const RX_LOCK: u8 = RX_LOCK;
+  const COMPLETE: u8 = COMPLETE;
 
   #[inline(always)]
   fn state_load(&self, order: Ordering) -> u8 {

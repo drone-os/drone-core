@@ -9,8 +9,8 @@ use sync::spsc::SpscInner;
 ///
 /// [`oneshot::channel`]: fn.channel.html
 #[must_use]
-pub struct Receiver<R, E> {
-  inner: Arc<Inner<R, E>>,
+pub struct Receiver<T, E> {
+  inner: Arc<Inner<T, E>>,
 }
 
 /// Error returned from [`Receiver::poll`].
@@ -28,9 +28,9 @@ pub enum RecvError<E> {
   Complete(E),
 }
 
-impl<R, E> Receiver<R, E> {
+impl<T, E> Receiver<T, E> {
   #[inline(always)]
-  pub(super) fn new(inner: Arc<Inner<R, E>>) -> Self {
+  pub(super) fn new(inner: Arc<Inner<T, E>>) -> Self {
     Self { inner }
   }
 
@@ -44,26 +44,26 @@ impl<R, E> Receiver<R, E> {
   }
 }
 
-impl<R, E> Future for Receiver<R, E> {
-  type Item = R;
+impl<T, E> Future for Receiver<T, E> {
+  type Item = T;
   type Error = RecvError<E>;
 
   #[inline]
-  fn poll(&mut self) -> Poll<R, RecvError<E>> {
+  fn poll(&mut self) -> Poll<T, RecvError<E>> {
     self.inner.recv()
   }
 }
 
-impl<R, E> Drop for Receiver<R, E> {
+impl<T, E> Drop for Receiver<T, E> {
   #[inline]
   fn drop(&mut self) {
     self.inner.drop_rx();
   }
 }
 
-impl<R, E> Inner<R, E> {
+impl<T, E> Inner<T, E> {
   #[inline(always)]
-  fn recv(&self) -> Poll<R, RecvError<E>> {
+  fn recv(&self) -> Poll<T, RecvError<E>> {
     self
       .update(self.state_load(Acquire), Acquire, Acquire, |state| {
         if *state & (COMPLETE | RX_LOCK) != 0 {

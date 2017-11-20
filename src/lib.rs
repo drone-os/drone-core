@@ -30,6 +30,7 @@
 #![feature(const_max_value)]
 #![feature(const_min_value)]
 #![feature(const_ptr_null_mut)]
+#![feature(const_size_of)]
 #![feature(const_unsafe_cell_new)]
 #![feature(core_intrinsics)]
 #![feature(decl_macro)]

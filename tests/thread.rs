@@ -51,11 +51,11 @@ fn routine() {
       }
     });
     assert_eq!(counter.0.get(), 0);
-    THREADS[0].run(0);
+    THREADS[0].resume(0);
     assert_eq!(counter.0.get(), 1);
-    THREADS[0].run(0);
+    THREADS[0].resume(0);
     assert_eq!(counter.0.get(), -2);
-    THREADS[0].run(0);
+    THREADS[0].resume(0);
     assert_eq!(counter.0.get(), -2);
   }
 }
@@ -69,9 +69,9 @@ fn routine_fn() {
       (wrapper.0).0.set((wrapper.0).0.get() + 1);
     });
     assert_eq!(counter.0.get(), 0);
-    THREADS[0].run(0);
+    THREADS[0].resume(0);
     assert_eq!(counter.0.get(), -1);
-    THREADS[0].run(0);
+    THREADS[0].resume(0);
     assert_eq!(counter.0.get(), -1);
   }
 }

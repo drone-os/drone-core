@@ -4,26 +4,23 @@ use core::sync::atomic::Ordering::*;
 use futures::Poll;
 use sync::spsc::SpscInner;
 
-/// The sending-half of [`tick::channel`].
+/// The sending-half of [`unit::channel`].
 ///
-/// [`tick::channel`]: fn.channel.html
+/// [`unit::channel`]: fn.channel.html
 pub struct Sender<E> {
   inner: Arc<Inner<E>>,
 }
 
-/// Error returned from [`Sender::send_tick`].
+/// Error returned from [`Sender::send`].
 ///
-/// [`Sender::send_tick`]: struct.Sender.html#method.send_tick
+/// [`Sender::send`]: struct.Sender.html#method.send
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SendTickError {
+pub enum SendError {
   /// The corresponding [`Receiver`] is dropped.
   ///
   /// [`Receiver`]: struct.Receiver.html
   Canceled,
-  /// The internal counter overflow. This may happen when the corresponding
-  /// [`Receiver`] is too slow to consume the data.
-  ///
-  /// [`Receiver`]: struct.Receiver.html
+  /// Counter overflow.
   Overflow,
 }
 
@@ -33,12 +30,12 @@ impl<E> Sender<E> {
     Self { inner }
   }
 
-  /// Sends a single tick across the channel.
+  /// Sends a unit across the channel.
   ///
   /// [`Receiver`]: struct.Receiver.html
   #[inline]
-  pub fn send_tick(&mut self) -> Result<(), SendTickError> {
-    self.inner.send_tick()
+  pub fn send(&mut self) -> Result<(), SendError> {
+    self.inner.send()
   }
 
   /// Completes this stream with an error.
@@ -93,17 +90,17 @@ impl<E> Drop for Sender<E> {
 
 impl<E> Inner<E> {
   #[inline(always)]
-  fn send_tick(&self) -> Result<(), SendTickError> {
+  fn send(&self) -> Result<(), SendError> {
     self
       .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {
         let mut lock = *state & LOCK_MASK;
         if lock & COMPLETE != 0 {
-          return Err(SendTickError::Canceled);
+          return Err(SendError::Canceled);
         }
         *state = (*state as isize >> LOCK_BITS) as usize;
         *state = state.wrapping_add(1);
         if *state == 0 {
-          return Err(SendTickError::Overflow);
+          return Err(SendError::Overflow);
         }
         let rx_locked = if lock & RX_LOCK == 0 {
           lock |= RX_LOCK;
@@ -131,7 +128,7 @@ impl<E> Inner<E> {
   }
 
   #[inline(always)]
-  pub fn send_err(&self, err: E) -> Result<(), E> {
+  fn send_err(&self, err: E) -> Result<(), E> {
     if self.is_canceled() {
       Err(err)
     } else {

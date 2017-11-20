@@ -6,13 +6,13 @@ use sync::spsc::SpscInner;
 /// The sending-half of [`oneshot::channel`].
 ///
 /// [`oneshot::channel`]: fn.channel.html
-pub struct Sender<R, E> {
-  inner: Arc<Inner<R, E>>,
+pub struct Sender<T, E> {
+  inner: Arc<Inner<T, E>>,
 }
 
-impl<R, E> Sender<R, E> {
+impl<T, E> Sender<T, E> {
   #[inline(always)]
-  pub(super) fn new(inner: Arc<Inner<R, E>>) -> Self {
+  pub(super) fn new(inner: Arc<Inner<T, E>>) -> Self {
     Self { inner }
   }
 
@@ -24,7 +24,7 @@ impl<R, E> Sender<R, E> {
   ///
   /// [`Receiver`]: struct.Receiver.html
   #[inline]
-  pub fn send(self, data: Result<R, E>) -> Result<(), Result<R, E>> {
+  pub fn send(self, data: Result<T, E>) -> Result<(), Result<T, E>> {
     self.inner.send(data)
   }
 
@@ -59,16 +59,16 @@ impl<R, E> Sender<R, E> {
   }
 }
 
-impl<R, E> Drop for Sender<R, E> {
+impl<T, E> Drop for Sender<T, E> {
   #[inline]
   fn drop(&mut self) {
     self.inner.drop_tx();
   }
 }
 
-impl<R, E> Inner<R, E> {
+impl<T, E> Inner<T, E> {
   #[inline(always)]
-  fn send(&self, data: Result<R, E>) -> Result<(), Result<R, E>> {
+  fn send(&self, data: Result<T, E>) -> Result<(), Result<T, E>> {
     if self.is_canceled() {
       Err(data)
     } else {

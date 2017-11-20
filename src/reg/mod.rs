@@ -64,18 +64,12 @@
 
 pub mod prelude;
 
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod field;
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod hold;
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod raw;
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 #[cfg_attr(feature = "clippy", allow(module_inception))]
 mod reg;
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod tag;
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod val;
 
 pub use self::field::*;

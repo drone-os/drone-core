@@ -92,9 +92,7 @@
 //! 2. Mark a block as free in the pool. This step should compute in *O(1)*
 //!    time.
 
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod pool;
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod allocator;
 
 pub use self::allocator::Allocator;
