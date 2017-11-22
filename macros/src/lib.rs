@@ -20,19 +20,11 @@ extern crate quote;
 extern crate regex;
 extern crate syn;
 
-mod bind;
 mod heap;
 mod reg;
-mod reg_block;
 mod thread_local;
 
 use proc_macro::TokenStream;
-
-#[doc(hidden)]
-#[proc_macro]
-pub fn bind(input: TokenStream) -> TokenStream {
-  tokens!(bind::bind(input))
-}
 
 #[doc(hidden)]
 #[proc_macro]
@@ -48,12 +40,6 @@ pub fn reg(input: TokenStream) -> TokenStream {
 
 #[doc(hidden)]
 #[proc_macro]
-pub fn reg_block(input: TokenStream) -> TokenStream {
-  tokens!(reg_block::reg_block(input))
-}
-
-#[doc(hidden)]
-#[proc_macro]
 pub fn thread_local(input: TokenStream) -> TokenStream {
   tokens!(thread_local::thread_local(input))
 }
@@ -61,6 +47,6 @@ pub fn thread_local(input: TokenStream) -> TokenStream {
 macro tokens($tokens:expr) {
   match $tokens {
     Ok(tokens) => tokens.parse().unwrap(),
-    Err(error) => panic!(error),
+    Err(error) => panic!("{}", error),
   }
 }

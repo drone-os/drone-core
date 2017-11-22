@@ -21,16 +21,22 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens, Error> {
   let input = parse_token_trees(&input.to_string()).map_err(err_msg)?;
   let mut input = input.into_iter();
   let mut attrs = Vec::new();
-  let mut trait_attrs = Vec::new();
-  let mut trait_name = Vec::new();
-  let mut field_attrs = Vec::new();
-  let mut field_name = Vec::new();
-  let mut field_offset = Vec::new();
-  let mut field_width = Vec::new();
-  let mut field_trait_attrs = Vec::new();
-  let mut field_trait_name = Vec::new();
-  let block = loop {
+  let mut path = Vec::new();
+  let mut block = None;
+  let mut reg_attrs = Vec::new();
+  let mut reg_tokens = Vec::new();
+  let mut reg_names = Vec::new();
+  loop {
     match input.next() {
+      Some(TokenTree::Token(Token::DocComment(ref string)))
+        if string.starts_with("///") =>
+      {
+        if block.is_none() {
+          Err(format_err!("Invalid tokens: ///"))?;
+        }
+        let string = string.trim_left_matches("///");
+        reg_attrs.push(quote!(#[doc = #string]));
+      }
       Some(TokenTree::Token(Token::DocComment(ref string)))
         if string.starts_with("//!") =>
       {
@@ -38,6 +44,12 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens, Error> {
         attrs.push(quote!(#[doc = #string]));
       }
       Some(TokenTree::Token(Token::Pound)) => match input.next() {
+        Some(TokenTree::Delimited(delimited)) => {
+          if block.is_none() {
+            Err(format_err!("Invalid tokens: #["))?;
+          }
+          reg_attrs.push(quote!(# #delimited))
+        }
         Some(TokenTree::Token(Token::Not)) => match input.next() {
           Some(TokenTree::Delimited(delimited)) => {
             attrs.push(quote!(# #delimited))
@@ -46,31 +58,111 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens, Error> {
         },
         token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
       },
-      Some(TokenTree::Token(Token::Ident(block))) => break block,
-      token => Err(format_err!("Invalid token: {:?}", token))?,
+      Some(TokenTree::Token(Token::Ident(name))) => if block.is_none() {
+        block = Some(name);
+      } else {
+        match input.next() {
+          Some(TokenTree::Delimited(Delimited {
+            delim: DelimToken::Brace,
+            tts: tokens,
+          })) => if let Some(ref block) = block {
+            reg_names.push(Ident::new(name.as_ref().to_pascal_case()));
+            reg_tokens.push(parse_reg(reg_attrs, name, tokens, block, &path)?);
+            reg_attrs = Vec::new();
+          } else {
+            Err(format_err!("Invalid tokens: {{"))?
+          },
+          token => {
+            Err(format_err!("Invalid tokens after `{}`: {:?}", name, token))?
+          }
+        }
+      },
+      Some(TokenTree::Token(mod_sep @ Token::ModSep)) => {
+        if let Some(name) = block {
+          if !reg_attrs.is_empty() || !reg_tokens.is_empty() {
+            Err(format_err!("Invalid tokens: ::"))?;
+          }
+          path.push(Token::Ident(name));
+          path.push(mod_sep);
+          block = None;
+        } else {
+          Err(format_err!("Invalid tokens after `{:?}`: `::`", path))?;
+        }
+      }
+      None => break,
+      token => Err(format_err!(
+        "Invalid tokens after `{:?} {:?}`: {:?}",
+        path,
+        block,
+        token
+      ))?,
     }
-  };
-  let name = match input.next() {
-    Some(TokenTree::Token(Token::Ident(name))) => name,
-    token => Err(format_err!("Invalid tokens after {:?}: {:?}", block, token))?,
-  };
+  }
+  let block = block.ok_or_else(|| err_msg("Block name is not specified"))?;
+  let mod_name = Ident::new(block.as_ref().to_snake_case());
+  let prefix = Ident::new(block.as_ref().to_pascal_case());
+  let mod_names = reg_names
+    .iter()
+    .map(|_| mod_name.clone())
+    .collect::<Vec<_>>();
+  let reg_aliases = reg_names
+    .iter()
+    .map(|name| Ident::new(format!("{}{}", prefix, name)))
+    .collect::<Vec<_>>();
+
+  Ok(quote! {
+    #(#attrs)*
+    pub mod #mod_name {
+      #(#reg_tokens)*
+    }
+
+    #(
+      pub use self::#mod_names::#reg_names as #reg_aliases;
+    )*
+  })
+}
+
+fn parse_reg(
+  attrs: Vec<Tokens>,
+  name: Ident,
+  input: Vec<TokenTree>,
+  block: &Ident,
+  path: &[Token],
+) -> Result<Tokens, Error> {
+  let mut input = input.into_iter();
+  let mut trait_attrs = Vec::new();
+  let mut trait_name = Vec::new();
+  let mut field_attrs = Vec::new();
+  let mut field_name = Vec::new();
+  let mut field_offset = Vec::new();
+  let mut field_width = Vec::new();
+  let mut field_trait_attrs = Vec::new();
+  let mut field_trait_name = Vec::new();
   let address = match input.next() {
     Some(
       TokenTree::Token(Token::Literal(Lit::Int(address, IntTy::Unsuffixed))),
     ) => address,
-    token => Err(format_err!("Invalid tokens after {:?}: {:?}", name, token))?,
+    token => Err(format_err!(
+      "Invalid tokens after `{:?} {{`: {:?}",
+      name,
+      token
+    ))?,
   };
   let raw = match input.next() {
     Some(
       TokenTree::Token(Token::Literal(Lit::Int(raw, IntTy::Unsuffixed))),
     ) => Ident::new(format!("u{}", raw)),
-    token => Err(format_err!("Invalid tokens after {}: {:?}", address, token))?,
+    token => Err(format_err!(
+      "Invalid tokens after `{}`: {:?}",
+      address,
+      token
+    ))?,
   };
   let reset = match input.next() {
     Some(
       TokenTree::Token(Token::Literal(Lit::Int(reset, IntTy::Unsuffixed))),
     ) => Lit::Int(reset, IntTy::Usize),
-    token => Err(format_err!("Invalid tokens after {}: {:?}", raw, token))?,
+    token => Err(format_err!("Invalid tokens after `{}`: {:?}", raw, token))?,
   };
   'fields: loop {
     let mut attrs = Vec::new();
@@ -174,7 +266,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens, Error> {
       }
     }
   }
-  let block = block.as_ref().to_snake_case();
+  let block = Ident::new(block.as_ref().to_snake_case());
   let reg_name = Ident::new(name.as_ref().to_pascal_case());
   let mod_name = name.as_ref().to_snake_case();
   let field_field = field_name
@@ -200,6 +292,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens, Error> {
   let attrs3 = attrs.clone();
   let attrs4 = attrs.clone();
   let attrs5 = attrs.clone();
+  let attrs6 = attrs.clone();
   let field_attrs2 = field_attrs.clone();
   let field_name2 = field_name.clone();
   let field_name3 = field_name.clone();
@@ -364,6 +457,8 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens, Error> {
 
     #(#attrs)*
     pub mod #mod_name {
+      pub use self::bind as Reg;
+
       use ::drone::reg;
 
       #(#field_tokens)*
@@ -516,17 +611,18 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens, Error> {
         }
       }
 
-      #[doc(hidden)]
-      pub macro Reg($reg:ty, $drone_reg:path, $drone_reg_fields:path) {
-        {
+      #(#attrs6)*
+      pub macro bind($($args:ty),*) {
+        unsafe {
           #[allow(dead_code)]
           #[export_name = #export_name]
           #[link_section = ".drone_reg_bindings"]
           #[linkage = "external"]
           extern "C" fn __exclusive_bind() {}
 
-          use $drone_reg_fields;
-          <$reg as $drone_reg>::Fields::__bind().into_reg()
+          use $crate::reg::prelude::*;
+          $crate::#(#path)*#block::#mod_name::Fields::<$($args),*>::__bind()
+            .into_reg()
         }
       }
     }

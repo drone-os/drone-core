@@ -2,80 +2,22 @@
 //!
 //! # Binding
 //!
-//! To use a register one should bind it with `bind!` macro. The macro ensures
-//! each register to be bound not more than once across the whole program.
-//!
-//! To make "let" bindings:
+//! To use a register one should bind it with the register macro. The macro
+//! ensures each register to be bound not more than once across the whole
+//! program.
 //!
 //! ```
 //! # #![feature(decl_macro)]
 //! # #![feature(linkage)]
 //! # use std as core;
-//! # drone::reg_block! {
-//! #   STK
-//! #   reg!(CTRL 0xE000_E010 0x20 0x0000_0000 ENABLE { 0 1 });
-//! # }
-//! use drone::reg;
+//! # pub mod reg { pub mod prelude { pub use drone::reg::prelude::*; } }
+//! # drone::reg!(STK CTRL { 0xE000_E010 0x20 0x0000_0000 ENABLE { 0 1 } });
 //! use drone::reg::prelude::*;
 //! use core::mem::size_of_val;
 //!
 //! fn main() {
-//!   reg::bind! {
-//!     stk_ctrl: stk::Ctrl<Ur>,
-//!   }
+//!   let stk_ctrl = stk::Ctrl!(Ur);
 //!   assert_eq!(size_of_val(&stk_ctrl), 0);
-//! }
-//! ```
-//!
-//! To make "struct" bindings:
-//!
-//! ```
-//! # #![feature(decl_macro)]
-//! # #![feature(linkage)]
-//! # use std as core;
-//! # drone::reg_block! {
-//! #   STK
-//! #   reg!(CTRL 0xE000_E010 0x20 0x0000_0000 ENABLE { 0 1 });
-//! # }
-//! use drone::reg;
-//! use drone::reg::prelude::*;
-//! use core::mem::size_of_val;
-//!
-//! struct Foo {
-//!   stk_ctrl: stk::Ctrl<Ur>,
-//! }
-//!
-//! fn main() {
-//!   let foo = reg::bind! {
-//!     Foo {
-//!       stk_ctrl: stk::Ctrl<Ur>,
-//!     }
-//!   };
-//!   assert_eq!(size_of_val(&foo.stk_ctrl), 0);
-//! }
-//! ```
-//!
-//! To make "tuple" bindings:
-//!
-//! ```
-//! # #![feature(decl_macro)]
-//! # #![feature(linkage)]
-//! # use std as core;
-//! # drone::reg_block! {
-//! #   STK
-//! #   reg!(CTRL 0xE000_E010 0x20 0x0000_0000 ENABLE { 0 1 });
-//! # }
-//! use drone::reg;
-//! use drone::reg::prelude::*;
-//! use core::mem::size_of_val;
-//!
-//! fn main() {
-//!   let foo = reg::bind! {
-//!     (
-//!       stk_ctrl: stk::Ctrl<Ur>,
-//!     )
-//!   };
-//!   assert_eq!(size_of_val(&foo.0), 0);
 //! }
 //! ```
 //!
@@ -87,16 +29,15 @@
 //! ```
 //! # #![feature(decl_macro)]
 //! # fn main() {}
-//! use drone::{reg, reg_block};
+//! use drone::reg;
 //! use drone::reg::prelude::*;
 //!
-//! reg_block! {
+//! reg! {
 //!   //! SysTick timer.
-//!   STK // peripheral name
+//!   STK // block name
 //!
-//!   reg! {
-//!     //! SysTick control and status register.
-//!     CTRL // register name
+//!   /// SysTick control and status register.
+//!   CTRL { // register name
 //!     0xE000_E010 // memory address
 //!     0x20 // bit size
 //!     0x0000_0000 // reset value
@@ -128,4 +69,3 @@ pub use self::raw::*;
 pub use self::reg::*;
 pub use self::tag::*;
 pub use self::val::*;
-pub use drone_macros::bind;

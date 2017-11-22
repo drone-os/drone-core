@@ -5,14 +5,20 @@ extern crate drone;
 use drone::reg;
 use drone::reg::prelude::*;
 use std::mem::size_of;
-use test_reg::Val;
+use test_block::TestReg;
+use test_block::test_reg::Val;
 
 reg! {
-  //! Test doc attribute
-  #![doc = "test attribute"]
-  TEST_BLOCK TEST_REG 0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg
-  TEST_BIT { 0 1 RRegField WRegField }
-  TEST_BITS { 1 3 RRegField WRegField }
+  //! Test block doc attribute
+  #![doc = "test block attribute"]
+  TEST_BLOCK
+  /// Test reg doc attribute
+  #[doc = "test reg attribute"]
+  TEST_REG {
+    0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg
+    TEST_BIT { 0 1 RRegField WRegField }
+    TEST_BITS { 1 3 RRegField WRegField }
+  }
 }
 
 #[test]

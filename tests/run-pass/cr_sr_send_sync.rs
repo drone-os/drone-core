@@ -4,16 +4,15 @@ extern crate drone;
 
 use drone::reg;
 use drone::reg::prelude::*;
-use std as core;
 
-reg!(TEST_BLOCK TEST_REG 0xDEAD_BEEF 0x20 0xBEEF_CACE TEST_BIT { 0 1 });
+reg!(TEST_BLOCK TEST_REG { 0xDEAD_BEEF 0x20 0xBEEF_CACE TEST_BIT { 0 1 } });
 
 fn assert_send<T: Send>() {}
 fn assert_sync<T: Sync>() {}
 
 fn main() {
-  assert_send::<TestReg<Sr>>();
-  assert_sync::<TestReg<Sr>>();
-  assert_send::<TestReg<Cr>>();
-  assert_sync::<TestReg<Cr>>();
+  assert_send::<test_block::TestReg<Sr>>();
+  assert_sync::<test_block::TestReg<Sr>>();
+  assert_send::<test_block::TestReg<Cr>>();
+  assert_sync::<test_block::TestReg<Cr>>();
 }
