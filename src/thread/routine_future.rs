@@ -1,9 +1,5 @@
 use core::intrinsics;
-use core::ops::Generator;
-use core::ops::GeneratorState::*;
-use futures::{Future, Poll};
 use sync::spsc::oneshot::{channel, Receiver, RecvError};
-use thread::Thread;
 
 /// A future for result from another thread.
 ///

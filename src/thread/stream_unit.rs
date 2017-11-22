@@ -1,7 +1,4 @@
-use core::ops::Generator;
-use core::ops::GeneratorState::*;
 use sync::spsc::unit::{channel, Receiver, SendError};
-use thread::Thread;
 
 pub(crate) fn stream_unit<T, G, E, O>(
   thread: &T,

@@ -1,7 +1,6 @@
 use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK, RX_LOCK};
 use alloc::arc::Arc;
 use core::sync::atomic::Ordering::*;
-use futures::Poll;
 use sync::spsc::SpscInner;
 
 /// The sending-half of [`unit::channel`].

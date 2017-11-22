@@ -95,7 +95,6 @@ mod tests {
   use super::*;
   use alloc::arc::Arc;
   use core::sync::atomic::{AtomicUsize, Ordering};
-  use futures::Async;
   use futures::executor::{self, Notify};
 
   thread_local! {

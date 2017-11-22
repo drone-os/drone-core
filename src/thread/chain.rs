@@ -1,5 +1,3 @@
-use core::ops::Generator;
-use core::ops::GeneratorState::*;
 use core::ptr;
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::*;

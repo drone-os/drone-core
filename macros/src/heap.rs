@@ -1,4 +1,4 @@
-use errors::*;
+use failure::{err_msg, Error};
 use proc_macro::TokenStream;
 use quote;
 use quote::Tokens;
@@ -11,8 +11,9 @@ struct Pool {
   capacity: u32,
 }
 
-pub(crate) fn heap(input: TokenStream) -> Result<Tokens> {
-  let mut input = parse_token_trees(&input.to_string())?.into_iter();
+pub(crate) fn heap(input: TokenStream) -> Result<Tokens, Error> {
+  let input = parse_token_trees(&input.to_string()).map_err(err_msg)?;
+  let mut input = input.into_iter();
   let mut attributes = Vec::new();
   let mut pools = Vec::new();
   let mut size = 0;
@@ -28,11 +29,11 @@ pub(crate) fn heap(input: TokenStream) -> Result<Tokens> {
         } else if ident == "pools" {
           parse_pools(&mut input, &mut pools)?;
         } else {
-          bail!("Invalid ident: {}", ident);
+          Err(format_err!("Invalid ident: {}", ident))?;
         },
-        token => bail!("Invalid root token: {:?}", token),
+        token => Err(format_err!("Invalid root token: {:?}", token))?,
       },
-      token => bail!("Invalid root token tree: {:?}", token),
+      token => Err(format_err!("Invalid root token tree: {:?}", token))?,
     }
   }
 
@@ -160,19 +161,19 @@ pub(crate) fn heap(input: TokenStream) -> Result<Tokens> {
   })
 }
 
-fn normalize_pools(pools: &mut Vec<Pool>, size: u32) -> Result<()> {
+fn normalize_pools(pools: &mut Vec<Pool>, size: u32) -> Result<(), Error> {
   pools.sort_by_key(|pool| pool.size);
   let free = pools
     .iter()
     .map(Pool::length)
     .fold(size as i64, |a, e| a - e as i64);
   if free != 0 {
-    bail!(
+    Err(format_err!(
       "`pools` not matches `size`. Difference is {}. Consider setting `size` \
        to {}.",
       -free,
       size as i64 - free
-    );
+    ))?;
   }
   Ok(())
 }
@@ -185,15 +186,15 @@ fn parse_doc(input: &str, attributes: &mut Vec<quote::Tokens>) {
 fn parse_attr(
   input: &mut vec::IntoIter<TokenTree>,
   attributes: &mut Vec<quote::Tokens>,
-) -> Result<()> {
+) -> Result<(), Error> {
   match input.next() {
     Some(TokenTree::Token(Token::Not)) => match input.next() {
       Some(TokenTree::Delimited(delimited)) => {
         attributes.push(quote!(# #delimited))
       }
-      token => bail!("Invalid tokens after `#!`: {:?}", token),
+      token => Err(format_err!("Invalid tokens after `#!`: {:?}", token))?,
     },
-    token => bail!("Invalid tokens after `#`: {:?}", token),
+    token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
   }
   Ok(())
 }
@@ -201,24 +202,28 @@ fn parse_attr(
 fn parse_size(
   input: &mut vec::IntoIter<TokenTree>,
   size: &mut u32,
-) -> Result<()> {
+) -> Result<(), Error> {
   match input.next() {
     Some(TokenTree::Token(Token::Eq)) => match input.next() {
       Some(
         TokenTree::Token(Token::Literal(Lit::Int(int, IntTy::Unsuffixed))),
       ) => {
         if int > u32::max_value() as u64 {
-          bail!("Invalid size: {}", int);
+          Err(format_err!("Invalid size: {}", int))?;
         }
         *size = int as u32;
         match input.next() {
           Some(TokenTree::Token(Token::Semi)) => (),
-          token => bail!("Invalid tokens after `size = {}`: {:?}", int, token),
+          token => Err(format_err!(
+            "Invalid tokens after `size = {}`: {:?}",
+            int,
+            token
+          ))?,
         }
       }
-      token => bail!("Invalid tokens after `size =`: {:?}", token),
+      token => Err(format_err!("Invalid tokens after `size =`: {:?}", token))?,
     },
-    token => bail!("Invalid tokens after `size`: {:?}", token),
+    token => Err(format_err!("Invalid tokens after `size`: {:?}", token))?,
   }
   Ok(())
 }
@@ -226,10 +231,10 @@ fn parse_size(
 fn parse_pools(
   input: &mut vec::IntoIter<TokenTree>,
   pools: &mut Vec<Pool>,
-) -> Result<()> {
+) -> Result<(), Error> {
   match input.next() {
     Some(TokenTree::Token(Token::Eq)) => (),
-    token => bail!("Invalid tokens after `pools`: {:?}", token),
+    token => Err(format_err!("Invalid tokens after `pools`: {:?}", token))?,
   }
   match input.next() {
     Some(TokenTree::Delimited(Delimited {
@@ -248,42 +253,43 @@ fn parse_pools(
               Some(TokenTree::Token(
                 Token::Literal(Lit::Int(size, IntTy::Unsuffixed)),
               )) => size,
-              token => {
-                bail!("Invalid tokens after `pools = [... [`: {:?}", token)
-              }
+              token => Err(format_err!(
+                "Invalid tokens after `pools = [... [`: {:?}",
+                token
+              ))?,
             };
             match pool_tokens.next() {
               Some(TokenTree::Token(Token::Semi)) => (),
-              token => bail!(
+              token => Err(format_err!(
                 "Invalid tokens after `pools = [... [{}`: {:?}",
                 size,
                 token
-              ),
+              ))?,
             }
             let capacity = match pool_tokens.next() {
               Some(TokenTree::Token(
                 Token::Literal(Lit::Int(capacity, IntTy::Unsuffixed)),
               )) => capacity,
-              token => bail!(
+              token => Err(format_err!(
                 "Invalid tokens after `pools = [... [{};`: {:?}",
                 size,
                 token
-              ),
+              ))?,
             };
             match pool_tokens.next() {
-              Some(token) => bail!(
+              Some(token) => Err(format_err!(
                 "Invalid tokens after `pools = [... [{}; {}`: {:?}",
                 size,
                 capacity,
                 token
-              ),
+              ))?,
               None => (),
             }
             if size == 0 || size > u32::max_value() as u64 {
-              bail!("Invalid pool size: {}", size);
+              Err(format_err!("Invalid pool size: {}", size))?;
             }
             if capacity == 0 || capacity > u32::max_value() as u64 {
-              bail!("Invalid pool capacity: {}", capacity);
+              Err(format_err!("Invalid pool capacity: {}", capacity))?;
             }
             pools.push(Pool {
               size: size as u32,
@@ -291,26 +297,33 @@ fn parse_pools(
             });
             match pools_tokens.next() {
               Some(TokenTree::Token(Token::Comma)) | None => (),
-              token => bail!(
+              token => Err(format_err!(
                 "Invalid tokens after `pools = [... {}`: {:?}",
                 pools.last().unwrap(),
                 token
-              ),
+              ))?,
             }
           }
           token => if let Some(pool) = pools.last() {
-            bail!("Invalid tokens after `pools = [... {}`: {:?}", pool, token)
+            Err(format_err!(
+              "Invalid tokens after `pools = [... {}`: {:?}",
+              pool,
+              token
+            ))?;
           } else {
-            bail!("Invalid tokens after `pools = [`: {:?}", token)
+            Err(format_err!("Invalid tokens after `pools = [`: {:?}", token))?;
           },
         }
       }
       match input.next() {
         Some(TokenTree::Token(Token::Semi)) => (),
-        token => bail!("Invalid tokens after `pools = [...]`: {:?}", token),
+        token => Err(format_err!(
+          "Invalid tokens after `pools = [...]`: {:?}",
+          token
+        ))?,
       }
     }
-    token => bail!("Invalid tokens after `pools =`: {:?}", token),
+    token => Err(format_err!("Invalid tokens after `pools =`: {:?}", token))?,
   }
   Ok(())
 }

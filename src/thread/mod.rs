@@ -17,7 +17,6 @@ pub use drone_macros::thread_local;
 
 use self::stream_ring::{stream_ring, stream_ring_overwrite};
 use self::stream_unit::stream_unit;
-use core::ops::Generator;
 use futures::task;
 use sync::spsc::{ring, unit};
 
@@ -109,16 +108,16 @@ pub trait Thread: Sized {
   /// Resumes associated routines sequentially.
   ///
   /// Completed routines will be dropped.
+  ///
+  /// # Safety
+  ///
+  /// `id` must be the index of the thread.
   #[inline]
-  fn resume(&mut self, id: usize) {
-    unsafe {
-      self.set_preempted_id(current_id());
-      set_current_id(id);
-    }
+  unsafe fn resume(&mut self, id: usize) {
+    self.set_preempted_id(current_id());
+    set_current_id(id);
     self.chain_mut().drain();
-    unsafe {
-      set_current_id(self.preempted_id());
-    }
+    set_current_id(self.preempted_id());
   }
 
   /// Adds a new routine to the beginning of the chain. This method accepts a

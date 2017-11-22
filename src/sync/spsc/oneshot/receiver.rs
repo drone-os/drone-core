@@ -1,7 +1,6 @@
 use super::{Inner, COMPLETE, RX_LOCK};
 use alloc::arc::Arc;
 use core::sync::atomic::Ordering::*;
-use futures::{Async, Future, Poll};
 use futures::task;
 use sync::spsc::SpscInner;
 

@@ -1,6 +1,5 @@
 use super::Inner;
 use alloc::arc::Arc;
-use futures::Poll;
 use sync::spsc::SpscInner;
 
 /// The sending-half of [`oneshot::channel`].

@@ -23,3 +23,10 @@ pub use alloc::boxed::Box;
 pub use alloc::slice::SliceConcatExt;
 pub use alloc::string::{String, ToString};
 pub use alloc::vec::Vec;
+
+pub use core::ops::Generator;
+pub use core::ops::GeneratorState::*;
+
+pub use futures::{Async, Future, IntoFuture, Poll, Stream};
+
+pub use thread::Thread;

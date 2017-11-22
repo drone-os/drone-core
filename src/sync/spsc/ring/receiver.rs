@@ -2,7 +2,6 @@ use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
 use alloc::arc::Arc;
 use core::ptr;
 use core::sync::atomic::Ordering::*;
-use futures::{Async, Poll, Stream};
 use futures::task;
 use sync::spsc::SpscInner;
 

@@ -1,4 +1,4 @@
-use errors::*;
+use failure::{err_msg, Error};
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use quote::Tokens;
@@ -17,8 +17,9 @@ lazy_static! {
   ").unwrap();
 }
 
-pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
-  let mut input = parse_token_trees(&input.to_string())?.into_iter();
+pub(crate) fn reg(input: TokenStream) -> Result<Tokens, Error> {
+  let input = parse_token_trees(&input.to_string()).map_err(err_msg)?;
+  let mut input = input.into_iter();
   let mut attrs = Vec::new();
   let mut trait_attrs = Vec::new();
   let mut trait_name = Vec::new();
@@ -41,35 +42,35 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
           Some(TokenTree::Delimited(delimited)) => {
             attrs.push(quote!(# #delimited))
           }
-          token => bail!("Invalid tokens after `#!`: {:?}", token),
+          token => Err(format_err!("Invalid tokens after `#!`: {:?}", token))?,
         },
-        token => bail!("Invalid tokens after `#`: {:?}", token),
+        token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
       },
       Some(TokenTree::Token(Token::Ident(block))) => break block,
-      token => bail!("Invalid token: {:?}", token),
+      token => Err(format_err!("Invalid token: {:?}", token))?,
     }
   };
   let name = match input.next() {
     Some(TokenTree::Token(Token::Ident(name))) => name,
-    token => bail!("Invalid tokens after {:?}: {:?}", block, token),
+    token => Err(format_err!("Invalid tokens after {:?}: {:?}", block, token))?,
   };
   let address = match input.next() {
-    Some(TokenTree::Token(
-      Token::Literal(address @ Lit::Int(_, IntTy::Unsuffixed)),
-    )) => address,
-    token => bail!("Invalid tokens after {:?}: {:?}", name, token),
+    Some(
+      TokenTree::Token(Token::Literal(Lit::Int(address, IntTy::Unsuffixed))),
+    ) => address,
+    token => Err(format_err!("Invalid tokens after {:?}: {:?}", name, token))?,
   };
   let raw = match input.next() {
     Some(
       TokenTree::Token(Token::Literal(Lit::Int(raw, IntTy::Unsuffixed))),
     ) => Ident::new(format!("u{}", raw)),
-    token => bail!("Invalid tokens after {:?}: {:?}", address, token),
+    token => Err(format_err!("Invalid tokens after {}: {:?}", address, token))?,
   };
   let reset = match input.next() {
     Some(
       TokenTree::Token(Token::Literal(Lit::Int(reset, IntTy::Unsuffixed))),
     ) => Lit::Int(reset, IntTy::Usize),
-    token => bail!("Invalid tokens after {}: {:?}", raw, token),
+    token => Err(format_err!("Invalid tokens after {}: {:?}", raw, token))?,
   };
   'fields: loop {
     let mut attrs = Vec::new();
@@ -85,7 +86,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
           Some(TokenTree::Delimited(delimited)) => {
             attrs.push(quote!(# #delimited))
           }
-          token => bail!("Invalid tokens after `#`: {:?}", token),
+          token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
         },
         Some(TokenTree::Token(Token::Ident(name))) => {
           trait_attrs.push(attrs);
@@ -108,15 +109,19 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
                 Some(TokenTree::Token(
                   Token::Literal(offset @ Lit::Int(_, IntTy::Unsuffixed)),
                 )) => offset,
-                token => bail!("Invalid tokens after `{{`: {:?}", token),
+                token => {
+                  Err(format_err!("Invalid tokens after `{{`: {:?}", token))?
+                }
               };
               let width = match field_tokens.next() {
                 Some(TokenTree::Token(
                   Token::Literal(width @ Lit::Int(_, IntTy::Unsuffixed)),
                 )) => width,
-                token => {
-                  bail!("Invalid tokens after `{{ {:?}`: {:?}", offset, token)
-                }
+                token => Err(format_err!(
+                  "Invalid tokens after `{{ {:?}`: {:?}",
+                  offset,
+                  token
+                ))?,
               };
               let mut trait_attrs = Vec::new();
               let mut trait_name = Vec::new();
@@ -135,7 +140,9 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
                         Some(TokenTree::Delimited(delimited)) => {
                           attrs.push(quote!(# #delimited))
                         }
-                        token => bail!("Invalid tokens after `#`: {:?}", token),
+                        token => Err(
+                          format_err!("Invalid tokens after `#`: {:?}", token),
+                        )?,
                       }
                     }
                     Some(TokenTree::Token(Token::Ident(name))) => {
@@ -144,7 +151,7 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
                       break;
                     }
                     None => break 'traits,
-                    token => bail!("Invalid token: {:?}", token),
+                    token => Err(format_err!("Invalid token: {:?}", token))?,
                   }
                 }
               }
@@ -153,17 +160,17 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
               field_trait_attrs.push(trait_attrs);
               field_trait_name.push(trait_name);
             }
-            None => bail!("Unexpected block: `{ ... }`"),
+            None => Err(format_err!("Unexpected block: `{{ ... }}`"))?,
           }
           break;
         }
         None => {
           if field_name.len() == 0 {
-            bail!("No fields defined");
+            Err(format_err!("No fields defined"))?;
           }
           break 'fields;
         }
-        token => bail!("Invalid token: {:?}", token),
+        token => Err(format_err!("Invalid token: {:?}", token))?,
       }
     }
   }
@@ -187,6 +194,8 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
     .map(|x| Ident::new(x.as_ref().to_pascal_case()))
     .collect::<Vec<_>>();
   let mod_name = Ident::new(reserved_check(mod_name));
+  let export_name = format!("drone_reg_binding_{:X}", address);
+  let address = Lit::Int(address, IntTy::Unsuffixed);
   let attrs2 = attrs.clone();
   let attrs3 = attrs.clone();
   let attrs4 = attrs.clone();
@@ -357,6 +366,8 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
     pub mod #mod_name {
       use ::drone::reg;
 
+      #(#field_tokens)*
+
       #(#attrs2)*
       pub struct Reg<Tag>
       where
@@ -505,7 +516,19 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens> {
         }
       }
 
-      #(#field_tokens)*
+      #[doc(hidden)]
+      pub macro Reg($reg:ty, $drone_reg:path, $drone_reg_fields:path) {
+        {
+          #[allow(dead_code)]
+          #[export_name = #export_name]
+          #[link_section = ".drone_reg_bindings"]
+          #[linkage = "external"]
+          extern "C" fn __exclusive_bind() {}
+
+          use $drone_reg_fields;
+          <$reg as $drone_reg>::Fields::__bind().into_reg()
+        }
+      }
     }
   })
 }

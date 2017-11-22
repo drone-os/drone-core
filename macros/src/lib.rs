@@ -10,7 +10,7 @@
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
 
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 extern crate inflector;
 #[macro_use]
 extern crate lazy_static;
@@ -21,13 +21,11 @@ extern crate regex;
 extern crate syn;
 
 mod bind;
-mod errors;
 mod heap;
 mod reg;
 mod reg_block;
 mod thread_local;
 
-use errors::*;
 use proc_macro::TokenStream;
 
 #[doc(hidden)]
@@ -63,7 +61,6 @@ pub fn thread_local(input: TokenStream) -> TokenStream {
 macro tokens($tokens:expr) {
   match $tokens {
     Ok(tokens) => tokens.parse().unwrap(),
-    Err(Error(ErrorKind::Msg(message), _)) => panic!(message),
-    Err(_) => unreachable!(),
+    Err(error) => panic!(error),
   }
 }

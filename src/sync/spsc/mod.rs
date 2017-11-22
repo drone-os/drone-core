@@ -3,7 +3,6 @@
 use core::ops::{BitAnd, BitOr, BitOrAssign, BitXorAssign};
 use core::sync::atomic::Ordering;
 use core::sync::atomic::Ordering::*;
-use futures::{Async, Poll};
 use futures::task::{self, Task};
 
 pub mod oneshot;

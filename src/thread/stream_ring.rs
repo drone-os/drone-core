@@ -1,7 +1,4 @@
-use core::ops::Generator;
-use core::ops::GeneratorState::*;
 use sync::spsc::ring::{channel, Receiver, SendError, SendErrorKind};
-use thread::Thread;
 
 pub(crate) fn stream_ring<T, G, I, E, O>(
   thread: &T,

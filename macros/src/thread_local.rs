@@ -1,10 +1,11 @@
-use errors::*;
+use failure::{err_msg, Error};
 use proc_macro::TokenStream;
 use quote::Tokens;
 use syn::{parse_token_trees, DelimToken, Delimited, Ident, Token, TokenTree};
 
-pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens> {
-  let mut input = parse_token_trees(&input.to_string())?.into_iter();
+pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
+  let input = parse_token_trees(&input.to_string()).map_err(err_msg)?;
+  let mut input = input.into_iter();
   let mut attributes = Vec::new();
   let mut field_visiblity = Vec::new();
   let mut field_attributes = Vec::new();
@@ -33,12 +34,14 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens> {
             Some(TokenTree::Delimited(delimited)) => {
               attributes.push(quote!(# #delimited))
             }
-            token => bail!("Invalid tokens after `#!`: {:?}", token),
+            token => {
+              Err(format_err!("Invalid tokens after `#!`: {:?}", token))?
+            }
           },
           Some(TokenTree::Delimited(delimited)) => {
             inner_attributes.push(quote!(# #delimited))
           }
-          token => bail!("Invalid tokens after `#`: {:?}", token),
+          token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
         },
         Some(TokenTree::Token(Token::Ident(ref ident))) if ident == "pub" => {
           public = true;
@@ -46,16 +49,21 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens> {
         Some(TokenTree::Token(Token::Ident(name))) => {
           match input.next() {
             Some(TokenTree::Token(Token::Colon)) => (),
-            token => bail!("Invalid token after `{}`: {:?}", name, token),
+            token => {
+              Err(format_err!("Invalid token after `{}`: {:?}", name, token))?
+            }
           }
           let mut ty = Vec::new();
           loop {
             match input.next() {
               Some(TokenTree::Token(Token::Eq)) => break,
               Some(TokenTree::Token(token)) => ty.push(token),
-              token => {
-                bail!("Invalid token after `{}: {:?}`: {:?}", name, ty, token)
-              }
+              token => Err(format_err!(
+                "Invalid token after `{}: {:?}`: {:?}",
+                name,
+                ty,
+                token
+              ))?,
             }
           }
           let init = match input.next() {
@@ -63,9 +71,12 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens> {
               delim: DelimToken::Brace,
               tts,
             })) => tts,
-            token => {
-              bail!("Invalid token after `{}: {:?} =`: {:?}", name, ty, token)
-            }
+            token => Err(format_err!(
+              "Invalid token after `{}: {:?} =`: {:?}",
+              name,
+              ty,
+              token
+            ))?,
           };
           field_visiblity.push(if public {
             Some(Ident::new("pub"))
@@ -79,7 +90,7 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens> {
           break;
         }
         None => break 'outer,
-        token => bail!("Invalid token: {:?}", token),
+        token => Err(format_err!("Invalid token: {:?}", token))?,
       }
     }
   }

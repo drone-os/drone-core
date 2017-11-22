@@ -1,11 +1,12 @@
-use errors::*;
+use failure::{err_msg, Error};
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use quote::Tokens;
 use syn::{parse_token_trees, Delimited, Ident, Token, TokenTree};
 
-pub(crate) fn reg_block(input: TokenStream) -> Result<Tokens> {
-  let mut input = parse_token_trees(&input.to_string())?.into_iter();
+pub(crate) fn reg_block(input: TokenStream) -> Result<Tokens, Error> {
+  let input = parse_token_trees(&input.to_string()).map_err(err_msg)?;
+  let mut input = input.into_iter();
   let mut attrs = Vec::new();
   let mut regs = Vec::new();
   let mut reg_names = Vec::new();
@@ -22,12 +23,12 @@ pub(crate) fn reg_block(input: TokenStream) -> Result<Tokens> {
           Some(TokenTree::Delimited(delimited)) => {
             attrs.push(quote!(# #delimited))
           }
-          token => bail!("Invalid tokens after `#!`: {:?}", token),
+          token => Err(format_err!("Invalid tokens after `#!`: {:?}", token))?,
         },
-        token => bail!("Invalid tokens after `#`: {:?}", token),
+        token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
       },
       Some(TokenTree::Token(Token::Ident(name))) => break name,
-      token => bail!("Invalid token: {:?}", token),
+      token => Err(format_err!("Invalid token: {:?}", token))?,
     }
   };
   loop {
@@ -36,14 +37,16 @@ pub(crate) fn reg_block(input: TokenStream) -> Result<Tokens> {
         match input.next() {
           Some(TokenTree::Token(Token::Not)) => match input.next() {
             Some(TokenTree::Delimited(Delimited { tts, .. })) => regs.push(tts),
-            token => bail!("Invalid tokens after `reg!`: {:?}", token),
+            token => {
+              Err(format_err!("Invalid tokens after `reg!`: {:?}", token))?
+            }
           },
-          token => bail!("Invalid tokens after `reg`: {:?}", token),
+          token => Err(format_err!("Invalid tokens after `reg`: {:?}", token))?,
         }
       }
-      Some(TokenTree::Token(Token::Semi)) => {}
+      Some(TokenTree::Token(Token::Semi)) => (),
       None => break,
-      token => bail!("Invalid token: {:?}", token),
+      token => Err(format_err!("Invalid token: {:?}", token))?,
     }
   }
   for reg in &mut regs {
@@ -54,7 +57,8 @@ pub(crate) fn reg_block(input: TokenStream) -> Result<Tokens> {
         break;
       }
     }
-    let (reg_name, i) = reg_name.ok_or("Register name not found")?;
+    let (reg_name, i) =
+      reg_name.ok_or_else(|| err_msg("Register name not found"))?;
     reg.insert(i, TokenTree::Token(Token::Ident(name.to_owned())));
     reg_names.push(reg_name);
   }
