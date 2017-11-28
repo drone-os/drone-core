@@ -11,6 +11,6 @@ fn assert_copy<T: Copy>() {}
 fn assert_clone<T: Clone>() {}
 
 fn main() {
-  assert_copy::<test_block::TestReg<Cr>>();
-  assert_clone::<test_block::TestReg<Cr>>();
+  assert_copy::<test_block::TestReg<Crt>>();
+  assert_clone::<test_block::TestReg<Crt>>();
 }

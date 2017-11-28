@@ -2,9 +2,7 @@
 //!
 //! # Binding
 //!
-//! To use a register one should bind it with the register macro. The macro
-//! ensures each register to be bound not more than once across the whole
-//! program.
+//! To use a register one should bind it within `bindings!` macro.
 //!
 //! ```
 //! # #![feature(decl_macro)]
@@ -12,12 +10,18 @@
 //! # use std as core;
 //! # pub mod reg { pub mod prelude { pub use drone::reg::prelude::*; } }
 //! # drone::reg!(STK CTRL { 0xE000_E010 0x20 0x0000_0000 ENABLE { 0 1 } });
+//! use drone::reg::bindings;
 //! use drone::reg::prelude::*;
 //! use core::mem::size_of_val;
 //!
+//! bindings! {
+//!   //! Register bindings.
+//!   stk_ctrl: stk::Ctrl<Urt>,
+//! }
+//!
 //! fn main() {
-//!   let stk_ctrl = stk::Ctrl!(Ur);
-//!   assert_eq!(size_of_val(&stk_ctrl), 0);
+//!   let bindings = unsafe { Bindings::new() };
+//!   assert_eq!(size_of_val(&bindings.stk_ctrl), 0);
 //! }
 //! ```
 //!
@@ -69,3 +73,4 @@ pub use self::raw::*;
 pub use self::reg::*;
 pub use self::tag::*;
 pub use self::val::*;
+pub use drone_macros::bindings;

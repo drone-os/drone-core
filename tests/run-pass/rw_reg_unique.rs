@@ -16,5 +16,5 @@ reg! {
 fn assert_rw_reg_unique<'a, T: RwRegUnique<'a>>() {}
 
 fn main() {
-  assert_rw_reg_unique::<test_block::TestReg<Ur>>();
+  assert_rw_reg_unique::<test_block::TestReg<Urt>>();
 }

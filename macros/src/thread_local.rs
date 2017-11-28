@@ -97,15 +97,13 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
   let field_name2 = field_name.clone();
 
   Ok(quote! {
-    use core::cell::Cell;
-    use core::ptr;
-    use drone::thread::{self, Chain, Thread};
+    use ::drone::thread::{self, Chain, TaskCell};
 
     #(#attributes)*
     pub struct ThreadLocal {
       chain: Chain,
+      task: TaskCell,
       preempted_id: usize,
-      task: Cell<*mut u8>,
       #(
         #(#field_attributes)*
         #field_visiblity #field_name: #(#field_type)*,
@@ -119,8 +117,8 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
       pub const fn new(_id: usize) -> Self {
         Self {
           chain: Chain::new(),
+          task: TaskCell::new(),
           preempted_id: 0,
-          task: Cell::new(ptr::null_mut()),
           #(
             #field_name2: { #(#field_init)* },
           )*
@@ -145,23 +143,18 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
       }
 
       #[inline(always)]
+      fn task(&self) -> &TaskCell {
+        &self.task
+      }
+
+      #[inline(always)]
       fn preempted_id(&self) -> usize {
         self.preempted_id
       }
 
       #[inline(always)]
-      unsafe fn set_preempted_id(&mut self, id: usize) {
+      fn set_preempted_id(&mut self, id: usize) {
         self.preempted_id = id;
-      }
-
-      #[inline(always)]
-      fn task(&self) -> *mut u8 {
-        self.task.get()
-      }
-
-      #[inline(always)]
-      unsafe fn set_task(&self, task: *mut u8) {
-        self.task.set(task);
       }
     }
 

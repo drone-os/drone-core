@@ -134,10 +134,9 @@ fn parse_reg(
   let mut trait_name = Vec::new();
   let mut field_attrs = Vec::new();
   let mut field_name = Vec::new();
-  let mut field_offset = Vec::new();
-  let mut field_width = Vec::new();
-  let mut field_trait_attrs = Vec::new();
-  let mut field_trait_name = Vec::new();
+  let mut field_field = Vec::new();
+  let mut field_affix = Vec::new();
+  let mut field_tokens = Vec::new();
   let address = match input.next() {
     Some(
       TokenTree::Token(Token::Literal(Lit::Int(address, IntTy::Unsuffixed))),
@@ -164,7 +163,7 @@ fn parse_reg(
     ) => Lit::Int(reset, IntTy::Usize),
     token => Err(format_err!("Invalid tokens after `{}`: {:?}", raw, token))?,
   };
-  'fields: loop {
+  'outer: loop {
     let mut attrs = Vec::new();
     loop {
       match input.next() {
@@ -181,78 +180,55 @@ fn parse_reg(
           token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
         },
         Some(TokenTree::Token(Token::Ident(name))) => {
-          trait_attrs.push(attrs);
-          trait_name.push(name);
+          if field_tokens.is_empty() {
+            trait_attrs.push(attrs);
+            trait_name.push(name);
+          } else {
+            match input.next() {
+              Some(TokenTree::Delimited(Delimited {
+                delim: DelimToken::Brace,
+                tts,
+              })) => {
+                field_tokens.push(parse_field(
+                  &attrs,
+                  name,
+                  tts,
+                  &raw,
+                  &mut field_affix,
+                  &mut field_field,
+                  &mut field_name,
+                )?);
+                field_attrs.push(attrs);
+              }
+              token => Err(format_err!(
+                "Unexpected token after `{}`: {:?}",
+                name,
+                token
+              ))?,
+            }
+          }
           break;
         }
         Some(TokenTree::Delimited(Delimited {
           delim: DelimToken::Brace,
-          tts: field_tokens,
+          tts,
         })) => {
-          let mut field_tokens = field_tokens.into_iter();
           let last = trait_attrs
             .pop()
             .and_then(|attrs| trait_name.pop().map(|name| (attrs, name)));
-          match last {
-            Some((attriutes, name)) => {
-              field_attrs.push(attriutes);
-              field_name.push(name);
-              let offset = match field_tokens.next() {
-                Some(TokenTree::Token(
-                  Token::Literal(offset @ Lit::Int(_, IntTy::Unsuffixed)),
-                )) => offset,
-                token => {
-                  Err(format_err!("Invalid tokens after `{{`: {:?}", token))?
-                }
-              };
-              let width = match field_tokens.next() {
-                Some(TokenTree::Token(
-                  Token::Literal(width @ Lit::Int(_, IntTy::Unsuffixed)),
-                )) => width,
-                token => Err(format_err!(
-                  "Invalid tokens after `{{ {:?}`: {:?}",
-                  offset,
-                  token
-                ))?,
-              };
-              let mut trait_attrs = Vec::new();
-              let mut trait_name = Vec::new();
-              'traits: loop {
-                let mut attrs = Vec::new();
-                loop {
-                  match field_tokens.next() {
-                    Some(TokenTree::Token(Token::DocComment(ref string)))
-                      if string.starts_with("///") =>
-                    {
-                      let string = string.trim_left_matches("///");
-                      attrs.push(quote!(#[doc = #string]));
-                    }
-                    Some(TokenTree::Token(Token::Pound)) => {
-                      match input.next() {
-                        Some(TokenTree::Delimited(delimited)) => {
-                          attrs.push(quote!(# #delimited))
-                        }
-                        token => Err(
-                          format_err!("Invalid tokens after `#`: {:?}", token),
-                        )?,
-                      }
-                    }
-                    Some(TokenTree::Token(Token::Ident(name))) => {
-                      trait_attrs.push(attrs);
-                      trait_name.push(name);
-                      break;
-                    }
-                    None => break 'traits,
-                    token => Err(format_err!("Invalid token: {:?}", token))?,
-                  }
-                }
-              }
-              field_width.push(width);
-              field_offset.push(offset);
-              field_trait_attrs.push(trait_attrs);
-              field_trait_name.push(trait_name);
-            }
-            None => Err(format_err!("Unexpected block: `{{ ... }}`"))?,
+          if let Some((attrs, name)) = last {
+            field_tokens.push(parse_field(
+              &attrs,
+              name,
+              tts,
+              &raw,
+              &mut field_affix,
+              &mut field_field,
+              &mut field_name,
+            )?);
+            field_attrs.push(attrs);
+          } else {
+            Err(format_err!("Unexpected block: `{{ ... }}`"))?;
           }
           break;
         }
@@ -260,7 +236,7 @@ fn parse_reg(
           if field_name.len() == 0 {
             Err(format_err!("No fields defined"))?;
           }
-          break 'fields;
+          break 'outer;
         }
         token => Err(format_err!("Invalid token: {:?}", token))?,
       }
@@ -269,22 +245,6 @@ fn parse_reg(
   let block = Ident::new(block.as_ref().to_snake_case());
   let reg_name = Ident::new(name.as_ref().to_pascal_case());
   let mod_name = name.as_ref().to_snake_case();
-  let field_field = field_name
-    .iter()
-    .map(|x| x.as_ref().to_snake_case())
-    .collect::<Vec<_>>();
-  let field_full_field = field_field
-    .iter()
-    .map(|x| Ident::new(format!("{}_{}_{}", block, mod_name, x)))
-    .collect::<Vec<_>>();
-  let field_field = field_field
-    .into_iter()
-    .map(|x| Ident::new(reserved_check(x)))
-    .collect::<Vec<_>>();
-  let field_name = field_name
-    .iter()
-    .map(|x| Ident::new(x.as_ref().to_pascal_case()))
-    .collect::<Vec<_>>();
   let mod_name = Ident::new(reserved_check(mod_name));
   let export_name = format!("drone_reg_binding_{:X}", address);
   let address = Lit::Int(address, IntTy::Unsuffixed);
@@ -292,165 +252,16 @@ fn parse_reg(
   let attrs3 = attrs.clone();
   let attrs4 = attrs.clone();
   let attrs5 = attrs.clone();
-  let attrs6 = attrs.clone();
-  let field_attrs2 = field_attrs.clone();
   let field_name2 = field_name.clone();
   let field_name3 = field_name.clone();
+  let field_name4 = field_name.clone();
+  let field_name5 = field_name.clone();
   let field_field2 = field_field.clone();
   let field_field3 = field_field.clone();
-  let field_full_field2 = field_full_field.clone();
-  let field_full_field3 = field_full_field.clone();
-  let field_full_field4 = field_full_field.clone();
-
-  let field_tokens = field_attrs
-    .iter()
-    .zip(field_name.iter())
-    .zip(field_field.iter())
-    .zip(field_width.iter())
-    .zip(field_offset.iter())
-    .zip(field_trait_attrs.into_iter())
-    .zip(field_trait_name.into_iter())
-    .flat_map(
-      |(
-        (((((attrs, name), field), width), offset), mut trait_attrs),
-        mut trait_name,
-      )| {
-        let mut tokens = Vec::new();
-        let unprefixed_field = field.as_ref().trim_left_matches("_");
-        tokens.push(quote! {
-          #(#attrs)*
-          pub struct #name<Tag>
-          where
-            Tag: reg::RegTag
-          {
-            _tag: Tag,
-          }
-
-          impl<'a, Tag> reg::RegField<'a, Tag> for self::#name<Tag>
-          where
-            Tag: reg::RegTag + 'a
-          {
-            type Reg = self::Reg<Tag>;
-
-            const OFFSET: usize = #offset;
-            const WIDTH: usize = #width;
-
-            #[inline(always)]
-            unsafe fn __bind() -> Self {
-              Self { _tag: Tag::default() }
-            }
-          }
-
-          #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-          impl Clone for self::#name<reg::Cr> {
-            #[inline(always)]
-            fn clone(&self) -> Self {
-              Self { ..*self }
-            }
-          }
-
-          impl Copy for self::#name<reg::Cr> {}
-        });
-        if let &Lit::Int(1, _) = width {
-          let set_field = Ident::new(format!("set_{}", unprefixed_field));
-          let clear_field = Ident::new(format!("clear_{}", unprefixed_field));
-          let toggle_field = Ident::new(format!("toggle_{}", unprefixed_field));
-          trait_attrs.push(Vec::new());
-          trait_name.push(Ident::new("RegFieldBit"));
-          if trait_name.iter().any(|name| name == "RRegField") {
-            tokens.push(quote! {
-              impl<'a, Tag> self::Hold<'a, Tag>
-              where
-                Tag: reg::RegTag + 'a
-              {
-                #(#attrs)*
-                #[inline(always)]
-                pub fn #field(&self) -> bool {
-                  self.reg.#field.read(&self.val)
-                }
-              }
-            });
-          }
-          if trait_name.iter().any(|name| name == "WRegField") {
-            tokens.push(quote! {
-              impl<'a, Tag> self::Hold<'a, Tag>
-              where
-                Tag: reg::RegTag + 'a
-              {
-                #(#attrs)*
-                #[inline(always)]
-                pub fn #set_field(&mut self) -> &mut Self {
-                  self.reg.#field.set(&mut self.val);
-                  self
-                }
-
-                #(#attrs)*
-                #[inline(always)]
-                pub fn #clear_field(&mut self) -> &mut Self {
-                  self.reg.#field.clear(&mut self.val);
-                  self
-                }
-
-                #(#attrs)*
-                #[inline(always)]
-                pub fn #toggle_field(&mut self) -> &mut Self {
-                  self.reg.#field.toggle(&mut self.val);
-                  self
-                }
-              }
-            });
-          }
-        } else {
-          let write_field = Ident::new(format!("write_{}", unprefixed_field));
-          trait_attrs.push(Vec::new());
-          trait_name.push(Ident::new("RegFieldBits"));
-          if trait_name.iter().any(|name| name == "RRegField") {
-            tokens.push(quote! {
-              impl<'a, Tag> self::Hold<'a, Tag>
-              where
-                Tag: reg::RegTag + 'a
-              {
-                #(#attrs)*
-                #[inline(always)]
-                pub fn #field(&self) -> #raw {
-                  self.reg.#field.read(&self.val)
-                }
-              }
-            });
-          }
-          if trait_name.iter().any(|name| name == "WRegField") {
-            tokens.push(quote! {
-              impl<'a, Tag> self::Hold<'a, Tag>
-              where
-                Tag: reg::RegTag + 'a
-              {
-                #(#attrs)*
-                #[inline(always)]
-                pub fn #write_field(&mut self, bits: #raw) -> &mut Self {
-                  self.reg.#field.write(&mut self.val, bits);
-                  self
-                }
-              }
-            });
-          }
-        }
-        for (trait_attrs, trait_name) in
-          trait_attrs.iter().zip(trait_name.iter())
-        {
-          tokens.push(quote! {
-            #(#trait_attrs)*
-            impl<'a, Tag> reg::#trait_name<'a, Tag>
-            for self::#name<Tag>
-            where
-              Tag: reg::RegTag + 'a
-            {
-            }
-          });
-        }
-        tokens
-      },
-    )
-    .collect::<Vec<_>>();
+  let field_field4 = field_field.clone();
+  let field_field5 = field_field.clone();
+  let field_field6 = field_field.clone();
+  let field_field7 = field_field.clone();
 
   Ok(quote! {
     pub use self::#mod_name::Reg as #reg_name;
@@ -468,7 +279,6 @@ fn parse_reg(
       where
         Tag: reg::RegTag
       {
-        _tag: Tag,
         #(
           #(#field_attrs)*
           pub #field_field: self::#field_name<Tag>,
@@ -480,15 +290,59 @@ fn parse_reg(
         Tag: reg::RegTag + 'a
       {
         type Hold = self::Hold<'a, Tag>;
-        type Fields = self::Fields<Tag>;
 
         const ADDRESS: usize = #address;
+      }
+
+      impl<'a> reg::UReg<'a> for self::Reg<reg::Urt> {
+        type UpReg = self::Reg<Srt>;
 
         #[inline(always)]
-        fn into_fields(self) -> self::Fields<Tag> {
-          self::Fields {
+        fn upgrade(self) -> self::Reg<Srt> {
+          unsafe {
+            Self::UpReg {
+              #(
+                #field_field2: self::#field_name2::bind(),
+              )*
+            }
+          }
+        }
+      }
+
+      impl<'a> reg::SReg<'a> for self::Reg<reg::Srt> {
+        type UpReg = self::Reg<Drt>;
+
+        #[inline(always)]
+        fn upgrade(self) -> self::Reg<Drt> {
+          unsafe {
+            Self::UpReg {
+              #(
+                #field_field3: self::#field_name3::bind(),
+              )*
+            }
+          }
+        }
+      }
+
+      impl<'a> reg::DReg<'a> for self::Reg<reg::Drt> {
+        type UpReg = self::Reg<Crt>;
+
+        #[inline(always)]
+        fn upgrade(self) -> self::Reg<Crt> {
+          unsafe {
+            Self::UpReg {
+              #(
+                #field_field4: self::#field_name4::bind(),
+              )*
+            }
+          }
+        }
+
+        #[inline(always)]
+        fn clone(&mut self) -> Self {
+          Self {
             #(
-              #field_full_field: self.#field_field2,
+              #field_field5: self.#field_field6.clone(),
             )*
           }
         }
@@ -504,52 +358,16 @@ fn parse_reg(
       )*
 
       #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-      impl Clone for self::Reg<reg::Cr> {
+      impl Clone for self::Reg<reg::Crt> {
         #[inline(always)]
         fn clone(&self) -> Self {
           Self { ..*self }
         }
       }
 
-      impl Copy for self::Reg<reg::Cr> {}
+      impl Copy for self::Reg<reg::Crt> {}
 
       #(#attrs3)*
-      pub struct Fields<Tag>
-      where
-        Tag: reg::RegTag
-      {
-        #(
-          #(#field_attrs2)*
-          pub #field_full_field2: self::#field_name3<Tag>,
-        )*
-      }
-
-      impl<'a, Tag> reg::RegFields<'a, Tag, self::Reg<Tag>>
-      for self::Fields<Tag>
-      where
-        Tag: reg::RegTag + 'a
-      {
-        #[inline(always)]
-        unsafe fn __bind() -> Self {
-          self::Fields {
-            #(
-              #field_full_field3: self::#field_name2::__bind(),
-            )*
-          }
-        }
-
-        #[inline(always)]
-        fn into_reg(self) -> self::Reg<Tag> {
-          self::Reg {
-            _tag: Tag::default(),
-            #(
-              #field_field3: self.#field_full_field4,
-            )*
-          }
-        }
-      }
-
-      #(#attrs4)*
       pub struct Hold<'a, Tag>
       where
         Tag: reg::RegTag + 'a
@@ -581,7 +399,7 @@ fn parse_reg(
         }
       }
 
-      #(#attrs5)*
+      #(#attrs4)*
       #[derive(Clone, Copy)]
       pub struct Val {
         raw: #raw,
@@ -611,9 +429,9 @@ fn parse_reg(
         }
       }
 
-      #(#attrs6)*
+      #(#attrs5)*
       pub macro bind($($args:ty),*) {
-        unsafe {
+        {
           #[allow(dead_code)]
           #[export_name = #export_name]
           #[link_section = ".drone_reg_bindings"]
@@ -621,11 +439,236 @@ fn parse_reg(
           extern "C" fn __exclusive_bind() {}
 
           use $crate::reg::prelude::*;
-          $crate::#(#path)*#block::#mod_name::Fields::<$($args),*>::__bind()
-            .into_reg()
+          use $crate::#(#path)*#block::#mod_name;
+          #mod_name::Reg::<$($args),*> {
+            #(
+              #field_field7: self::#field_name5::bind(),
+            )*
+          }
         }
       }
     }
+  })
+}
+
+fn parse_field(
+  attrs: &[Tokens],
+  name: Ident,
+  input: Vec<TokenTree>,
+  raw: &Ident,
+  field_affix: &mut Vec<String>,
+  field_field: &mut Vec<Ident>,
+  field_name: &mut Vec<Ident>,
+) -> Result<Tokens, Error> {
+  let mut input = input.into_iter();
+  let mut trait_attrs = Vec::new();
+  let mut trait_name = Vec::new();
+  let offset = match input.next() {
+    Some(
+      TokenTree::Token(Token::Literal(Lit::Int(offset, IntTy::Unsuffixed))),
+    ) => offset,
+    token => Err(format_err!("Invalid tokens after `{{`: {:?}", token))?,
+  };
+  let width = match input.next() {
+    Some(
+      TokenTree::Token(Token::Literal(Lit::Int(width, IntTy::Unsuffixed))),
+    ) => width,
+    token => Err(format_err!(
+      "Invalid tokens after `{{ {:?}`: {:?}",
+      offset,
+      token
+    ))?,
+  };
+  'outer: loop {
+    let mut attrs = Vec::new();
+    loop {
+      match input.next() {
+        Some(TokenTree::Token(Token::DocComment(ref string)))
+          if string.starts_with("///") =>
+        {
+          let string = string.trim_left_matches("///");
+          attrs.push(quote!(#[doc = #string]));
+        }
+        Some(TokenTree::Token(Token::Pound)) => match input.next() {
+          Some(TokenTree::Delimited(delimited)) => {
+            attrs.push(quote!(# #delimited))
+          }
+          token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
+        },
+        Some(TokenTree::Token(Token::Ident(name))) => {
+          trait_attrs.push(attrs);
+          trait_name.push(name);
+          break;
+        }
+        None => break 'outer,
+        token => Err(format_err!("Invalid token: {:?}", token))?,
+      }
+    }
+  }
+
+  let mut impls = Vec::new();
+  let affix = name.as_ref().to_snake_case();
+  let field = Ident::new(reserved_check(affix.clone()));
+  let name = Ident::new(name.as_ref().to_pascal_case());
+  field_affix.push(affix.clone());
+  field_field.push(field.clone());
+  field_name.push(name.clone());
+  if width == 1 {
+    let set_field = Ident::new(format!("set_{}", affix));
+    let clear_field = Ident::new(format!("clear_{}", affix));
+    let toggle_field = Ident::new(format!("toggle_{}", affix));
+    trait_attrs.push(Vec::new());
+    trait_name.push(Ident::new("RegFieldBit"));
+    if trait_name.iter().any(|name| name == "RRegField") {
+      impls.push(quote! {
+        impl<'a, Tag> self::Hold<'a, Tag>
+        where
+          Tag: reg::RegTag + 'a
+        {
+          #(#attrs)*
+          #[inline(always)]
+          pub fn #field(&self) -> bool {
+            self.reg.#field.read(&self.val)
+          }
+        }
+      });
+    }
+    if trait_name.iter().any(|name| name == "WRegField") {
+      impls.push(quote! {
+        impl<'a, Tag> self::Hold<'a, Tag>
+        where
+          Tag: reg::RegTag + 'a
+        {
+          #(#attrs)*
+          #[inline(always)]
+          pub fn #set_field(&mut self) -> &mut Self {
+            self.reg.#field.set(&mut self.val);
+            self
+          }
+
+          #(#attrs)*
+          #[inline(always)]
+          pub fn #clear_field(&mut self) -> &mut Self {
+            self.reg.#field.clear(&mut self.val);
+            self
+          }
+
+          #(#attrs)*
+          #[inline(always)]
+          pub fn #toggle_field(&mut self) -> &mut Self {
+            self.reg.#field.toggle(&mut self.val);
+            self
+          }
+        }
+      });
+    }
+  } else {
+    let write_field = Ident::new(format!("write_{}", affix));
+    trait_attrs.push(Vec::new());
+    trait_name.push(Ident::new("RegFieldBits"));
+    if trait_name.iter().any(|name| name == "RRegField") {
+      impls.push(quote! {
+        impl<'a, Tag> self::Hold<'a, Tag>
+        where
+          Tag: reg::RegTag + 'a
+        {
+          #(#attrs)*
+          #[inline(always)]
+          pub fn #field(&self) -> #raw {
+            self.reg.#field.read(&self.val)
+          }
+        }
+      });
+    }
+    if trait_name.iter().any(|name| name == "WRegField") {
+      impls.push(quote! {
+        impl<'a, Tag> self::Hold<'a, Tag>
+        where
+          Tag: reg::RegTag + 'a
+        {
+          #(#attrs)*
+          #[inline(always)]
+          pub fn #write_field(&mut self, bits: #raw) -> &mut Self {
+            self.reg.#field.write(&mut self.val, bits);
+            self
+          }
+        }
+      });
+    }
+  }
+  let width = Lit::Int(width, IntTy::Unsuffixed);
+  let offset = Lit::Int(offset, IntTy::Unsuffixed);
+  let trait_field_name =
+    trait_name.iter().map(|_| name.clone()).collect::<Vec<_>>();
+
+  Ok(quote! {
+    #(#impls)*
+
+    #(#attrs)*
+    pub struct #name<Tag>
+    where
+      Tag: reg::RegTag
+    {
+      _tag: Tag,
+    }
+
+    impl<'a, Tag> reg::RegField<'a, Tag> for self::#name<Tag>
+    where
+      Tag: reg::RegTag + 'a
+    {
+      type Reg = self::Reg<Tag>;
+
+      const OFFSET: usize = #offset;
+      const WIDTH: usize = #width;
+
+      #[inline(always)]
+      unsafe fn bind() -> Self {
+        Self { _tag: Tag::default() }
+      }
+    }
+
+    impl<'a> reg::SRegField<'a> for self::#name<Srt> {
+      type UpRegField = self::#name<Drt>;
+
+      #[inline(always)]
+      fn upgrade(self) -> self::#name<Drt> {
+        Self::UpRegField { _tag: reg::Drt::default() }
+      }
+    }
+
+    impl<'a> reg::DRegField<'a> for self::#name<Drt> {
+      type UpRegField = self::#name<Crt>;
+
+      #[inline(always)]
+      fn upgrade(self) -> self::#name<Crt> {
+        Self::UpRegField { _tag: reg::Crt::default() }
+      }
+
+      #[inline(always)]
+      fn clone(&mut self) -> Self {
+        Self { _tag: reg::Drt::default() }
+      }
+    }
+
+    #(
+      #(#trait_attrs)*
+      impl<'a, Tag> reg::#trait_name<'a, Tag>
+      for self::#trait_field_name<Tag>
+      where
+        Tag: reg::RegTag + 'a
+      {
+      }
+    )*
+
+    #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
+    impl Clone for self::#name<reg::Crt> {
+      #[inline(always)]
+      fn clone(&self) -> Self {
+        Self { ..*self }
+      }
+    }
+
+    impl Copy for self::#name<reg::Crt> {}
   })
 }
 

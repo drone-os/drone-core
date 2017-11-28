@@ -18,23 +18,10 @@ pub type RegFieldRegHoldVal<'a, T, U> = RegHoldVal<
 pub type RegFieldRegHoldValRaw<'a, T, U> =
   <RegFieldRegHoldVal<'a, T, U> as RegVal>::Raw;
 
-/// Set of register fields.
-pub trait RegFields<'a, T, U>
-where
-  Self: Sized,
-  T: RegTag + 'a,
-  U: Reg<'a, T>,
-{
-  #[doc(hidden)]
-  unsafe fn __bind() -> Self;
-
-  /// Converts the set of fields into the register.
-  fn into_reg(self) -> U;
-}
-
 /// Register field binding.
 pub trait RegField<'a, T>
 where
+  Self: Sized,
   T: RegTag + 'a,
 {
   /// Parent register type.
@@ -46,8 +33,12 @@ where
   /// Bit-width of the field.
   const WIDTH: usize;
 
-  #[doc(hidden)]
-  unsafe fn __bind() -> Self;
+  /// Creates a new field binding.
+  ///
+  /// # Safety
+  ///
+  /// Shouldn't be called directly.
+  unsafe fn bind() -> Self;
 }
 
 /// Single-bit register field.
@@ -64,6 +55,35 @@ where
   Self: RegField<'a, T>,
   T: RegTag + 'a,
 {
+}
+
+/// Synchronous register field.
+pub trait SRegField<'a>
+where
+  Self: RegField<'a, Srt>,
+  Self::Reg: Reg<'a, Srt>,
+{
+  /// Less strict type.
+  type UpRegField: RegField<'a, Drt>;
+
+  /// Converts to a less strict type.
+  fn upgrade(self) -> Self::UpRegField;
+}
+
+/// Duplicable register field.
+pub trait DRegField<'a>
+where
+  Self: RegField<'a, Drt>,
+  Self::Reg: Reg<'a, Drt>,
+{
+  /// Less strict type.
+  type UpRegField: RegField<'a, Crt>;
+
+  /// Converts to a less strict type.
+  fn upgrade(self) -> Self::UpRegField;
+
+  /// Returns a copy of the register field.
+  fn clone(&mut self) -> Self;
 }
 
 /// Register field that can read its value.
@@ -317,23 +337,23 @@ where
 {
   #[inline(always)]
   fn set_bit(&self) {
-    let mut val = self.reset_val();
-    self.set(&mut val);
-    self.store_val(val);
+    self.reset(|val| {
+      self.set(val);
+    });
   }
 
   #[inline(always)]
   fn clear_bit(&self) {
-    let mut val = self.reset_val();
-    self.clear(&mut val);
-    self.store_val(val);
+    self.reset(|val| {
+      self.clear(val);
+    });
   }
 
   #[inline(always)]
   fn toggle_bit(&self) {
-    let mut val = self.reset_val();
-    self.toggle(&mut val);
-    self.store_val(val);
+    self.reset(|val| {
+      self.toggle(val);
+    });
   }
 }
 
@@ -392,8 +412,8 @@ where
 {
   #[inline(always)]
   fn write_bits(&self, bits: RegFieldRegHoldValRaw<'a, T, Self>) {
-    let mut val = self.reset_val();
-    self.write(&mut val, bits);
-    self.store_val(val);
+    self.reset(|val| {
+      self.write(val, bits);
+    });
   }
 }

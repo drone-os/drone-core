@@ -11,8 +11,7 @@ fn assert_send<T: Send>() {}
 fn assert_sync<T: Sync>() {}
 
 fn main() {
-  assert_send::<test_block::TestReg<Sr>>();
-  assert_sync::<test_block::TestReg<Sr>>();
-  assert_send::<test_block::TestReg<Cr>>();
-  assert_sync::<test_block::TestReg<Cr>>();
+  assert_send::<test_block::TestReg<Urt>>();
+  assert_sync::<test_block::TestReg<Urt>>();
+  //~^ ERROR `drone::reg::Urt: drone::prelude::Sync` is not satisfied
 }

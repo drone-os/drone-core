@@ -1,36 +1,39 @@
-/// Register tag trait.
+/// Register tag.
 pub trait RegTag: Sized + Default {}
 
-/// Marker trait for owned registers.
+/// Owned register tag.
 pub trait RegOwned: RegTag {}
 
-/// Marker trait for shared registers.
+/// Shared register tag.
 pub trait RegShared: RegTag {}
 
-/// Zero-sized marker type for **thread-unsafe** register bindings. "Ur" stands
-/// for "Unique Register". Does implement `Send`, but not `Sync`, 'Clone', and
-/// 'Copy'.
+/// Unique register tag.
 #[derive(Default)]
-pub struct Ur;
+pub struct Urt;
 
-impl !Sync for Ur {}
-impl RegTag for Ur {}
-impl RegOwned for Ur {}
+impl !Sync for Urt {}
+impl RegTag for Urt {}
+impl RegOwned for Urt {}
 
-/// Zero-sized marker type for **thread-safe** register bindings. "Sr" stands
-/// for "Shared register". Does implement `Send` and `Sync`, but not 'Clone' and
-/// 'Copy'.
+/// Synchronous register tag.
 #[derive(Default)]
-pub struct Sr;
+pub struct Srt;
 
-impl RegTag for Sr {}
-impl RegOwned for Sr {}
-impl RegShared for Sr {}
+impl RegTag for Srt {}
+impl RegOwned for Srt {}
+impl RegShared for Srt {}
 
-/// Zero-sized marker type for **thread-safe** register bindings. "Cr" stands
-/// for "Copyable register". Does implement `Send`, `Sync`, 'Clone', and 'Copy'.
+/// Duplicable register tag.
+#[derive(Default)]
+pub struct Drt;
+
+impl RegTag for Drt {}
+impl RegOwned for Drt {}
+impl RegShared for Drt {}
+
+/// Copyable register tag.
 #[derive(Clone, Copy, Default)]
-pub struct Cr;
+pub struct Crt;
 
-impl RegTag for Cr {}
-impl RegShared for Cr {}
+impl RegTag for Crt {}
+impl RegShared for Crt {}

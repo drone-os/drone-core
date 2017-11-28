@@ -3,11 +3,16 @@
 #![feature(const_ptr_null_mut)]
 #![feature(decl_macro)]
 #![feature(generators)]
+#![feature(prelude_import)]
 
 extern crate drone;
 
+#[prelude_import]
+#[allow(unused_imports)]
+use drone::prelude::*;
+
 use drone::thread::thread_local;
-use std as core;
+use std::cell::Cell;
 use std::sync::Arc;
 
 static mut THREADS: [ThreadLocal; 1] = [ThreadLocal::new(0)];

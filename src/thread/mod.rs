@@ -17,11 +17,16 @@ pub use drone_macros::thread_local;
 
 use self::stream_ring::{stream_ring, stream_ring_overwrite};
 use self::stream_unit::stream_unit;
+use core::cell::UnsafeCell;
+use core::ptr;
 use futures::task;
 use sync::spsc::{ring, unit};
 
-/// A pointer to the current running thread.
+/// The pointer to the current running thread.
 static mut CURRENT_ID: usize = 0;
+
+/// A thread-local storage of the task pointer.
+pub struct TaskCell(UnsafeCell<*mut u8>);
 
 /// Returns the id of the thread that invokes it.
 #[inline(always)]
@@ -60,18 +65,18 @@ fn get_task<T>() -> *mut u8
 where
   T: Thread + 'static,
 {
-  current::<T>().task()
+  unsafe { current::<T>().task().get() }
 }
 
 fn set_task<T>(task: *mut u8)
 where
   T: Thread + 'static,
 {
-  unsafe { current::<T>().set_task(task) }
+  unsafe { current::<T>().task().set(task) };
 }
 
 /// A thread interface.
-pub trait Thread: Sized {
+pub trait Thread: Sized + Sync {
   /// Returns a reference to a thread by its `id`.
   ///
   /// # Safety
@@ -85,25 +90,22 @@ pub trait Thread: Sized {
   /// Returns a mutable reference to the routines chain.
   fn chain_mut(&mut self) -> &mut Chain;
 
+  /// Returns the cell for the task pointer.
+  ///
+  /// This method is safe because [`TaskCell`] doesn't have public API.
+  ///
+  /// [`TaskCell`]: struct.TaskCell.html
+  fn task(&self) -> &TaskCell;
+
   /// Returns the id of the thread preempted by the current thread.
   fn preempted_id(&self) -> usize;
 
   /// Sets the id of the thread preempted by the current thread.
   ///
-  /// # Safety
+  /// This method is safe because `&mut self` can't be obtained by public API.
   ///
-  /// Calling this method outside of the Drone internals is very dangerous.
-  unsafe fn set_preempted_id(&mut self, id: usize);
-
-  /// Returns the current thread-local value of the task system's pointer.
-  fn task(&self) -> *mut u8;
-
-  /// Sets the current thread-local value of the task system's pointer.
-  ///
-  /// # Safety
-  ///
-  /// Calling this method outside of the Drone internals is very dangerous.
-  unsafe fn set_task(&self, task: *mut u8);
+  /// [`resume`]: #method.resume
+  fn set_preempted_id(&mut self, id: usize);
 
   /// Resumes associated routines sequentially.
   ///
@@ -112,7 +114,7 @@ pub trait Thread: Sized {
   /// # Safety
   ///
   /// `id` must be the index of the thread.
-  #[inline]
+  #[inline(always)]
   unsafe fn resume(&mut self, id: usize) {
     self.set_preempted_id(current_id());
     set_current_id(id);
@@ -261,3 +263,23 @@ pub trait Thread: Sized {
     stream_ring_overwrite(self, capacity, g)
   }
 }
+
+impl TaskCell {
+  /// Creates a new `TaskCell`.
+  #[inline(always)]
+  pub const fn new() -> Self {
+    TaskCell(UnsafeCell::new(ptr::null_mut()))
+  }
+
+  #[inline(always)]
+  unsafe fn get(&self) -> *mut u8 {
+    *self.0.get()
+  }
+
+  #[inline(always)]
+  unsafe fn set(&self, task: *mut u8) {
+    *self.0.get() = task;
+  }
+}
+
+unsafe impl Sync for TaskCell {}

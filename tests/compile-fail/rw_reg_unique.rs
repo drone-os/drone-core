@@ -27,11 +27,11 @@ reg! {
 fn assert_rw_reg_unique<'a, T: RwRegUnique<'a>>() {}
 
 fn main() {
-  assert_rw_reg_unique::<test_block::TestRwReg<Sr>>();
-  //~^ ERROR drone::reg::WReg<'_, drone::reg::Ur>` is not satisfied
-  //~| ERROR drone::reg::RReg<'_, drone::reg::Ur>` is not satisfied
-  assert_rw_reg_unique::<test_block::TestRoReg<Ur>>();
-  //~^ ERROR drone::reg::WReg<'_, drone::reg::Ur>` is not satisfied
-  assert_rw_reg_unique::<test_block::TestWoReg<Ur>>();
-  //~^ ERROR drone::reg::RReg<'_, drone::reg::Ur>` is not satisfied
+  assert_rw_reg_unique::<test_block::TestRwReg<Srt>>();
+  //~^ ERROR drone::reg::WReg<'_, drone::reg::Urt>` is not satisfied
+  //~| ERROR drone::reg::RReg<'_, drone::reg::Urt>` is not satisfied
+  assert_rw_reg_unique::<test_block::TestRoReg<Urt>>();
+  //~^ ERROR drone::reg::WReg<'_, drone::reg::Urt>` is not satisfied
+  assert_rw_reg_unique::<test_block::TestWoReg<Urt>>();
+  //~^ ERROR drone::reg::RReg<'_, drone::reg::Urt>` is not satisfied
 }

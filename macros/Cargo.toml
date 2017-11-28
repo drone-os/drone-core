@@ -20,3 +20,7 @@ Inflector = "0.11"
 [dependencies.syn]
 version = "0.11"
 features = ["full", "parsing", "printing"]
+
+[dependencies.clippy]
+version = "0.0"
+optional = true

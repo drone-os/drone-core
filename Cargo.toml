@@ -32,6 +32,3 @@ glob = "0.2"
 [dev-dependencies.compiletest_rs]
 version = "0.3"
 features = ["tmp"]
-
-[patch.crates-io.compiletest_rs]
-git = "https://github.com/valff/compiletest-rs"
