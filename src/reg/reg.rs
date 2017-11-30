@@ -1,74 +1,72 @@
 use super::*;
 use core::ptr::{read_volatile, write_volatile};
 
-/// Disambiguation for `Reg::Hold::Val`
-pub type RegHoldVal<'a, T, U> = <<U as Reg<'a, T>>::Hold as RegHold<
-  'a,
-  T,
-  U,
->>::Val;
-
-/// Disambiguation for `Reg::Hold::Val::Raw`
-pub type RegHoldValRaw<'a, T, U> = <RegHoldVal<'a, T, U> as RegVal>::Raw;
-
 /// Memory-mapped register binding. Types which implement this trait should be
 /// zero-sized. This is a zero-cost abstraction for safely working with
 /// memory-mapped registers.
-pub trait Reg<'a, T>
+pub trait Reg<T>
 where
-  Self: Sized + 'a,
-  T: RegTag + 'a,
+  Self: Sized,
+  T: RegTag,
 {
-  // FIXME Refactor when Generic Associated Types are ready
-  // https://github.com/rust-lang/rust/issues/44265
-  /// Type that wraps a raw register value and a register reference.
-  type Hold: RegHold<'a, T, Self>;
+  /// Type that wraps a raw register value.
+  type Val: RegVal;
 
   /// Memory address of the register.
   const ADDRESS: usize;
+}
+
+/// Referenceable register.
+pub trait RegRef<'a, T>
+where
+  Self: Reg<T>,
+  T: RegTag,
+{
+  /// Type that wraps a raw register value and a register reference.
+  type Hold: RegHold<'a, T, Self>;
 
   /// Creates a new `Hold` for `val`.
-  unsafe fn hold(&'a self, val: RegHoldVal<'a, T, Self>) -> Self::Hold {
-    Self::Hold::hold(self, val)
+  unsafe fn hold(&'a self, val: Self::Val) -> Self::Hold {
+    Self::Hold::new(self, val)
   }
 
   /// Creates a new `Hold` with reset value.
   fn reset_val(&'a self) -> Self::Hold {
-    unsafe { self.hold(RegHoldVal::<'a, T, Self>::reset()) }
+    unsafe { self.hold(Self::Val::reset()) }
   }
 }
 
 /// Unique register.
-pub trait UReg<'a>
+pub trait UReg
 where
-  Self: Reg<'a, Urt>,
+  Self: Reg<Urt>,
 {
   /// Less strict type.
-  type UpReg: Reg<'a, Srt>;
+  type UpReg: Reg<Srt>;
 
   /// Converts to a less strict type.
   fn upgrade(self) -> Self::UpReg;
 }
 
 /// Synchronous register.
-pub trait SReg<'a>
+pub trait SReg
 where
-  Self: Reg<'a, Srt>,
+  Self: Reg<Srt>,
 {
   /// Less strict type.
-  type UpReg: Reg<'a, Drt>;
+  type UpReg: Reg<Drt>;
 
   /// Converts to a less strict type.
   fn upgrade(self) -> Self::UpReg;
 }
 
 /// Duplicable register.
-pub trait DReg<'a>
+pub trait DReg
 where
-  Self: Reg<'a, Drt>,
+  Self: Reg<Drt>,
 {
   /// Less strict type.
-  type UpReg: Reg<'a, Crt>;
+  type UpReg: Reg<Crt>;
 
   /// Converts to a less strict type.
   fn upgrade(self) -> Self::UpReg;
@@ -78,173 +76,168 @@ where
 }
 
 /// Register that can read its value.
-pub trait RReg<'a, T>
+pub trait RReg<T>
 where
-  Self: Reg<'a, T>,
-  T: RegTag + 'a,
+  Self: Reg<T>,
+  T: RegTag,
 {
   /// Reads and wraps a register value from its memory address.
   #[inline(always)]
-  fn load(&'a self) -> Self::Hold {
-    unsafe { self.hold(RegHoldVal::<'a, T, Self>::from_raw(self.load_raw())) }
+  #[cfg_attr(feature = "clippy", allow(needless_lifetimes))]
+  fn load<'a>(&'a self) -> <Self as RegRef<'a, T>>::Hold
+  where
+    Self: RegRef<'a, T>,
+  {
+    unsafe { self.hold(Self::Val::from_raw(self.load_raw())) }
   }
 
   /// Reads a raw register value from its memory address.
   #[inline(always)]
-  unsafe fn load_raw(&self) -> RegHoldValRaw<'a, T, Self> {
+  unsafe fn load_raw(&self) -> <Self::Val as RegVal>::Raw {
     read_volatile(self.to_ptr())
   }
 
   /// Returns an unsafe constant pointer to the register's memory address.
   #[inline(always)]
-  fn to_ptr(&self) -> *const RegHoldValRaw<'a, T, Self> {
-    Self::ADDRESS as *const RegHoldValRaw<'a, T, Self>
+  fn to_ptr(&self) -> *const <Self::Val as RegVal>::Raw {
+    Self::ADDRESS as *const <Self::Val as RegVal>::Raw
   }
 }
 
 /// Register that can write its value.
-pub trait WReg<'a, T>
+pub trait WReg<T>
 where
-  Self: Reg<'a, T>,
-  T: RegTag + 'a,
+  Self: Reg<T>,
+  T: RegTag,
 {
   /// Returns an unsafe mutable pointer to the register's memory address.
   #[inline(always)]
-  fn to_mut_ptr(&self) -> *mut RegHoldValRaw<'a, T, Self> {
-    Self::ADDRESS as *mut RegHoldValRaw<'a, T, Self>
+  fn to_mut_ptr(&self) -> *mut <Self::Val as RegVal>::Raw {
+    Self::ADDRESS as *mut <Self::Val as RegVal>::Raw
   }
 
   /// Writes a raw register value to its memory address.
   #[inline(always)]
-  unsafe fn store_raw(&self, raw: RegHoldValRaw<'a, T, Self>) {
+  unsafe fn store_raw(&self, raw: <Self::Val as RegVal>::Raw) {
     write_volatile(self.to_mut_ptr(), raw);
   }
 }
 
 /// Read-only register.
-pub trait RoReg<'a, T>
+pub trait RoReg<T>
 where
-  Self: RReg<'a, T>,
-  T: RegTag + 'a,
+  Self: RReg<T>,
+  T: RegTag,
 {
 }
 
 /// Write-only register.
-pub trait WoReg<'a, T>
+pub trait WoReg<T>
 where
-  Self: WReg<'a, T>,
-  T: RegTag + 'a,
+  Self: WReg<T>,
+  T: RegTag,
 {
 }
 
 /// Register that can write its value in a multi-threaded context.
+// FIXME https://github.com/rust-lang/rust/issues/46397
 pub trait WRegShared<'a, T>
 where
-  Self: WReg<'a, T>,
-  T: RegTag + 'a,
+  Self: WReg<T> + RegRef<'a, T>,
+  T: RegShared,
 {
   /// Updates a new reset value with `f` and writes the result to the register's
   /// memory address.
   fn reset<F>(&'a self, f: F)
   where
-    F: FnOnce(&mut Self::Hold) -> &mut Self::Hold;
+    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, T>>::Hold)
+      -> &'b mut <Self as RegRef<'a, T>>::Hold;
 
-  /// Writes the holded value `val`.
-  fn store(&self, val: &Self::Hold);
-
-  /// Writes the unbound value `val`.
-  fn store_val(&self, val: RegHoldVal<'a, T, Self>);
+  /// Writes `val` into the register.
+  fn store(&self, val: Self::Val);
 }
 
 /// Register that can write its value in a single-threaded context.
+// FIXME https://github.com/rust-lang/rust/issues/46397
 pub trait WRegUnique<'a>
 where
-  Self: WReg<'a, Urt>,
+  Self: WReg<Urt> + RegRef<'a, Urt>,
 {
   /// Updates a new reset value with `f` and writes the result to the register's
   /// memory address.
   fn reset<F>(&'a mut self, f: F)
   where
-    F: FnOnce(&mut Self::Hold) -> &mut Self::Hold;
+    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Urt>>::Hold)
+      -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
 
-  /// Writes the holded value `val`.
-  fn store(&mut self, val: &Self::Hold);
-
-  /// Writes the unbound value `val`.
-  fn store_val(&mut self, val: RegHoldVal<'a, Urt, Self>);
+  /// Writes `val` into the register.
+  fn store(&mut self, val: Self::Val);
 }
 
 /// Register that can read and write its value in a single-threaded context.
+// FIXME https://github.com/rust-lang/rust/issues/46397
 pub trait RwRegUnique<'a>
 where
-  Self: RReg<'a, Urt> + WRegUnique<'a>,
+  Self: RReg<Urt> + WRegUnique<'a> + RegRef<'a, Urt>,
 {
   /// Atomically updates the register's value.
   fn update<F>(&'a mut self, f: F)
   where
-    F: FnOnce(&mut Self::Hold) -> &mut Self::Hold;
+    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Urt>>::Hold)
+      -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
 }
 
 impl<'a, T, U> WRegShared<'a, T> for U
 where
-  U: WReg<'a, T>,
-  T: RegTag + 'a,
+  T: RegShared,
+  U: WReg<T> + RegRef<'a, T>,
+  // Extra bound to make the dot operator checking `WRegUnique` first.
+  U::Val: RegVal,
 {
   #[inline(always)]
   fn reset<F>(&'a self, f: F)
   where
-    F: FnOnce(&mut Self::Hold) -> &mut Self::Hold,
+    F: for<'b> FnOnce(&'b mut <U as RegRef<'a, T>>::Hold)
+      -> &'b mut <U as RegRef<'a, T>>::Hold,
   {
-    self.store(f(&mut self.reset_val()));
+    self.store(f(&mut self.reset_val()).val());
   }
 
   #[inline(always)]
-  fn store(&self, val: &Self::Hold) {
-    self.store_val(val.val());
-  }
-
-  #[inline(always)]
-  fn store_val(&self, val: RegHoldVal<'a, T, Self>) {
+  fn store(&self, val: U::Val) {
     unsafe { self.store_raw(val.raw()) };
   }
 }
 
 impl<'a, T> WRegUnique<'a> for T
 where
-  T: WReg<'a, Urt>,
+  T: WReg<Urt> + RegRef<'a, Urt>,
 {
   #[inline(always)]
   fn reset<F>(&'a mut self, f: F)
   where
-    F: FnOnce(&mut Self::Hold) -> &mut Self::Hold,
+    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Urt>>::Hold)
+      -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
-    // FIXME Refactor when Generic Associated Types are ready
-    // https://github.com/rust-lang/rust/issues/44265
     unsafe { self.store_raw(f(&mut self.reset_val()).val().raw()) };
   }
 
   #[inline(always)]
-  fn store(&mut self, val: &Self::Hold) {
-    self.store_val(val.val());
-  }
-
-  #[inline(always)]
-  fn store_val(&mut self, val: RegHoldVal<'a, Urt, Self>) {
+  fn store(&mut self, val: T::Val) {
     unsafe { self.store_raw(val.raw()) };
   }
 }
 
 impl<'a, T> RwRegUnique<'a> for T
 where
-  T: RReg<'a, Urt> + WRegUnique<'a>,
+  T: RReg<Urt> + WRegUnique<'a> + RegRef<'a, Urt>,
 {
   #[inline(always)]
   fn update<F>(&'a mut self, f: F)
   where
-    F: FnOnce(&mut Self::Hold) -> &mut Self::Hold,
+    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Urt>>::Hold)
+      -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
-    // FIXME Refactor when Generic Associated Types are ready
-    // https://github.com/rust-lang/rust/issues/44265
     unsafe { self.store_raw(f(&mut self.load()).val().raw()) };
   }
 }

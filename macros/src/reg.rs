@@ -275,30 +275,37 @@ fn parse_reg(
       #(#field_tokens)*
 
       #(#attrs2)*
-      pub struct Reg<Tag>
+      pub struct Reg<T>
       where
-        Tag: reg::RegTag
+        T: reg::RegTag,
       {
         #(
           #(#field_attrs)*
-          pub #field_field: self::#field_name<Tag>,
+          pub #field_field: self::#field_name<T>,
         )*
       }
 
-      impl<'a, Tag> reg::Reg<'a, Tag> for self::Reg<Tag>
+      impl<T> reg::Reg<T> for self::Reg<T>
       where
-        Tag: reg::RegTag + 'a
+        T: reg::RegTag,
       {
-        type Hold = self::Hold<'a, Tag>;
+        type Val = self::Val;
 
         const ADDRESS: usize = #address;
       }
 
-      impl<'a> reg::UReg<'a> for self::Reg<reg::Urt> {
-        type UpReg = self::Reg<Srt>;
+      impl<'a, T> reg::RegRef<'a, T> for self::Reg<T>
+      where
+        T: reg::RegTag + 'a,
+      {
+        type Hold = self::Hold<'a, T>;
+      }
+
+      impl reg::UReg for self::Reg<reg::Urt> {
+        type UpReg = self::Reg<reg::Srt>;
 
         #[inline(always)]
-        fn upgrade(self) -> self::Reg<Srt> {
+        fn upgrade(self) -> self::Reg<reg::Srt> {
           unsafe {
             Self::UpReg {
               #(
@@ -309,11 +316,11 @@ fn parse_reg(
         }
       }
 
-      impl<'a> reg::SReg<'a> for self::Reg<reg::Srt> {
-        type UpReg = self::Reg<Drt>;
+      impl reg::SReg for self::Reg<reg::Srt> {
+        type UpReg = self::Reg<reg::Drt>;
 
         #[inline(always)]
-        fn upgrade(self) -> self::Reg<Drt> {
+        fn upgrade(self) -> self::Reg<reg::Drt> {
           unsafe {
             Self::UpReg {
               #(
@@ -324,11 +331,11 @@ fn parse_reg(
         }
       }
 
-      impl<'a> reg::DReg<'a> for self::Reg<reg::Drt> {
-        type UpReg = self::Reg<Crt>;
+      impl reg::DReg for self::Reg<reg::Drt> {
+        type UpReg = self::Reg<reg::Crt>;
 
         #[inline(always)]
-        fn upgrade(self) -> self::Reg<Crt> {
+        fn upgrade(self) -> self::Reg<reg::Crt> {
           unsafe {
             Self::UpReg {
               #(
@@ -350,9 +357,9 @@ fn parse_reg(
 
       #(
         #(#trait_attrs)*
-        impl<'a, Tag> #trait_name<'a, Tag> for self::Reg<Tag>
+        impl<T> #trait_name<T> for self::Reg<T>
         where
-          Tag: reg::RegTag + 'a
+          T: reg::RegTag,
         {
         }
       )*
@@ -368,23 +375,20 @@ fn parse_reg(
       impl Copy for self::Reg<reg::Crt> {}
 
       #(#attrs3)*
-      pub struct Hold<'a, Tag>
+      pub struct Hold<'a, T>
       where
-        Tag: reg::RegTag + 'a
+        T: reg::RegTag + 'a,
       {
-        reg: &'a self::Reg<Tag>,
+        reg: &'a self::Reg<T>,
         val: self::Val,
       }
 
-      impl<'a, Tag> reg::RegHold<'a, Tag, self::Reg<Tag>>
-      for self::Hold<'a, Tag>
+      impl<'a, T> reg::RegHold<'a, T, self::Reg<T>> for self::Hold<'a, T>
       where
-        Tag: reg::RegTag + 'a
+        T: reg::RegTag,
       {
-        type Val = self::Val;
-
         #[inline(always)]
-        unsafe fn hold(reg: &'a self::Reg<Tag>, val: self::Val) -> Self {
+        unsafe fn new(reg: &'a self::Reg<T>, val: self::Val) -> Self {
           Self { reg, val }
         }
 
@@ -521,9 +525,9 @@ fn parse_field(
     trait_name.push(Ident::new("RegFieldBit"));
     if trait_name.iter().any(|name| name == "RRegField") {
       impls.push(quote! {
-        impl<'a, Tag> self::Hold<'a, Tag>
+        impl<'a, T> self::Hold<'a, T>
         where
-          Tag: reg::RegTag + 'a
+          T: reg::RegTag,
         {
           #(#attrs)*
           #[inline(always)]
@@ -535,9 +539,9 @@ fn parse_field(
     }
     if trait_name.iter().any(|name| name == "WRegField") {
       impls.push(quote! {
-        impl<'a, Tag> self::Hold<'a, Tag>
+        impl<'a, T> self::Hold<'a, T>
         where
-          Tag: reg::RegTag + 'a
+          T: reg::RegTag,
         {
           #(#attrs)*
           #[inline(always)]
@@ -568,9 +572,9 @@ fn parse_field(
     trait_name.push(Ident::new("RegFieldBits"));
     if trait_name.iter().any(|name| name == "RRegField") {
       impls.push(quote! {
-        impl<'a, Tag> self::Hold<'a, Tag>
+        impl<'a, T> self::Hold<'a, T>
         where
-          Tag: reg::RegTag + 'a
+          T: reg::RegTag,
         {
           #(#attrs)*
           #[inline(always)]
@@ -582,9 +586,9 @@ fn parse_field(
     }
     if trait_name.iter().any(|name| name == "WRegField") {
       impls.push(quote! {
-        impl<'a, Tag> self::Hold<'a, Tag>
+        impl<'a, T> self::Hold<'a, T>
         where
-          Tag: reg::RegTag + 'a
+          T: reg::RegTag,
         {
           #(#attrs)*
           #[inline(always)]
@@ -605,42 +609,42 @@ fn parse_field(
     #(#impls)*
 
     #(#attrs)*
-    pub struct #name<Tag>
+    pub struct #name<T>
     where
-      Tag: reg::RegTag
+      T: reg::RegTag,
     {
-      _tag: Tag,
+      _tag: T,
     }
 
-    impl<'a, Tag> reg::RegField<'a, Tag> for self::#name<Tag>
+    impl<T> reg::RegField<T> for self::#name<T>
     where
-      Tag: reg::RegTag + 'a
+      T: reg::RegTag,
     {
-      type Reg = self::Reg<Tag>;
+      type Reg = self::Reg<T>;
 
       const OFFSET: usize = #offset;
       const WIDTH: usize = #width;
 
       #[inline(always)]
       unsafe fn bind() -> Self {
-        Self { _tag: Tag::default() }
+        Self { _tag: T::default() }
       }
     }
 
-    impl<'a> reg::SRegField<'a> for self::#name<Srt> {
-      type UpRegField = self::#name<Drt>;
+    impl reg::SRegField for self::#name<reg::Srt> {
+      type UpRegField = self::#name<reg::Drt>;
 
       #[inline(always)]
-      fn upgrade(self) -> self::#name<Drt> {
+      fn upgrade(self) -> self::#name<reg::Drt> {
         Self::UpRegField { _tag: reg::Drt::default() }
       }
     }
 
-    impl<'a> reg::DRegField<'a> for self::#name<Drt> {
-      type UpRegField = self::#name<Crt>;
+    impl reg::DRegField for self::#name<reg::Drt> {
+      type UpRegField = self::#name<reg::Crt>;
 
       #[inline(always)]
-      fn upgrade(self) -> self::#name<Crt> {
+      fn upgrade(self) -> self::#name<reg::Crt> {
         Self::UpRegField { _tag: reg::Crt::default() }
       }
 
@@ -652,10 +656,9 @@ fn parse_field(
 
     #(
       #(#trait_attrs)*
-      impl<'a, Tag> reg::#trait_name<'a, Tag>
-      for self::#trait_field_name<Tag>
+      impl<T> reg::#trait_name<T> for self::#trait_field_name<T>
       where
-        Tag: reg::RegTag + 'a
+        T: reg::RegTag,
       {
       }
     )*

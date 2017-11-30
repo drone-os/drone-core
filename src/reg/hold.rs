@@ -3,19 +3,16 @@ use super::*;
 /// Wrapper for a register value that holds register reference.
 pub trait RegHold<'a, T, U>
 where
-  Self: Sized,
-  T: RegTag + 'a,
-  U: Reg<'a, T>,
+  Self: Sized + 'a,
+  T: RegTag,
+  U: Reg<T>,
 {
-  /// Type that wraps a raw register value.
-  type Val: RegVal;
-
-  #[doc(hidden)]
-  unsafe fn hold(reg: &'a U, val: Self::Val) -> Self;
+  /// Creates a new `Hold`.
+  unsafe fn new(reg: &'a U, val: U::Val) -> Self;
 
   /// Returns the inner value.
-  fn val(&self) -> Self::Val;
+  fn val(&self) -> U::Val;
 
   /// Replaces the inner value.
-  fn set_val(&mut self, val: Self::Val);
+  fn set_val(&mut self, val: U::Val);
 }

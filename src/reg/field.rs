@@ -1,31 +1,14 @@
 use super::*;
 use core::ptr::{read_volatile, write_volatile};
 
-/// Disambiguation for `RegField::Reg::Hold`
-pub type RegFieldRegHold<'a, T, U> = <<U as RegField<'a, T>>::Reg as Reg<
-  'a,
-  T,
->>::Hold;
-
-/// Disambiguation for `RegField::Reg::Hold::Val`
-pub type RegFieldRegHoldVal<'a, T, U> = RegHoldVal<
-  'a,
-  T,
-  <U as RegField<'a, T>>::Reg,
->;
-
-/// Disambiguation for `RegField::Reg::Hold::Val::Raw`
-pub type RegFieldRegHoldValRaw<'a, T, U> =
-  <RegFieldRegHoldVal<'a, T, U> as RegVal>::Raw;
-
 /// Register field binding.
-pub trait RegField<'a, T>
+pub trait RegField<T>
 where
   Self: Sized,
-  T: RegTag + 'a,
+  T: RegTag,
 {
   /// Parent register type.
-  type Reg: Reg<'a, T>;
+  type Reg: Reg<T>;
 
   /// Address offset of the field.
   const OFFSET: usize;
@@ -42,42 +25,42 @@ where
 }
 
 /// Single-bit register field.
-pub trait RegFieldBit<'a, T>
+pub trait RegFieldBit<T>
 where
-  Self: RegField<'a, T>,
-  T: RegTag + 'a,
+  Self: RegField<T>,
+  T: RegTag,
 {
 }
 
 /// Multiple-bits register field.
-pub trait RegFieldBits<'a, T>
+pub trait RegFieldBits<T>
 where
-  Self: RegField<'a, T>,
-  T: RegTag + 'a,
+  Self: RegField<T>,
+  T: RegTag,
 {
 }
 
 /// Synchronous register field.
-pub trait SRegField<'a>
+pub trait SRegField
 where
-  Self: RegField<'a, Srt>,
-  Self::Reg: Reg<'a, Srt>,
+  Self: RegField<Srt>,
+  Self::Reg: Reg<Srt>,
 {
   /// Less strict type.
-  type UpRegField: RegField<'a, Drt>;
+  type UpRegField: RegField<Drt>;
 
   /// Converts to a less strict type.
   fn upgrade(self) -> Self::UpRegField;
 }
 
 /// Duplicable register field.
-pub trait DRegField<'a>
+pub trait DRegField
 where
-  Self: RegField<'a, Drt>,
-  Self::Reg: Reg<'a, Drt>,
+  Self: RegField<Drt>,
+  Self::Reg: Reg<Drt>,
 {
   /// Less strict type.
-  type UpRegField: RegField<'a, Crt>;
+  type UpRegField: RegField<Crt>;
 
   /// Converts to a less strict type.
   fn upgrade(self) -> Self::UpRegField;
@@ -87,107 +70,108 @@ where
 }
 
 /// Register field that can read its value.
-pub trait RRegField<'a, T>
+pub trait RRegField<T>
 where
-  Self: RegField<'a, T>,
-  Self::Reg: RReg<'a, T>,
-  T: RegTag + 'a,
+  Self: RegField<T>,
+  Self::Reg: RReg<T>,
+  T: RegTag,
 {
   /// Reads a register value from its memory address.
   #[inline(always)]
-  fn load_val(&self) -> RegFieldRegHoldVal<'a, T, Self> {
+  fn load_val(&self) -> <Self::Reg as Reg<T>>::Val {
     unsafe {
-      RegFieldRegHoldVal::<'a, T, Self>::from_raw(read_volatile(
-        Self::Reg::ADDRESS as *const RegFieldRegHoldValRaw<'a, T, Self>,
+      <Self::Reg as Reg<T>>::Val::from_raw(read_volatile(
+        Self::Reg::ADDRESS
+          as *const <<Self::Reg as Reg<T>>::Val as RegVal>::Raw,
       ))
     }
   }
 }
 
 /// Register field that can write its value.
-pub trait WRegField<'a, T>
+pub trait WRegField<T>
 where
-  Self: RegField<'a, T>,
-  Self::Reg: WReg<'a, T>,
-  T: RegTag + 'a,
+  Self: RegField<T>,
+  Self::Reg: WReg<T>,
+  T: RegTag,
 {
 }
 
 /// Register field that can only read its value.
-pub trait RoRegField<'a, T>
+pub trait RoRegField<T>
 where
-  Self: RRegField<'a, T>,
-  Self::Reg: RReg<'a, T>,
-  T: RegTag + 'a,
+  Self: RRegField<T>,
+  Self::Reg: RReg<T>,
+  T: RegTag,
 {
 }
 
 /// Register field that can only write its value.
-pub trait WoRegField<'a, T>
+pub trait WoRegField<T>
 where
-  Self: WRegField<'a, T>,
-  Self::Reg: WReg<'a, T>,
-  T: RegTag + 'a,
+  Self: WRegField<T>,
+  Self::Reg: WReg<T>,
+  T: RegTag,
 {
 }
 
 /// Write-only field of write-only register.
-pub trait WoWoRegField<'a, T>
+pub trait WoWoRegField<T>
 where
-  Self: WoRegField<'a, T>,
-  Self::Reg: WoReg<'a, T>,
-  T: RegTag + 'a,
+  Self: WoRegField<T>,
+  Self::Reg: WoReg<T>,
+  T: RegTag,
 {
   /// Creates a new reset value.
-  fn reset_val(&self) -> RegFieldRegHoldVal<'a, T, Self>;
+  fn reset_val(&self) -> <Self::Reg as Reg<T>>::Val;
 
   /// Writes the value `val`.
-  fn store_val(&self, val: RegFieldRegHoldVal<'a, T, Self>);
+  fn store_val(&self, val: <Self::Reg as Reg<T>>::Val);
 
   /// Updates a new reset value with `f` and writes the result to the register's
   /// memory address.
   fn reset<F>(&self, f: F)
   where
-    F: Fn(&mut RegFieldRegHoldVal<'a, T, Self>);
+    F: Fn(&mut <Self::Reg as Reg<T>>::Val);
 }
 
 /// Single-bit register field that can read its value.
-pub trait RRegFieldBit<'a, T>
+pub trait RRegFieldBit<T>
 where
-  Self: RegFieldBit<'a, T> + RRegField<'a, T>,
-  Self::Reg: RReg<'a, T>,
-  T: RegTag + 'a,
+  Self: RegFieldBit<T> + RRegField<T>,
+  Self::Reg: RReg<T>,
+  T: RegTag,
 {
   /// Reads the state of the bit from `val`.
-  fn read(&self, val: &RegFieldRegHoldVal<'a, T, Self>) -> bool;
+  fn read(&self, val: &<Self::Reg as Reg<T>>::Val) -> bool;
 
   /// Reads the state of the bit from memory.
   fn read_bit(&self) -> bool;
 }
 
 /// Single-bit register field that can write its value.
-pub trait WRegFieldBit<'a, T>
+pub trait WRegFieldBit<T>
 where
-  Self: RegFieldBit<'a, T> + WRegField<'a, T>,
-  Self::Reg: WReg<'a, T>,
-  T: RegTag + 'a,
+  Self: RegFieldBit<T> + WRegField<T>,
+  Self::Reg: WReg<T>,
+  T: RegTag,
 {
   /// Sets the bit in `val`.
-  fn set(&self, val: &mut RegFieldRegHoldVal<'a, T, Self>);
+  fn set(&self, val: &mut <Self::Reg as Reg<T>>::Val);
 
   /// Clears the bit in `val`.
-  fn clear(&self, val: &mut RegFieldRegHoldVal<'a, T, Self>);
+  fn clear(&self, val: &mut <Self::Reg as Reg<T>>::Val);
 
   /// Toggles the bit in `val`.
-  fn toggle(&self, val: &mut RegFieldRegHoldVal<'a, T, Self>);
+  fn toggle(&self, val: &mut <Self::Reg as Reg<T>>::Val);
 }
 
 /// Single-bit write-only field of write-only register.
-pub trait WoWoRegFieldBit<'a, T>
+pub trait WoWoRegFieldBit<T>
 where
-  Self: RegFieldBit<'a, T> + WoRegField<'a, T>,
-  Self::Reg: WoReg<'a, T>,
-  T: RegTag + 'a,
+  Self: RegFieldBit<T> + WoRegField<T>,
+  Self::Reg: WoReg<T>,
+  T: RegTag,
 {
   /// Sets the bit in memory.
   fn set_bit(&self);
@@ -200,64 +184,64 @@ where
 }
 
 /// Multiple-bits register field that can read its value.
-pub trait RRegFieldBits<'a, T>
+pub trait RRegFieldBits<T>
 where
-  Self: RegFieldBits<'a, T> + RRegField<'a, T>,
-  Self::Reg: RReg<'a, T>,
-  T: RegTag + 'a,
+  Self: RegFieldBits<T> + RRegField<T>,
+  Self::Reg: RReg<T>,
+  T: RegTag,
 {
   /// Reads the bits from `val`.
   fn read(
     &self,
-    val: &RegFieldRegHoldVal<'a, T, Self>,
-  ) -> RegFieldRegHoldValRaw<'a, T, Self>;
+    val: &<Self::Reg as Reg<T>>::Val,
+  ) -> <<Self::Reg as Reg<T>>::Val as RegVal>::Raw;
 
   /// Reads the bits from memory.
-  fn read_bits(&self) -> RegFieldRegHoldValRaw<'a, T, Self>;
+  fn read_bits(&self) -> <<Self::Reg as Reg<T>>::Val as RegVal>::Raw;
 }
 
 /// Multiple-bits register field that can write its value.
-pub trait WRegFieldBits<'a, T>
+pub trait WRegFieldBits<T>
 where
-  Self: RegFieldBits<'a, T> + WRegField<'a, T>,
-  Self::Reg: WReg<'a, T>,
-  T: RegTag + 'a,
+  Self: RegFieldBits<T> + WRegField<T>,
+  Self::Reg: WReg<T>,
+  T: RegTag,
 {
   /// Write `bits` to `val`.
   fn write(
     &self,
-    val: &mut RegFieldRegHoldVal<'a, T, Self>,
-    bits: RegFieldRegHoldValRaw<'a, T, Self>,
+    val: &mut <Self::Reg as Reg<T>>::Val,
+    bits: <<Self::Reg as Reg<T>>::Val as RegVal>::Raw,
   );
 }
 
 /// Multiple-bits write-only field of write-only register.
-pub trait WoWoRegFieldBits<'a, T>
+pub trait WoWoRegFieldBits<T>
 where
-  Self: RegFieldBits<'a, T> + WoRegField<'a, T>,
-  Self::Reg: WoReg<'a, T>,
-  T: RegTag + 'a,
+  Self: RegFieldBits<T> + WoRegField<T>,
+  Self::Reg: WoReg<T>,
+  T: RegTag,
 {
   /// Sets the bit in memory.
-  fn write_bits(&self, bits: RegFieldRegHoldValRaw<'a, T, Self>);
+  fn write_bits(&self, bits: <<Self::Reg as Reg<T>>::Val as RegVal>::Raw);
 }
 
-impl<'a, T, U> WoWoRegField<'a, T> for U
+impl<T, U> WoWoRegField<T> for U
 where
-  T: RegTag + 'a,
-  U: WoRegField<'a, T>,
-  U::Reg: WoReg<'a, T>,
+  T: RegTag,
+  U: WoRegField<T>,
+  U::Reg: WoReg<T>,
 {
   #[inline(always)]
-  fn reset_val(&self) -> RegFieldRegHoldVal<'a, T, Self> {
-    unsafe { RegFieldRegHoldVal::<'a, T, Self>::reset() }
+  fn reset_val(&self) -> <U::Reg as Reg<T>>::Val {
+    unsafe { <U::Reg as Reg<T>>::Val::reset() }
   }
 
   #[inline(always)]
-  fn store_val(&self, val: RegFieldRegHoldVal<'a, T, Self>) {
+  fn store_val(&self, val: <U::Reg as Reg<T>>::Val) {
     unsafe {
       write_volatile(
-        Self::Reg::ADDRESS as *mut RegFieldRegHoldValRaw<'a, T, Self>,
+        U::Reg::ADDRESS as *mut <<U::Reg as Reg<T>>::Val as RegVal>::Raw,
         val.raw(),
       );
     }
@@ -266,7 +250,7 @@ where
   #[inline(always)]
   fn reset<F>(&self, f: F)
   where
-    F: Fn(&mut RegFieldRegHoldVal<'a, T, Self>),
+    F: Fn(&mut <U::Reg as Reg<T>>::Val),
   {
     let mut val = self.reset_val();
     f(&mut val);
@@ -274,17 +258,17 @@ where
   }
 }
 
-impl<'a, T, U> RRegFieldBit<'a, T> for U
+impl<T, U> RRegFieldBit<T> for U
 where
-  T: RegTag + 'a,
-  U: RegFieldBit<'a, T> + RRegField<'a, T>,
-  U::Reg: RReg<'a, T>,
+  T: RegTag,
+  U: RegFieldBit<T> + RRegField<T>,
+  U::Reg: RReg<T>,
 {
   #[inline(always)]
-  fn read(&self, val: &RegFieldRegHoldVal<'a, T, Self>) -> bool {
+  fn read(&self, val: &<U::Reg as Reg<T>>::Val) -> bool {
     unsafe {
-      val.read_bit(RegFieldRegHoldValRaw::<'a, T, Self>::from_usize(
-        Self::OFFSET,
+      val.read_bit(<<U::Reg as Reg<T>>::Val as RegVal>::Raw::from_usize(
+        U::OFFSET,
       ))
     }
   }
@@ -295,45 +279,45 @@ where
   }
 }
 
-impl<'a, T, U> WRegFieldBit<'a, T> for U
+impl<T, U> WRegFieldBit<T> for U
 where
-  T: RegTag + 'a,
-  U: RegFieldBit<'a, T> + WRegField<'a, T>,
-  U::Reg: WReg<'a, T>,
+  T: RegTag,
+  U: RegFieldBit<T> + WRegField<T>,
+  U::Reg: WReg<T>,
 {
   #[inline(always)]
-  fn set(&self, val: &mut RegFieldRegHoldVal<'a, T, Self>) {
+  fn set(&self, val: &mut <U::Reg as Reg<T>>::Val) {
     unsafe {
-      val.set_bit(RegFieldRegHoldValRaw::<'a, T, Self>::from_usize(
-        Self::OFFSET,
+      val.set_bit(<<U::Reg as Reg<T>>::Val as RegVal>::Raw::from_usize(
+        U::OFFSET,
       ));
     }
   }
 
   #[inline(always)]
-  fn clear(&self, val: &mut RegFieldRegHoldVal<'a, T, Self>) {
+  fn clear(&self, val: &mut <U::Reg as Reg<T>>::Val) {
     unsafe {
-      val.clear_bit(RegFieldRegHoldValRaw::<'a, T, Self>::from_usize(
-        Self::OFFSET,
+      val.clear_bit(<<U::Reg as Reg<T>>::Val as RegVal>::Raw::from_usize(
+        U::OFFSET,
       ));
     }
   }
 
   #[inline(always)]
-  fn toggle(&self, val: &mut RegFieldRegHoldVal<'a, T, Self>) {
+  fn toggle(&self, val: &mut <U::Reg as Reg<T>>::Val) {
     unsafe {
-      val.toggle_bit(RegFieldRegHoldValRaw::<'a, T, Self>::from_usize(
-        Self::OFFSET,
+      val.toggle_bit(<<U::Reg as Reg<T>>::Val as RegVal>::Raw::from_usize(
+        U::OFFSET,
       ));
     }
   }
 }
 
-impl<'a, T, U> WoWoRegFieldBit<'a, T> for U
+impl<T, U> WoWoRegFieldBit<T> for U
 where
-  T: RegTag + 'a,
-  U: RegFieldBit<'a, T> + WoRegField<'a, T>,
-  U::Reg: WoReg<'a, T>,
+  T: RegTag,
+  U: RegFieldBit<T> + WoRegField<T>,
+  U::Reg: WoReg<T>,
 {
   #[inline(always)]
   fn set_bit(&self) {
@@ -357,61 +341,61 @@ where
   }
 }
 
-impl<'a, T, U> RRegFieldBits<'a, T> for U
+impl<T, U> RRegFieldBits<T> for U
 where
-  T: RegTag + 'a,
-  U: RegFieldBits<'a, T> + RRegField<'a, T>,
-  U::Reg: RReg<'a, T>,
+  T: RegTag,
+  U: RegFieldBits<T> + RRegField<T>,
+  U::Reg: RReg<T>,
 {
   #[inline(always)]
   fn read(
     &self,
-    val: &RegFieldRegHoldVal<'a, T, Self>,
-  ) -> RegFieldRegHoldValRaw<'a, T, Self> {
+    val: &<U::Reg as Reg<T>>::Val,
+  ) -> <<U::Reg as Reg<T>>::Val as RegVal>::Raw {
     unsafe {
       val.read_bits(
-        RegFieldRegHoldValRaw::<'a, T, Self>::from_usize(Self::OFFSET),
-        RegFieldRegHoldValRaw::<'a, T, Self>::from_usize(Self::WIDTH),
+        <<U::Reg as Reg<T>>::Val as RegVal>::Raw::from_usize(U::OFFSET),
+        <<U::Reg as Reg<T>>::Val as RegVal>::Raw::from_usize(U::WIDTH),
       )
     }
   }
 
   #[inline(always)]
-  fn read_bits(&self) -> RegFieldRegHoldValRaw<'a, T, Self> {
+  fn read_bits(&self) -> <<U::Reg as Reg<T>>::Val as RegVal>::Raw {
     self.read(&self.load_val())
   }
 }
 
-impl<'a, T, U> WRegFieldBits<'a, T> for U
+impl<T, U> WRegFieldBits<T> for U
 where
-  T: RegTag + 'a,
-  U: RegFieldBits<'a, T> + WRegField<'a, T>,
-  U::Reg: WReg<'a, T>,
+  T: RegTag,
+  U: RegFieldBits<T> + WRegField<T>,
+  U::Reg: WReg<T>,
 {
   #[inline(always)]
   fn write(
     &self,
-    val: &mut RegFieldRegHoldVal<'a, T, Self>,
-    bits: RegFieldRegHoldValRaw<'a, T, Self>,
+    val: &mut <U::Reg as Reg<T>>::Val,
+    bits: <<U::Reg as Reg<T>>::Val as RegVal>::Raw,
   ) {
     unsafe {
       val.write_bits(
-        RegFieldRegHoldValRaw::<'a, T, Self>::from_usize(Self::OFFSET),
-        RegFieldRegHoldValRaw::<'a, T, Self>::from_usize(Self::WIDTH),
+        <<U::Reg as Reg<T>>::Val as RegVal>::Raw::from_usize(U::OFFSET),
+        <<U::Reg as Reg<T>>::Val as RegVal>::Raw::from_usize(U::WIDTH),
         bits,
       );
     }
   }
 }
 
-impl<'a, T, U> WoWoRegFieldBits<'a, T> for U
+impl<T, U> WoWoRegFieldBits<T> for U
 where
-  T: RegTag + 'a,
-  U: RegFieldBits<'a, T> + WoRegField<'a, T>,
-  U::Reg: WoReg<'a, T>,
+  T: RegTag,
+  U: RegFieldBits<T> + WoRegField<T>,
+  U::Reg: WoReg<T>,
 {
   #[inline(always)]
-  fn write_bits(&self, bits: RegFieldRegHoldValRaw<'a, T, Self>) {
+  fn write_bits(&self, bits: <<U::Reg as Reg<T>>::Val as RegVal>::Raw) {
     self.reset(|val| {
       self.write(val, bits);
     });
