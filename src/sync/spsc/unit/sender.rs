@@ -32,7 +32,6 @@ impl<E> Sender<E> {
   /// Sends a unit across the channel.
   ///
   /// [`Receiver`]: struct.Receiver.html
-  #[inline]
   pub fn send(&mut self) -> Result<(), SendError> {
     self.inner.send()
   }
@@ -44,7 +43,6 @@ impl<E> Sender<E> {
   /// returned with the value provided.
   ///
   /// [`Receiver`]: struct.Receiver.html
-  #[inline]
   pub fn send_err(self, err: E) -> Result<(), E> {
     self.inner.send_err(err)
   }
@@ -64,7 +62,6 @@ impl<E> Sender<E> {
   /// [`Sender`]: struct.Sender.html
   /// [`Receiver`]: struct.Receiver.html
   /// [`is_canceled`]: struct.Receiver.html#method.is_canceled
-  #[inline]
   pub fn poll_cancel(&mut self) -> Poll<(), ()> {
     self.inner.poll_cancel()
   }
@@ -81,7 +78,6 @@ impl<E> Sender<E> {
 }
 
 impl<E> Drop for Sender<E> {
-  #[inline]
   fn drop(&mut self) {
     self.inner.drop_tx();
   }
@@ -117,7 +113,9 @@ impl<E> Inner<E> {
       })
       .map(|state| {
         state.map(|state| {
-          unsafe { (*self.rx_task.get()).as_ref().map(|task| task.notify()) };
+          unsafe {
+            (*self.rx_task.get()).as_ref().map(|task| task.notify());
+          }
           self.update(state, Release, Relaxed, |state| {
             *state ^= RX_LOCK;
             Ok::<(), ()>(())

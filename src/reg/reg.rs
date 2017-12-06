@@ -26,12 +26,12 @@ where
   type Hold: RegHold<'a, T, Self>;
 
   /// Creates a new `Hold` for `val`.
-  unsafe fn hold(&'a self, val: Self::Val) -> Self::Hold {
-    Self::Hold::new(self, val)
+  fn hold(&'a self, val: Self::Val) -> Self::Hold {
+    unsafe { Self::Hold::new(self, val) }
   }
 
   /// Creates a new `Hold` with reset value.
-  fn reset_val(&'a self) -> Self::Hold {
+  fn default(&'a self) -> Self::Hold {
     unsafe { self.hold(Self::Val::reset()) }
   }
 }
@@ -154,7 +154,7 @@ where
       -> &'b mut <Self as RegRef<'a, T>>::Hold;
 
   /// Writes `val` into the register.
-  fn store(&self, val: Self::Val);
+  fn store_val(&self, val: Self::Val);
 }
 
 /// Register that can write its value in a single-threaded context.
@@ -171,7 +171,7 @@ where
       -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
 
   /// Writes `val` into the register.
-  fn store(&mut self, val: Self::Val);
+  fn store_val(&mut self, val: Self::Val);
 }
 
 /// Register that can read and write its value in a single-threaded context.
@@ -200,11 +200,11 @@ where
     F: for<'b> FnOnce(&'b mut <U as RegRef<'a, T>>::Hold)
       -> &'b mut <U as RegRef<'a, T>>::Hold,
   {
-    self.store(f(&mut self.reset_val()).val());
+    self.store_val(f(&mut self.default()).val());
   }
 
   #[inline(always)]
-  fn store(&self, val: U::Val) {
+  fn store_val(&self, val: U::Val) {
     unsafe { self.store_raw(val.raw()) };
   }
 }
@@ -219,11 +219,11 @@ where
     F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Urt>>::Hold)
       -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
-    unsafe { self.store_raw(f(&mut self.reset_val()).val().raw()) };
+    unsafe { self.store_raw(f(&mut self.default()).val().raw()) };
   }
 
   #[inline(always)]
-  fn store(&mut self, val: T::Val) {
+  fn store_val(&mut self, val: T::Val) {
     unsafe { self.store_raw(val.raw()) };
   }
 }

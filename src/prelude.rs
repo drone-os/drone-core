@@ -29,4 +29,5 @@ pub use core::ops::GeneratorState::*;
 
 pub use futures::{Async, Future, IntoFuture, Poll, Stream};
 
+pub use async::{async_future, await, AsyncFuture};
 pub use thread::Thread;

@@ -1,4 +1,4 @@
-use core::intrinsics;
+use core::mem;
 use sync::spsc::oneshot::{channel, Receiver, RecvError};
 
 /// A future for result from another thread.
@@ -47,11 +47,10 @@ impl<R, E> Future for RoutineFuture<R, E> {
   type Item = R;
   type Error = E;
 
-  #[inline]
   fn poll(&mut self) -> Poll<R, E> {
     self.rx.poll().map_err(|err| match err {
       RecvError::Complete(err) => err,
-      RecvError::Canceled => unsafe { intrinsics::unreachable() },
+      RecvError::Canceled => unsafe { mem::unreachable() },
     })
   }
 }

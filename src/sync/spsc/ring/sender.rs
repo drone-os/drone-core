@@ -44,7 +44,6 @@ impl<T, E> Sender<T, E> {
   /// Sends a value across the channel.
   ///
   /// [`Receiver`]: struct.Receiver.html
-  #[inline]
   pub fn send(&mut self, value: T) -> Result<(), SendError<T>> {
     self.inner.send(value)
   }
@@ -52,7 +51,6 @@ impl<T, E> Sender<T, E> {
   /// Sends a value across the channel. Overwrites on overflow.
   ///
   /// [`Receiver`]: struct.Receiver.html
-  #[inline]
   pub fn send_overwrite(&mut self, value: T) -> Result<(), T> {
     self.inner.send_overwrite(value)
   }
@@ -64,7 +62,6 @@ impl<T, E> Sender<T, E> {
   /// returned with the value provided.
   ///
   /// [`Receiver`]: struct.Receiver.html
-  #[inline]
   pub fn send_err(self, err: E) -> Result<(), E> {
     self.inner.send_err(err)
   }
@@ -84,7 +81,6 @@ impl<T, E> Sender<T, E> {
   /// [`Sender`]: struct.Sender.html
   /// [`Receiver`]: struct.Receiver.html
   /// [`is_canceled`]: struct.Receiver.html#method.is_canceled
-  #[inline]
   pub fn poll_cancel(&mut self) -> Poll<(), ()> {
     self.inner.poll_cancel()
   }
@@ -101,7 +97,6 @@ impl<T, E> Sender<T, E> {
 }
 
 impl<T, E> Drop for Sender<T, E> {
-  #[inline]
   fn drop(&mut self) {
     self.inner.drop_tx();
   }
@@ -174,7 +169,9 @@ impl<T, E> Inner<T, E> {
 
   #[inline(always)]
   fn put<U>(&self, value: T, state: usize, index: usize) -> Result<(), U> {
-    unsafe { ptr::write(self.buffer.ptr().offset(index as isize), value) };
+    unsafe {
+      ptr::write(self.buffer.ptr().offset(index as isize), value);
+    }
     self
       .update(state, AcqRel, Relaxed, |state| {
         *state = state.wrapping_add(1);
@@ -187,7 +184,9 @@ impl<T, E> Inner<T, E> {
       })
       .map(|state| {
         state.map(|state| {
-          unsafe { (*self.rx_task.get()).as_ref().map(|task| task.notify()) };
+          unsafe {
+            (*self.rx_task.get()).as_ref().map(|task| task.notify());
+          }
           self.update(state, Release, Relaxed, |state| {
             *state ^= RX_LOCK;
             Ok::<(), ()>(())

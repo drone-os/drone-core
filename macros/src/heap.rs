@@ -205,9 +205,10 @@ fn parse_size(
 ) -> Result<(), Error> {
   match input.next() {
     Some(TokenTree::Token(Token::Eq)) => match input.next() {
-      Some(
-        TokenTree::Token(Token::Literal(Lit::Int(int, IntTy::Unsuffixed))),
-      ) => {
+      Some(TokenTree::Token(Token::Literal(Lit::Int(
+        int,
+        IntTy::Unsuffixed,
+      )))) => {
         if int > u32::max_value() as u64 {
           Err(format_err!("Invalid size: {}", int))?;
         }
@@ -250,9 +251,10 @@ fn parse_pools(
           }) => {
             let mut pool_tokens = pool_tokens.into_iter();
             let size = match pool_tokens.next() {
-              Some(TokenTree::Token(
-                Token::Literal(Lit::Int(size, IntTy::Unsuffixed)),
-              )) => size,
+              Some(TokenTree::Token(Token::Literal(Lit::Int(
+                size,
+                IntTy::Unsuffixed,
+              )))) => size,
               token => Err(format_err!(
                 "Invalid tokens after `pools = [... [`: {:?}",
                 token
@@ -267,9 +269,10 @@ fn parse_pools(
               ))?,
             }
             let capacity = match pool_tokens.next() {
-              Some(TokenTree::Token(
-                Token::Literal(Lit::Int(capacity, IntTy::Unsuffixed)),
-              )) => capacity,
+              Some(TokenTree::Token(Token::Literal(Lit::Int(
+                capacity,
+                IntTy::Unsuffixed,
+              )))) => capacity,
               token => Err(format_err!(
                 "Invalid tokens after `pools = [... [{};`: {:?}",
                 size,

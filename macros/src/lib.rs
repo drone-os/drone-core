@@ -20,12 +20,19 @@ extern crate quote;
 extern crate regex;
 extern crate syn;
 
+mod async_future;
 mod bindings;
 mod heap;
 mod reg;
 mod thread_local;
 
 use proc_macro::TokenStream;
+
+#[doc(hidden)]
+#[proc_macro_attribute]
+pub fn async_future(args: TokenStream, input: TokenStream) -> TokenStream {
+  tokens!(async_future::async_future(args, input))
+}
 
 #[doc(hidden)]
 #[proc_macro]

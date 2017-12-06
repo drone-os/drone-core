@@ -32,7 +32,6 @@
 #![feature(const_ptr_null_mut)]
 #![feature(const_size_of)]
 #![feature(const_unsafe_cell_new)]
-#![feature(core_intrinsics)]
 #![feature(decl_macro)]
 #![feature(fused)]
 #![feature(generators)]
@@ -46,6 +45,7 @@
 #![feature(proc_macro)]
 #![feature(slice_concat_ext)]
 #![feature(slice_get_slice)]
+#![feature(unreachable)]
 #![feature(untagged_unions)]
 #![warn(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -60,6 +60,7 @@ extern crate futures;
 #[cfg(feature = "std")]
 extern crate core;
 
+pub mod async;
 pub mod heap;
 pub mod mem;
 pub mod prelude;

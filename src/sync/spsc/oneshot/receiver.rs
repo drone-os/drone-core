@@ -37,7 +37,6 @@ impl<T, E> Receiver<T, E> {
   /// messages.
   ///
   /// [`Receiver`]: struct.Receiver.html
-  #[inline]
   pub fn close(&mut self) {
     self.inner.close_rx()
   }
@@ -47,14 +46,12 @@ impl<T, E> Future for Receiver<T, E> {
   type Item = T;
   type Error = RecvError<E>;
 
-  #[inline]
   fn poll(&mut self) -> Poll<T, RecvError<E>> {
     self.inner.recv()
   }
 }
 
 impl<T, E> Drop for Receiver<T, E> {
-  #[inline]
   fn drop(&mut self) {
     self.inner.drop_rx();
   }

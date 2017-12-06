@@ -151,12 +151,9 @@ pub trait Allocator {
     layout: Layout,
     new_layout: Layout,
   ) -> Result<Excess, AllocErr> {
-    self.realloc_with(
-      ptr,
-      layout,
-      new_layout,
-      |ptr, pool| Excess(ptr, pool.size()),
-    )
+    self.realloc_with(ptr, layout, new_layout, |ptr, pool| {
+      Excess(ptr, pool.size())
+    })
   }
 
   #[cfg_attr(feature = "clippy", allow(needless_pass_by_value))]

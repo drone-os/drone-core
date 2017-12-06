@@ -23,7 +23,6 @@ impl<T, E> Receiver<T, E> {
   /// messages.
   ///
   /// [`Receiver`]: struct.Receiver.html
-  #[inline]
   pub fn close(&mut self) {
     self.inner.close_rx()
   }
@@ -33,14 +32,12 @@ impl<T, E> Stream for Receiver<T, E> {
   type Item = T;
   type Error = E;
 
-  #[inline]
   fn poll(&mut self) -> Poll<Option<T>, E> {
     self.inner.recv()
   }
 }
 
 impl<T, E> Drop for Receiver<T, E> {
-  #[inline]
   fn drop(&mut self) {
     self.inner.drop_rx();
   }
@@ -67,7 +64,9 @@ impl<T, E> Inner<T, E> {
       })
       .and_then(|state| {
         state.map(some_value()).or_else(|state| {
-          unsafe { (*self.rx_task.get()).get_or_insert_with(task::current) };
+          unsafe {
+            (*self.rx_task.get()).get_or_insert_with(task::current);
+          }
           self
             .update(state, AcqRel, Relaxed, |state| {
               *state ^= RX_LOCK;

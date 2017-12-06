@@ -123,7 +123,7 @@ where
   T: RegTag,
 {
   /// Creates a new reset value.
-  fn reset_val(&self) -> <Self::Reg as Reg<T>>::Val;
+  fn default_val(&self) -> <Self::Reg as Reg<T>>::Val;
 
   /// Writes the value `val`.
   fn store_val(&self, val: <Self::Reg as Reg<T>>::Val);
@@ -233,7 +233,7 @@ where
   U::Reg: WoReg<T>,
 {
   #[inline(always)]
-  fn reset_val(&self) -> <U::Reg as Reg<T>>::Val {
+  fn default_val(&self) -> <U::Reg as Reg<T>>::Val {
     unsafe { <U::Reg as Reg<T>>::Val::reset() }
   }
 
@@ -252,7 +252,7 @@ where
   where
     F: Fn(&mut <U::Reg as Reg<T>>::Val),
   {
-    let mut val = self.reset_val();
+    let mut val = self.default_val();
     f(&mut val);
     self.store_val(val);
   }

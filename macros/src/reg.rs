@@ -138,9 +138,10 @@ fn parse_reg(
   let mut field_affix = Vec::new();
   let mut field_tokens = Vec::new();
   let address = match input.next() {
-    Some(
-      TokenTree::Token(Token::Literal(Lit::Int(address, IntTy::Unsuffixed))),
-    ) => address,
+    Some(TokenTree::Token(Token::Literal(Lit::Int(
+      address,
+      IntTy::Unsuffixed,
+    )))) => address,
     token => Err(format_err!(
       "Invalid tokens after `{:?} {{`: {:?}",
       name,
@@ -148,9 +149,10 @@ fn parse_reg(
     ))?,
   };
   let raw = match input.next() {
-    Some(
-      TokenTree::Token(Token::Literal(Lit::Int(raw, IntTy::Unsuffixed))),
-    ) => Ident::new(format!("u{}", raw)),
+    Some(TokenTree::Token(Token::Literal(Lit::Int(
+      raw,
+      IntTy::Unsuffixed,
+    )))) => Ident::new(format!("u{}", raw)),
     token => Err(format_err!(
       "Invalid tokens after `{}`: {:?}",
       address,
@@ -158,9 +160,10 @@ fn parse_reg(
     ))?,
   };
   let reset = match input.next() {
-    Some(
-      TokenTree::Token(Token::Literal(Lit::Int(reset, IntTy::Unsuffixed))),
-    ) => Lit::Int(reset, IntTy::Usize),
+    Some(TokenTree::Token(Token::Literal(Lit::Int(
+      reset,
+      IntTy::Unsuffixed,
+    )))) => Lit::Int(reset, IntTy::Usize),
     token => Err(format_err!("Invalid tokens after `{}`: {:?}", raw, token))?,
   };
   'outer: loop {
@@ -468,15 +471,17 @@ fn parse_field(
   let mut trait_attrs = Vec::new();
   let mut trait_name = Vec::new();
   let offset = match input.next() {
-    Some(
-      TokenTree::Token(Token::Literal(Lit::Int(offset, IntTy::Unsuffixed))),
-    ) => offset,
+    Some(TokenTree::Token(Token::Literal(Lit::Int(
+      offset,
+      IntTy::Unsuffixed,
+    )))) => offset,
     token => Err(format_err!("Invalid tokens after `{{`: {:?}", token))?,
   };
   let width = match input.next() {
-    Some(
-      TokenTree::Token(Token::Literal(Lit::Int(width, IntTy::Unsuffixed))),
-    ) => width,
+    Some(TokenTree::Token(Token::Literal(Lit::Int(
+      width,
+      IntTy::Unsuffixed,
+    )))) => width,
     token => Err(format_err!(
       "Invalid tokens after `{{ {:?}`: {:?}",
       offset,
