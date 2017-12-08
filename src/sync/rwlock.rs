@@ -32,10 +32,7 @@ pub struct RwLock<T> {
 /// [`RwLock`]: struct.RwLock.html
 /// [`try_read`]: struct.RwLock.html#method.try_read
 #[must_use]
-pub struct RwLockReadGuard<'a, T>
-where
-  T: 'a,
-{
+pub struct RwLockReadGuard<'a, T: 'a> {
   lock: &'a RwLock<T>,
 }
 
@@ -47,10 +44,7 @@ where
 /// [`RwLock`]: struct.RwLock.html
 /// [`try_write`]: struct.RwLock.html#method.try_write
 #[must_use]
-pub struct RwLockWriteGuard<'a, T>
-where
-  T: 'a,
-{
+pub struct RwLockWriteGuard<'a, T: 'a> {
   lock: &'a RwLock<T>,
 }
 

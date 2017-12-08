@@ -40,10 +40,7 @@ pub trait Allocator {
 
   /// Binary searches the pools for a least-sized one which fits `value`.
   #[inline(always)]
-  fn binary_search<T>(&self, value: T) -> usize
-  where
-    T: Fits,
-  {
+  fn binary_search<T: Fits>(&self, value: T) -> usize {
     let (mut left, mut right) = (0, Self::POOL_COUNT);
     while right > left {
       let middle = left + ((right - left) >> 1);

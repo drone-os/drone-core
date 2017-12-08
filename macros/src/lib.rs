@@ -20,10 +20,12 @@ extern crate quote;
 extern crate regex;
 extern crate syn;
 
+pub(crate) mod reserved;
+
 mod async_future;
 mod bindings;
 mod heap;
-mod reg;
+mod mappings;
 mod thread_local;
 
 use proc_macro::TokenStream;
@@ -48,8 +50,8 @@ pub fn heap(input: TokenStream) -> TokenStream {
 
 #[doc(hidden)]
 #[proc_macro]
-pub fn reg(input: TokenStream) -> TokenStream {
-  tokens!(reg::reg(input))
+pub fn mappings(input: TokenStream) -> TokenStream {
+  tokens!(mappings::mappings(input))
 }
 
 #[doc(hidden)]

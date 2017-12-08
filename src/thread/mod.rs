@@ -41,10 +41,7 @@ unsafe fn set_current_id(id: usize) {
 
 /// Returns a reference to the thread that invokes it.
 #[inline(always)]
-pub fn current<T>() -> &'static T
-where
-  T: Thread,
-{
+pub fn current<T: Thread>() -> &'static T {
   unsafe { T::get_unchecked(current_id()) }
 }
 
@@ -54,24 +51,15 @@ where
 ///
 /// Must be called before using `futures`.
 #[inline(always)]
-pub unsafe fn init<T>() -> bool
-where
-  T: Thread + 'static,
-{
+pub unsafe fn init<T: Thread + 'static>() -> bool {
   task::init(get_task::<T>, set_task::<T>)
 }
 
-fn get_task<T>() -> *mut u8
-where
-  T: Thread + 'static,
-{
+fn get_task<T: Thread + 'static>() -> *mut u8 {
   unsafe { current::<T>().task().get() }
 }
 
-fn set_task<T>(task: *mut u8)
-where
-  T: Thread + 'static,
-{
+fn set_task<T: Thread + 'static>(task: *mut u8) {
   unsafe { current::<T>().task().set(task) };
 }
 

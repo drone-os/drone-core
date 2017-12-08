@@ -2,19 +2,19 @@
 
 extern crate drone;
 
-use drone::reg;
+use drone::reg::mappings;
 use drone::reg::prelude::*;
 
-reg! {
-  TEST_BLOCK
-  TEST_REG {
+mappings! {
+  FOO
+  BAR {
     0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg
-    TEST_BIT { 0 1 RRegField WRegField }
+    BAZ { 0 1 RRegField WRegField }
   }
 }
 
 fn assert_rw_reg_unique<'a, T: RwRegUnique<'a>>() {}
 
 fn main() {
-  assert_rw_reg_unique::<test_block::TestReg<Urt>>();
+  assert_rw_reg_unique::<foo::Bar<Ubt>>();
 }

@@ -4,19 +4,17 @@ use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr, Sub};
 
 /// Raw register value type.
 pub trait RegRaw
-where
-  Self: Sized
-    + Debug
-    + Copy
-    + PartialOrd
-    + Not<Output = Self>
-    + Sub<Output = Self>
-    + BitOr<Output = Self>
-    + BitXor<Output = Self>
-    + BitAnd<Output = Self>
-    + Shl<Self, Output = Self>
-    + Shr<Self, Output = Self>,
-{
+  : Sized
+  + Debug
+  + Copy
+  + PartialOrd
+  + Not<Output = Self>
+  + Sub<Output = Self>
+  + BitOr<Output = Self>
+  + BitXor<Output = Self>
+  + BitAnd<Output = Self>
+  + Shl<Self, Output = Self>
+  + Shr<Self, Output = Self> {
   /// Creates a `RegRaw` from `usize`
   fn from_usize(raw: usize) -> Self;
 
@@ -31,7 +29,7 @@ where
 }
 
 #[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
-macro impl_reg_raw($type:ty) {
+macro reg_raw($type:ty) {
   impl RegRaw for $type {
     #[inline(always)]
     fn from_usize(raw: usize) -> Self {
@@ -55,7 +53,7 @@ macro impl_reg_raw($type:ty) {
   }
 }
 
-impl_reg_raw!(u64);
-impl_reg_raw!(u32);
-impl_reg_raw!(u16);
-impl_reg_raw!(u8);
+reg_raw!(u64);
+reg_raw!(u32);
+reg_raw!(u16);
+reg_raw!(u8);

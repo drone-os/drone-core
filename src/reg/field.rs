@@ -2,11 +2,7 @@ use super::*;
 use core::ptr::{read_volatile, write_volatile};
 
 /// Register field binding.
-pub trait RegField<T>
-where
-  Self: Sized,
-  T: RegTag,
-{
+pub trait RegField<T: RegTag>: Sized {
   /// Parent register type.
   type Reg: Reg<T>;
 
@@ -15,66 +11,19 @@ where
 
   /// Bit-width of the field.
   const WIDTH: usize;
-
-  /// Creates a new field binding.
-  ///
-  /// # Safety
-  ///
-  /// Shouldn't be called directly.
-  unsafe fn bind() -> Self;
 }
 
 /// Single-bit register field.
-pub trait RegFieldBit<T>
-where
-  Self: RegField<T>,
-  T: RegTag,
-{
-}
+pub trait RegFieldBit<T: RegTag>: RegField<T> {}
 
 /// Multiple-bits register field.
-pub trait RegFieldBits<T>
-where
-  Self: RegField<T>,
-  T: RegTag,
-{
-}
-
-/// Synchronous register field.
-pub trait SRegField
-where
-  Self: RegField<Srt>,
-  Self::Reg: Reg<Srt>,
-{
-  /// Less strict type.
-  type UpRegField: RegField<Drt>;
-
-  /// Converts to a less strict type.
-  fn upgrade(self) -> Self::UpRegField;
-}
-
-/// Duplicable register field.
-pub trait DRegField
-where
-  Self: RegField<Drt>,
-  Self::Reg: Reg<Drt>,
-{
-  /// Less strict type.
-  type UpRegField: RegField<Crt>;
-
-  /// Converts to a less strict type.
-  fn upgrade(self) -> Self::UpRegField;
-
-  /// Returns a copy of the register field.
-  fn clone(&mut self) -> Self;
-}
+pub trait RegFieldBits<T: RegTag>: RegField<T> {}
 
 /// Register field that can read its value.
-pub trait RRegField<T>
+pub trait RRegField<T: RegTag>
 where
   Self: RegField<T>,
   Self::Reg: RReg<T>,
-  T: RegTag,
 {
   /// Reads a register value from its memory address.
   #[inline(always)]
@@ -89,38 +38,34 @@ where
 }
 
 /// Register field that can write its value.
-pub trait WRegField<T>
+pub trait WRegField<T: RegTag>
 where
   Self: RegField<T>,
   Self::Reg: WReg<T>,
-  T: RegTag,
 {
 }
 
 /// Register field that can only read its value.
-pub trait RoRegField<T>
+pub trait RoRegField<T: RegTag>
 where
   Self: RRegField<T>,
   Self::Reg: RReg<T>,
-  T: RegTag,
 {
 }
 
 /// Register field that can only write its value.
-pub trait WoRegField<T>
+pub trait WoRegField<T: RegTag>
 where
   Self: WRegField<T>,
   Self::Reg: WReg<T>,
-  T: RegTag,
 {
 }
 
 /// Write-only field of write-only register.
-pub trait WoWoRegField<T>
+pub trait WoWoRegField<T: RegTag>
 where
   Self: WoRegField<T>,
   Self::Reg: WoReg<T>,
-  T: RegTag,
 {
   /// Creates a new reset value.
   fn default_val(&self) -> <Self::Reg as Reg<T>>::Val;
@@ -136,11 +81,10 @@ where
 }
 
 /// Single-bit register field that can read its value.
-pub trait RRegFieldBit<T>
+pub trait RRegFieldBit<T: RegTag>
 where
   Self: RegFieldBit<T> + RRegField<T>,
   Self::Reg: RReg<T>,
-  T: RegTag,
 {
   /// Reads the state of the bit from `val`.
   fn read(&self, val: &<Self::Reg as Reg<T>>::Val) -> bool;
@@ -150,11 +94,10 @@ where
 }
 
 /// Single-bit register field that can write its value.
-pub trait WRegFieldBit<T>
+pub trait WRegFieldBit<T: RegTag>
 where
   Self: RegFieldBit<T> + WRegField<T>,
   Self::Reg: WReg<T>,
-  T: RegTag,
 {
   /// Sets the bit in `val`.
   fn set(&self, val: &mut <Self::Reg as Reg<T>>::Val);
@@ -167,11 +110,10 @@ where
 }
 
 /// Single-bit write-only field of write-only register.
-pub trait WoWoRegFieldBit<T>
+pub trait WoWoRegFieldBit<T: RegTag>
 where
   Self: RegFieldBit<T> + WoRegField<T>,
   Self::Reg: WoReg<T>,
-  T: RegTag,
 {
   /// Sets the bit in memory.
   fn set_bit(&self);
@@ -184,11 +126,10 @@ where
 }
 
 /// Multiple-bits register field that can read its value.
-pub trait RRegFieldBits<T>
+pub trait RRegFieldBits<T: RegTag>
 where
   Self: RegFieldBits<T> + RRegField<T>,
   Self::Reg: RReg<T>,
-  T: RegTag,
 {
   /// Reads the bits from `val`.
   fn read(
@@ -201,11 +142,10 @@ where
 }
 
 /// Multiple-bits register field that can write its value.
-pub trait WRegFieldBits<T>
+pub trait WRegFieldBits<T: RegTag>
 where
   Self: RegFieldBits<T> + WRegField<T>,
   Self::Reg: WReg<T>,
-  T: RegTag,
 {
   /// Write `bits` to `val`.
   fn write(
@@ -216,11 +156,10 @@ where
 }
 
 /// Multiple-bits write-only field of write-only register.
-pub trait WoWoRegFieldBits<T>
+pub trait WoWoRegFieldBits<T: RegTag>
 where
   Self: RegFieldBits<T> + WoRegField<T>,
   Self::Reg: WoReg<T>,
-  T: RegTag,
 {
   /// Sets the bit in memory.
   fn write_bits(&self, bits: <<Self::Reg as Reg<T>>::Val as RegVal>::Raw);

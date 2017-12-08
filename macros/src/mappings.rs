@@ -2,41 +2,19 @@ use failure::{err_msg, Error};
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use quote::Tokens;
-use regex::Regex;
+use reserved::reserved_check;
 use syn::{parse_token_trees, DelimToken, Delimited, Ident, IntTy, Lit, Token,
           TokenTree};
 
-lazy_static! {
-  static ref RESERVED: Regex = Regex::new(r"(?x)
-    ^ ( as | break | const | continue | crate | else | enum | extern | false |
-    fn | for | if | impl | in | let | loop | match | mod | move | mut | pub |
-    ref | return | Self | self | static | struct | super | trait | true | type |
-    unsafe | use | where | while | abstract | alignof | become | box | do |
-    final | macro | offsetof | override | priv | proc | pure | sizeof | typeof |
-    unsized | virtual | yield ) $
-  ").unwrap();
-}
-
-pub(crate) fn reg(input: TokenStream) -> Result<Tokens, Error> {
+pub(crate) fn mappings(input: TokenStream) -> Result<Tokens, Error> {
   let input = parse_token_trees(&input.to_string()).map_err(err_msg)?;
   let mut input = input.into_iter();
   let mut attrs = Vec::new();
-  let mut path = Vec::new();
-  let mut block = None;
   let mut reg_attrs = Vec::new();
   let mut reg_tokens = Vec::new();
   let mut reg_names = Vec::new();
-  loop {
+  let block = loop {
     match input.next() {
-      Some(TokenTree::Token(Token::DocComment(ref string)))
-        if string.starts_with("///") =>
-      {
-        if block.is_none() {
-          Err(format_err!("Invalid tokens: ///"))?;
-        }
-        let string = string.trim_left_matches("///");
-        reg_attrs.push(quote!(#[doc = #string]));
-      }
       Some(TokenTree::Token(Token::DocComment(ref string)))
         if string.starts_with("//!") =>
       {
@@ -44,12 +22,6 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens, Error> {
         attrs.push(quote!(#[doc = #string]));
       }
       Some(TokenTree::Token(Token::Pound)) => match input.next() {
-        Some(TokenTree::Delimited(delimited)) => {
-          if block.is_none() {
-            Err(format_err!("Invalid tokens: #["))?;
-          }
-          reg_attrs.push(quote!(# #delimited))
-        }
         Some(TokenTree::Token(Token::Not)) => match input.next() {
           Some(TokenTree::Delimited(delimited)) => {
             attrs.push(quote!(# #delimited))
@@ -58,47 +30,42 @@ pub(crate) fn reg(input: TokenStream) -> Result<Tokens, Error> {
         },
         token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
       },
-      Some(TokenTree::Token(Token::Ident(name))) => if block.is_none() {
-        block = Some(name);
-      } else {
-        match input.next() {
-          Some(TokenTree::Delimited(Delimited {
-            delim: DelimToken::Brace,
-            tts: tokens,
-          })) => if let Some(ref block) = block {
-            reg_names.push(Ident::new(name.as_ref().to_pascal_case()));
-            reg_tokens.push(parse_reg(reg_attrs, name, tokens, block, &path)?);
-            reg_attrs = Vec::new();
-          } else {
-            Err(format_err!("Invalid tokens: {{"))?
-          },
-          token => {
-            Err(format_err!("Invalid tokens after `{}`: {:?}", name, token))?
-          }
+      Some(TokenTree::Token(Token::Ident(name))) => break name,
+      None => Err(format_err!("Unexpected end of macro invokation"))?,
+      token => Err(format_err!("Invalid token: {:?}", token))?,
+    }
+  };
+  loop {
+    match input.next() {
+      Some(TokenTree::Token(Token::DocComment(ref string)))
+        if string.starts_with("///") =>
+      {
+        let string = string.trim_left_matches("///");
+        reg_attrs.push(quote!(#[doc = #string]));
+      }
+      Some(TokenTree::Token(Token::Pound)) => match input.next() {
+        Some(TokenTree::Delimited(delimited)) => {
+          reg_attrs.push(quote!(# #delimited))
+        }
+        token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
+      },
+      Some(TokenTree::Token(Token::Ident(name))) => match input.next() {
+        Some(TokenTree::Delimited(Delimited {
+          delim: DelimToken::Brace,
+          tts: tokens,
+        })) => {
+          reg_names.push(Ident::new(name.as_ref().to_pascal_case()));
+          reg_tokens.push(parse_reg(reg_attrs, name, tokens)?);
+          reg_attrs = Vec::new();
+        }
+        token => {
+          Err(format_err!("Invalid tokens after `{}`: {:?}", name, token))?
         }
       },
-      Some(TokenTree::Token(mod_sep @ Token::ModSep)) => {
-        if let Some(name) = block {
-          if !reg_attrs.is_empty() || !reg_tokens.is_empty() {
-            Err(format_err!("Invalid tokens: ::"))?;
-          }
-          path.push(Token::Ident(name));
-          path.push(mod_sep);
-          block = None;
-        } else {
-          Err(format_err!("Invalid tokens after `{:?}`: `::`", path))?;
-        }
-      }
       None => break,
-      token => Err(format_err!(
-        "Invalid tokens after `{:?} {:?}`: {:?}",
-        path,
-        block,
-        token
-      ))?,
+      token => Err(format_err!("Invalid token: {:?}", token))?,
     }
   }
-  let block = block.ok_or_else(|| err_msg("Block name is not specified"))?;
   let mod_name = Ident::new(block.as_ref().to_snake_case());
   let prefix = Ident::new(block.as_ref().to_pascal_case());
   let mod_names = reg_names
@@ -126,8 +93,6 @@ fn parse_reg(
   attrs: Vec<Tokens>,
   name: Ident,
   input: Vec<TokenTree>,
-  block: &Ident,
-  path: &[Token],
 ) -> Result<Tokens, Error> {
   let mut input = input.into_iter();
   let mut trait_attrs = Vec::new();
@@ -245,143 +210,94 @@ fn parse_reg(
       }
     }
   }
-  let block = Ident::new(block.as_ref().to_snake_case());
   let reg_name = Ident::new(name.as_ref().to_pascal_case());
   let mod_name = name.as_ref().to_snake_case();
   let mod_name = Ident::new(reserved_check(mod_name));
-  let export_name = format!("drone_reg_binding_{:X}", address);
   let address = Lit::Int(address, IntTy::Unsuffixed);
-  let attrs2 = attrs.clone();
-  let attrs3 = attrs.clone();
-  let attrs4 = attrs.clone();
-  let attrs5 = attrs.clone();
-  let field_name2 = field_name.clone();
-  let field_name3 = field_name.clone();
-  let field_name4 = field_name.clone();
-  let field_name5 = field_name.clone();
+  let attrs = &attrs;
+  let field_name = &field_name;
+  let field_field = &field_field;
   let field_field2 = field_field.clone();
-  let field_field3 = field_field.clone();
-  let field_field4 = field_field.clone();
-  let field_field5 = field_field.clone();
-  let field_field6 = field_field.clone();
-  let field_field7 = field_field.clone();
 
   Ok(quote! {
     pub use self::#mod_name::Reg as #reg_name;
 
     #(#attrs)*
     pub mod #mod_name {
-      pub use self::bind as Reg;
-
       use ::drone::reg;
 
       #(#field_tokens)*
 
-      #(#attrs2)*
-      pub struct Reg<T>
-      where
-        T: reg::RegTag,
-      {
+      #(#attrs)*
+      pub struct Reg<T: reg::RegTag> {
         #(
           #(#field_attrs)*
           pub #field_field: self::#field_name<T>,
         )*
       }
 
-      impl<T> reg::Reg<T> for self::Reg<T>
-      where
-        T: reg::RegTag,
-      {
+      impl<T: reg::RegTag> reg::Reg<T> for self::Reg<T> {
         type Val = self::Val;
 
         const ADDRESS: usize = #address;
       }
 
-      impl<'a, T> reg::RegRef<'a, T> for self::Reg<T>
-      where
-        T: reg::RegTag + 'a,
-      {
+      impl<'a, T: reg::RegTag + 'a> reg::RegRef<'a, T> for self::Reg<T> {
         type Hold = self::Hold<'a, T>;
-      }
-
-      impl reg::UReg for self::Reg<reg::Urt> {
-        type UpReg = self::Reg<reg::Srt>;
-
-        #[inline(always)]
-        fn upgrade(self) -> self::Reg<reg::Srt> {
-          unsafe {
-            Self::UpReg {
-              #(
-                #field_field2: self::#field_name2::bind(),
-              )*
-            }
-          }
-        }
-      }
-
-      impl reg::SReg for self::Reg<reg::Srt> {
-        type UpReg = self::Reg<reg::Drt>;
-
-        #[inline(always)]
-        fn upgrade(self) -> self::Reg<reg::Drt> {
-          unsafe {
-            Self::UpReg {
-              #(
-                #field_field3: self::#field_name3::bind(),
-              )*
-            }
-          }
-        }
-      }
-
-      impl reg::DReg for self::Reg<reg::Drt> {
-        type UpReg = self::Reg<reg::Crt>;
-
-        #[inline(always)]
-        fn upgrade(self) -> self::Reg<reg::Crt> {
-          unsafe {
-            Self::UpReg {
-              #(
-                #field_field4: self::#field_name4::bind(),
-              )*
-            }
-          }
-        }
-
-        #[inline(always)]
-        fn clone(&mut self) -> Self {
-          Self {
-            #(
-              #field_field5: self.#field_field6.clone(),
-            )*
-          }
-        }
       }
 
       #(
         #(#trait_attrs)*
-        impl<T> #trait_name<T> for self::Reg<T>
-        where
-          T: reg::RegTag,
-        {
-        }
+        impl<T: reg::RegTag> #trait_name<T> for self::Reg<T> {}
       )*
 
+      impl From<self::Reg<reg::Ubt>> for self::Reg<reg::Sbt> {
+        #[inline(always)]
+        fn from(_reg: self::Reg<reg::Ubt>) -> Self {
+          unsafe { Self { #(#field_field: self::#field_name::bind()),* } }
+        }
+      }
+
+      impl From<self::Reg<reg::Sbt>> for self::Reg<reg::Fbt> {
+        #[inline(always)]
+        fn from(_reg: self::Reg<reg::Sbt>) -> Self {
+          unsafe { Self { #(#field_field: self::#field_name::bind()),* } }
+        }
+      }
+
+      impl From<self::Reg<reg::Sbt>> for self::Reg<reg::Ubt> {
+        #[inline(always)]
+        fn from(_reg: self::Reg<reg::Sbt>) -> Self {
+          unsafe { Self { #(#field_field: self::#field_name::bind()),* } }
+        }
+      }
+
+      impl From<self::Reg<reg::Fbt>> for self::Reg<reg::Cbt> {
+        #[inline(always)]
+        fn from(_reg: self::Reg<reg::Fbt>) -> Self {
+          unsafe { Self { #(#field_field: self::#field_name::bind()),* } }
+        }
+      }
+
+      impl reg::RegFork for self::Reg<reg::Fbt> {
+        #[inline(always)]
+        fn fork(&mut self) -> Self {
+          Self { #(#field_field: self.#field_field2.fork()),* }
+        }
+      }
+
       #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-      impl Clone for self::Reg<reg::Crt> {
+      impl Clone for self::Reg<reg::Cbt> {
         #[inline(always)]
         fn clone(&self) -> Self {
           Self { ..*self }
         }
       }
 
-      impl Copy for self::Reg<reg::Crt> {}
+      impl Copy for self::Reg<reg::Cbt> {}
 
-      #(#attrs3)*
-      pub struct Hold<'a, T>
-      where
-        T: reg::RegTag + 'a,
-      {
+      #(#attrs)*
+      pub struct Hold<'a, T: reg::RegTag + 'a> {
         reg: &'a self::Reg<T>,
         val: self::Val,
       }
@@ -406,7 +322,7 @@ fn parse_reg(
         }
       }
 
-      #(#attrs4)*
+      #(#attrs)*
       #[derive(Clone, Copy)]
       pub struct Val {
         raw: #raw,
@@ -433,25 +349,6 @@ fn parse_reg(
         #[inline(always)]
         fn raw_mut(&mut self) -> &mut #raw {
           &mut self.raw
-        }
-      }
-
-      #(#attrs5)*
-      pub macro bind($($args:ty),*) {
-        {
-          #[allow(dead_code)]
-          #[export_name = #export_name]
-          #[link_section = ".drone_reg_bindings"]
-          #[linkage = "external"]
-          extern "C" fn __exclusive_bind() {}
-
-          use $crate::reg::prelude::*;
-          use $crate::#(#path)*#block::#mod_name;
-          #mod_name::Reg::<$($args),*> {
-            #(
-              #field_field7: self::#field_name5::bind(),
-            )*
-          }
         }
       }
     }
@@ -530,10 +427,7 @@ fn parse_field(
     trait_name.push(Ident::new("RegFieldBit"));
     if trait_name.iter().any(|name| name == "RRegField") {
       impls.push(quote! {
-        impl<'a, T> self::Hold<'a, T>
-        where
-          T: reg::RegTag,
-        {
+        impl<'a, T: reg::RegTag> self::Hold<'a, T> {
           #(#attrs)*
           #[inline(always)]
           pub fn #field(&self) -> bool {
@@ -544,10 +438,7 @@ fn parse_field(
     }
     if trait_name.iter().any(|name| name == "WRegField") {
       impls.push(quote! {
-        impl<'a, T> self::Hold<'a, T>
-        where
-          T: reg::RegTag,
-        {
+        impl<'a, T: reg::RegTag> self::Hold<'a, T> {
           #(#attrs)*
           #[inline(always)]
           pub fn #set_field(&mut self) -> &mut Self {
@@ -577,10 +468,7 @@ fn parse_field(
     trait_name.push(Ident::new("RegFieldBits"));
     if trait_name.iter().any(|name| name == "RRegField") {
       impls.push(quote! {
-        impl<'a, T> self::Hold<'a, T>
-        where
-          T: reg::RegTag,
-        {
+        impl<'a, T: reg::RegTag> self::Hold<'a, T> {
           #(#attrs)*
           #[inline(always)]
           pub fn #field(&self) -> #raw {
@@ -591,10 +479,7 @@ fn parse_field(
     }
     if trait_name.iter().any(|name| name == "WRegField") {
       impls.push(quote! {
-        impl<'a, T> self::Hold<'a, T>
-        where
-          T: reg::RegTag,
-        {
+        impl<'a, T: reg::RegTag> self::Hold<'a, T> {
           #(#attrs)*
           #[inline(always)]
           pub fn #write_field(&mut self, bits: #raw) -> &mut Self {
@@ -614,75 +499,58 @@ fn parse_field(
     #(#impls)*
 
     #(#attrs)*
-    pub struct #name<T>
-    where
-      T: reg::RegTag,
-    {
+    pub struct #name<T: reg::RegTag> {
       _tag: T,
     }
 
-    impl<T> reg::RegField<T> for self::#name<T>
-    where
-      T: reg::RegTag,
-    {
-      type Reg = self::Reg<T>;
-
-      const OFFSET: usize = #offset;
-      const WIDTH: usize = #width;
-
+    impl<T: reg::RegTag> self::#name<T> {
       #[inline(always)]
-      unsafe fn bind() -> Self {
+      pub(crate) unsafe fn bind() -> Self {
         Self { _tag: T::default() }
       }
     }
 
-    impl reg::SRegField for self::#name<reg::Srt> {
-      type UpRegField = self::#name<reg::Drt>;
+    impl<T: reg::RegTag> reg::RegField<T> for self::#name<T> {
+      type Reg = self::Reg<T>;
 
-      #[inline(always)]
-      fn upgrade(self) -> self::#name<reg::Drt> {
-        Self::UpRegField { _tag: reg::Drt::default() }
-      }
-    }
-
-    impl reg::DRegField for self::#name<reg::Drt> {
-      type UpRegField = self::#name<reg::Crt>;
-
-      #[inline(always)]
-      fn upgrade(self) -> self::#name<reg::Crt> {
-        Self::UpRegField { _tag: reg::Crt::default() }
-      }
-
-      #[inline(always)]
-      fn clone(&mut self) -> Self {
-        Self { _tag: reg::Drt::default() }
-      }
+      const OFFSET: usize = #offset;
+      const WIDTH: usize = #width;
     }
 
     #(
       #(#trait_attrs)*
-      impl<T> reg::#trait_name<T> for self::#trait_field_name<T>
-      where
-        T: reg::RegTag,
-      {
-      }
+      impl<T: reg::RegTag> reg::#trait_name<T> for self::#trait_field_name<T> {}
     )*
 
+    impl From<self::#name<reg::Sbt>> for self::#name<reg::Fbt> {
+      #[inline(always)]
+      fn from(_field: self::#name<reg::Sbt>) -> Self {
+        Self { _tag: reg::Fbt::default() }
+      }
+    }
+
+    impl From<self::#name<reg::Fbt>> for self::#name<reg::Cbt> {
+      #[inline(always)]
+      fn from(_field: self::#name<reg::Fbt>) -> Self {
+        Self { _tag: reg::Cbt::default() }
+      }
+    }
+
+    impl reg::RegFork for self::#name<reg::Fbt> {
+      #[inline(always)]
+      fn fork(&mut self) -> Self {
+        Self { _tag: reg::Fbt::default() }
+      }
+    }
+
     #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-    impl Clone for self::#name<reg::Crt> {
+    impl Clone for self::#name<reg::Cbt> {
       #[inline(always)]
       fn clone(&self) -> Self {
         Self { ..*self }
       }
     }
 
-    impl Copy for self::#name<reg::Crt> {}
+    impl Copy for self::#name<reg::Cbt> {}
   })
-}
-
-fn reserved_check(mut name: String) -> String {
-  if RESERVED.is_match(&name) {
-    name.insert(0, '_');
-  }
-  name
 }

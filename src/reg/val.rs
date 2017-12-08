@@ -1,10 +1,7 @@
 use super::*;
 
 /// Wrapper for a register value.
-pub trait RegVal
-where
-  Self: Sized,
-{
+pub trait RegVal: Sized + Clone + Copy {
   /// Raw integer type.
   type Raw: RegRaw;
 

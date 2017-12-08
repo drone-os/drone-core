@@ -23,10 +23,7 @@ pub struct Pool {
 }
 
 /// Trait for values that can be checked against a `Pool`.
-pub trait Fits
-where
-  Self: Copy,
-{
+pub trait Fits: Copy {
   /// The method tests that `self` fits `pool`.
   fn fits(self, pool: &Pool) -> bool;
 }

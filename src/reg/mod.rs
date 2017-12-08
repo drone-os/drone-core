@@ -1,42 +1,17 @@
 //! Memory-mapped registers.
 //!
-//! # Binding
+//! # Mapping and Binding
 //!
-//! To use a register one should bind it within `bindings!` macro.
+//! Most register should be already mapped by platform crates.
 //!
 //! ```
 //! # #![feature(decl_macro)]
-//! # #![feature(linkage)]
 //! # use std as core;
-//! # pub mod reg { pub mod prelude { pub use drone::reg::prelude::*; } }
-//! # drone::reg!(STK CTRL { 0xE000_E010 0x20 0x0000_0000 ENABLE { 0 1 } });
-//! use drone::reg::bindings;
-//! use drone::reg::prelude::*;
 //! use core::mem::size_of_val;
-//!
-//! bindings! {
-//!   //! Register bindings.
-//!   stk_ctrl: stk::Ctrl<Urt>,
-//! }
-//!
-//! fn main() {
-//!   let bindings = unsafe { Bindings::new() };
-//!   assert_eq!(size_of_val(&bindings.stk_ctrl), 0);
-//! }
-//! ```
-//!
-//! # Mapping
-//!
-//! Most of registers should be already mapped by platform crates. These crates
-//! should map registers with `reg!` macro as follows:
-//!
-//! ```
-//! # #![feature(decl_macro)]
-//! # fn main() {}
-//! use drone::reg;
+//! use drone::reg::{bindings, mappings};
 //! use drone::reg::prelude::*;
 //!
-//! reg! {
+//! mappings! {
 //!   //! SysTick timer.
 //!   STK // block name
 //!
@@ -54,6 +29,25 @@
 //!       RRegField WRegField // list of marker traits for the field
 //!     }
 //!   }
+//! }
+//!
+//! bindings! {
+//!   //! Register bindings.
+//!   Bindings
+//!
+//!   STK {
+//!     /// SysTick control and status register.
+//!     CTRL {
+//!       ENABLE
+//!     }
+//!   }
+//! }
+//!
+//! fn main() {
+//!   let bindings = unsafe { Bindings::new() };
+//!   assert_eq!(size_of_val(&bindings.stk_ctrl.enable), 0);
+//!   assert_eq!(size_of_val(&bindings.stk_ctrl), 0);
+//!   assert_eq!(size_of_val(&bindings), 0);
 //! }
 //! ```
 
@@ -73,4 +67,10 @@ pub use self::raw::*;
 pub use self::reg::*;
 pub use self::tag::*;
 pub use self::val::*;
-pub use drone_macros::bindings;
+pub use drone_macros::{bindings, mappings};
+
+/// Forkable binding.
+pub trait RegFork {
+  /// Returns a duplicate of the binding.
+  fn fork(&mut self) -> Self;
+}

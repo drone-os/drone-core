@@ -2,13 +2,13 @@
 
 extern crate drone;
 
-use drone::reg;
+use drone::reg::mappings;
 use drone::reg::prelude::*;
 use std::mem::size_of;
 use test_block::TestReg;
 use test_block::test_reg::Val;
 
-reg! {
+mappings! {
   //! Test block doc attribute
   #![doc = "test block attribute"]
   TEST_BLOCK
@@ -30,10 +30,10 @@ fn reg_val_default() {
 
 #[test]
 fn size_of_reg() {
-  assert_eq!(size_of::<TestReg<Urt>>(), 0);
-  assert_eq!(size_of::<TestReg<Srt>>(), 0);
-  assert_eq!(size_of::<TestReg<Drt>>(), 0);
-  assert_eq!(size_of::<TestReg<Crt>>(), 0);
+  assert_eq!(size_of::<TestReg<Ubt>>(), 0);
+  assert_eq!(size_of::<TestReg<Sbt>>(), 0);
+  assert_eq!(size_of::<TestReg<Fbt>>(), 0);
+  assert_eq!(size_of::<TestReg<Cbt>>(), 0);
 }
 
 #[test]

@@ -4,11 +4,7 @@ use core::ptr::{read_volatile, write_volatile};
 /// Memory-mapped register binding. Types which implement this trait should be
 /// zero-sized. This is a zero-cost abstraction for safely working with
 /// memory-mapped registers.
-pub trait Reg<T>
-where
-  Self: Sized,
-  T: RegTag,
-{
+pub trait Reg<T: RegTag>: Sized {
   /// Type that wraps a raw register value.
   type Val: RegVal;
 
@@ -17,11 +13,7 @@ where
 }
 
 /// Referenceable register.
-pub trait RegRef<'a, T>
-where
-  Self: Reg<T>,
-  T: RegTag,
-{
+pub trait RegRef<'a, T: RegTag>: Reg<T> {
   /// Type that wraps a raw register value and a register reference.
   type Hold: RegHold<'a, T, Self>;
 
@@ -36,51 +28,8 @@ where
   }
 }
 
-/// Unique register.
-pub trait UReg
-where
-  Self: Reg<Urt>,
-{
-  /// Less strict type.
-  type UpReg: Reg<Srt>;
-
-  /// Converts to a less strict type.
-  fn upgrade(self) -> Self::UpReg;
-}
-
-/// Synchronous register.
-pub trait SReg
-where
-  Self: Reg<Srt>,
-{
-  /// Less strict type.
-  type UpReg: Reg<Drt>;
-
-  /// Converts to a less strict type.
-  fn upgrade(self) -> Self::UpReg;
-}
-
-/// Duplicable register.
-pub trait DReg
-where
-  Self: Reg<Drt>,
-{
-  /// Less strict type.
-  type UpReg: Reg<Crt>;
-
-  /// Converts to a less strict type.
-  fn upgrade(self) -> Self::UpReg;
-
-  /// Returns a copy of the register.
-  fn clone(&mut self) -> Self;
-}
-
 /// Register that can read its value.
-pub trait RReg<T>
-where
-  Self: Reg<T>,
-  T: RegTag,
-{
+pub trait RReg<T: RegTag>: Reg<T> {
   /// Reads and wraps a register value from its memory address.
   #[inline(always)]
   #[cfg_attr(feature = "clippy", allow(needless_lifetimes))]
@@ -105,47 +54,29 @@ where
 }
 
 /// Register that can write its value.
-pub trait WReg<T>
-where
-  Self: Reg<T>,
-  T: RegTag,
-{
-  /// Returns an unsafe mutable pointer to the register's memory address.
-  #[inline(always)]
-  fn to_mut_ptr(&self) -> *mut <Self::Val as RegVal>::Raw {
-    Self::ADDRESS as *mut <Self::Val as RegVal>::Raw
-  }
-
+pub trait WReg<T: RegTag>: Reg<T> {
   /// Writes a raw register value to its memory address.
   #[inline(always)]
   unsafe fn store_raw(&self, raw: <Self::Val as RegVal>::Raw) {
     write_volatile(self.to_mut_ptr(), raw);
   }
+
+  /// Returns an unsafe mutable pointer to the register's memory address.
+  #[inline(always)]
+  fn to_mut_ptr(&self) -> *mut <Self::Val as RegVal>::Raw {
+    Self::ADDRESS as *mut <Self::Val as RegVal>::Raw
+  }
 }
 
 /// Read-only register.
-pub trait RoReg<T>
-where
-  Self: RReg<T>,
-  T: RegTag,
-{
-}
+pub trait RoReg<T: RegTag>: RReg<T> {}
 
 /// Write-only register.
-pub trait WoReg<T>
-where
-  Self: WReg<T>,
-  T: RegTag,
-{
-}
+pub trait WoReg<T: RegTag>: WReg<T> {}
 
 /// Register that can write its value in a multi-threaded context.
 // FIXME https://github.com/rust-lang/rust/issues/46397
-pub trait WRegShared<'a, T>
-where
-  Self: WReg<T> + RegRef<'a, T>,
-  T: RegShared,
-{
+pub trait WRegShared<'a, T: RegShared>: WReg<T> + RegRef<'a, T> {
   /// Updates a new reset value with `f` and writes the result to the register's
   /// memory address.
   fn reset<F>(&'a self, f: F)
@@ -159,16 +90,13 @@ where
 
 /// Register that can write its value in a single-threaded context.
 // FIXME https://github.com/rust-lang/rust/issues/46397
-pub trait WRegUnique<'a>
-where
-  Self: WReg<Urt> + RegRef<'a, Urt>,
-{
+pub trait WRegUnique<'a>: WReg<Ubt> + RegRef<'a, Ubt> {
   /// Updates a new reset value with `f` and writes the result to the register's
   /// memory address.
   fn reset<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Urt>>::Hold)
-      -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
+    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Ubt>>::Hold)
+      -> &'b mut <Self as RegRef<'a, Ubt>>::Hold;
 
   /// Writes `val` into the register.
   fn store_val(&mut self, val: Self::Val);
@@ -176,15 +104,12 @@ where
 
 /// Register that can read and write its value in a single-threaded context.
 // FIXME https://github.com/rust-lang/rust/issues/46397
-pub trait RwRegUnique<'a>
-where
-  Self: RReg<Urt> + WRegUnique<'a> + RegRef<'a, Urt>,
-{
+pub trait RwRegUnique<'a>: RReg<Ubt> + WRegUnique<'a> + RegRef<'a, Ubt> {
   /// Atomically updates the register's value.
-  fn update<F>(&'a mut self, f: F)
+  fn modify<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Urt>>::Hold)
-      -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
+    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Ubt>>::Hold)
+      -> &'b mut <Self as RegRef<'a, Ubt>>::Hold;
 }
 
 impl<'a, T, U> WRegShared<'a, T> for U
@@ -211,13 +136,13 @@ where
 
 impl<'a, T> WRegUnique<'a> for T
 where
-  T: WReg<Urt> + RegRef<'a, Urt>,
+  T: WReg<Ubt> + RegRef<'a, Ubt>,
 {
   #[inline(always)]
   fn reset<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Urt>>::Hold)
-      -> &'b mut <T as RegRef<'a, Urt>>::Hold,
+    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Ubt>>::Hold)
+      -> &'b mut <T as RegRef<'a, Ubt>>::Hold,
   {
     unsafe { self.store_raw(f(&mut self.default()).val().raw()) };
   }
@@ -230,13 +155,13 @@ where
 
 impl<'a, T> RwRegUnique<'a> for T
 where
-  T: RReg<Urt> + WRegUnique<'a> + RegRef<'a, Urt>,
+  T: RReg<Ubt> + WRegUnique<'a> + RegRef<'a, Ubt>,
 {
   #[inline(always)]
-  fn update<F>(&'a mut self, f: F)
+  fn modify<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Urt>>::Hold)
-      -> &'b mut <T as RegRef<'a, Urt>>::Hold,
+    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Ubt>>::Hold)
+      -> &'b mut <T as RegRef<'a, Ubt>>::Hold,
   {
     unsafe { self.store_raw(f(&mut self.load()).val().raw()) };
   }

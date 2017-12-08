@@ -30,10 +30,7 @@ pub struct Mutex<T> {
 /// [`Mutex`]: struct.Mutex.html
 /// [`try_lock`]: struct.Mutex.html#method.try_lock
 #[must_use]
-pub struct MutexGuard<'a, T>
-where
-  T: 'a,
-{
+pub struct MutexGuard<'a, T: 'a> {
   lock: &'a Mutex<T>,
 }
 

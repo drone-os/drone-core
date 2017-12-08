@@ -94,7 +94,7 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
       }
     }
   }
-  let field_name2 = field_name.clone();
+  let field_name = &field_name;
 
   Ok(quote! {
     use ::drone::thread::{self, Chain, TaskCell};
@@ -119,9 +119,7 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
           chain: Chain::new(),
           task: TaskCell::new(),
           preempted_id: 0,
-          #(
-            #field_name2: { #(#field_init)* },
-          )*
+          #(#field_name: { #(#field_init)* }),*
         }
       }
     }
