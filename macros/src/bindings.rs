@@ -2,7 +2,6 @@ use failure::{err_msg, Error};
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use quote::Tokens;
-use reserved::reserved_check;
 use std::{env, mem, vec};
 use std::fs::File;
 use std::io::prelude::*;
@@ -33,7 +32,10 @@ pub(crate) fn bindings(input: TokenStream) -> Result<Tokens, Error> {
         },
         token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
       },
-      Some(TokenTree::Token(Token::Ident(name))) => break name,
+      Some(TokenTree::Token(Token::Ident(name))) => match input.next() {
+        Some(TokenTree::Token(Token::Semi)) => break name,
+        token => Err(format_err!("Invalid token: {:?}", token))?,
+      },
       None => Err(format_err!("Unexpected end of macro invokation"))?,
       token => Err(format_err!("Invalid token: {:?}", token))?,
     }
@@ -116,19 +118,15 @@ fn parse_block(
           }
           token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
         },
-        Some(TokenTree::Token(Token::Ident(name))) => break name,
+        Some(TokenTree::Token(Token::Ident(name))) => match input.next() {
+          Some(TokenTree::Token(Token::Semi)) => break name,
+          token => Err(format_err!("Invalid token: {:?}", token))?,
+        },
         None => break 'outer,
         token => Err(format_err!("Invalid token: {:?}", token))?,
       }
     };
-    let tokens = match input.next() {
-      Some(TokenTree::Delimited(Delimited {
-        delim: DelimToken::Brace,
-        tts: tokens,
-      })) => tokens,
-      token => Err(format_err!("Invalid token: {:?}", token))?,
-    };
-    let (x, y) = parse_reg(&path, &name, attrs, reg_name, tokens)?;
+    let (x, y) = parse_reg(&path, &name, attrs, reg_name)?;
     struct_tokens.push(x);
     impl_tokens.push(y);
   }
@@ -141,25 +139,11 @@ fn parse_reg(
   block_name: &Ident,
   attrs: Vec<Tokens>,
   name: Ident,
-  input: Vec<TokenTree>,
 ) -> Result<(Tokens, Tokens), Error> {
-  let mut field_field = Vec::new();
-  let mut field_name = Vec::new();
-  for token in input {
-    match token {
-      TokenTree::Token(Token::Ident(name)) => {
-        let snake_name = reserved_check(name.as_ref().to_snake_case());
-        field_field.push(Ident::new(snake_name));
-        field_name.push(Ident::new(name.as_ref().to_pascal_case()));
-      }
-      token => Err(format_err!("Invalid token: {:?}", token))?,
-    }
-  }
   let name = Ident::new(name.as_ref().to_snake_case());
   let reg_name = Ident::new(format!("{}_{}", block_name, name));
   let mod_sep = &path.iter().map(|_| Token::ModSep).collect::<Vec<_>>();
   let prefix = &quote!(::#(#path #mod_sep)*#block_name::#name);
-  let prefixes = field_field.iter().map(|_| prefix).collect::<Vec<_>>();
 
   Ok((
     quote! {
@@ -167,9 +151,7 @@ fn parse_reg(
       pub #reg_name: #prefix::Reg<Sbt>,
     },
     quote! {
-      #reg_name: #prefix::Reg {
-        #(#field_field: #prefixes::#field_name::bind()),*
-      },
+      #reg_name: #prefix::Reg::bind(),
     },
   ))
 }

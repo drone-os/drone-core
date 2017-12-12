@@ -16,42 +16,40 @@ where
   O: Send + 'static,
 {
   let (mut tx, rx) = channel(capacity);
-  thread.routine(move || {
-    loop {
-      if tx.is_canceled() {
-        break;
-      }
-      match generator.resume() {
-        Yielded(None) => {}
-        Yielded(Some(value)) => match tx.send(value) {
-          Ok(()) => {}
-          Err(SendError { value, kind }) => match kind {
-            SendErrorKind::Canceled => {
+  thread.routine(move || loop {
+    if tx.is_canceled() {
+      break;
+    }
+    match generator.resume() {
+      Yielded(None) => {}
+      Yielded(Some(value)) => match tx.send(value) {
+        Ok(()) => {}
+        Err(SendError { value, kind }) => match kind {
+          SendErrorKind::Canceled => {
+            break;
+          }
+          SendErrorKind::Overflow => match overflow(value) {
+            Ok(()) => {}
+            Err(err) => {
+              tx.send_err(err).ok();
               break;
             }
-            SendErrorKind::Overflow => match overflow(value) {
-              Ok(()) => {}
-              Err(err) => {
-                tx.send_err(err).ok();
-                break;
-              }
-            },
           },
         },
-        Complete(Ok(None)) => {
-          break;
-        }
-        Complete(Ok(Some(value))) => {
-          tx.send(value).ok();
-          break;
-        }
-        Complete(Err(err)) => {
-          tx.send_err(err).ok();
-          break;
-        }
+      },
+      Complete(Ok(None)) => {
+        break;
       }
-      yield;
+      Complete(Ok(Some(value))) => {
+        tx.send(value).ok();
+        break;
+      }
+      Complete(Err(err)) => {
+        tx.send_err(err).ok();
+        break;
+      }
     }
+    yield;
   });
   rx
 }
@@ -69,31 +67,29 @@ where
   E: Send + 'static,
 {
   let (mut tx, rx) = channel(capacity);
-  thread.routine(move || {
-    loop {
-      if tx.is_canceled() {
+  thread.routine(move || loop {
+    if tx.is_canceled() {
+      break;
+    }
+    match generator.resume() {
+      Yielded(None) => {}
+      Yielded(Some(value)) => match tx.send_overwrite(value) {
+        Ok(()) => (),
+        Err(_) => break,
+      },
+      Complete(Ok(None)) => {
         break;
       }
-      match generator.resume() {
-        Yielded(None) => {}
-        Yielded(Some(value)) => match tx.send_overwrite(value) {
-          Ok(()) => (),
-          Err(_) => break,
-        },
-        Complete(Ok(None)) => {
-          break;
-        }
-        Complete(Ok(Some(value))) => {
-          tx.send_overwrite(value).ok();
-          break;
-        }
-        Complete(Err(err)) => {
-          tx.send_err(err).ok();
-          break;
-        }
+      Complete(Ok(Some(value))) => {
+        tx.send_overwrite(value).ok();
+        break;
       }
-      yield;
+      Complete(Err(err)) => {
+        tx.send_err(err).ok();
+        break;
+      }
     }
+    yield;
   });
   rx
 }

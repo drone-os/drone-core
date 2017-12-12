@@ -33,13 +33,11 @@
 //!
 //! bindings! {
 //!   //! Register bindings.
-//!   Bindings
+//!   Bindings;
 //!
 //!   STK {
 //!     /// SysTick control and status register.
-//!     CTRL {
-//!       ENABLE
-//!     }
+//!     CTRL;
 //!   }
 //! }
 //!

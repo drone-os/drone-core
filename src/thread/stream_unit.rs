@@ -14,40 +14,38 @@ where
   O: Send + 'static,
 {
   let (mut tx, rx) = channel();
-  thread.routine(move || {
-    loop {
-      if tx.is_canceled() {
-        break;
-      }
-      match generator.resume() {
-        Yielded(None) => {}
-        Yielded(Some(())) => match tx.send() {
+  thread.routine(move || loop {
+    if tx.is_canceled() {
+      break;
+    }
+    match generator.resume() {
+      Yielded(None) => {}
+      Yielded(Some(())) => match tx.send() {
+        Ok(()) => {}
+        Err(SendError::Canceled) => {
+          break;
+        }
+        Err(SendError::Overflow) => match overflow() {
           Ok(()) => {}
-          Err(SendError::Canceled) => {
+          Err(err) => {
+            tx.send_err(err).ok();
             break;
           }
-          Err(SendError::Overflow) => match overflow() {
-            Ok(()) => {}
-            Err(err) => {
-              tx.send_err(err).ok();
-              break;
-            }
-          },
         },
-        Complete(Ok(None)) => {
-          break;
-        }
-        Complete(Ok(Some(()))) => {
-          tx.send().ok();
-          break;
-        }
-        Complete(Err(err)) => {
-          tx.send_err(err).ok();
-          break;
-        }
+      },
+      Complete(Ok(None)) => {
+        break;
       }
-      yield;
+      Complete(Ok(Some(()))) => {
+        tx.send().ok();
+        break;
+      }
+      Complete(Err(err)) => {
+        tx.send_err(err).ok();
+        break;
+      }
     }
+    yield;
   });
   rx
 }

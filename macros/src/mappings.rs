@@ -236,6 +236,13 @@ fn parse_reg(
         )*
       }
 
+      impl<T: reg::RegTag> self::Reg<T> {
+        #[inline(always)]
+        pub(crate) unsafe fn bind() -> Self {
+          Self { #(#field_field: self::#field_name { _tag: T::default() }),* }
+        }
+      }
+
       impl<T: reg::RegTag> reg::Reg<T> for self::Reg<T> {
         type Val = self::Val;
 
@@ -254,28 +261,28 @@ fn parse_reg(
       impl From<self::Reg<reg::Ubt>> for self::Reg<reg::Sbt> {
         #[inline(always)]
         fn from(_reg: self::Reg<reg::Ubt>) -> Self {
-          unsafe { Self { #(#field_field: self::#field_name::bind()),* } }
+          unsafe { Self::bind() }
         }
       }
 
       impl From<self::Reg<reg::Sbt>> for self::Reg<reg::Fbt> {
         #[inline(always)]
         fn from(_reg: self::Reg<reg::Sbt>) -> Self {
-          unsafe { Self { #(#field_field: self::#field_name::bind()),* } }
+          unsafe { Self::bind() }
         }
       }
 
       impl From<self::Reg<reg::Sbt>> for self::Reg<reg::Ubt> {
         #[inline(always)]
         fn from(_reg: self::Reg<reg::Sbt>) -> Self {
-          unsafe { Self { #(#field_field: self::#field_name::bind()),* } }
+          unsafe { Self::bind() }
         }
       }
 
       impl From<self::Reg<reg::Fbt>> for self::Reg<reg::Cbt> {
         #[inline(always)]
         fn from(_reg: self::Reg<reg::Fbt>) -> Self {
-          unsafe { Self { #(#field_field: self::#field_name::bind()),* } }
+          unsafe { Self::bind() }
         }
       }
 
@@ -501,13 +508,6 @@ fn parse_field(
     #(#attrs)*
     pub struct #name<T: reg::RegTag> {
       _tag: T,
-    }
-
-    impl<T: reg::RegTag> self::#name<T> {
-      #[inline(always)]
-      pub(crate) unsafe fn bind() -> Self {
-        Self { _tag: T::default() }
-      }
     }
 
     impl<T: reg::RegTag> reg::RegField<T> for self::#name<T> {

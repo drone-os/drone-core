@@ -64,7 +64,7 @@ fn set_task<T: Thread + 'static>(task: *mut u8) {
 }
 
 /// A thread interface.
-pub trait Thread: Sized + Sync {
+pub trait Thread: Sized + Sync + 'static {
   /// Returns a reference to a thread by its `id`.
   ///
   /// # Safety
