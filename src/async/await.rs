@@ -2,16 +2,19 @@
 /// context.
 ///
 /// [`AsyncFuture`]: struct.AsyncFuture.html
-pub macro await($future:expr) {
-  {
-    let mut future = $future;
-    loop {
-      match future.poll() {
-        Ok(Async::NotReady) => (),
-        Ok(Async::Ready(ready)) => break Ok(ready),
-        Err(err) => break Err(err),
+#[macro_export]
+macro_rules! await {
+  ($future:expr) => {
+    {
+      let mut future = $future;
+      loop {
+        match future.poll() {
+          Ok(Async::NotReady) => (),
+          Ok(Async::Ready(ready)) => break Ok(ready),
+          Err(err) => break Err(err),
+        }
+        yield;
       }
-      yield;
     }
   }
 }

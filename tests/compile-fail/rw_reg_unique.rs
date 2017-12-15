@@ -6,7 +6,7 @@ use drone::reg::mappings;
 use drone::reg::prelude::*;
 
 mappings! {
-  TEST_BLOCK
+  TEST_BLOCK;
 
   TEST_RW_REG {
     0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg

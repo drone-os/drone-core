@@ -6,24 +6,23 @@
 //! # #![feature(generators)]
 //! # #![feature(prelude_import)]
 //! # #![feature(proc_macro)]
-//! # extern crate drone;
+//! # #[macro_use] extern crate drone;
 //! # extern crate futures;
-//! # #[prelude_import]
-//! # use drone::prelude::*;
+//! # #[prelude_import] use drone::prelude::*;
 //! # use futures::executor::Notify;
 //! # struct NopNotify;
 //! # const NOP_NOTIFY: NopNotify = NopNotify;
 //! # impl Notify for NopNotify { fn notify(&self, _id: usize) {} }
-//! use drone::async::{async_future, await};
 //! use drone::sync::spsc::oneshot;
 //! use futures::executor;
 //!
-//! #[async_future]
 //! fn plus_one(
 //!   rx: oneshot::Receiver<usize, ()>,
 //! ) -> impl Future<Item = usize, Error = oneshot::RecvError<()>> {
-//!   let number = await!(rx)?;
-//!   Ok(number + 1)
+//!   AsyncFuture::new(|| {
+//!     let number = await!(rx)?;
+//!     Ok(number + 1)
+//!   })
 //! }
 //!
 //! fn main() {
@@ -37,12 +36,8 @@
 //! }
 //! ```
 
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
 mod async_future;
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
+#[macro_use]
 mod await;
 
-pub use drone_macros::async_future;
-
 pub use self::async_future::AsyncFuture;
-pub use self::await::await;

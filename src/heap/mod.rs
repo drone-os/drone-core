@@ -24,9 +24,12 @@
 //! use drone::heap;
 //!
 //! heap! {
-//!   //! The global allocator.
+//!   /// The allocator struct.
+//!   Heap;
+//!   /// The global allocator.
 //!   // Uncomment the following line to use it as a global allocator.
-//!   // #![global_allocator]
+//!   // #[global_allocator]
+//!   ALLOC;
 //!
 //!   // The size of the heap should be known at the compile-time. It should
 //!   // equal the sum of all defined pools.
@@ -57,7 +60,7 @@
 //! # pub mod symbols { #[no_mangle] pub static HEAP_START: usize = 0; }
 //! use drone::heap;
 //!
-//! heap!(); // Provides `init` function inside the current scope.
+//! heap!(Heap; ALLOC);
 //!
 //! fn main() {
 //!   extern "C" {
@@ -67,7 +70,7 @@
 //!   }
 //!
 //!   unsafe {
-//!     init(&mut HEAP_START);
+//!     ALLOC.init(&mut HEAP_START);
 //!   }
 //! }
 //! ```

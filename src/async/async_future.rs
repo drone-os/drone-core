@@ -1,4 +1,5 @@
 /// A generator-based future.
+#[must_use]
 pub struct AsyncFuture<G, R, E>(G)
 where
   G: Generator<Yield = (), Return = Result<R, E>>;

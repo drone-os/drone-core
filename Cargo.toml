@@ -1,5 +1,5 @@
 [workspace]
-members = ["macros"]
+members = ["macros", "macros-core"]
 
 [package]
 name = "drone"

@@ -1,3 +1,4 @@
+use drone_macros_core::parse_own_name;
 use failure::{err_msg, Error};
 use inflector::Inflector;
 use proc_macro::TokenStream;
@@ -8,38 +9,15 @@ use std::io::prelude::*;
 use syn::{parse_token_trees, DelimToken, Delimited, Ident, Lit, Token,
           TokenTree};
 
-pub(crate) fn bindings(input: TokenStream) -> Result<Tokens, Error> {
+pub(crate) fn reg_bindings(input: TokenStream) -> Result<Tokens, Error> {
   let input = parse_token_trees(&input.to_string()).map_err(err_msg)?;
   let mut input = input.into_iter();
-  let mut attrs = Vec::new();
   let mut path = Vec::new();
   let mut struct_tokens = Vec::new();
   let mut impl_tokens = Vec::new();
-  let name = loop {
-    match input.next() {
-      Some(TokenTree::Token(Token::DocComment(ref string)))
-        if string.starts_with("//!") =>
-      {
-        let string = string.trim_left_matches("//!");
-        attrs.push(quote!(#[doc = #string]));
-      }
-      Some(TokenTree::Token(Token::Pound)) => match input.next() {
-        Some(TokenTree::Token(Token::Not)) => match input.next() {
-          Some(TokenTree::Delimited(delimited)) => {
-            attrs.push(quote!(# #delimited))
-          }
-          token => Err(format_err!("Invalid tokens after `#!`: {:?}", token))?,
-        },
-        token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
-      },
-      Some(TokenTree::Token(Token::Ident(name))) => match input.next() {
-        Some(TokenTree::Token(Token::Semi)) => break name,
-        token => Err(format_err!("Invalid token: {:?}", token))?,
-      },
-      None => Err(format_err!("Unexpected end of macro invokation"))?,
-      token => Err(format_err!("Invalid token: {:?}", token))?,
-    }
-  };
+  let (attrs, name) = parse_own_name(&mut input)?;
+  let name =
+    name.ok_or_else(|| format_err!("Unexpected end of macro invokation"))?;
   let mut inputs = vec![input];
   while let Some(mut input) = inputs.pop() {
     loop {
@@ -72,19 +50,15 @@ pub(crate) fn bindings(input: TokenStream) -> Result<Tokens, Error> {
   }
 
   Ok(quote! {
+    use ::drone::reg::RegBindings;
+
     #(#attrs)*
     pub struct #name {
       #(#struct_tokens)*
     }
 
-    impl #name {
-      /// Creates a new set of register bindings.
-      ///
-      /// # Safety
-      ///
-      /// * Must be called no more than once.
-      /// * Must be called at the very beginning of the program flow.
-      pub unsafe fn new() -> Self {
+    impl RegBindings for #name {
+      unsafe fn new() -> Self {
         Self {
           #(#impl_tokens)*
         }
@@ -102,30 +76,7 @@ fn parse_block(
   let mut struct_tokens = Vec::new();
   let mut impl_tokens = Vec::new();
   let name = Ident::new(name.as_ref().to_snake_case());
-  'outer: loop {
-    let mut attrs = Vec::new();
-    let reg_name = loop {
-      match input.next() {
-        Some(TokenTree::Token(Token::DocComment(ref string)))
-          if string.starts_with("///") =>
-        {
-          let string = string.trim_left_matches("///");
-          attrs.push(quote!(#[doc = #string]));
-        }
-        Some(TokenTree::Token(Token::Pound)) => match input.next() {
-          Some(TokenTree::Delimited(delimited)) => {
-            attrs.push(quote!(# #delimited))
-          }
-          token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
-        },
-        Some(TokenTree::Token(Token::Ident(name))) => match input.next() {
-          Some(TokenTree::Token(Token::Semi)) => break name,
-          token => Err(format_err!("Invalid token: {:?}", token))?,
-        },
-        None => break 'outer,
-        token => Err(format_err!("Invalid token: {:?}", token))?,
-      }
-    };
+  while let (attrs, Some(reg_name)) = parse_own_name(&mut input)? {
     let (x, y) = parse_reg(&path, &name, attrs, reg_name)?;
     struct_tokens.push(x);
     impl_tokens.push(y);

@@ -10,67 +10,43 @@ mod chain;
 mod routine_future;
 mod stream_ring;
 mod stream_unit;
+mod task;
+mod bindings;
 
+pub use self::bindings::{ThreadBinding, ThreadBindings};
 pub use self::chain::Chain;
 pub use self::routine_future::RoutineFuture;
+pub use self::task::{init, TaskCell};
 pub use drone_macros::thread_local;
 
 use self::stream_ring::{stream_ring, stream_ring_overwrite};
 use self::stream_unit::stream_unit;
-use core::cell::UnsafeCell;
-use core::ptr;
-use futures::task;
 use sync::spsc::{ring, unit};
 
-/// The pointer to the current running thread.
-static mut CURRENT_ID: usize = 0;
+/// The index of the current thread.
+static mut CURRENT_IDX: usize = 0;
 
-/// A thread-local storage of the task pointer.
-pub struct TaskCell(UnsafeCell<*mut u8>);
-
-/// Returns the id of the thread that invokes it.
+/// Returns the index of the current thread.
 #[inline(always)]
-pub fn current_id() -> usize {
-  unsafe { CURRENT_ID }
+pub fn current_idx() -> usize {
+  unsafe { CURRENT_IDX }
 }
 
 #[inline(always)]
-unsafe fn set_current_id(id: usize) {
-  CURRENT_ID = id;
+unsafe fn set_current_idx(index: usize) {
+  CURRENT_IDX = index;
 }
 
-/// Returns a reference to the thread that invokes it.
+/// Returns a static reference to the current thread.
 #[inline(always)]
 pub fn current<T: Thread>() -> &'static T {
-  unsafe { T::get_unchecked(current_id()) }
-}
-
-/// Initialize the `futures` task system.
-///
-/// # Safety
-///
-/// Must be called before using `futures`.
-#[inline(always)]
-pub unsafe fn init<T: Thread + 'static>() -> bool {
-  task::init(get_task::<T>, set_task::<T>)
-}
-
-fn get_task<T: Thread + 'static>() -> *mut u8 {
-  unsafe { current::<T>().task().get() }
-}
-
-fn set_task<T: Thread + 'static>(task: *mut u8) {
-  unsafe { current::<T>().task().set(task) };
+  unsafe { (*T::array()).get_unchecked(current_idx()) }
 }
 
 /// A thread interface.
 pub trait Thread: Sized + Sync + 'static {
-  /// Returns a reference to a thread by its `id`.
-  ///
-  /// # Safety
-  ///
-  /// `id` must be a valid index.
-  unsafe fn get_unchecked(id: usize) -> &'static Self;
+  /// Returns a mutable pointer to the static array of threads.
+  fn array() -> *mut [Self];
 
   /// Returns a reference to the routines chain.
   fn chain(&self) -> &Chain;
@@ -85,30 +61,13 @@ pub trait Thread: Sized + Sync + 'static {
   /// [`TaskCell`]: struct.TaskCell.html
   fn task(&self) -> &TaskCell;
 
-  /// Returns the id of the thread preempted by the current thread.
-  fn preempted_id(&self) -> usize;
+  /// Returns the index of the thread preempted by the current thread.
+  fn preempted_idx(&self) -> usize;
 
-  /// Sets the id of the thread preempted by the current thread.
+  /// Sets the index of the thread preempted by the current thread.
   ///
   /// This method is safe because `&mut self` can't be obtained by public API.
-  ///
-  /// [`resume`]: #method.resume
-  fn set_preempted_id(&mut self, id: usize);
-
-  /// Resumes associated routines sequentially.
-  ///
-  /// Completed routines will be dropped.
-  ///
-  /// # Safety
-  ///
-  /// `id` must be the index of the thread.
-  #[inline(always)]
-  unsafe fn resume(&mut self, id: usize) {
-    self.set_preempted_id(current_id());
-    set_current_id(id);
-    self.chain_mut().drain();
-    set_current_id(self.preempted_id());
-  }
+  fn set_preempted_idx(&mut self, index: usize);
 
   /// Adds a new routine to the beginning of the chain. This method accepts a
   /// generator.
@@ -251,23 +210,3 @@ pub trait Thread: Sized + Sync + 'static {
     stream_ring_overwrite(self, capacity, g)
   }
 }
-
-impl TaskCell {
-  /// Creates a new `TaskCell`.
-  #[inline(always)]
-  pub const fn new() -> Self {
-    TaskCell(UnsafeCell::new(ptr::null_mut()))
-  }
-
-  #[inline(always)]
-  unsafe fn get(&self) -> *mut u8 {
-    *self.0.get()
-  }
-
-  #[inline(always)]
-  unsafe fn set(&self, task: *mut u8) {
-    *self.0.get() = task;
-  }
-}
-
-unsafe impl Sync for TaskCell {}

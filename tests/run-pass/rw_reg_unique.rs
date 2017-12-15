@@ -6,7 +6,7 @@ use drone::reg::mappings;
 use drone::reg::prelude::*;
 
 mappings! {
-  FOO
+  FOO;
   BAR {
     0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg
     BAZ { 0 1 RRegField WRegField }

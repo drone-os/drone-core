@@ -9,9 +9,9 @@ use test_block::TestReg;
 use test_block::test_reg::Val;
 
 mappings! {
-  //! Test block doc attribute
-  #![doc = "test block attribute"]
-  TEST_BLOCK
+  /// Test block doc attribute
+  #[doc = "test block attribute"]
+  TEST_BLOCK;
   /// Test reg doc attribute
   #[doc = "test reg attribute"]
   TEST_REG {

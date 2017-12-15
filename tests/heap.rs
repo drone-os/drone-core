@@ -12,8 +12,12 @@ use drone::heap;
 use std as core;
 
 heap! {
-  //! Test doc attribute
-  #![doc = "test attribute"]
+  /// Test doc attribute
+  #[doc = "test attribute"]
+  Heap;
+  /// Test doc attribute
+  #[doc = "test attribute"]
+  ALLOC;
   size = 4096;
   pools = [
     [0x4; 512],

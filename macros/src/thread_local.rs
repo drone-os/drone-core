@@ -1,3 +1,4 @@
+use drone_macros_core::{parse_extern_name, parse_own_name};
 use failure::{err_msg, Error};
 use proc_macro::TokenStream;
 use quote::Tokens;
@@ -6,23 +7,22 @@ use syn::{parse_token_trees, DelimToken, Delimited, Ident, Token, TokenTree};
 pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
   let input = parse_token_trees(&input.to_string()).map_err(err_msg)?;
   let mut input = input.into_iter();
-  let mut attributes = Vec::new();
   let mut field_visiblity = Vec::new();
   let mut field_attributes = Vec::new();
   let mut field_name = Vec::new();
   let mut field_type = Vec::new();
   let mut field_init = Vec::new();
+  let (attrs, name) = parse_own_name(&mut input)?;
+  let static_name = parse_extern_name(&mut input)?;
+  let name =
+    name.ok_or_else(|| format_err!("Unexpected end of macro invokation"))?;
+  let static_name = static_name
+    .ok_or_else(|| format_err!("Unexpected end of macro invokation"))?;
   'outer: loop {
     let mut public = false;
     let mut inner_attributes = Vec::new();
     loop {
       match input.next() {
-        Some(TokenTree::Token(Token::DocComment(ref string)))
-          if string.starts_with("//!") =>
-        {
-          let string = string.trim_left_matches("//!");
-          attributes.push(quote!(#[doc = #string]));
-        }
         Some(TokenTree::Token(Token::DocComment(ref string)))
           if string.starts_with("///") =>
         {
@@ -30,14 +30,6 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
           inner_attributes.push(quote!(#[doc = #string]));
         }
         Some(TokenTree::Token(Token::Pound)) => match input.next() {
-          Some(TokenTree::Token(Token::Not)) => match input.next() {
-            Some(TokenTree::Delimited(delimited)) => {
-              attributes.push(quote!(# #delimited))
-            }
-            token => {
-              Err(format_err!("Invalid tokens after `#!`: {:?}", token))?
-            }
-          },
           Some(TokenTree::Delimited(delimited)) => {
             inner_attributes.push(quote!(# #delimited))
           }
@@ -97,37 +89,37 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
   let field_name = &field_name;
 
   Ok(quote! {
-    use ::drone::thread::{self, Chain, TaskCell};
+    use ::drone::thread::{Chain, TaskCell};
 
-    #(#attributes)*
-    pub struct ThreadLocal {
+    #(#attrs)*
+    pub struct #name {
       chain: Chain,
       task: TaskCell,
-      preempted_id: usize,
+      preempted_idx: usize,
       #(
         #(#field_attributes)*
         #field_visiblity #field_name: #(#field_type)*,
       )*
     }
 
-    impl ThreadLocal {
-      /// Creates a blank `ThreadLocal`.
+    impl #name {
+      /// Creates a blank thread.
       #[allow(dead_code)]
       #[inline(always)]
-      pub const fn new(_id: usize) -> Self {
+      pub const fn new(_index: usize) -> Self {
         Self {
           chain: Chain::new(),
           task: TaskCell::new(),
-          preempted_id: 0,
+          preempted_idx: 0,
           #(#field_name: { #(#field_init)* }),*
         }
       }
     }
 
-    impl Thread for ThreadLocal {
+    impl Thread for #name {
       #[inline(always)]
-      unsafe fn get_unchecked(id: usize) -> &'static Self {
-        THREADS.get_unchecked(id)
+      fn array() -> *mut [Self] {
+        unsafe { &mut #static_name }
       }
 
       #[inline(always)]
@@ -146,24 +138,14 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
       }
 
       #[inline(always)]
-      fn preempted_id(&self) -> usize {
-        self.preempted_id
+      fn preempted_idx(&self) -> usize {
+        self.preempted_idx
       }
 
       #[inline(always)]
-      fn set_preempted_id(&mut self, id: usize) {
-        self.preempted_id = id;
+      fn set_preempted_idx(&mut self, index: usize) {
+        self.preempted_idx = index;
       }
-    }
-
-    /// Initialize the `futures` task system.
-    ///
-    /// See [`thread::init()`] for more details.
-    ///
-    /// [`thread::init()`]: ../../drone/thread/fn.init.html
-    #[inline(always)]
-    pub unsafe fn init() {
-      thread::init::<ThreadLocal>();
     }
   })
 }

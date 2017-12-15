@@ -5,7 +5,7 @@ extern crate drone;
 use drone::reg::mappings;
 use drone::reg::prelude::*;
 
-mappings!(FOO BAR { 0xDEAD_BEEF 0x20 0xBEEF_CACE BAZ { 0 1 } });
+mappings!(FOO; BAR { 0xDEAD_BEEF 0x20 0xBEEF_CACE BAZ { 0 1 } });
 
 fn assert_copy<T: Copy>() {}
 fn assert_clone<T: Clone>() {}

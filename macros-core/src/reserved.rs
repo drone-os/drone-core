@@ -11,7 +11,9 @@ lazy_static! {
   ").unwrap();
 }
 
-pub(crate) fn reserved_check(mut name: String) -> String {
+/// Inserts underscore symbol at the beginning of the string if string is a
+/// reserved keyword.
+pub fn reserved_check(mut name: String) -> String {
   if RESERVED.is_match(&name) {
     name.insert(0, '_');
   }

@@ -28,27 +28,28 @@ pub trait RegRaw
   fn one() -> Self;
 }
 
-#[doc(hidden)] // FIXME https://github.com/rust-lang/rust/issues/45266
-macro reg_raw($type:ty) {
-  impl RegRaw for $type {
-    #[inline(always)]
-    fn from_usize(raw: usize) -> Self {
-      raw as $type
-    }
+macro_rules! reg_raw {
+  ($type:ty) => {
+    impl RegRaw for $type {
+      #[inline(always)]
+      fn from_usize(raw: usize) -> Self {
+        raw as $type
+      }
 
-    #[inline(always)]
-    fn size() -> $type {
-      size_of::<$type>() as $type * 8
-    }
+      #[inline(always)]
+      fn size() -> $type {
+        size_of::<$type>() as $type * 8
+      }
 
-    #[inline(always)]
-    fn zero() -> $type {
-      0
-    }
+      #[inline(always)]
+      fn zero() -> $type {
+        0
+      }
 
-    #[inline(always)]
-    fn one() -> $type {
-      1
+      #[inline(always)]
+      fn one() -> $type {
+        1
+      }
     }
   }
 }

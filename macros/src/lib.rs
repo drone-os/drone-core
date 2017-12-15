@@ -10,36 +10,26 @@
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown))]
 
 #[macro_use]
+extern crate drone_macros_core;
+#[macro_use]
 extern crate failure;
 extern crate inflector;
-#[macro_use]
-extern crate lazy_static;
 extern crate proc_macro;
 #[macro_use]
 extern crate quote;
-extern crate regex;
 extern crate syn;
 
-pub(crate) mod reserved;
-
-mod async_future;
-mod bindings;
+mod reg_bindings;
 mod heap;
-mod mappings;
+mod reg_mappings;
 mod thread_local;
 
 use proc_macro::TokenStream;
 
 #[doc(hidden)]
-#[proc_macro_attribute]
-pub fn async_future(args: TokenStream, input: TokenStream) -> TokenStream {
-  tokens!(async_future::async_future(args, input))
-}
-
-#[doc(hidden)]
 #[proc_macro]
-pub fn bindings(input: TokenStream) -> TokenStream {
-  tokens!(bindings::bindings(input))
+pub fn reg_bindings(input: TokenStream) -> TokenStream {
+  tokens!(reg_bindings::reg_bindings(input))
 }
 
 #[doc(hidden)]
@@ -50,19 +40,12 @@ pub fn heap(input: TokenStream) -> TokenStream {
 
 #[doc(hidden)]
 #[proc_macro]
-pub fn mappings(input: TokenStream) -> TokenStream {
-  tokens!(mappings::mappings(input))
+pub fn reg_mappings(input: TokenStream) -> TokenStream {
+  tokens!(reg_mappings::reg_mappings(input))
 }
 
 #[doc(hidden)]
 #[proc_macro]
 pub fn thread_local(input: TokenStream) -> TokenStream {
   tokens!(thread_local::thread_local(input))
-}
-
-macro tokens($tokens:expr) {
-  match $tokens {
-    Ok(tokens) => tokens.parse().unwrap(),
-    Err(error) => panic!("{}", error),
-  }
 }

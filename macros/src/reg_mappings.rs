@@ -1,40 +1,21 @@
+use drone_macros_core::parse_own_name;
+use drone_macros_core::reserved_check;
 use failure::{err_msg, Error};
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use quote::Tokens;
-use reserved::reserved_check;
 use syn::{parse_token_trees, DelimToken, Delimited, Ident, IntTy, Lit, Token,
           TokenTree};
 
-pub(crate) fn mappings(input: TokenStream) -> Result<Tokens, Error> {
+pub(crate) fn reg_mappings(input: TokenStream) -> Result<Tokens, Error> {
   let input = parse_token_trees(&input.to_string()).map_err(err_msg)?;
   let mut input = input.into_iter();
-  let mut attrs = Vec::new();
   let mut reg_attrs = Vec::new();
   let mut reg_tokens = Vec::new();
   let mut reg_names = Vec::new();
-  let block = loop {
-    match input.next() {
-      Some(TokenTree::Token(Token::DocComment(ref string)))
-        if string.starts_with("//!") =>
-      {
-        let string = string.trim_left_matches("//!");
-        attrs.push(quote!(#[doc = #string]));
-      }
-      Some(TokenTree::Token(Token::Pound)) => match input.next() {
-        Some(TokenTree::Token(Token::Not)) => match input.next() {
-          Some(TokenTree::Delimited(delimited)) => {
-            attrs.push(quote!(# #delimited))
-          }
-          token => Err(format_err!("Invalid tokens after `#!`: {:?}", token))?,
-        },
-        token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
-      },
-      Some(TokenTree::Token(Token::Ident(name))) => break name,
-      None => Err(format_err!("Unexpected end of macro invokation"))?,
-      token => Err(format_err!("Invalid token: {:?}", token))?,
-    }
-  };
+  let (attrs, block) = parse_own_name(&mut input)?;
+  let block =
+    block.ok_or_else(|| format_err!("Unexpected end of macro invokation"))?;
   loop {
     match input.next() {
       Some(TokenTree::Token(Token::DocComment(ref string)))

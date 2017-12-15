@@ -1,6 +1,6 @@
+use drone_macros_core::parse_own_name;
 use failure::{err_msg, Error};
 use proc_macro::TokenStream;
-use quote;
 use quote::Tokens;
 use std::{fmt, vec};
 use syn::{parse_token_trees, DelimToken, Delimited, IntTy, Lit, Token,
@@ -14,16 +14,17 @@ struct Pool {
 pub(crate) fn heap(input: TokenStream) -> Result<Tokens, Error> {
   let input = parse_token_trees(&input.to_string()).map_err(err_msg)?;
   let mut input = input.into_iter();
-  let mut attributes = Vec::new();
   let mut pools = Vec::new();
   let mut size = 0;
+  let (struct_attrs, struct_name) = parse_own_name(&mut input)?;
+  let (static_attrs, static_name) = parse_own_name(&mut input)?;
+  let struct_name = struct_name
+    .ok_or_else(|| format_err!("Unexpected end of macro invokation"))?;
+  let static_name = static_name
+    .ok_or_else(|| format_err!("Unexpected end of macro invokation"))?;
   while let Some(token) = input.next() {
     match token {
       TokenTree::Token(token) => match token {
-        Token::DocComment(ref string) if string.starts_with("//!") => {
-          parse_doc(&string, &mut attributes)
-        }
-        Token::Pound => parse_attr(&mut input, &mut attributes)?,
         Token::Ident(ident) => if ident == "size" {
           parse_size(&mut input, &mut size)?;
         } else if ident == "pools" {
@@ -56,13 +57,13 @@ pub(crate) fn heap(input: TokenStream) -> Result<Tokens, Error> {
     use ::core::slice::SliceIndex;
     use ::drone::heap::{Allocator, Pool};
 
-    #[doc(hidden)]
-    pub struct Heap {
+    #(#struct_attrs)*
+    pub struct #struct_name {
       pools: [Pool; #pool_count],
     }
 
-    #(#attributes)*
-    pub static mut ALLOC: Heap = Heap {
+    #(#static_attrs)*
+    pub static mut #static_name: #struct_name = #struct_name {
       pools: [
         #(
           Pool::new(#pool_start, #pool_size, #pool_capacity),
@@ -70,7 +71,7 @@ pub(crate) fn heap(input: TokenStream) -> Result<Tokens, Error> {
       ],
     };
 
-    impl Allocator for Heap {
+    impl Allocator for #struct_name {
       const POOL_COUNT: usize = #pool_count;
 
       #[inline(always)]
@@ -90,7 +91,7 @@ pub(crate) fn heap(input: TokenStream) -> Result<Tokens, Error> {
       }
     }
 
-    unsafe impl<'a> Alloc for &'a Heap {
+    unsafe impl<'a> Alloc for &'a #struct_name {
       unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
         (**self).alloc(layout)
       }
@@ -147,17 +148,6 @@ pub(crate) fn heap(input: TokenStream) -> Result<Tokens, Error> {
         (**self).shrink_in_place(ptr, layout, new_layout)
       }
     }
-
-    /// Initializes the allocator.
-    ///
-    /// See [`Allocator::init()`] for more details.
-    ///
-    /// [`Allocator::init()`]:
-    /// ../../drone/heap/allocator/trait.Allocator.html#method.init
-    #[inline(always)]
-    pub unsafe fn init(start: &mut usize) {
-      ALLOC.init(start)
-    }
   })
 }
 
@@ -174,27 +164,6 @@ fn normalize_pools(pools: &mut Vec<Pool>, size: u32) -> Result<(), Error> {
       -free,
       size as i64 - free
     ))?;
-  }
-  Ok(())
-}
-
-fn parse_doc(input: &str, attributes: &mut Vec<quote::Tokens>) {
-  let string = input.trim_left_matches("//!");
-  attributes.push(quote!(#[doc = #string]));
-}
-
-fn parse_attr(
-  input: &mut vec::IntoIter<TokenTree>,
-  attributes: &mut Vec<quote::Tokens>,
-) -> Result<(), Error> {
-  match input.next() {
-    Some(TokenTree::Token(Token::Not)) => match input.next() {
-      Some(TokenTree::Delimited(delimited)) => {
-        attributes.push(quote!(# #delimited))
-      }
-      token => Err(format_err!("Invalid tokens after `#!`: {:?}", token))?,
-    },
-    token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
   }
   Ok(())
 }
