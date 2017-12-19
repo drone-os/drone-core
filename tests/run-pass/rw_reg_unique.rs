@@ -1,9 +1,9 @@
 #![feature(decl_macro)]
 
-extern crate drone;
+extern crate drone_core;
 
-use drone::reg::mappings;
-use drone::reg::prelude::*;
+use drone_core::reg::mappings;
+use drone_core::reg::prelude::*;
 
 mappings! {
   FOO;

@@ -54,7 +54,7 @@
 #![cfg_attr(feature = "clippy", allow(precedence, doc_markdown, inline_always))]
 
 extern crate alloc;
-extern crate drone_macros;
+extern crate drone_core_macros;
 extern crate futures;
 
 #[cfg(feature = "std")]
@@ -68,7 +68,7 @@ pub mod reg;
 pub mod sync;
 pub mod thread;
 
-pub use drone_macros::heap;
+pub use drone_core_macros::heap;
 
 #[prelude_import]
 #[allow(unused_imports)]

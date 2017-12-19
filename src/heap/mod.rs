@@ -18,10 +18,10 @@
 //! # #![feature(decl_macro)]
 //! # #![feature(slice_get_slice)]
 //! # extern crate alloc;
-//! # extern crate drone;
+//! # extern crate drone_core;
 //! # fn main() {}
 //! # use std as core;
-//! use drone::heap;
+//! use drone_core::heap;
 //!
 //! heap! {
 //!   /// The allocator struct.
@@ -55,10 +55,10 @@
 //! # #![feature(decl_macro)]
 //! # #![feature(slice_get_slice)]
 //! # extern crate alloc;
-//! # extern crate drone;
+//! # extern crate drone_core;
 //! # use std as core;
 //! # pub mod symbols { #[no_mangle] pub static HEAP_START: usize = 0; }
-//! use drone::heap;
+//! use drone_core::heap;
 //!
 //! heap!(Heap; ALLOC);
 //!

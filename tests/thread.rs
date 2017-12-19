@@ -5,13 +5,13 @@
 #![feature(generators)]
 #![feature(prelude_import)]
 
-extern crate drone;
+extern crate drone_core;
 
 #[prelude_import]
 #[allow(unused_imports)]
-use drone::prelude::*;
+use drone_core::prelude::*;
 
-use drone::thread::thread_local;
+use drone_core::thread::thread_local;
 use std::cell::Cell;
 use std::ops::Deref;
 use std::sync::Arc;

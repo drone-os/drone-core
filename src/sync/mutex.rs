@@ -46,7 +46,7 @@ impl<T> Mutex<T> {
   /// # Examples
   ///
   /// ```
-  /// use drone::sync::Mutex;
+  /// use drone_core::sync::Mutex;
   ///
   /// let mutex = Mutex::new(0);
   /// ```
@@ -67,7 +67,7 @@ impl<T> Mutex<T> {
   /// # Examples
   ///
   /// ```
-  /// use drone::sync::Mutex;
+  /// use drone_core::sync::Mutex;
   ///
   /// let mutex = Mutex::new(1);
   ///
@@ -90,7 +90,7 @@ impl<T> Mutex<T> {
   /// # Examples
   ///
   /// ```
-  /// use drone::sync::Mutex;
+  /// use drone_core::sync::Mutex;
   ///
   /// let mutex = Mutex::new(0);
   /// assert_eq!(mutex.into_inner(), 0);
@@ -109,7 +109,7 @@ impl<T> Mutex<T> {
   /// # Examples
   ///
   /// ```
-  /// use drone::sync::Mutex;
+  /// use drone_core::sync::Mutex;
   ///
   /// let mut mutex = Mutex::new(0);
   /// *mutex.get_mut() = 10;

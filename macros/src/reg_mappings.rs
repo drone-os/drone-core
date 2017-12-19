@@ -205,7 +205,7 @@ fn parse_reg(
 
     #(#attrs)*
     pub mod #mod_name {
-      use ::drone::reg;
+      use ::drone_core::reg;
 
       #(#field_tokens)*
 

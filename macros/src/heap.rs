@@ -55,7 +55,7 @@ pub(crate) fn heap(input: TokenStream) -> Result<Tokens, Error> {
     use ::alloc::allocator::{Alloc, AllocErr, CannotReallocInPlace, Excess,
                              Layout};
     use ::core::slice::SliceIndex;
-    use ::drone::heap::{Allocator, Pool};
+    use ::drone_core::heap::{Allocator, Pool};
 
     #(#struct_attrs)*
     pub struct #struct_name {

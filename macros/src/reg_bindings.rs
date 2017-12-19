@@ -50,7 +50,7 @@ pub(crate) fn reg_bindings(input: TokenStream) -> Result<Tokens, Error> {
   }
 
   Ok(quote! {
-    use ::drone::reg::RegBindings;
+    use ::drone_core::reg::RegBindings;
 
     #(#attrs)*
     pub struct #name {

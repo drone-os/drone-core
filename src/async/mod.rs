@@ -6,14 +6,14 @@
 //! # #![feature(generators)]
 //! # #![feature(prelude_import)]
 //! # #![feature(proc_macro)]
-//! # #[macro_use] extern crate drone;
+//! # #[macro_use] extern crate drone_core;
 //! # extern crate futures;
-//! # #[prelude_import] use drone::prelude::*;
+//! # #[prelude_import] use drone_core::prelude::*;
 //! # use futures::executor::Notify;
 //! # struct NopNotify;
 //! # const NOP_NOTIFY: NopNotify = NopNotify;
 //! # impl Notify for NopNotify { fn notify(&self, _id: usize) {} }
-//! use drone::sync::spsc::oneshot;
+//! use drone_core::sync::spsc::oneshot;
 //! use futures::executor;
 //!
 //! fn plus_one(

@@ -17,7 +17,7 @@ pub use self::bindings::{ThreadBinding, ThreadBindings};
 pub use self::chain::Chain;
 pub use self::routine_future::RoutineFuture;
 pub use self::task::{init, TaskCell};
-pub use drone_macros::thread_local;
+pub use drone_core_macros::thread_local;
 
 use self::stream_ring::{stream_ring, stream_ring_overwrite};
 use self::stream_unit::stream_unit;

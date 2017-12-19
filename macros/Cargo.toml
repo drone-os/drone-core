@@ -1,11 +1,11 @@
 [package]
-name = "drone-macros"
+name = "drone-core-macros"
 version = "0.7.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = "Drone procedural macros."
 readme = "README.md"
 license = "MIT/Apache-2.0"
-repository = "https://github.com/drone-os/drone"
+repository = "https://github.com/drone-os/drone-core"
 
 [lib]
 proc-macro = true

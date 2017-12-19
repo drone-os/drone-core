@@ -89,7 +89,7 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
   let field_name = &field_name;
 
   Ok(quote! {
-    use ::drone::thread::{Chain, TaskCell};
+    use ::drone_core::thread::{Chain, TaskCell};
 
     #(#attrs)*
     pub struct #name {

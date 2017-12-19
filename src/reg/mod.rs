@@ -8,8 +8,8 @@
 //! # #![feature(decl_macro)]
 //! # use std as core;
 //! use core::mem::size_of_val;
-//! use drone::reg::{bindings, mappings};
-//! use drone::reg::prelude::*;
+//! use drone_core::reg::{bindings, mappings};
+//! use drone_core::reg::prelude::*;
 //!
 //! mappings! {
 //!   /// SysTick timer.
@@ -67,7 +67,7 @@ pub use self::raw::*;
 pub use self::reg::*;
 pub use self::tag::*;
 pub use self::val::*;
-pub use drone_macros::{reg_bindings as bindings, reg_mappings as mappings};
+pub use drone_core_macros::{reg_bindings as bindings, reg_mappings as mappings};
 
 /// Forkable binding.
 pub trait RegFork {

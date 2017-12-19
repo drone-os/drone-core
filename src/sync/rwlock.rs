@@ -63,7 +63,7 @@ impl<T> RwLock<T> {
   /// # Examples
   ///
   /// ```
-  /// use drone::sync::RwLock;
+  /// use drone_core::sync::RwLock;
   ///
   /// let lock = RwLock::new(5);
   /// ```
@@ -87,7 +87,7 @@ impl<T> RwLock<T> {
   /// # Examples
   ///
   /// ```
-  /// use drone::sync::RwLock;
+  /// use drone_core::sync::RwLock;
   ///
   /// let lock = RwLock::new(1);
   ///
@@ -121,7 +121,7 @@ impl<T> RwLock<T> {
   /// # Examples
   ///
   /// ```
-  /// use drone::sync::RwLock;
+  /// use drone_core::sync::RwLock;
   ///
   /// let lock = RwLock::new(1);
   ///
@@ -144,7 +144,7 @@ impl<T> RwLock<T> {
   /// # Examples
   ///
   /// ```
-  /// use drone::sync::RwLock;
+  /// use drone_core::sync::RwLock;
   ///
   /// let lock = RwLock::new(String::new());
   /// {
@@ -167,7 +167,7 @@ impl<T> RwLock<T> {
   /// # Examples
   ///
   /// ```
-  /// use drone::sync::RwLock;
+  /// use drone_core::sync::RwLock;
   ///
   /// let mut lock = RwLock::new(0);
   /// *lock.get_mut() = 10;

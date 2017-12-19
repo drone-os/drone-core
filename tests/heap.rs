@@ -5,10 +5,10 @@
 #![feature(slice_get_slice)]
 
 extern crate alloc;
-extern crate drone;
+extern crate drone_core;
 
 use core::mem::size_of;
-use drone::heap;
+use drone_core::heap;
 use std as core;
 
 heap! {

@@ -11,7 +11,7 @@
 //!
 //! #[prelude_import]
 //! #[allow(unused_imports)]
-//! use drone::prelude::*;
+//! use drone_core::prelude::*;
 //! ```
 //!
 //! [`std::prelude`]: https://doc.rust-lang.org/std/prelude/

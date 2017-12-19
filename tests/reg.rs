@@ -1,9 +1,9 @@
 #![feature(decl_macro)]
 
-extern crate drone;
+extern crate drone_core;
 
-use drone::reg::mappings;
-use drone::reg::prelude::*;
+use drone_core::reg::mappings;
+use drone_core::reg::prelude::*;
 use std::mem::size_of;
 use test_block::TestReg;
 use test_block::test_reg::Val;

@@ -1,9 +1,9 @@
 #![feature(decl_macro)]
 
-extern crate drone;
+extern crate drone_core;
 
-use drone::reg::mappings;
-use drone::reg::prelude::*;
+use drone_core::reg::mappings;
+use drone_core::reg::prelude::*;
 
 mappings! {
   TEST_BLOCK;
@@ -28,11 +28,11 @@ fn assert_rw_reg_unique<'a, T: RwRegUnique<'a>>() {}
 
 fn main() {
   assert_rw_reg_unique::<test_block::TestRwReg<Sbt>>();
-  //~^ ERROR drone::reg::WReg<drone::reg::Ubt>` is not satisfied
-  //~| ERROR drone::reg::RReg<drone::reg::Ubt>` is not satisfied
-  //~| ERROR drone::reg::RegRef<'_, drone::reg::Ubt>` is not satisfied
+  //~^ ERROR drone_core::reg::WReg<drone_core::reg::Ubt>` is not satisfied
+  //~| ERROR drone_core::reg::RReg<drone_core::reg::Ubt>` is not satisfied
+  //~| ERROR drone_core::reg::RegRef<'_, drone_core::reg::Ubt>` is not satisfied
   assert_rw_reg_unique::<test_block::TestRoReg<Ubt>>();
-  //~^ ERROR drone::reg::WReg<drone::reg::Ubt>` is not satisfied
+  //~^ ERROR drone_core::reg::WReg<drone_core::reg::Ubt>` is not satisfied
   assert_rw_reg_unique::<test_block::TestWoReg<Ubt>>();
-  //~^ ERROR drone::reg::RReg<drone::reg::Ubt>` is not satisfied
+  //~^ ERROR drone_core::reg::RReg<drone_core::reg::Ubt>` is not satisfied
 }

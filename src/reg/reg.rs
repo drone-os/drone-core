@@ -37,13 +37,13 @@ pub trait RReg<T: RegTag>: Reg<T> {
   where
     Self: RegRef<'a, T>,
   {
-    unsafe { self.hold(Self::Val::from_raw(self.load_raw())) }
+    self.hold(self.load_val())
   }
 
-  /// Reads a raw register value from its memory address.
+  /// Reads a register value from its memory address.
   #[inline(always)]
-  unsafe fn load_raw(&self) -> <Self::Val as RegVal>::Raw {
-    read_volatile(self.to_ptr())
+  fn load_val(&self) -> Self::Val {
+    unsafe { Self::Val::from_raw(read_volatile(self.to_ptr())) }
   }
 
   /// Returns an unsafe constant pointer to the register's memory address.
@@ -55,12 +55,6 @@ pub trait RReg<T: RegTag>: Reg<T> {
 
 /// Register that can write its value.
 pub trait WReg<T: RegTag>: Reg<T> {
-  /// Writes a raw register value to its memory address.
-  #[inline(always)]
-  unsafe fn store_raw(&self, raw: <Self::Val as RegVal>::Raw) {
-    write_volatile(self.to_mut_ptr(), raw);
-  }
-
   /// Returns an unsafe mutable pointer to the register's memory address.
   #[inline(always)]
   fn to_mut_ptr(&self) -> *mut <Self::Val as RegVal>::Raw {
@@ -130,7 +124,7 @@ where
 
   #[inline(always)]
   fn store_val(&self, val: U::Val) {
-    unsafe { self.store_raw(val.raw()) };
+    unsafe { write_volatile(self.to_mut_ptr(), val.raw()) };
   }
 }
 
@@ -144,12 +138,14 @@ where
     F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Ubt>>::Hold)
       -> &'b mut <T as RegRef<'a, Ubt>>::Hold,
   {
-    unsafe { self.store_raw(f(&mut self.default()).val().raw()) };
+    unsafe {
+      write_volatile(self.to_mut_ptr(), f(&mut self.default()).val().raw());
+    }
   }
 
   #[inline(always)]
   fn store_val(&mut self, val: T::Val) {
-    unsafe { self.store_raw(val.raw()) };
+    unsafe { write_volatile(self.to_mut_ptr(), val.raw()) };
   }
 }
 
@@ -163,6 +159,8 @@ where
     F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Ubt>>::Hold)
       -> &'b mut <T as RegRef<'a, Ubt>>::Hold,
   {
-    unsafe { self.store_raw(f(&mut self.load()).val().raw()) };
+    unsafe {
+      write_volatile(self.to_mut_ptr(), f(&mut self.load()).val().raw());
+    }
   }
 }
