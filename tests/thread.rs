@@ -1,9 +1,9 @@
 #![feature(const_cell_new)]
 #![feature(const_fn)]
 #![feature(const_ptr_null_mut)]
-#![feature(decl_macro)]
 #![feature(generators)]
 #![feature(prelude_import)]
+#![feature(proc_macro)]
 
 extern crate drone_core;
 
@@ -11,9 +11,9 @@ extern crate drone_core;
 #[allow(unused_imports)]
 use drone_core::prelude::*;
 
-use drone_core::thread::thread_local;
+use drone_core::thread::{thread_local, ThreadNumber};
+use drone_core::thread::prelude::*;
 use std::cell::Cell;
-use std::ops::Deref;
 use std::sync::Arc;
 
 static mut THREADS: [ThreadLocal; 2] =
@@ -31,31 +31,18 @@ thread_local! {
   bar: isize = { 1 - 2 }
 }
 
-macro_rules! thread_binding {
-  ($name:ident, $index:expr) => {
-    #[derive(Clone, Copy)]
+macro_rules! thread_number {
+  ($name:ident, $position:expr) => {
     struct $name;
 
-    impl ThreadBinding<ThreadLocal> for $name {
-      const INDEX: usize = $index;
-
-      unsafe fn bind() -> Self {
-        $name
-      }
-    }
-
-    impl Deref for $name {
-      type Target = ThreadLocal;
-
-      fn deref(&self) -> &ThreadLocal {
-        self.as_thread()
-      }
+    impl ThreadNumber for $name {
+      const THREAD_NUMBER: usize = $position;
     }
   }
 }
 
-thread_binding!(Thread0, 0);
-thread_binding!(Thread1, 1);
+thread_number!(Thread0, 0);
+thread_number!(Thread1, 1);
 
 struct Counter(Cell<i8>);
 
@@ -84,11 +71,11 @@ fn routine() {
       yield;
     });
     assert_eq!(counter.0.get(), 0);
-    Thread0::handler();
+    ThreadToken::<ThreadLocal, Thread0>::handler();
     assert_eq!(counter.0.get(), 1);
-    Thread0::handler();
+    ThreadToken::<ThreadLocal, Thread0>::handler();
     assert_eq!(counter.0.get(), -2);
-    Thread0::handler();
+    ThreadToken::<ThreadLocal, Thread0>::handler();
     assert_eq!(counter.0.get(), -2);
   }
 }
@@ -102,9 +89,9 @@ fn routine_fn() {
       (wrapper.0).0.set((wrapper.0).0.get() + 1);
     });
     assert_eq!(counter.0.get(), 0);
-    Thread1::handler();
+    ThreadToken::<ThreadLocal, Thread1>::handler();
     assert_eq!(counter.0.get(), -1);
-    Thread1::handler();
+    ThreadToken::<ThreadLocal, Thread1>::handler();
     assert_eq!(counter.0.get(), -1);
   }
 }

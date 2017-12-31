@@ -1,5 +1,6 @@
 use core::mem;
 use sync::spsc::oneshot::{channel, Receiver, RecvError};
+use thread::prelude::*;
 
 /// A future for result from another thread.
 ///

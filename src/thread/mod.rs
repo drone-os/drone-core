@@ -6,17 +6,19 @@
 //! consists of a dynamic chain of routines, which are executing sequentially
 //! within a thread context.
 
+pub mod prelude;
+
 mod chain;
 mod routine_future;
 mod stream_ring;
 mod stream_unit;
 mod task;
-mod bindings;
+mod tokens;
 
-pub use self::bindings::{ThreadBinding, ThreadBindings};
 pub use self::chain::Chain;
 pub use self::routine_future::RoutineFuture;
 pub use self::task::{init, TaskCell};
+pub use self::tokens::{ThreadNumber, ThreadToken, ThreadTokens};
 pub use drone_core_macros::thread_local;
 
 use self::stream_ring::{stream_ring, stream_ring_overwrite};

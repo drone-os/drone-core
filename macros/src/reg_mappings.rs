@@ -106,10 +106,9 @@ fn parse_reg(
     ))?,
   };
   let reset = match input.next() {
-    Some(TokenTree::Token(Token::Literal(Lit::Int(
-      reset,
-      IntTy::Unsuffixed,
-    )))) => Lit::Int(reset, IntTy::Usize),
+    Some(TokenTree::Token(Token::Literal(
+      value @ Lit::Int(_, IntTy::Unsuffixed),
+    ))) => value,
     token => Err(format_err!("Invalid tokens after `{}`: {:?}", raw, token))?,
   };
   'outer: loop {
@@ -219,7 +218,7 @@ fn parse_reg(
 
       impl<T: reg::RegTag> self::Reg<T> {
         #[inline(always)]
-        pub(crate) unsafe fn bind() -> Self {
+        pub(crate) unsafe fn new() -> Self {
           Self { #(#field_field: self::#field_name { _tag: T::default() }),* }
         }
       }
@@ -239,35 +238,35 @@ fn parse_reg(
         impl<T: reg::RegTag> #trait_name<T> for self::Reg<T> {}
       )*
 
-      impl From<self::Reg<reg::Ubt>> for self::Reg<reg::Sbt> {
+      impl From<self::Reg<reg::Utt>> for self::Reg<reg::Stt> {
         #[inline(always)]
-        fn from(_reg: self::Reg<reg::Ubt>) -> Self {
-          unsafe { Self::bind() }
+        fn from(_reg: self::Reg<reg::Utt>) -> Self {
+          unsafe { Self::new() }
         }
       }
 
-      impl From<self::Reg<reg::Sbt>> for self::Reg<reg::Fbt> {
+      impl From<self::Reg<reg::Stt>> for self::Reg<reg::Ftt> {
         #[inline(always)]
-        fn from(_reg: self::Reg<reg::Sbt>) -> Self {
-          unsafe { Self::bind() }
+        fn from(_reg: self::Reg<reg::Stt>) -> Self {
+          unsafe { Self::new() }
         }
       }
 
-      impl From<self::Reg<reg::Sbt>> for self::Reg<reg::Ubt> {
+      impl From<self::Reg<reg::Stt>> for self::Reg<reg::Utt> {
         #[inline(always)]
-        fn from(_reg: self::Reg<reg::Sbt>) -> Self {
-          unsafe { Self::bind() }
+        fn from(_reg: self::Reg<reg::Stt>) -> Self {
+          unsafe { Self::new() }
         }
       }
 
-      impl From<self::Reg<reg::Fbt>> for self::Reg<reg::Cbt> {
+      impl From<self::Reg<reg::Ftt>> for self::Reg<reg::Ctt> {
         #[inline(always)]
-        fn from(_reg: self::Reg<reg::Fbt>) -> Self {
-          unsafe { Self::bind() }
+        fn from(_reg: self::Reg<reg::Ftt>) -> Self {
+          unsafe { Self::new() }
         }
       }
 
-      impl reg::RegFork for self::Reg<reg::Fbt> {
+      impl reg::RegFork for self::Reg<reg::Ftt> {
         #[inline(always)]
         fn fork(&mut self) -> Self {
           Self { #(#field_field: self.#field_field2.fork()),* }
@@ -275,14 +274,14 @@ fn parse_reg(
       }
 
       #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-      impl Clone for self::Reg<reg::Cbt> {
+      impl Clone for self::Reg<reg::Ctt> {
         #[inline(always)]
         fn clone(&self) -> Self {
           Self { ..*self }
         }
       }
 
-      impl Copy for self::Reg<reg::Cbt> {}
+      impl Copy for self::Reg<reg::Ctt> {}
 
       #(#attrs)*
       pub struct Hold<'a, T: reg::RegTag + 'a> {
@@ -319,10 +318,7 @@ fn parse_reg(
       impl reg::RegVal for self::Val {
         type Raw = #raw;
 
-        #[inline(always)]
-        unsafe fn reset() -> Self {
-          Self::from_raw(#reset as #raw)
-        }
+        const RESET: #raw = #reset;
 
         #[inline(always)]
         unsafe fn from_raw(raw: #raw) -> Self {
@@ -503,35 +499,35 @@ fn parse_field(
       impl<T: reg::RegTag> reg::#trait_name<T> for self::#trait_field_name<T> {}
     )*
 
-    impl From<self::#name<reg::Sbt>> for self::#name<reg::Fbt> {
+    impl From<self::#name<reg::Stt>> for self::#name<reg::Ftt> {
       #[inline(always)]
-      fn from(_field: self::#name<reg::Sbt>) -> Self {
-        Self { _tag: reg::Fbt::default() }
+      fn from(_field: self::#name<reg::Stt>) -> Self {
+        Self { _tag: reg::Ftt::default() }
       }
     }
 
-    impl From<self::#name<reg::Fbt>> for self::#name<reg::Cbt> {
+    impl From<self::#name<reg::Ftt>> for self::#name<reg::Ctt> {
       #[inline(always)]
-      fn from(_field: self::#name<reg::Fbt>) -> Self {
-        Self { _tag: reg::Cbt::default() }
+      fn from(_field: self::#name<reg::Ftt>) -> Self {
+        Self { _tag: reg::Ctt::default() }
       }
     }
 
-    impl reg::RegFork for self::#name<reg::Fbt> {
+    impl reg::RegFork for self::#name<reg::Ftt> {
       #[inline(always)]
       fn fork(&mut self) -> Self {
-        Self { _tag: reg::Fbt::default() }
+        Self { _tag: reg::Ftt::default() }
       }
     }
 
     #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-    impl Clone for self::#name<reg::Cbt> {
+    impl Clone for self::#name<reg::Ctt> {
       #[inline(always)]
       fn clone(&self) -> Self {
         Self { ..*self }
       }
     }
 
-    impl Copy for self::#name<reg::Cbt> {}
+    impl Copy for self::#name<reg::Ctt> {}
   })
 }

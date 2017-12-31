@@ -1,7 +1,7 @@
 #![feature(alloc)]
 #![feature(allocator_api)]
 #![feature(const_fn)]
-#![feature(decl_macro)]
+#![feature(proc_macro)]
 #![feature(slice_get_slice)]
 
 extern crate alloc;

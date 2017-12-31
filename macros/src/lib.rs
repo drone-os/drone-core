@@ -1,8 +1,8 @@
 //! Drone procedural macros.
 //!
 //! See `drone` documentation for details.
+
 #![feature(const_atomic_bool_new)]
-#![feature(decl_macro)]
 #![feature(proc_macro)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "clippy", feature(plugin))]
@@ -19,18 +19,12 @@ extern crate proc_macro;
 extern crate quote;
 extern crate syn;
 
-mod reg_bindings;
 mod heap;
 mod reg_mappings;
+mod reg_tokens;
 mod thread_local;
 
 use proc_macro::TokenStream;
-
-#[doc(hidden)]
-#[proc_macro]
-pub fn reg_bindings(input: TokenStream) -> TokenStream {
-  tokens!(reg_bindings::reg_bindings(input))
-}
 
 #[doc(hidden)]
 #[proc_macro]
@@ -42,6 +36,12 @@ pub fn heap(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn reg_mappings(input: TokenStream) -> TokenStream {
   tokens!(reg_mappings::reg_mappings(input))
+}
+
+#[doc(hidden)]
+#[proc_macro]
+pub fn reg_tokens(input: TokenStream) -> TokenStream {
+  tokens!(reg_tokens::reg_tokens(input))
 }
 
 #[doc(hidden)]

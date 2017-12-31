@@ -1,7 +1,7 @@
 use super::*;
 use core::ptr::{read_volatile, write_volatile};
 
-/// Memory-mapped register binding. Types which implement this trait should be
+/// Memory-mapped register token. Types which implement this trait should be
 /// zero-sized. This is a zero-cost abstraction for safely working with
 /// memory-mapped registers.
 pub trait Reg<T: RegTag>: Sized {
@@ -84,13 +84,13 @@ pub trait WRegShared<'a, T: RegShared>: WReg<T> + RegRef<'a, T> {
 
 /// Register that can write its value in a single-threaded context.
 // FIXME https://github.com/rust-lang/rust/issues/46397
-pub trait WRegUnique<'a>: WReg<Ubt> + RegRef<'a, Ubt> {
+pub trait WRegUnique<'a>: WReg<Utt> + RegRef<'a, Utt> {
   /// Updates a new reset value with `f` and writes the result to the register's
   /// memory address.
   fn reset<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Ubt>>::Hold)
-      -> &'b mut <Self as RegRef<'a, Ubt>>::Hold;
+    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Utt>>::Hold)
+      -> &'b mut <Self as RegRef<'a, Utt>>::Hold;
 
   /// Writes `val` into the register.
   fn store_val(&mut self, val: Self::Val);
@@ -98,12 +98,12 @@ pub trait WRegUnique<'a>: WReg<Ubt> + RegRef<'a, Ubt> {
 
 /// Register that can read and write its value in a single-threaded context.
 // FIXME https://github.com/rust-lang/rust/issues/46397
-pub trait RwRegUnique<'a>: RReg<Ubt> + WRegUnique<'a> + RegRef<'a, Ubt> {
+pub trait RwRegUnique<'a>: RReg<Utt> + WRegUnique<'a> + RegRef<'a, Utt> {
   /// Atomically updates the register's value.
   fn modify<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Ubt>>::Hold)
-      -> &'b mut <Self as RegRef<'a, Ubt>>::Hold;
+    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Utt>>::Hold)
+      -> &'b mut <Self as RegRef<'a, Utt>>::Hold;
 }
 
 impl<'a, T, U> WRegShared<'a, T> for U
@@ -130,13 +130,13 @@ where
 
 impl<'a, T> WRegUnique<'a> for T
 where
-  T: WReg<Ubt> + RegRef<'a, Ubt>,
+  T: WReg<Utt> + RegRef<'a, Utt>,
 {
   #[inline(always)]
   fn reset<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Ubt>>::Hold)
-      -> &'b mut <T as RegRef<'a, Ubt>>::Hold,
+    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Utt>>::Hold)
+      -> &'b mut <T as RegRef<'a, Utt>>::Hold,
   {
     unsafe {
       write_volatile(self.to_mut_ptr(), f(&mut self.default()).val().raw());
@@ -151,13 +151,13 @@ where
 
 impl<'a, T> RwRegUnique<'a> for T
 where
-  T: RReg<Ubt> + WRegUnique<'a> + RegRef<'a, Ubt>,
+  T: RReg<Utt> + WRegUnique<'a> + RegRef<'a, Utt>,
 {
   #[inline(always)]
   fn modify<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Ubt>>::Hold)
-      -> &'b mut <T as RegRef<'a, Ubt>>::Hold,
+    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Utt>>::Hold)
+      -> &'b mut <T as RegRef<'a, Utt>>::Hold,
   {
     unsafe {
       write_volatile(self.to_mut_ptr(), f(&mut self.load()).val().raw());

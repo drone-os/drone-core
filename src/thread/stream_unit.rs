@@ -1,4 +1,5 @@
 use sync::spsc::unit::{channel, Receiver, SendError};
+use thread::prelude::*;
 
 pub(crate) fn stream_unit<T, G, E, O>(
   thread: &T,

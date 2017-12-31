@@ -8,6 +8,7 @@ macro_rules! await {
     {
       let mut future = $future;
       loop {
+        #[allow(unreachable_patterns, unreachable_code)]
         match future.poll() {
           Ok(Async::NotReady) => (),
           Ok(Async::Ready(ready)) => break Ok(ready),

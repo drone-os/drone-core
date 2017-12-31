@@ -1,4 +1,4 @@
-#![feature(decl_macro)]
+#![feature(proc_macro)]
 
 extern crate drone_core;
 
@@ -11,10 +11,10 @@ fn assert_send<T: Send>() {}
 fn assert_sync<T: Sync>() {}
 
 fn main() {
-  assert_send::<foo::Bar<Sbt>>();
-  assert_sync::<foo::Bar<Sbt>>();
-  assert_send::<foo::Bar<Fbt>>();
-  assert_sync::<foo::Bar<Fbt>>();
-  assert_send::<foo::Bar<Cbt>>();
-  assert_sync::<foo::Bar<Cbt>>();
+  assert_send::<foo::Bar<Stt>>();
+  assert_sync::<foo::Bar<Stt>>();
+  assert_send::<foo::Bar<Ftt>>();
+  assert_sync::<foo::Bar<Ftt>>();
+  assert_send::<foo::Bar<Ctt>>();
+  assert_sync::<foo::Bar<Ctt>>();
 }

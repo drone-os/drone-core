@@ -1,7 +1,7 @@
 use super::*;
 use core::ptr::{read_volatile, write_volatile};
 
-/// Register field binding.
+/// Register field token.
 pub trait RegField<T: RegTag>: Sized {
   /// Parent register type.
   type Reg: Reg<T>;

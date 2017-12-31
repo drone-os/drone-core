@@ -1,4 +1,4 @@
-#![feature(decl_macro)]
+#![feature(proc_macro)]
 
 extern crate drone_core;
 
@@ -11,6 +11,6 @@ fn assert_copy<T: Copy>() {}
 fn assert_clone<T: Clone>() {}
 
 fn main() {
-  assert_copy::<foo::Bar<Cbt>>();
-  assert_clone::<foo::Bar<Cbt>>();
+  assert_copy::<foo::Bar<Ctt>>();
+  assert_clone::<foo::Bar<Ctt>>();
 }

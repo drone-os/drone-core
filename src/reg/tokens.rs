@@ -1,6 +1,6 @@
-/// A set of register bindings.
-pub trait RegBindings {
-  /// Creates a new set of register bindings.
+/// A set of register tokens.
+pub trait RegTokens {
+  /// Creates a new set of register tokens.
   ///
   /// # Safety
   ///

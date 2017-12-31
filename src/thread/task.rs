@@ -2,6 +2,7 @@ use super::current;
 use core::cell::UnsafeCell;
 use core::ptr;
 use futures::task;
+use thread::prelude::*;
 
 /// A thread-local storage of the task pointer.
 pub struct TaskCell(UnsafeCell<*mut u8>);

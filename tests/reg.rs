@@ -1,4 +1,4 @@
-#![feature(decl_macro)]
+#![feature(proc_macro)]
 
 extern crate drone_core;
 
@@ -30,10 +30,10 @@ fn reg_val_default() {
 
 #[test]
 fn size_of_reg() {
-  assert_eq!(size_of::<TestReg<Ubt>>(), 0);
-  assert_eq!(size_of::<TestReg<Sbt>>(), 0);
-  assert_eq!(size_of::<TestReg<Fbt>>(), 0);
-  assert_eq!(size_of::<TestReg<Cbt>>(), 0);
+  assert_eq!(size_of::<TestReg<Utt>>(), 0);
+  assert_eq!(size_of::<TestReg<Stt>>(), 0);
+  assert_eq!(size_of::<TestReg<Ftt>>(), 0);
+  assert_eq!(size_of::<TestReg<Ctt>>(), 0);
 }
 
 #[test]

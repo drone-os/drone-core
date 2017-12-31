@@ -1,4 +1,5 @@
 use sync::spsc::ring::{channel, Receiver, SendError, SendErrorKind};
+use thread::prelude::*;
 
 pub(crate) fn stream_ring<T, G, I, E, O>(
   thread: &T,

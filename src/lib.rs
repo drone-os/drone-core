@@ -21,6 +21,7 @@
 //! [Rust]: https://www.rust-lang.org/
 //! [cargo-drone]: https://github.com/drone-os/cargo-drone
 //! [xargo]: https://github.com/japaric/xargo
+
 #![feature(alloc)]
 #![feature(allocator_api)]
 #![feature(const_atomic_bool_new)]
@@ -32,7 +33,6 @@
 #![feature(const_ptr_null_mut)]
 #![feature(const_size_of)]
 #![feature(const_unsafe_cell_new)]
-#![feature(decl_macro)]
 #![feature(fused)]
 #![feature(generators)]
 #![feature(generator_trait)]
@@ -42,6 +42,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(pointer_methods)]
 #![feature(prelude_import)]
+#![feature(proc_macro)]
 #![feature(proc_macro)]
 #![feature(slice_concat_ext)]
 #![feature(slice_get_slice)]

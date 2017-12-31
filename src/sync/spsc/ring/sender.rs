@@ -22,10 +22,10 @@ pub struct SendError<T> {
   pub kind: SendErrorKind,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
 /// Part of [`SendError`].
 ///
 /// [`SendError`]: struct.SendError.html
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SendErrorKind {
   /// The corresponding [`Receiver`] is dropped.
   ///

@@ -1,4 +1,4 @@
-#![feature(decl_macro)]
+#![feature(proc_macro)]
 
 extern crate drone_core;
 
@@ -16,5 +16,5 @@ mappings! {
 fn assert_rw_reg_unique<'a, T: RwRegUnique<'a>>() {}
 
 fn main() {
-  assert_rw_reg_unique::<foo::Bar<Ubt>>();
+  assert_rw_reg_unique::<foo::Bar<Utt>>();
 }

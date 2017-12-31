@@ -2,7 +2,6 @@
 //!
 //! ```
 //! # #![feature(conservative_impl_trait)]
-//! # #![feature(decl_macro)]
 //! # #![feature(generators)]
 //! # #![feature(prelude_import)]
 //! # #![feature(proc_macro)]

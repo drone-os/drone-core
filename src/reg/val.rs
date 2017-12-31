@@ -5,8 +5,8 @@ pub trait RegVal: Sized + Clone + Copy {
   /// Raw integer type.
   type Raw: RegRaw;
 
-  /// Creates a new `RegVal` from the reset value.
-  unsafe fn reset() -> Self;
+  /// A reset value for the register.
+  const RESET: Self::Raw;
 
   /// Creates a new `RegVal` from the raw value.
   unsafe fn from_raw(raw: Self::Raw) -> Self;
@@ -16,6 +16,12 @@ pub trait RegVal: Sized + Clone + Copy {
 
   /// Returns a mutable reference to the inner integer.
   fn raw_mut(&mut self) -> &mut Self::Raw;
+
+  /// Creates a new `RegVal` from the reset value.
+  #[inline(always)]
+  unsafe fn reset() -> Self {
+    Self::from_raw(Self::RESET)
+  }
 
   /// Reads the state of the bit at `offset`.
   ///

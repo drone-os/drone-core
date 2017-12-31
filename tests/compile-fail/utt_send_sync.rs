@@ -1,4 +1,4 @@
-#![feature(decl_macro)]
+#![feature(proc_macro)]
 
 extern crate drone_core;
 
@@ -11,7 +11,7 @@ fn assert_send<T: Send>() {}
 fn assert_sync<T: Sync>() {}
 
 fn main() {
-  assert_send::<foo::Bar<Ubt>>();
-  assert_sync::<foo::Bar<Ubt>>();
-  //~^ ERROR `drone_core::reg::Ubt: drone_core::prelude::Sync` is not satisfied
+  assert_send::<foo::Bar<Utt>>();
+  assert_sync::<foo::Bar<Utt>>();
+  //~^ ERROR `drone_core::reg::Utt: std::marker::Sync` is not satisfied
 }

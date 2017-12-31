@@ -9,7 +9,7 @@ use std::io::prelude::*;
 use syn::{parse_token_trees, DelimToken, Delimited, Ident, Lit, Token,
           TokenTree};
 
-pub(crate) fn reg_bindings(input: TokenStream) -> Result<Tokens, Error> {
+pub(crate) fn reg_tokens(input: TokenStream) -> Result<Tokens, Error> {
   let input = parse_token_trees(&input.to_string()).map_err(err_msg)?;
   let mut input = input.into_iter();
   let mut path = Vec::new();
@@ -50,14 +50,14 @@ pub(crate) fn reg_bindings(input: TokenStream) -> Result<Tokens, Error> {
   }
 
   Ok(quote! {
-    use ::drone_core::reg::RegBindings;
+    use ::drone_core::reg::RegTokens;
 
     #(#attrs)*
     pub struct #name {
       #(#struct_tokens)*
     }
 
-    impl RegBindings for #name {
+    impl RegTokens for #name {
       unsafe fn new() -> Self {
         Self {
           #(#impl_tokens)*
@@ -99,10 +99,10 @@ fn parse_reg(
   Ok((
     quote! {
       #(#attrs)*
-      pub #reg_name: #prefix::Reg<Sbt>,
+      pub #reg_name: #prefix::Reg<Stt>,
     },
     quote! {
-      #reg_name: #prefix::Reg::bind(),
+      #reg_name: #prefix::Reg::new(),
     },
   ))
 }
