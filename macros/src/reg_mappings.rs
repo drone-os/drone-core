@@ -76,7 +76,6 @@ fn parse_reg(
   input: Vec<TokenTree>,
 ) -> Result<Tokens, Error> {
   let mut input = input.into_iter();
-  let mut trait_attrs = Vec::new();
   let mut trait_name = Vec::new();
   let mut field_attrs = Vec::new();
   let mut field_name = Vec::new();
@@ -84,10 +83,9 @@ fn parse_reg(
   let mut field_affix = Vec::new();
   let mut field_tokens = Vec::new();
   let address = match input.next() {
-    Some(TokenTree::Token(Token::Literal(Lit::Int(
-      address,
-      IntTy::Unsuffixed,
-    )))) => address,
+    Some(TokenTree::Token(Token::Literal(
+      address @ Lit::Int(_, IntTy::Unsuffixed),
+    ))) => address,
     token => Err(format_err!(
       "Invalid tokens after `{:?} {{`: {:?}",
       name,
@@ -100,7 +98,7 @@ fn parse_reg(
       IntTy::Unsuffixed,
     )))) => Ident::new(format!("u{}", raw)),
     token => Err(format_err!(
-      "Invalid tokens after `{}`: {:?}",
+      "Invalid tokens after `{:?}`: {:?}",
       address,
       token
     ))?,
@@ -111,6 +109,18 @@ fn parse_reg(
     ))) => value,
     token => Err(format_err!("Invalid tokens after `{}`: {:?}", raw, token))?,
   };
+  loop {
+    match input.next() {
+      Some(TokenTree::Token(Token::Ident(name))) => trait_name.push(name),
+      Some(TokenTree::Token(Token::Semi)) => break,
+      token => Err(format_err!(
+        "Invalid tokens after `{} {:?}`: {:?}",
+        raw,
+        trait_name,
+        token
+      ))?,
+    }
+  }
   'outer: loop {
     let mut attrs = Vec::new();
     loop {
@@ -128,55 +138,27 @@ fn parse_reg(
           token => Err(format_err!("Invalid tokens after `#`: {:?}", token))?,
         },
         Some(TokenTree::Token(Token::Ident(name))) => {
-          if field_tokens.is_empty() {
-            trait_attrs.push(attrs);
-            trait_name.push(name);
-          } else {
-            match input.next() {
-              Some(TokenTree::Delimited(Delimited {
-                delim: DelimToken::Brace,
-                tts,
-              })) => {
-                field_tokens.push(parse_field(
-                  &attrs,
-                  name,
-                  tts,
-                  &raw,
-                  &mut field_affix,
-                  &mut field_field,
-                  &mut field_name,
-                )?);
-                field_attrs.push(attrs);
-              }
-              token => Err(format_err!(
-                "Unexpected token after `{}`: {:?}",
-                name,
-                token
-              ))?,
-            }
-          }
-          break;
-        }
-        Some(TokenTree::Delimited(Delimited {
-          delim: DelimToken::Brace,
-          tts,
-        })) => {
-          let last = trait_attrs
-            .pop()
-            .and_then(|attrs| trait_name.pop().map(|name| (attrs, name)));
-          if let Some((attrs, name)) = last {
-            field_tokens.push(parse_field(
-              &attrs,
-              name,
+          match input.next() {
+            Some(TokenTree::Delimited(Delimited {
+              delim: DelimToken::Brace,
               tts,
-              &raw,
-              &mut field_affix,
-              &mut field_field,
-              &mut field_name,
-            )?);
-            field_attrs.push(attrs);
-          } else {
-            Err(format_err!("Unexpected block: `{{ ... }}`"))?;
+            })) => {
+              field_tokens.push(parse_field(
+                &attrs,
+                name,
+                tts,
+                &raw,
+                &mut field_affix,
+                &mut field_field,
+                &mut field_name,
+              )?);
+              field_attrs.push(attrs);
+            }
+            token => Err(format_err!(
+              "Unexpected token after `{}`: {:?}",
+              name,
+              token
+            ))?,
           }
           break;
         }
@@ -193,7 +175,6 @@ fn parse_reg(
   let reg_name = Ident::new(name.as_ref().to_pascal_case());
   let mod_name = name.as_ref().to_snake_case();
   let mod_name = Ident::new(reserved_check(mod_name));
-  let address = Lit::Int(address, IntTy::Unsuffixed);
   let attrs = &attrs;
   let field_name = &field_name;
   let field_field = &field_field;
@@ -234,7 +215,6 @@ fn parse_reg(
       }
 
       #(
-        #(#trait_attrs)*
         impl<T: reg::RegTag> #trait_name<T> for self::Reg<T> {}
       )*
 
@@ -318,7 +298,7 @@ fn parse_reg(
       impl reg::RegVal for self::Val {
         type Raw = #raw;
 
-        const RESET: #raw = #reset;
+        const DEFAULT: #raw = #reset;
 
         #[inline(always)]
         unsafe fn from_raw(raw: #raw) -> Self {
@@ -352,17 +332,15 @@ fn parse_field(
   let mut trait_attrs = Vec::new();
   let mut trait_name = Vec::new();
   let offset = match input.next() {
-    Some(TokenTree::Token(Token::Literal(Lit::Int(
-      offset,
-      IntTy::Unsuffixed,
-    )))) => offset,
+    Some(TokenTree::Token(Token::Literal(
+      offset @ Lit::Int(_, IntTy::Unsuffixed),
+    ))) => offset,
     token => Err(format_err!("Invalid tokens after `{{`: {:?}", token))?,
   };
   let width = match input.next() {
-    Some(TokenTree::Token(Token::Literal(Lit::Int(
-      width,
-      IntTy::Unsuffixed,
-    )))) => width,
+    Some(TokenTree::Token(Token::Literal(
+      width @ Lit::Int(_, IntTy::Unsuffixed),
+    ))) => width,
     token => Err(format_err!(
       "Invalid tokens after `{{ {:?}`: {:?}",
       offset,
@@ -403,7 +381,7 @@ fn parse_field(
   field_affix.push(affix.clone());
   field_field.push(field.clone());
   field_name.push(name.clone());
-  if width == 1 {
+  if let Lit::Int(1, IntTy::Unsuffixed) = width {
     let set_field = Ident::new(format!("set_{}", affix));
     let clear_field = Ident::new(format!("clear_{}", affix));
     let toggle_field = Ident::new(format!("toggle_{}", affix));
@@ -474,8 +452,6 @@ fn parse_field(
       });
     }
   }
-  let width = Lit::Int(width, IntTy::Unsuffixed);
-  let offset = Lit::Int(offset, IntTy::Unsuffixed);
   let trait_field_name =
     trait_name.iter().map(|_| name.clone()).collect::<Vec<_>>();
 

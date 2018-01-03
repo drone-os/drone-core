@@ -1,6 +1,6 @@
-# drone
+# drone-core
 
-## [Documentation](https://docs.rs/drone)
+## [Documentation](https://docs.rs/drone-core)
 
 Drone is a Hard Real-Time Operating System Framework for writing
 embedded applications with [Rust].
@@ -18,9 +18,9 @@ Please also refer the installation notes of a corresponding Drone's
 
 * [ARM Cortex-M](https://github.com/drone-os/drone-cortex-m)
 
-## Example Applications
+## Demo Applications
 
-* [STM32 Nucleo L496ZG-P](https://github.com/drone-os/blink-nucleo)
+* [STM32 Nucleo L496ZG-P](https://github.com/drone-os/nucleo-demo)
 
 [Rust]: https://www.rust-lang.org/
 [cargo-drone]: https://github.com/drone-os/cargo-drone

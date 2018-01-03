@@ -9,17 +9,17 @@ mappings! {
   TEST_BLOCK;
 
   TEST_RW_REG {
-    0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg
+    0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg;
     TEST_BIT { 0 1 RRegField WRegField }
   }
 
   TEST_RO_REG  {
-    0xDEAD_BEEF 0x20 0xBEEF_CACE RReg RoReg
+    0xDEAD_BEEF 0x20 0xBEEF_CACE RReg RoReg;
     TEST_BIT { 0 1 RRegField RoRegField }
   }
 
   TEST_WO_REG  {
-    0xDEAD_BEEF 0x20 0xBEEF_CACE WReg WoReg
+    0xDEAD_BEEF 0x20 0xBEEF_CACE WReg WoReg;
     TEST_BIT { 0 1 WRegField WoRegField }
   }
 }

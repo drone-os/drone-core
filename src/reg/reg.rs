@@ -18,21 +18,29 @@ pub trait RegRef<'a, T: RegTag>: Reg<T> {
   type Hold: RegHold<'a, T, Self>;
 
   /// Creates a new `Hold` for `val`.
+  #[inline(always)]
   fn hold(&'a self, val: Self::Val) -> Self::Hold {
     unsafe { Self::Hold::new(self, val) }
   }
 
   /// Creates a new `Hold` with reset value.
+  #[inline(always)]
   fn default(&'a self) -> Self::Hold {
-    unsafe { self.hold(Self::Val::reset()) }
+    self.hold(self.default_val())
+  }
+
+  /// Returns a default value.
+  #[inline(always)]
+  fn default_val(&self) -> Self::Val {
+    unsafe { Self::Val::default() }
   }
 }
 
 /// Register that can read its value.
 pub trait RReg<T: RegTag>: Reg<T> {
   /// Reads and wraps a register value from its memory address.
-  #[inline(always)]
   #[cfg_attr(feature = "clippy", allow(needless_lifetimes))]
+  #[inline(always)]
   fn load<'a>(&'a self) -> <Self as RegRef<'a, T>>::Hold
   where
     Self: RegRef<'a, T>,
@@ -80,6 +88,9 @@ pub trait WRegShared<'a, T: RegShared>: WReg<T> + RegRef<'a, T> {
 
   /// Writes `val` into the register.
   fn store_val(&self, val: Self::Val);
+
+  /// Writes the reset value to the register.
+  fn store_default(&'a self);
 }
 
 /// Register that can write its value in a single-threaded context.
@@ -94,6 +105,9 @@ pub trait WRegUnique<'a>: WReg<Utt> + RegRef<'a, Utt> {
 
   /// Writes `val` into the register.
   fn store_val(&mut self, val: Self::Val);
+
+  /// Writes the reset value to the register.
+  fn store_default(&'a mut self);
 }
 
 /// Register that can read and write its value in a single-threaded context.
@@ -126,6 +140,11 @@ where
   fn store_val(&self, val: U::Val) {
     unsafe { write_volatile(self.to_mut_ptr(), val.raw()) };
   }
+
+  #[inline(always)]
+  fn store_default(&'a self) {
+    self.store_val(self.default_val());
+  }
 }
 
 impl<'a, T> WRegUnique<'a> for T
@@ -146,6 +165,11 @@ where
   #[inline(always)]
   fn store_val(&mut self, val: T::Val) {
     unsafe { write_volatile(self.to_mut_ptr(), val.raw()) };
+  }
+
+  #[inline(always)]
+  fn store_default(&'a mut self) {
+    unsafe { write_volatile(self.to_mut_ptr(), self.default_val().raw()) };
   }
 }
 

@@ -20,7 +20,7 @@
 //!     0xE000_E010 // memory address
 //!     0x20 // bit size
 //!     0x0000_0000 // reset value
-//!     RReg WReg // list of marker traits for the register
+//!     RReg WReg; // list of marker traits for the register
 //!
 //!     /// Counter enable.
 //!     ENABLE { // field name

@@ -173,7 +173,7 @@ where
 {
   #[inline(always)]
   fn default_val(&self) -> <U::Reg as Reg<T>>::Val {
-    unsafe { <U::Reg as Reg<T>>::Val::reset() }
+    unsafe { <U::Reg as Reg<T>>::Val::default() }
   }
 
   #[inline(always)]

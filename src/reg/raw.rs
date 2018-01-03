@@ -1,10 +1,12 @@
 use core::fmt::Debug;
 use core::mem::size_of;
+use core::nonzero::Zeroable;
 use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr, Sub};
 
 /// Raw register value type.
 pub trait RegRaw
   : Sized
+  + Zeroable
   + Debug
   + Copy
   + PartialOrd
@@ -21,9 +23,6 @@ pub trait RegRaw
   /// Size of the type in bits.
   fn size() -> Self;
 
-  /// Returns zero.
-  fn zero() -> Self;
-
   /// Returns one.
   fn one() -> Self;
 }
@@ -39,11 +38,6 @@ macro_rules! reg_raw {
       #[inline(always)]
       fn size() -> $type {
         size_of::<$type>() as $type * 8
-      }
-
-      #[inline(always)]
-      fn zero() -> $type {
-        0
       }
 
       #[inline(always)]
