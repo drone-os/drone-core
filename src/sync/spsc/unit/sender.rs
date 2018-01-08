@@ -32,6 +32,7 @@ impl<E> Sender<E> {
   /// Sends a unit across the channel.
   ///
   /// [`Receiver`]: struct.Receiver.html
+  #[inline(always)]
   pub fn send(&mut self) -> Result<(), SendError> {
     self.inner.send()
   }
@@ -43,6 +44,7 @@ impl<E> Sender<E> {
   /// returned with the value provided.
   ///
   /// [`Receiver`]: struct.Receiver.html
+  #[inline(always)]
   pub fn send_err(self, err: E) -> Result<(), E> {
     self.inner.send_err(err)
   }
@@ -62,6 +64,7 @@ impl<E> Sender<E> {
   /// [`Sender`]: struct.Sender.html
   /// [`Receiver`]: struct.Receiver.html
   /// [`is_canceled`]: struct.Receiver.html#method.is_canceled
+  #[inline(always)]
   pub fn poll_cancel(&mut self) -> Poll<(), ()> {
     self.inner.poll_cancel()
   }
@@ -78,13 +81,13 @@ impl<E> Sender<E> {
 }
 
 impl<E> Drop for Sender<E> {
+  #[inline(always)]
   fn drop(&mut self) {
     self.inner.drop_tx();
   }
 }
 
 impl<E> Inner<E> {
-  #[inline(always)]
   fn send(&self) -> Result<(), SendError> {
     self
       .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {
@@ -124,7 +127,6 @@ impl<E> Inner<E> {
       })
   }
 
-  #[inline(always)]
   fn send_err(&self, err: E) -> Result<(), E> {
     if self.is_canceled() {
       Err(err)

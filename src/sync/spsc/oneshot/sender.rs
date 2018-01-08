@@ -22,6 +22,7 @@ impl<T, E> Sender<T, E> {
   /// returned with the value provided.
   ///
   /// [`Receiver`]: struct.Receiver.html
+  #[inline(always)]
   pub fn send(self, data: Result<T, E>) -> Result<(), Result<T, E>> {
     self.inner.send(data)
   }
@@ -41,6 +42,7 @@ impl<T, E> Sender<T, E> {
   /// [`Sender`]: struct.Sender.html
   /// [`Receiver`]: struct.Receiver.html
   /// [`is_canceled`]: struct.Receiver.html#method.is_canceled
+  #[inline(always)]
   pub fn poll_cancel(&mut self) -> Poll<(), ()> {
     self.inner.poll_cancel()
   }
@@ -57,13 +59,13 @@ impl<T, E> Sender<T, E> {
 }
 
 impl<T, E> Drop for Sender<T, E> {
+  #[inline(always)]
   fn drop(&mut self) {
     self.inner.drop_tx();
   }
 }
 
 impl<T, E> Inner<T, E> {
-  #[inline(always)]
   fn send(&self, data: Result<T, E>) -> Result<(), Result<T, E>> {
     if self.is_canceled() {
       Err(data)

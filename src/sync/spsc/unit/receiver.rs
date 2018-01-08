@@ -22,6 +22,7 @@ impl<E> Receiver<E> {
   /// messages.
   ///
   /// [`Receiver`]: struct.Receiver.html
+  #[inline(always)]
   pub fn close(&mut self) {
     self.inner.close_rx()
   }
@@ -31,19 +32,20 @@ impl<E> Stream for Receiver<E> {
   type Item = ();
   type Error = E;
 
+  #[inline(always)]
   fn poll(&mut self) -> Poll<Option<()>, E> {
     self.inner.recv()
   }
 }
 
 impl<E> Drop for Receiver<E> {
+  #[inline(always)]
   fn drop(&mut self) {
     self.inner.drop_rx();
   }
 }
 
 impl<E> Inner<E> {
-  #[inline(always)]
   fn recv(&self) -> Poll<Option<()>, E> {
     let some_unit = || || Ok(Async::Ready(Some(())));
     self

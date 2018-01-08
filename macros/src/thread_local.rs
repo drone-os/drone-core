@@ -89,13 +89,13 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
   let field_name = &field_name;
 
   Ok(quote! {
-    use ::drone_core::thread::{Chain, TaskCell};
+    use ::drone_core::thread::{RoutineStack, TaskCell};
 
     #(#attrs)*
     pub struct #name {
-      chain: Chain,
+      routines: RoutineStack,
       task: TaskCell,
-      preempted_idx: usize,
+      preempted: usize,
       #(
         #(#field_attributes)*
         #field_visiblity #field_name: #(#field_type)*,
@@ -108,9 +108,9 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
       #[inline(always)]
       pub const fn new(_index: usize) -> Self {
         Self {
-          chain: Chain::new(),
+          routines: RoutineStack::new(),
           task: TaskCell::new(),
-          preempted_idx: 0,
+          preempted: 0,
           #(#field_name: { #(#field_init)* }),*
         }
       }
@@ -118,18 +118,18 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
 
     impl Thread for #name {
       #[inline(always)]
-      fn array() -> *mut [Self] {
+      fn all() -> *mut [Self] {
         unsafe { &mut #static_name }
       }
 
       #[inline(always)]
-      fn chain(&self) -> &Chain {
-        &self.chain
+      fn routines(&self) -> &RoutineStack {
+        &self.routines
       }
 
       #[inline(always)]
-      fn chain_mut(&mut self) -> &mut Chain {
-        &mut self.chain
+      fn routines_mut(&mut self) -> &mut RoutineStack {
+        &mut self.routines
       }
 
       #[inline(always)]
@@ -138,13 +138,8 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
       }
 
       #[inline(always)]
-      fn preempted_idx(&self) -> usize {
-        self.preempted_idx
-      }
-
-      #[inline(always)]
-      fn set_preempted_idx(&mut self, index: usize) {
-        self.preempted_idx = index;
+      fn preempted(&mut self) -> &mut usize {
+        &mut self.preempted
       }
     }
   })

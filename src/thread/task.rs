@@ -13,15 +13,15 @@ pub struct TaskCell(UnsafeCell<*mut u8>);
 ///
 /// Must be called before using `futures`.
 #[inline(always)]
-pub unsafe fn init<T: Thread + 'static>() -> bool {
+pub unsafe fn init<T: Thread>() -> bool {
   task::init(get_task::<T>, set_task::<T>)
 }
 
-fn get_task<T: Thread + 'static>() -> *mut u8 {
+fn get_task<T: Thread>() -> *mut u8 {
   unsafe { current::<T>().task().get() }
 }
 
-fn set_task<T: Thread + 'static>(task: *mut u8) {
+fn set_task<T: Thread>(task: *mut u8) {
   unsafe { current::<T>().task().set(task) };
 }
 

@@ -1,6 +1,6 @@
 use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
 use alloc::arc::Arc;
-use core::ptr;
+use core::{fmt, ptr};
 use core::sync::atomic::Ordering::*;
 use sync::spsc::SpscInner;
 
@@ -14,7 +14,6 @@ pub struct Sender<T, E> {
 /// Error returned from [`Sender::send`].
 ///
 /// [`Sender::send`]: struct.Sender.html#method.send
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SendError<T> {
   /// Value which wasn't sent.
   pub value: T,
@@ -44,6 +43,7 @@ impl<T, E> Sender<T, E> {
   /// Sends a value across the channel.
   ///
   /// [`Receiver`]: struct.Receiver.html
+  #[inline(always)]
   pub fn send(&mut self, value: T) -> Result<(), SendError<T>> {
     self.inner.send(value)
   }
@@ -51,6 +51,7 @@ impl<T, E> Sender<T, E> {
   /// Sends a value across the channel. Overwrites on overflow.
   ///
   /// [`Receiver`]: struct.Receiver.html
+  #[inline(always)]
   pub fn send_overwrite(&mut self, value: T) -> Result<(), T> {
     self.inner.send_overwrite(value)
   }
@@ -62,6 +63,7 @@ impl<T, E> Sender<T, E> {
   /// returned with the value provided.
   ///
   /// [`Receiver`]: struct.Receiver.html
+  #[inline(always)]
   pub fn send_err(self, err: E) -> Result<(), E> {
     self.inner.send_err(err)
   }
@@ -81,6 +83,7 @@ impl<T, E> Sender<T, E> {
   /// [`Sender`]: struct.Sender.html
   /// [`Receiver`]: struct.Receiver.html
   /// [`is_canceled`]: struct.Receiver.html#method.is_canceled
+  #[inline(always)]
   pub fn poll_cancel(&mut self) -> Poll<(), ()> {
     self.inner.poll_cancel()
   }
@@ -97,13 +100,13 @@ impl<T, E> Sender<T, E> {
 }
 
 impl<T, E> Drop for Sender<T, E> {
+  #[inline(always)]
   fn drop(&mut self) {
     self.inner.drop_tx();
   }
 }
 
 impl<T, E> Inner<T, E> {
-  #[inline(always)]
   fn send(&self, value: T) -> Result<(), SendError<T>> {
     let state = self.state_load(Relaxed);
     if state & COMPLETE != 0 {
@@ -115,7 +118,6 @@ impl<T, E> Inner<T, E> {
     }
   }
 
-  #[inline(always)]
   fn send_overwrite(&self, value: T) -> Result<(), T> {
     let mut state = self.state_load(Relaxed);
     loop {
@@ -145,7 +147,6 @@ impl<T, E> Inner<T, E> {
     }
   }
 
-  #[inline(always)]
   fn send_err(&self, err: E) -> Result<(), E> {
     if self.is_canceled() {
       Err(err)
@@ -197,7 +198,24 @@ impl<T, E> Inner<T, E> {
 }
 
 impl<T> SendError<T> {
+  #[inline(always)]
   fn new(value: T, kind: SendErrorKind) -> Self {
     SendError { value, kind }
   }
 }
+
+impl<T> fmt::Debug for SendError<T> {
+  #[inline(always)]
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    self.kind.fmt(f)
+  }
+}
+
+impl<T> PartialEq for SendError<T> {
+  #[inline(always)]
+  fn eq(&self, other: &Self) -> bool {
+    self.kind.eq(&other.kind)
+  }
+}
+
+impl<T> Eq for SendError<T> {}

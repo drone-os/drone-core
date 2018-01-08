@@ -4,18 +4,15 @@ use thread::prelude::*;
 
 /// A future for result from another thread.
 ///
-/// This future is created by the [`future`] method on [`Thread`]. See its
-/// documentation for more.
+/// This future can be created by the instance of [`Thread`].
 ///
 /// [`Thread`]: ../trait.Thread.html
-/// [`future`]: ../trait.Thread.html#method.future
 #[must_use]
 pub struct RoutineFuture<R, E> {
   rx: Receiver<R, E>,
 }
 
 impl<R, E> RoutineFuture<R, E> {
-  #[inline(always)]
   pub(crate) fn new<T, G>(thread: &T, mut generator: G) -> Self
   where
     T: Thread,
@@ -25,7 +22,7 @@ impl<R, E> RoutineFuture<R, E> {
     E: Send + 'static,
   {
     let (tx, rx) = channel();
-    thread.routine(move || loop {
+    thread.routines().push(move || loop {
       if tx.is_canceled() {
         break;
       }
@@ -40,12 +37,19 @@ impl<R, E> RoutineFuture<R, E> {
     });
     Self { rx }
   }
+
+  /// Gracefully close this future, preventing sending any future messages.
+  #[inline(always)]
+  pub fn close(&mut self) {
+    self.rx.close()
+  }
 }
 
 impl<R, E> Future for RoutineFuture<R, E> {
   type Item = R;
   type Error = E;
 
+  #[inline(always)]
   fn poll(&mut self) -> Poll<R, E> {
     self.rx.poll().map_err(|err| match err {
       RecvError::Complete(err) => err,

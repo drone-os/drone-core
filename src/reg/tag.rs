@@ -1,5 +1,5 @@
 /// Token tag.
-pub trait RegTag: Sized + Default {}
+pub trait RegTag: Sized + Default + 'static {}
 
 /// Owned token tag.
 pub trait RegOwned: RegTag {}

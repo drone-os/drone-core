@@ -69,7 +69,6 @@ where
     self.state_load(Relaxed) & Self::COMPLETE != Self::ZERO
   }
 
-  #[inline(always)]
   fn poll_cancel(&self) -> Poll<(), ()> {
     self
       .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {
@@ -97,7 +96,6 @@ where
       .or_else(|()| Ok(Async::Ready(())))
   }
 
-  #[inline(always)]
   fn close_half(
     &self,
     task_mut: unsafe fn(&Self) -> &mut Option<Task>,
@@ -133,7 +131,6 @@ where
     self.close_half(Self::tx_task_mut, Self::TX_LOCK, Self::COMPLETE, Acquire);
   }
 
-  #[inline(always)]
   fn drop_rx(&self) {
     self
       .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {

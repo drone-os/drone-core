@@ -22,6 +22,7 @@ where
   type Item = R;
   type Error = E;
 
+  #[inline(always)]
   fn poll(&mut self) -> Poll<R, E> {
     match self.0.resume() {
       Yielded(()) => Ok(Async::NotReady),

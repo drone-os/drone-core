@@ -2,8 +2,8 @@ use core::ptr;
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::*;
 
-/// A lock-free chain of routines.
-pub struct Chain {
+/// A lock-free stack of routines.
+pub struct RoutineStack {
   head: AtomicPtr<Routine>,
 }
 
@@ -12,8 +12,8 @@ struct Routine {
   next: *mut Routine,
 }
 
-impl Chain {
-  /// Creates an empty `Chain`.
+impl RoutineStack {
+  /// Creates an empty `RoutineStack`.
   #[inline(always)]
   pub const fn new() -> Self {
     Self {
