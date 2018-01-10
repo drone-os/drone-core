@@ -3,7 +3,7 @@ members = ["macros", "macros-core"]
 
 [package]
 name = "drone-core"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = "Drone is a Hard Real-Time Operating System Framework."
 readme = "README.md"
@@ -15,7 +15,7 @@ default = []
 std = ['futures/use_std']
 
 [dependencies.drone-core-macros]
-version = "0.7.0"
+version = "0.8.0"
 path = "macros"
 
 [dependencies.futures]

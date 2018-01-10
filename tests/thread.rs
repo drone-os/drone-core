@@ -11,9 +11,11 @@ extern crate drone_core;
 #[allow(unused_imports)]
 use drone_core::prelude::*;
 
-use drone_core::thread::{thread_local, ThreadNumber};
+use drone_core::thread::{thread_local, ThreadToken};
 use drone_core::thread::prelude::*;
 use std::cell::Cell;
+use std::marker::PhantomData;
+use std::ops::Deref;
 use std::sync::Arc;
 
 static mut THREADS: [ThreadLocal; 2] =
@@ -33,10 +35,23 @@ thread_local! {
 
 macro_rules! thread_number {
   ($name:ident, $position:expr) => {
-    struct $name;
+    #[derive(Clone, Copy)]
+    struct $name<T: ThreadTag> {
+      _tag: PhantomData<T>,
+    }
 
-    impl ThreadNumber for $name {
+    impl<T: ThreadTag> ThreadToken<T> for $name<T> {
+      type Thread = ThreadLocal;
+
       const THREAD_NUMBER: usize = $position;
+    }
+
+    impl<T: ThreadTag> Deref for $name<T> {
+      type Target = ThreadLocal;
+
+      fn deref(&self) -> &ThreadLocal {
+        self.as_thread()
+      }
     }
   }
 }
@@ -71,11 +86,11 @@ fn routine() {
       yield;
     });
     assert_eq!(counter.0.get(), 0);
-    ThreadToken::<ThreadLocal, Thread0>::handler();
+    Thread0::<Ltt>::handler();
     assert_eq!(counter.0.get(), 1);
-    ThreadToken::<ThreadLocal, Thread0>::handler();
+    Thread0::<Ltt>::handler();
     assert_eq!(counter.0.get(), -2);
-    ThreadToken::<ThreadLocal, Thread0>::handler();
+    Thread0::<Ltt>::handler();
     assert_eq!(counter.0.get(), -2);
   }
 }
@@ -89,9 +104,9 @@ fn routine_fn() {
       (wrapper.0).0.set((wrapper.0).0.get() + 1);
     });
     assert_eq!(counter.0.get(), 0);
-    ThreadToken::<ThreadLocal, Thread1>::handler();
+    Thread1::<Ltt>::handler();
     assert_eq!(counter.0.get(), -1);
-    ThreadToken::<ThreadLocal, Thread1>::handler();
+    Thread1::<Ltt>::handler();
     assert_eq!(counter.0.get(), -1);
   }
 }

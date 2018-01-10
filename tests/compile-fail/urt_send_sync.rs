@@ -11,10 +11,7 @@ fn assert_send<T: Send>() {}
 fn assert_sync<T: Sync>() {}
 
 fn main() {
-  assert_send::<foo::Bar<Stt>>();
-  assert_sync::<foo::Bar<Stt>>();
-  assert_send::<foo::Bar<Ftt>>();
-  assert_sync::<foo::Bar<Ftt>>();
-  assert_send::<foo::Bar<Ctt>>();
-  assert_sync::<foo::Bar<Ctt>>();
+  assert_send::<foo::Bar<Urt>>();
+  assert_sync::<foo::Bar<Urt>>();
+  //~^ ERROR `drone_core::reg::Urt: std::marker::Sync` is not satisfied
 }

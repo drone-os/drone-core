@@ -1,58 +1,37 @@
 use super::CURRENT;
-use core::marker::PhantomData;
 use core::ops::Deref;
 use thread::prelude::*;
 
 /// Thread token.
-pub struct ThreadToken<T: Thread, U: ThreadNumber> {
-  _thread: PhantomData<&'static T>,
-  _token: PhantomData<&'static U>,
-}
+pub trait ThreadToken<T>
+where
+  Self: Sized + Clone + Copy,
+  Self: Send + Sync + 'static,
+  Self: Deref<Target = <Self as ThreadToken<T>>::Thread>,
+  T: ThreadTag,
+{
+  /// Thread array.
+  type Thread: Thread;
 
-#[cfg_attr(feature = "clippy", allow(new_without_default_derive))]
-impl<T: Thread, U: ThreadNumber> ThreadToken<T, U> {
-  /// Creates a new `ThreadToken`.
-  ///
-  /// # Safety
-  ///
-  /// * Must be called no more than once.
-  /// * Must be called at the very beginning of the program flow.
-  #[inline(always)]
-  pub unsafe fn new() -> Self {
-    Self {
-      _thread: PhantomData,
-      _token: PhantomData,
-    }
-  }
+  /// A thread position within threads array.
+  const THREAD_NUMBER: usize;
 
   /// A thread handler function, which should be passed to hardware.
   ///
   /// # Safety
   ///
   /// Must not be called concurrently.
-  pub unsafe extern "C" fn handler() {
-    let thread = (*T::all()).get_unchecked_mut(U::THREAD_NUMBER);
+  unsafe extern "C" fn handler() {
+    let thread = (*Self::Thread::all()).get_unchecked_mut(Self::THREAD_NUMBER);
     *thread.preempted() = CURRENT;
-    CURRENT = U::THREAD_NUMBER;
+    CURRENT = Self::THREAD_NUMBER;
     thread.routines_mut().drain();
     CURRENT = *thread.preempted();
   }
-}
 
-#[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-impl<T: Thread, U: ThreadNumber> Clone for ThreadToken<T, U> {
-  fn clone(&self) -> Self {
-    unsafe { Self::new() }
-  }
-}
-
-impl<T: Thread, U: ThreadNumber> Copy for ThreadToken<T, U> {}
-
-impl<T: Thread, U: ThreadNumber> Deref for ThreadToken<T, U> {
-  type Target = T;
-
+  /// Returns a reference to the thread.
   #[inline(always)]
-  fn deref(&self) -> &T {
-    unsafe { (*T::all()).get_unchecked(U::THREAD_NUMBER) }
+  fn as_thread(&self) -> &Self::Thread {
+    unsafe { (*Self::Thread::all()).get_unchecked(Self::THREAD_NUMBER) }
   }
 }

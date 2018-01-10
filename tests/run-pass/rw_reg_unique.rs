@@ -16,5 +16,5 @@ mappings! {
 fn assert_rw_reg_unique<'a, T: RwRegUnique<'a>>() {}
 
 fn main() {
-  assert_rw_reg_unique::<foo::Bar<Utt>>();
+  assert_rw_reg_unique::<foo::Bar<Urt>>();
 }

@@ -1,39 +1,39 @@
-/// Token tag.
+/// Register token tag.
 pub trait RegTag: Sized + Default + 'static {}
 
-/// Owned token tag.
+/// Owned register token tag.
 pub trait RegOwned: RegTag {}
 
-/// Shared token tag.
+/// Shared register token tag.
 pub trait RegShared: RegTag {}
 
-/// Unique token tag.
+/// Unique register token tag.
 #[derive(Default)]
-pub struct Utt;
+pub struct Urt;
 
-impl !Sync for Utt {}
-impl RegTag for Utt {}
-impl RegOwned for Utt {}
+impl !Sync for Urt {}
+impl RegTag for Urt {}
+impl RegOwned for Urt {}
 
-/// Synchronous token tag.
+/// Synchronous register token tag.
 #[derive(Default)]
-pub struct Stt;
+pub struct Srt;
 
-impl RegTag for Stt {}
-impl RegOwned for Stt {}
-impl RegShared for Stt {}
+impl RegTag for Srt {}
+impl RegOwned for Srt {}
+impl RegShared for Srt {}
 
-/// Forkable token tag.
+/// Forkable register token tag.
 #[derive(Default)]
-pub struct Ftt;
+pub struct Frt;
 
-impl RegTag for Ftt {}
-impl RegOwned for Ftt {}
-impl RegShared for Ftt {}
+impl RegTag for Frt {}
+impl RegOwned for Frt {}
+impl RegShared for Frt {}
 
-/// Copyable token tag.
+/// Copyable register token tag.
 #[derive(Clone, Copy, Default)]
-pub struct Ctt;
+pub struct Crt;
 
-impl RegTag for Ctt {}
-impl RegShared for Ctt {}
+impl RegTag for Crt {}
+impl RegShared for Crt {}

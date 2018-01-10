@@ -1,12 +1,13 @@
 use thread::prelude::*;
 
 /// A set of thread tokens.
-pub trait ThreadTokens<T: Thread> {
+pub trait ThreadTokens {
+  /// Thread array.
+  type Thread: Thread;
+
+  /// Thread register tokens.
+  type Tokens;
+
   /// Creates a new set of thread tokens.
-  ///
-  /// # Safety
-  ///
-  /// * Must be called no more than once.
-  /// * Must be called at the very beginning of the program flow.
-  unsafe fn new() -> Self;
+  fn new(tokens: Self::Tokens) -> Self;
 }

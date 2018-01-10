@@ -99,7 +99,7 @@ fn parse_reg(
   Ok((
     quote! {
       #(#attrs)*
-      pub #reg_name: #prefix::Reg<Stt>,
+      pub #reg_name: #prefix::Reg<Srt>,
     },
     quote! {
       #reg_name: #prefix::Reg::new(),

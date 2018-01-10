@@ -218,35 +218,56 @@ fn parse_reg(
         impl<T: reg::RegTag> #trait_name<T> for self::Reg<T> {}
       )*
 
-      impl From<self::Reg<reg::Utt>> for self::Reg<reg::Stt> {
+      impl From<self::Reg<reg::Urt>> for self::Reg<reg::Srt> {
         #[inline(always)]
-        fn from(_reg: self::Reg<reg::Utt>) -> Self {
+        fn from(_reg: self::Reg<reg::Urt>) -> Self {
           unsafe { Self::new() }
         }
       }
 
-      impl From<self::Reg<reg::Stt>> for self::Reg<reg::Ftt> {
+      impl From<self::Reg<reg::Urt>> for self::Reg<reg::Frt> {
         #[inline(always)]
-        fn from(_reg: self::Reg<reg::Stt>) -> Self {
+        fn from(_reg: self::Reg<reg::Urt>) -> Self {
           unsafe { Self::new() }
         }
       }
 
-      impl From<self::Reg<reg::Stt>> for self::Reg<reg::Utt> {
+      impl From<self::Reg<reg::Urt>> for self::Reg<reg::Crt> {
         #[inline(always)]
-        fn from(_reg: self::Reg<reg::Stt>) -> Self {
+        fn from(_reg: self::Reg<reg::Urt>) -> Self {
           unsafe { Self::new() }
         }
       }
 
-      impl From<self::Reg<reg::Ftt>> for self::Reg<reg::Ctt> {
+      impl From<self::Reg<reg::Srt>> for self::Reg<reg::Urt> {
         #[inline(always)]
-        fn from(_reg: self::Reg<reg::Ftt>) -> Self {
+        fn from(_reg: self::Reg<reg::Srt>) -> Self {
           unsafe { Self::new() }
         }
       }
 
-      impl reg::RegFork for self::Reg<reg::Ftt> {
+      impl From<self::Reg<reg::Srt>> for self::Reg<reg::Frt> {
+        #[inline(always)]
+        fn from(_reg: self::Reg<reg::Srt>) -> Self {
+          unsafe { Self::new() }
+        }
+      }
+
+      impl From<self::Reg<reg::Srt>> for self::Reg<reg::Crt> {
+        #[inline(always)]
+        fn from(_reg: self::Reg<reg::Srt>) -> Self {
+          unsafe { Self::new() }
+        }
+      }
+
+      impl From<self::Reg<reg::Frt>> for self::Reg<reg::Crt> {
+        #[inline(always)]
+        fn from(_reg: self::Reg<reg::Frt>) -> Self {
+          unsafe { Self::new() }
+        }
+      }
+
+      impl reg::RegFork for self::Reg<reg::Frt> {
         #[inline(always)]
         fn fork(&mut self) -> Self {
           Self { #(#field_field: self.#field_field2.fork()),* }
@@ -254,14 +275,14 @@ fn parse_reg(
       }
 
       #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-      impl Clone for self::Reg<reg::Ctt> {
+      impl Clone for self::Reg<reg::Crt> {
         #[inline(always)]
         fn clone(&self) -> Self {
           Self { ..*self }
         }
       }
 
-      impl Copy for self::Reg<reg::Ctt> {}
+      impl Copy for self::Reg<reg::Crt> {}
 
       #(#attrs)*
       pub struct Hold<'a, T: reg::RegTag + 'a> {
@@ -475,35 +496,35 @@ fn parse_field(
       impl<T: reg::RegTag> reg::#trait_name<T> for self::#trait_field_name<T> {}
     )*
 
-    impl From<self::#name<reg::Stt>> for self::#name<reg::Ftt> {
+    impl From<self::#name<reg::Srt>> for self::#name<reg::Frt> {
       #[inline(always)]
-      fn from(_field: self::#name<reg::Stt>) -> Self {
-        Self { _tag: reg::Ftt::default() }
+      fn from(_field: self::#name<reg::Srt>) -> Self {
+        Self { _tag: reg::Frt::default() }
       }
     }
 
-    impl From<self::#name<reg::Ftt>> for self::#name<reg::Ctt> {
+    impl From<self::#name<reg::Frt>> for self::#name<reg::Crt> {
       #[inline(always)]
-      fn from(_field: self::#name<reg::Ftt>) -> Self {
-        Self { _tag: reg::Ctt::default() }
+      fn from(_field: self::#name<reg::Frt>) -> Self {
+        Self { _tag: reg::Crt::default() }
       }
     }
 
-    impl reg::RegFork for self::#name<reg::Ftt> {
+    impl reg::RegFork for self::#name<reg::Frt> {
       #[inline(always)]
       fn fork(&mut self) -> Self {
-        Self { _tag: reg::Ftt::default() }
+        Self { _tag: reg::Frt::default() }
       }
     }
 
     #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-    impl Clone for self::#name<reg::Ctt> {
+    impl Clone for self::#name<reg::Crt> {
       #[inline(always)]
       fn clone(&self) -> Self {
         Self { ..*self }
       }
     }
 
-    impl Copy for self::#name<reg::Ctt> {}
+    impl Copy for self::#name<reg::Crt> {}
   })
 }

@@ -8,15 +8,15 @@
 
 pub mod prelude;
 
-mod number;
 mod routine;
+mod tag;
 mod task;
 mod token;
 mod tokens;
 
-pub use self::number::ThreadNumber;
 pub use self::routine::{RoutineFuture, RoutineStack, RoutineStreamRing,
                         RoutineStreamUnit};
+pub use self::tag::*;
 pub use self::task::{init, TaskCell};
 pub use self::token::ThreadToken;
 pub use self::tokens::ThreadTokens;

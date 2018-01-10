@@ -27,12 +27,12 @@ mappings! {
 fn assert_rw_reg_unique<'a, T: RwRegUnique<'a>>() {}
 
 fn main() {
-  assert_rw_reg_unique::<test_block::TestRwReg<Stt>>();
-  //~^ ERROR drone_core::reg::WReg<drone_core::reg::Utt>` is not satisfied
-  //~| ERROR drone_core::reg::RReg<drone_core::reg::Utt>` is not satisfied
-  //~| ERROR drone_core::reg::RegRef<'_, drone_core::reg::Utt>` is not satisfied
-  assert_rw_reg_unique::<test_block::TestRoReg<Utt>>();
-  //~^ ERROR drone_core::reg::WReg<drone_core::reg::Utt>` is not satisfied
-  assert_rw_reg_unique::<test_block::TestWoReg<Utt>>();
-  //~^ ERROR drone_core::reg::RReg<drone_core::reg::Utt>` is not satisfied
+  assert_rw_reg_unique::<test_block::TestRwReg<Srt>>();
+  //~^ ERROR drone_core::reg::WReg<drone_core::reg::Urt>` is not satisfied
+  //~| ERROR drone_core::reg::RReg<drone_core::reg::Urt>` is not satisfied
+  //~| ERROR drone_core::reg::RegRef<'_, drone_core::reg::Urt>` is not satisfied
+  assert_rw_reg_unique::<test_block::TestRoReg<Urt>>();
+  //~^ ERROR drone_core::reg::WReg<drone_core::reg::Urt>` is not satisfied
+  assert_rw_reg_unique::<test_block::TestWoReg<Urt>>();
+  //~^ ERROR drone_core::reg::RReg<drone_core::reg::Urt>` is not satisfied
 }

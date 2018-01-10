@@ -95,13 +95,13 @@ pub trait WRegShared<'a, T: RegShared>: WReg<T> + RegRef<'a, T> {
 
 /// Register that can write its value in a single-threaded context.
 // FIXME https://github.com/rust-lang/rust/issues/46397
-pub trait WRegUnique<'a>: WReg<Utt> + RegRef<'a, Utt> {
+pub trait WRegUnique<'a>: WReg<Urt> + RegRef<'a, Urt> {
   /// Updates a new reset value with `f` and writes the result to the register's
   /// memory address.
   fn reset<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Utt>>::Hold)
-      -> &'b mut <Self as RegRef<'a, Utt>>::Hold;
+    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Urt>>::Hold)
+      -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
 
   /// Writes `val` into the register.
   fn store_val(&mut self, val: Self::Val);
@@ -112,12 +112,12 @@ pub trait WRegUnique<'a>: WReg<Utt> + RegRef<'a, Utt> {
 
 /// Register that can read and write its value in a single-threaded context.
 // FIXME https://github.com/rust-lang/rust/issues/46397
-pub trait RwRegUnique<'a>: RReg<Utt> + WRegUnique<'a> + RegRef<'a, Utt> {
+pub trait RwRegUnique<'a>: RReg<Urt> + WRegUnique<'a> + RegRef<'a, Urt> {
   /// Atomically updates the register's value.
   fn modify<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Utt>>::Hold)
-      -> &'b mut <Self as RegRef<'a, Utt>>::Hold;
+    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Urt>>::Hold)
+      -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
 }
 
 impl<'a, T, U> WRegShared<'a, T> for U
@@ -149,13 +149,13 @@ where
 
 impl<'a, T> WRegUnique<'a> for T
 where
-  T: WReg<Utt> + RegRef<'a, Utt>,
+  T: WReg<Urt> + RegRef<'a, Urt>,
 {
   #[inline(always)]
   fn reset<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Utt>>::Hold)
-      -> &'b mut <T as RegRef<'a, Utt>>::Hold,
+    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Urt>>::Hold)
+      -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
     unsafe {
       write_volatile(self.to_mut_ptr(), f(&mut self.default()).val().raw());
@@ -175,13 +175,13 @@ where
 
 impl<'a, T> RwRegUnique<'a> for T
 where
-  T: RReg<Utt> + WRegUnique<'a> + RegRef<'a, Utt>,
+  T: RReg<Urt> + WRegUnique<'a> + RegRef<'a, Urt>,
 {
   #[inline(always)]
   fn modify<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Utt>>::Hold)
-      -> &'b mut <T as RegRef<'a, Utt>>::Hold,
+    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Urt>>::Hold)
+      -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
     unsafe {
       write_volatile(self.to_mut_ptr(), f(&mut self.load()).val().raw());

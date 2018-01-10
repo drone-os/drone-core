@@ -52,7 +52,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
-#![cfg_attr(feature = "clippy", allow(precedence, doc_markdown, inline_always))]
+#![cfg_attr(feature = "clippy", allow(precedence, inline_always))]
 
 extern crate alloc;
 extern crate drone_core_macros;

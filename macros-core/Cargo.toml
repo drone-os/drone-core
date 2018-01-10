@@ -1,6 +1,6 @@
 [package]
 name = "drone-macros-core"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = "Drone procedural macros shared lib."
 readme = "README.md"
