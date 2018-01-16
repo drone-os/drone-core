@@ -503,6 +503,13 @@ fn parse_field(
       }
     }
 
+    impl From<self::#name<reg::Srt>> for self::#name<reg::Crt> {
+      #[inline(always)]
+      fn from(_field: self::#name<reg::Srt>) -> Self {
+        Self { _tag: reg::Crt::default() }
+      }
+    }
+
     impl From<self::#name<reg::Frt>> for self::#name<reg::Crt> {
       #[inline(always)]
       fn from(_field: self::#name<reg::Frt>) -> Self {

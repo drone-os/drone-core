@@ -6,8 +6,8 @@ pub trait ThreadTokens {
   type Thread: Thread;
 
   /// Thread register tokens.
-  type Tokens;
+  type Token;
 
   /// Creates a new set of thread tokens.
-  fn new(tokens: Self::Tokens) -> Self;
+  fn new(token: Self::Token) -> Self;
 }

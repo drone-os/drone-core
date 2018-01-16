@@ -1,11 +1,11 @@
 /// Register token tag.
-pub trait RegTag: Sized + Default + 'static {}
+pub trait RegTag: Sized + Send + Default + 'static {}
 
 /// Owned register token tag.
 pub trait RegOwned: RegTag {}
 
 /// Shared register token tag.
-pub trait RegShared: RegTag {}
+pub trait RegShared: RegTag + Sync {}
 
 /// Unique register token tag.
 #[derive(Default)]

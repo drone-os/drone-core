@@ -2,7 +2,7 @@ use super::*;
 use core::ptr::{read_volatile, write_volatile};
 
 /// Register field token.
-pub trait RegField<T: RegTag>: Sized {
+pub trait RegField<T: RegTag>: Sized + Send + 'static {
   /// Parent register type.
   type Reg: Reg<T>;
 

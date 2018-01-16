@@ -4,7 +4,7 @@ use core::ptr::{read_volatile, write_volatile};
 /// Memory-mapped register token. Types which implement this trait should be
 /// zero-sized. This is a zero-cost abstraction for safely working with
 /// memory-mapped registers.
-pub trait Reg<T: RegTag>: Sized {
+pub trait Reg<T: RegTag>: Sized + Send + 'static {
   /// Type that wraps a raw register value.
   type Val: RegVal;
 

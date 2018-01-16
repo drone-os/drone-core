@@ -2,7 +2,7 @@ use super::*;
 use core::nonzero::Zeroable;
 
 /// Wrapper for a register value.
-pub trait RegVal: Sized + Clone + Copy {
+pub trait RegVal: Sized + Send + Sync + Clone + Copy + 'static {
   /// Raw integer type.
   type Raw: RegRaw;
 

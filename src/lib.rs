@@ -24,6 +24,7 @@
 
 #![feature(alloc)]
 #![feature(allocator_api)]
+#![feature(associated_type_defaults)]
 #![feature(const_atomic_bool_new)]
 #![feature(const_atomic_ptr_new)]
 #![feature(const_atomic_usize_new)]
@@ -64,6 +65,8 @@ extern crate core;
 pub mod async;
 pub mod heap;
 pub mod mem;
+pub mod origin;
+pub mod peripheral;
 pub mod prelude;
 pub mod reg;
 pub mod sync;

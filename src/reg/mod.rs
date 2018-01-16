@@ -8,8 +8,9 @@
 //! # #![feature(proc_macro)]
 //! # use std as core;
 //! use core::mem::size_of_val;
-//! use drone_core::reg::{tokens, mappings};
+//! use drone_core::origin::OriginToken;
 //! use drone_core::reg::prelude::*;
+//! use drone_core::reg::{tokens, mappings};
 //!
 //! mappings! {
 //!   /// SysTick timer.
@@ -42,7 +43,8 @@
 //! }
 //!
 //! fn main() {
-//!   let regs = unsafe { RegIndex::new() };
+//!   let token = unsafe { OriginToken::new() };
+//!   let regs = RegIndex::new(token);
 //!   assert_eq!(size_of_val(&regs.stk_ctrl.enable), 0);
 //!   assert_eq!(size_of_val(&regs.stk_ctrl), 0);
 //!   assert_eq!(size_of_val(&regs), 0);
