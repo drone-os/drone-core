@@ -1,22 +1,26 @@
 //! Peripheral devices.
 
 /// Peripheral device.
-pub trait PeripheralDevice<T>
+pub trait PeripheralDevice
 where
-  Self: Sized + Send + 'static,
-  T: PeripheralTokens,
+  Self: Sized + Send + Sync + 'static,
 {
+  /// Peripheral tokens.
+  type Tokens: PeripheralTokens;
+
   /// Creates a new peripheral from tokens.
-  fn from_tokens(tokens: T::InputTokens) -> Self;
+  fn from_tokens(
+    tokens: <Self::Tokens as PeripheralTokens>::InputTokens,
+  ) -> Self;
 
   /// Releases the peripheral tokens.
-  fn into_tokens(self) -> T;
+  fn into_tokens(self) -> Self::Tokens;
 }
 
 /// Peripheral tokens.
 pub trait PeripheralTokens
 where
-  Self: Sized + Send + 'static,
+  Self: Sized + Send + Sync + 'static,
   Self: From<<Self as PeripheralTokens>::InputTokens>,
 {
   /// Input peripheral tokens.

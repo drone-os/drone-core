@@ -16,7 +16,7 @@
 //!
 //! # Demo Applications
 //!
-//! * [STM32 Nucleo L496ZG-P](https://github.com/drone-os/nucleo-demo)
+//! * [STM32 Nucleo L496ZG-P](https://github.com/drone-os/demo-core-nucleo)
 //!
 //! [Rust]: https://www.rust-lang.org/
 //! [cargo-drone]: https://github.com/drone-os/cargo-drone
@@ -66,7 +66,7 @@ pub mod async;
 pub mod heap;
 pub mod mem;
 pub mod origin;
-pub mod peripheral;
+pub mod peripherals;
 pub mod prelude;
 pub mod reg;
 pub mod sync;

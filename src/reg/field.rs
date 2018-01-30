@@ -2,7 +2,7 @@ use super::*;
 use core::ptr::{read_volatile, write_volatile};
 
 /// Register field token.
-pub trait RegField<T: RegTag>: Sized + Send + 'static {
+pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
   /// Parent register type.
   type Reg: Reg<T>;
 
@@ -75,7 +75,7 @@ where
 
   /// Updates a new reset value with `f` and writes the result to the register's
   /// memory address.
-  fn reset<F>(&self, f: F)
+  fn store<F>(&self, f: F)
   where
     F: Fn(&mut <Self::Reg as Reg<T>>::Val);
 }
@@ -187,7 +187,7 @@ where
   }
 
   #[inline(always)]
-  fn reset<F>(&self, f: F)
+  fn store<F>(&self, f: F)
   where
     F: Fn(&mut <U::Reg as Reg<T>>::Val),
   {
@@ -260,21 +260,21 @@ where
 {
   #[inline(always)]
   fn set_bit(&self) {
-    self.reset(|val| {
+    self.store(|val| {
       self.set(val);
     });
   }
 
   #[inline(always)]
   fn clear_bit(&self) {
-    self.reset(|val| {
+    self.store(|val| {
       self.clear(val);
     });
   }
 
   #[inline(always)]
   fn toggle_bit(&self) {
-    self.reset(|val| {
+    self.store(|val| {
       self.toggle(val);
     });
   }
@@ -335,7 +335,7 @@ where
 {
   #[inline(always)]
   fn write_bits(&self, bits: <<U::Reg as Reg<T>>::Val as RegVal>::Raw) {
-    self.reset(|val| {
+    self.store(|val| {
       self.write(val, bits);
     });
   }

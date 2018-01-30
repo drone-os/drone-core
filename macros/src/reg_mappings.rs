@@ -190,32 +190,33 @@ fn parse_reg(
       #(#field_tokens)*
 
       #(#attrs)*
-      pub struct Reg<T: reg::RegTag> {
+      #[derive(Clone, Copy)]
+      pub struct Reg<_T: reg::RegTag> {
         #(
           #(#field_attrs)*
-          pub #field_field: self::#field_name<T>,
+          pub #field_field: self::#field_name<_T>,
         )*
       }
 
-      impl<T: reg::RegTag> self::Reg<T> {
+      impl<_T: reg::RegTag> self::Reg<_T> {
         #[inline(always)]
         pub(crate) unsafe fn new() -> Self {
-          Self { #(#field_field: self::#field_name { _tag: T::default() }),* }
+          Self { #(#field_field: self::#field_name { _tag: _T::default() }),* }
         }
       }
 
-      impl<T: reg::RegTag> reg::Reg<T> for self::Reg<T> {
+      impl<_T: reg::RegTag> reg::Reg<_T> for self::Reg<_T> {
         type Val = self::Val;
 
         const ADDRESS: usize = #address;
       }
 
-      impl<'a, T: reg::RegTag + 'a> reg::RegRef<'a, T> for self::Reg<T> {
-        type Hold = self::Hold<'a, T>;
+      impl<'a, _T: reg::RegTag + 'a> reg::RegRef<'a, _T> for self::Reg<_T> {
+        type Hold = self::Hold<'a, _T>;
       }
 
       #(
-        impl<T: reg::RegTag> #trait_name<T> for self::Reg<T> {}
+        impl<_T: reg::RegTag> #trait_name<_T> for self::Reg<_T> {}
       )*
 
       impl From<self::Reg<reg::Urt>> for self::Reg<reg::Srt> {
@@ -274,28 +275,18 @@ fn parse_reg(
         }
       }
 
-      #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-      impl Clone for self::Reg<reg::Crt> {
-        #[inline(always)]
-        fn clone(&self) -> Self {
-          Self { ..*self }
-        }
-      }
-
-      impl Copy for self::Reg<reg::Crt> {}
-
       #(#attrs)*
-      pub struct Hold<'a, T: reg::RegTag + 'a> {
-        reg: &'a self::Reg<T>,
+      pub struct Hold<'a, _T: reg::RegTag + 'a> {
+        reg: &'a self::Reg<_T>,
         val: self::Val,
       }
 
-      impl<'a, T> reg::RegHold<'a, T, self::Reg<T>> for self::Hold<'a, T>
+      impl<'a, _T> reg::RegHold<'a, _T, self::Reg<_T>> for self::Hold<'a, _T>
       where
-        T: reg::RegTag,
+        _T: reg::RegTag,
       {
         #[inline(always)]
-        unsafe fn new(reg: &'a self::Reg<T>, val: self::Val) -> Self {
+        unsafe fn new(reg: &'a self::Reg<_T>, val: self::Val) -> Self {
           Self { reg, val }
         }
 
@@ -410,7 +401,7 @@ fn parse_field(
     trait_name.push(Ident::new("RegFieldBit"));
     if trait_name.iter().any(|name| name == "RRegField") {
       impls.push(quote! {
-        impl<'a, T: reg::RegTag> self::Hold<'a, T> {
+        impl<'a, _T: reg::RegTag> self::Hold<'a, _T> {
           #(#attrs)*
           #[inline(always)]
           pub fn #field(&self) -> bool {
@@ -421,7 +412,7 @@ fn parse_field(
     }
     if trait_name.iter().any(|name| name == "WRegField") {
       impls.push(quote! {
-        impl<'a, T: reg::RegTag> self::Hold<'a, T> {
+        impl<'a, _T: reg::RegTag> self::Hold<'a, _T> {
           #(#attrs)*
           #[inline(always)]
           pub fn #set_field(&mut self) -> &mut Self {
@@ -451,7 +442,7 @@ fn parse_field(
     trait_name.push(Ident::new("RegFieldBits"));
     if trait_name.iter().any(|name| name == "RRegField") {
       impls.push(quote! {
-        impl<'a, T: reg::RegTag> self::Hold<'a, T> {
+        impl<'a, _T: reg::RegTag> self::Hold<'a, _T> {
           #(#attrs)*
           #[inline(always)]
           pub fn #field(&self) -> #raw {
@@ -462,7 +453,7 @@ fn parse_field(
     }
     if trait_name.iter().any(|name| name == "WRegField") {
       impls.push(quote! {
-        impl<'a, T: reg::RegTag> self::Hold<'a, T> {
+        impl<'a, _T: reg::RegTag> self::Hold<'a, _T> {
           #(#attrs)*
           #[inline(always)]
           pub fn #write_field(&mut self, bits: #raw) -> &mut Self {
@@ -480,12 +471,13 @@ fn parse_field(
     #(#impls)*
 
     #(#attrs)*
-    pub struct #name<T: reg::RegTag> {
-      _tag: T,
+    #[derive(Clone, Copy)]
+    pub struct #name<_T: reg::RegTag> {
+      _tag: _T,
     }
 
-    impl<T: reg::RegTag> reg::RegField<T> for self::#name<T> {
-      type Reg = self::Reg<T>;
+    impl<_T: reg::RegTag> reg::RegField<_T> for self::#name<_T> {
+      type Reg = self::Reg<_T>;
 
       const OFFSET: usize = #offset;
       const WIDTH: usize = #width;
@@ -493,7 +485,11 @@ fn parse_field(
 
     #(
       #(#trait_attrs)*
-      impl<T: reg::RegTag> reg::#trait_name<T> for self::#trait_field_name<T> {}
+      impl<_T> reg::#trait_name<_T> for self::#trait_field_name<_T>
+      where
+        _T: reg::RegTag,
+      {
+      }
     )*
 
     impl From<self::#name<reg::Srt>> for self::#name<reg::Frt> {
@@ -523,15 +519,5 @@ fn parse_field(
         Self { _tag: reg::Frt::default() }
       }
     }
-
-    #[cfg_attr(feature = "clippy", allow(expl_impl_clone_on_copy))]
-    impl Clone for self::#name<reg::Crt> {
-      #[inline(always)]
-      fn clone(&self) -> Self {
-        Self { ..*self }
-      }
-    }
-
-    impl Copy for self::#name<reg::Crt> {}
   })
 }

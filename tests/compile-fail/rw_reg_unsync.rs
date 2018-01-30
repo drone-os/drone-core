@@ -24,15 +24,15 @@ mappings! {
   }
 }
 
-fn assert_rw_reg_unique<'a, T: RwRegUnique<'a>>() {}
+fn assert_rw_reg_unsync<'a, T: RwRegUnsync<'a>>() {}
 
 fn main() {
-  assert_rw_reg_unique::<test_block::TestRwReg<Srt>>();
+  assert_rw_reg_unsync::<test_block::TestRwReg<Srt>>();
   //~^ ERROR drone_core::reg::WReg<drone_core::reg::Urt>` is not satisfied
   //~| ERROR drone_core::reg::RReg<drone_core::reg::Urt>` is not satisfied
   //~| ERROR drone_core::reg::RegRef<'_, drone_core::reg::Urt>` is not satisfied
-  assert_rw_reg_unique::<test_block::TestRoReg<Urt>>();
+  assert_rw_reg_unsync::<test_block::TestRoReg<Urt>>();
   //~^ ERROR drone_core::reg::WReg<drone_core::reg::Urt>` is not satisfied
-  assert_rw_reg_unique::<test_block::TestWoReg<Urt>>();
+  assert_rw_reg_unsync::<test_block::TestWoReg<Urt>>();
   //~^ ERROR drone_core::reg::RReg<drone_core::reg::Urt>` is not satisfied
 }

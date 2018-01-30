@@ -4,7 +4,7 @@ use core::ptr::{read_volatile, write_volatile};
 /// Memory-mapped register token. Types which implement this trait should be
 /// zero-sized. This is a zero-cost abstraction for safely working with
 /// memory-mapped registers.
-pub trait Reg<T: RegTag>: Sized + Send + 'static {
+pub trait Reg<T: RegTag>: Sized + Send + Sync + 'static {
   /// Type that wraps a raw register value.
   type Val: RegVal;
 
@@ -78,10 +78,10 @@ pub trait WoReg<T: RegTag>: WReg<T> {}
 
 /// Register that can write its value in a multi-threaded context.
 // FIXME https://github.com/rust-lang/rust/issues/46397
-pub trait WRegShared<'a, T: RegShared>: WReg<T> + RegRef<'a, T> {
+pub trait WRegAtomic<'a, T: RegAtomic>: WReg<T> + RegRef<'a, T> {
   /// Updates a new reset value with `f` and writes the result to the register's
   /// memory address.
-  fn reset<F>(&'a self, f: F)
+  fn store<F>(&'a self, f: F)
   where
     F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, T>>::Hold)
       -> &'b mut <Self as RegRef<'a, T>>::Hold;
@@ -90,15 +90,15 @@ pub trait WRegShared<'a, T: RegShared>: WReg<T> + RegRef<'a, T> {
   fn store_val(&self, val: Self::Val);
 
   /// Writes the reset value to the register.
-  fn store_default(&'a self);
+  fn reset(&'a self);
 }
 
 /// Register that can write its value in a single-threaded context.
 // FIXME https://github.com/rust-lang/rust/issues/46397
-pub trait WRegUnique<'a>: WReg<Urt> + RegRef<'a, Urt> {
+pub trait WRegUnsync<'a>: WReg<Urt> + RegRef<'a, Urt> {
   /// Updates a new reset value with `f` and writes the result to the register's
   /// memory address.
-  fn reset<F>(&'a mut self, f: F)
+  fn store<F>(&'a mut self, f: F)
   where
     F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Urt>>::Hold)
       -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
@@ -107,12 +107,12 @@ pub trait WRegUnique<'a>: WReg<Urt> + RegRef<'a, Urt> {
   fn store_val(&mut self, val: Self::Val);
 
   /// Writes the reset value to the register.
-  fn store_default(&'a mut self);
+  fn reset(&'a mut self);
 }
 
 /// Register that can read and write its value in a single-threaded context.
 // FIXME https://github.com/rust-lang/rust/issues/46397
-pub trait RwRegUnique<'a>: RReg<Urt> + WRegUnique<'a> + RegRef<'a, Urt> {
+pub trait RwRegUnsync<'a>: RReg<Urt> + WRegUnsync<'a> + RegRef<'a, Urt> {
   /// Atomically updates the register's value.
   fn modify<F>(&'a mut self, f: F)
   where
@@ -120,15 +120,15 @@ pub trait RwRegUnique<'a>: RReg<Urt> + WRegUnique<'a> + RegRef<'a, Urt> {
       -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
 }
 
-impl<'a, T, U> WRegShared<'a, T> for U
+impl<'a, T, U> WRegAtomic<'a, T> for U
 where
-  T: RegShared,
+  T: RegAtomic,
   U: WReg<T> + RegRef<'a, T>,
-  // Extra bound to make the dot operator checking `WRegUnique` first.
+  // Extra bound to make the dot operator checking `WRegUnsync` first.
   U::Val: RegVal,
 {
   #[inline(always)]
-  fn reset<F>(&'a self, f: F)
+  fn store<F>(&'a self, f: F)
   where
     F: for<'b> FnOnce(&'b mut <U as RegRef<'a, T>>::Hold)
       -> &'b mut <U as RegRef<'a, T>>::Hold,
@@ -142,17 +142,17 @@ where
   }
 
   #[inline(always)]
-  fn store_default(&'a self) {
+  fn reset(&'a self) {
     self.store_val(self.default_val());
   }
 }
 
-impl<'a, T> WRegUnique<'a> for T
+impl<'a, T> WRegUnsync<'a> for T
 where
   T: WReg<Urt> + RegRef<'a, Urt>,
 {
   #[inline(always)]
-  fn reset<F>(&'a mut self, f: F)
+  fn store<F>(&'a mut self, f: F)
   where
     F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Urt>>::Hold)
       -> &'b mut <T as RegRef<'a, Urt>>::Hold,
@@ -168,14 +168,14 @@ where
   }
 
   #[inline(always)]
-  fn store_default(&'a mut self) {
+  fn reset(&'a mut self) {
     unsafe { write_volatile(self.to_mut_ptr(), self.default_val().raw()) };
   }
 }
 
-impl<'a, T> RwRegUnique<'a> for T
+impl<'a, T> RwRegUnsync<'a> for T
 where
-  T: RReg<Urt> + WRegUnique<'a> + RegRef<'a, Urt>,
+  T: RReg<Urt> + WRegUnsync<'a> + RegRef<'a, Urt>,
 {
   #[inline(always)]
   fn modify<F>(&'a mut self, f: F)

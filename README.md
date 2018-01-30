@@ -20,7 +20,7 @@ Please also refer the installation notes of a corresponding Drone's
 
 ## Demo Applications
 
-* [STM32 Nucleo L496ZG-P](https://github.com/drone-os/nucleo-demo)
+* [STM32 Nucleo L496ZG-P](https://github.com/drone-os/demo-core-nucleo)
 
 [Rust]: https://www.rust-lang.org/
 [cargo-drone]: https://github.com/drone-os/cargo-drone

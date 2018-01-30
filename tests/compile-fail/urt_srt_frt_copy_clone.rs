@@ -12,15 +12,15 @@ fn assert_clone<T: Clone>() {}
 
 fn main() {
   assert_copy::<foo::Bar<Urt>>();
-  //~^ ERROR `foo::bar::Reg<drone_core::reg::Urt>: std::marker::Copy` is not
+  //~^ ERROR `drone_core::reg::Urt: std::marker::Copy` is not satisfied
   assert_clone::<foo::Bar<Urt>>();
-  //~^ ERROR `foo::bar::Reg<drone_core::reg::Urt>: std::clone::Clone` is not
+  //~^ ERROR `drone_core::reg::Urt: std::clone::Clone` is not satisfied
   assert_copy::<foo::Bar<Srt>>();
-  //~^ ERROR `foo::bar::Reg<drone_core::reg::Srt>: std::marker::Copy` is not
+  //~^ ERROR `drone_core::reg::Srt: std::marker::Copy` is not satisfied
   assert_clone::<foo::Bar<Srt>>();
-  //~^ ERROR `foo::bar::Reg<drone_core::reg::Srt>: std::clone::Clone` is not
+  //~^ ERROR `drone_core::reg::Srt: std::clone::Clone` is not satisfied
   assert_copy::<foo::Bar<Frt>>();
-  //~^ ERROR `foo::bar::Reg<drone_core::reg::Frt>: std::marker::Copy` is not
+  //~^ ERROR `drone_core::reg::Frt: std::marker::Copy` is not satisfied
   assert_clone::<foo::Bar<Frt>>();
-  //~^ ERROR `foo::bar::Reg<drone_core::reg::Frt>: std::clone::Clone` is not
+  //~^ ERROR `drone_core::reg::Frt: std::clone::Clone` is not satisfied
 }
