@@ -8,13 +8,10 @@
 
 pub mod prelude;
 
-#[macro_use]
-mod scope;
 mod tag;
 mod task;
 mod token;
 
-pub use self::scope::{ThreadScope, ThreadScopeGuard, ThreadScopeToken};
 pub use self::tag::*;
 pub use self::task::{init, TaskCell};
 pub use self::token::{ThreadToken, ThreadTokens};

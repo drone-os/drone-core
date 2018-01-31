@@ -39,7 +39,6 @@
 #![feature(generator_trait)]
 #![feature(integer_atomics)]
 #![feature(iterator_for_each)]
-#![feature(never_type)]
 #![feature(nonzero)]
 #![feature(optin_builtin_traits)]
 #![feature(pointer_methods)]

@@ -29,17 +29,6 @@ where
     CURRENT = *thread.preempted();
   }
 
-  /// Returns a scoped thread.
-  ///
-  /// # Safety
-  ///
-  /// Caller is responsible to somehow consume a token of type
-  /// `ThreadScopeToken<'scope, S>` before the `'scope` ends.
-  #[inline(always)]
-  unsafe fn scope<'scope, S>(self) -> ThreadScope<'scope, Self, T, S> {
-    ThreadScope::new(self)
-  }
-
   /// Returns a reference to the thread.
   #[inline(always)]
   fn as_thread(&self) -> &Self::Thread {

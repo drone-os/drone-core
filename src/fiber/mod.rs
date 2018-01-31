@@ -1,27 +1,25 @@
 //! Stackless semicoroutines.
 
 mod future;
-mod future_scoped;
 mod stream_ring;
 mod stream_unit;
 
 pub use self::future::FiberFuture;
-pub use self::future_scoped::FiberFutureScoped;
 pub use self::stream_ring::FiberStreamRing;
 pub use self::stream_unit::FiberStreamUnit;
 
-use core::{mem, ptr};
+use core::ptr;
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::*;
 
 /// A lock-free stack of fibers.
 pub struct Fibers {
-  head: AtomicPtr<Node<'static>>,
+  head: AtomicPtr<Node>,
 }
 
-struct Node<'scope> {
-  fiber: Box<Generator<Yield = (), Return = ()> + 'scope>,
-  next: *mut Node<'scope>,
+struct Node {
+  fiber: Box<Generator<Yield = (), Return = ()>>,
+  next: *mut Node,
 }
 
 impl Fibers {
@@ -33,16 +31,10 @@ impl Fibers {
     }
   }
 
-  pub(crate) unsafe fn add_scoped<'scope, G>(&self, g: G)
-  where
-    G: Generator<Yield = (), Return = ()> + 'scope,
-  {
-    self.push(mem::transmute::<Node<'scope>, Node<'static>>(Node::new(g)));
-  }
-
   pub(crate) fn add<G>(&self, g: G)
   where
-    G: Generator<Yield = (), Return = ()> + 'static,
+    G: Generator<Yield = (), Return = ()>,
+    G: 'static,
   {
     self.push(Node::new(g));
   }
@@ -82,7 +74,7 @@ impl Fibers {
     }
   }
 
-  fn push(&self, node: Node<'static>) {
+  fn push(&self, node: Node) {
     let node = Box::into_raw(Box::new(node));
     loop {
       let head = self.head.load(Relaxed);
@@ -94,11 +86,12 @@ impl Fibers {
   }
 }
 
-impl<'scope> Node<'scope> {
+impl Node {
   #[inline(always)]
   fn new<G>(g: G) -> Self
   where
-    G: Generator<Yield = (), Return = ()> + 'scope,
+    G: Generator<Yield = (), Return = ()>,
+    G: 'static,
   {
     Self {
       fiber: Box::new(g),
