@@ -65,6 +65,7 @@ extern crate core;
 pub mod async;
 pub mod fiber;
 pub mod heap;
+pub mod io;
 pub mod mem;
 pub mod origin;
 pub mod peripherals;

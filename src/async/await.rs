@@ -32,7 +32,7 @@ macro_rules! await {
 /// [`AsyncFuture`]: struct.AsyncFuture.html
 #[macro_export]
 macro_rules! await_for {
-  ($pat:pat in $expr:expr; $block:block) => {
+  ($pat:pat in $expr:expr => $block:block) => {
     {
       let mut stream = $expr;
       loop {

@@ -57,7 +57,7 @@
 //! ) -> impl Future<Item = usize, Error = !> {
 //!   AsyncFuture::new(|| {
 //!     let mut sum = 0;
-//!     await_for!(number in rx; {
+//!     await_for!(number in rx => {
 //!       sum += number;
 //!     });
 //!     Ok(sum)

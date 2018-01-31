@@ -1,6 +1,7 @@
 use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
 use alloc::arc::Arc;
-use core::{fmt, ptr};
+use core::fmt::{self, Debug};
+use core::ptr;
 use core::sync::atomic::Ordering::*;
 use sync::spsc::SpscInner;
 
@@ -204,7 +205,7 @@ impl<T> SendError<T> {
   }
 }
 
-impl<T> fmt::Debug for SendError<T> {
+impl<T> Debug for SendError<T> {
   #[inline(always)]
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     self.kind.fmt(f)
