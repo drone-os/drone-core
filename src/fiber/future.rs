@@ -8,11 +8,11 @@ use thread::prelude::*;
 ///
 /// [`Thread`]: ../trait.Thread.html
 #[must_use]
-pub struct RoutineFuture<R, E> {
+pub struct FiberFuture<R, E> {
   rx: Receiver<R, E>,
 }
 
-impl<R, E> RoutineFuture<R, E> {
+impl<R, E> FiberFuture<R, E> {
   pub(crate) fn new<T, G>(thread: &T, mut generator: G) -> Self
   where
     T: Thread,
@@ -22,7 +22,7 @@ impl<R, E> RoutineFuture<R, E> {
     E: Send + 'static,
   {
     let (tx, rx) = channel();
-    thread.routines().push(move || loop {
+    thread.fibers().add(move || loop {
       if tx.is_canceled() {
         break;
       }
@@ -45,7 +45,7 @@ impl<R, E> RoutineFuture<R, E> {
   }
 }
 
-impl<R, E> Future for RoutineFuture<R, E> {
+impl<R, E> Future for FiberFuture<R, E> {
   type Item = R;
   type Error = E;
 

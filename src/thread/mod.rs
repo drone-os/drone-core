@@ -3,24 +3,24 @@
 //! # The threading model
 //!
 //! A Drone application consists of a static collection of threads. Each thread
-//! consists of a dynamic stack of routines, which are executing sequentially
+//! consists of a dynamic stack of fibers, which are executing sequentially
 //! within a thread context.
 
 pub mod prelude;
 
-mod routine;
+#[macro_use]
+mod scope;
 mod tag;
 mod task;
 mod token;
-mod tokens;
 
-pub use self::routine::{RoutineFuture, RoutineStack, RoutineStreamRing,
-                        RoutineStreamUnit};
+pub use self::scope::{ThreadScope, ThreadScopeGuard, ThreadScopeToken};
 pub use self::tag::*;
 pub use self::task::{init, TaskCell};
-pub use self::token::ThreadToken;
-pub use self::tokens::ThreadTokens;
+pub use self::token::{ThreadToken, ThreadTokens};
 pub use drone_core_macros::thread_local;
+
+use fiber::{FiberFuture, FiberStreamRing, FiberStreamUnit, Fibers};
 
 /// An index of the current thread.
 static mut CURRENT: usize = 0;
@@ -36,11 +36,11 @@ pub trait Thread: Sized + Sync + 'static {
   /// Returns a mutable pointer to the static array of threads.
   fn all() -> *mut [Self];
 
-  /// Returns a reference to the routines stack.
-  fn routines(&self) -> &RoutineStack;
+  /// Returns a reference to the fibers stack.
+  fn fibers(&self) -> &Fibers;
 
-  /// Returns a mutable reference to the routines stack.
-  fn routines_mut(&mut self) -> &mut RoutineStack;
+  /// Returns a mutable reference to the fibers stack.
+  fn fibers_mut(&mut self) -> &mut Fibers;
 
   /// Returns the cell for the task pointer.
   fn task(&self) -> &TaskCell;
@@ -48,24 +48,24 @@ pub trait Thread: Sized + Sync + 'static {
   /// Returns a mutable reference to the stored index of the preempted thread.
   fn preempted(&mut self) -> &mut usize;
 
-  /// Adds a new routine to the stack. This method accepts a generator.
+  /// Adds a new fiber to the stack. This method accepts a generator.
   #[inline(always)]
-  fn routine<G>(&self, g: G)
+  fn fiber<G>(&self, g: G)
   where
     G: Generator<Yield = (), Return = ()>,
     G: Send + 'static,
   {
-    self.routines().push(g);
+    self.fibers().add(g);
   }
 
-  /// Adds a new routine to the stack. This method accepts a closure.
+  /// Adds a new fiber to the stack. This method accepts a closure.
   #[inline(always)]
-  fn routine_fn<F>(&self, f: F)
+  fn fiber_fn<F>(&self, f: F)
   where
     F: FnOnce(),
     F: Send + 'static,
   {
-    self.routines().push(|| {
+    self.fibers().add(|| {
       if false {
         yield;
       }
@@ -73,30 +73,30 @@ pub trait Thread: Sized + Sync + 'static {
     });
   }
 
-  /// Adds a new routine to the stack. Returns a `Future` of the routine's
-  /// return value. This method accepts a generator.
+  /// Adds a new fiber to the stack. Returns a `Future` of the fiber's return
+  /// value. This method accepts a generator.
   #[inline(always)]
-  fn future<G, T, E>(&self, g: G) -> RoutineFuture<T, E>
+  fn future<G, R, E>(&self, g: G) -> FiberFuture<R, E>
   where
-    G: Generator<Yield = (), Return = Result<T, E>>,
+    G: Generator<Yield = (), Return = Result<R, E>>,
     G: Send + 'static,
-    T: Send + 'static,
+    R: Send + 'static,
     E: Send + 'static,
   {
-    RoutineFuture::new(self, g)
+    FiberFuture::new(self, g)
   }
 
-  /// Adds a new routine to the stack. Returns a `Future` of the routine's
-  /// return value. This method accepts a closure.
+  /// Adds a new fiber to the stack. Returns a `Future` of the fiber's return
+  /// value. This method accepts a closure.
   #[inline(always)]
-  fn future_fn<F, T, E>(&self, f: F) -> RoutineFuture<T, E>
+  fn future_fn<F, R, E>(&self, f: F) -> FiberFuture<R, E>
   where
-    F: FnOnce() -> Result<T, E>,
+    F: FnOnce() -> Result<R, E>,
     F: Send + 'static,
-    T: Send + 'static,
+    R: Send + 'static,
     E: Send + 'static,
   {
-    RoutineFuture::new(self, || {
+    FiberFuture::new(self, || {
       if false {
         yield;
       }
@@ -104,11 +104,11 @@ pub trait Thread: Sized + Sync + 'static {
     })
   }
 
-  /// Adds a new routine to the stack. Returns a `Stream` of routine's yielded
+  /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
   /// values. If `overflow` returns `Ok(())`, current value will be skipped.
   /// This method only accepts `()` as values.
   #[inline(always)]
-  fn stream<G, E, O>(&self, overflow: O, g: G) -> RoutineStreamUnit<E>
+  fn stream<G, E, O>(&self, overflow: O, g: G) -> FiberStreamUnit<E>
   where
     G: Generator<Yield = Option<()>, Return = Result<Option<()>, E>>,
     O: Fn() -> Result<(), E>,
@@ -116,73 +116,73 @@ pub trait Thread: Sized + Sync + 'static {
     E: Send + 'static,
     O: Send + 'static,
   {
-    RoutineStreamUnit::new(self, g, overflow)
+    FiberStreamUnit::new(self, g, overflow)
   }
 
-  /// Adds a new routine to the stack. Returns a `Stream` of routine's yielded
+  /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
   /// values. Values will be skipped on overflow. This method only accepts `()`
   /// as values.
   #[inline(always)]
-  fn stream_skip<G, E>(&self, g: G) -> RoutineStreamUnit<E>
+  fn stream_skip<G, E>(&self, g: G) -> FiberStreamUnit<E>
   where
     G: Generator<Yield = Option<()>, Return = Result<Option<()>, E>>,
     G: Send + 'static,
     E: Send + 'static,
   {
-    RoutineStreamUnit::new(self, g, || Ok(()))
+    FiberStreamUnit::new(self, g, || Ok(()))
   }
 
-  /// Adds a new routine to the stack. Returns a `Stream` of routine's yielded
+  /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
   /// values. If `overflow` returns `Ok(())`, currenct value will be skipped.
   #[inline(always)]
-  fn stream_ring<G, T, E, O>(
+  fn stream_ring<G, R, E, O>(
     &self,
     capacity: usize,
     overflow: O,
     g: G,
-  ) -> RoutineStreamRing<T, E>
+  ) -> FiberStreamRing<R, E>
   where
-    G: Generator<Yield = Option<T>, Return = Result<Option<T>, E>>,
-    O: Fn(T) -> Result<(), E>,
+    G: Generator<Yield = Option<R>, Return = Result<Option<R>, E>>,
+    O: Fn(R) -> Result<(), E>,
     G: Send + 'static,
-    T: Send + 'static,
+    R: Send + 'static,
     E: Send + 'static,
     O: Send + 'static,
   {
-    RoutineStreamRing::new(self, capacity, g, overflow)
+    FiberStreamRing::new(self, capacity, g, overflow)
   }
 
-  /// Adds a new routine to the stack. Returns a `Stream` of routine's yielded
+  /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
   /// values. New values will be skipped on overflow.
   #[inline(always)]
-  fn stream_ring_skip<G, T, E>(
+  fn stream_ring_skip<G, R, E>(
     &self,
     capacity: usize,
     g: G,
-  ) -> RoutineStreamRing<T, E>
+  ) -> FiberStreamRing<R, E>
   where
-    G: Generator<Yield = Option<T>, Return = Result<Option<T>, E>>,
+    G: Generator<Yield = Option<R>, Return = Result<Option<R>, E>>,
     G: Send + 'static,
-    T: Send + 'static,
+    R: Send + 'static,
     E: Send + 'static,
   {
-    RoutineStreamRing::new(self, capacity, g, |_| Ok(()))
+    FiberStreamRing::new(self, capacity, g, |_| Ok(()))
   }
 
-  /// Adds a new routine to the stack. Returns a `Stream` of routine's yielded
+  /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
   /// values. Old values will be overwritten on overflow.
   #[inline(always)]
-  fn stream_ring_overwrite<G, T, E>(
+  fn stream_ring_overwrite<G, R, E>(
     &self,
     capacity: usize,
     g: G,
-  ) -> RoutineStreamRing<T, E>
+  ) -> FiberStreamRing<R, E>
   where
-    G: Generator<Yield = Option<T>, Return = Result<Option<T>, E>>,
+    G: Generator<Yield = Option<R>, Return = Result<Option<R>, E>>,
     G: Send + 'static,
-    T: Send + 'static,
+    R: Send + 'static,
     E: Send + 'static,
   {
-    RoutineStreamRing::new_overwrite(self, capacity, g)
+    FiberStreamRing::new_overwrite(self, capacity, g)
   }
 }

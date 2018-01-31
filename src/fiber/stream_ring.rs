@@ -7,11 +7,11 @@ use thread::prelude::*;
 ///
 /// [`Thread`]: ../trait.Thread.html
 #[must_use]
-pub struct RoutineStreamRing<I, E> {
+pub struct FiberStreamRing<I, E> {
   rx: Receiver<I, E>,
 }
 
-impl<I, E> RoutineStreamRing<I, E> {
+impl<I, E> FiberStreamRing<I, E> {
   pub(crate) fn new<T, G, O>(
     thread: &T,
     capacity: usize,
@@ -28,7 +28,7 @@ impl<I, E> RoutineStreamRing<I, E> {
     O: Send + 'static,
   {
     let (mut tx, rx) = channel(capacity);
-    thread.routines().push(move || loop {
+    thread.fibers().add(move || loop {
       if tx.is_canceled() {
         break;
       }
@@ -79,7 +79,7 @@ impl<I, E> RoutineStreamRing<I, E> {
     E: Send + 'static,
   {
     let (mut tx, rx) = channel(capacity);
-    thread.routines().push(move || loop {
+    thread.fibers().add(move || loop {
       if tx.is_canceled() {
         break;
       }
@@ -113,7 +113,7 @@ impl<I, E> RoutineStreamRing<I, E> {
   }
 }
 
-impl<I, E> Stream for RoutineStreamRing<I, E> {
+impl<I, E> Stream for FiberStreamRing<I, E> {
   type Item = I;
   type Error = E;
 

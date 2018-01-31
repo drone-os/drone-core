@@ -39,6 +39,7 @@
 #![feature(generator_trait)]
 #![feature(integer_atomics)]
 #![feature(iterator_for_each)]
+#![feature(never_type)]
 #![feature(nonzero)]
 #![feature(optin_builtin_traits)]
 #![feature(pointer_methods)]
@@ -63,6 +64,7 @@ extern crate futures;
 extern crate core;
 
 pub mod async;
+pub mod fiber;
 pub mod heap;
 pub mod mem;
 pub mod origin;

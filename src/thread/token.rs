@@ -25,8 +25,19 @@ where
     let thread = (*Self::Thread::all()).get_unchecked_mut(Self::THREAD_NUMBER);
     *thread.preempted() = CURRENT;
     CURRENT = Self::THREAD_NUMBER;
-    thread.routines_mut().drain();
+    thread.fibers_mut().drain();
     CURRENT = *thread.preempted();
+  }
+
+  /// Returns a scoped thread.
+  ///
+  /// # Safety
+  ///
+  /// Caller is responsible to somehow consume a token of type
+  /// `ThreadScopeToken<'scope, S>` before the `'scope` ends.
+  #[inline(always)]
+  unsafe fn scope<'scope, S>(self) -> ThreadScope<'scope, Self, T, S> {
+    ThreadScope::new(self)
   }
 
   /// Returns a reference to the thread.
@@ -34,4 +45,16 @@ where
   fn as_thread(&self) -> &Self::Thread {
     unsafe { (*Self::Thread::all()).get_unchecked(Self::THREAD_NUMBER) }
   }
+}
+
+/// A set of thread tokens.
+pub trait ThreadTokens {
+  /// Thread array.
+  type Thread: Thread;
+
+  /// Thread register tokens.
+  type Token;
+
+  /// Creates a new set of thread tokens.
+  fn new(token: Self::Token) -> Self;
 }

@@ -7,11 +7,11 @@ use thread::prelude::*;
 ///
 /// [`Thread`]: ../trait.Thread.html
 #[must_use]
-pub struct RoutineStreamUnit<E> {
+pub struct FiberStreamUnit<E> {
   rx: Receiver<E>,
 }
 
-impl<E> RoutineStreamUnit<E> {
+impl<E> FiberStreamUnit<E> {
   pub(crate) fn new<T, G, O>(thread: &T, mut generator: G, overflow: O) -> Self
   where
     T: Thread,
@@ -22,7 +22,7 @@ impl<E> RoutineStreamUnit<E> {
     O: Send + 'static,
   {
     let (mut tx, rx) = channel();
-    thread.routine(move || loop {
+    thread.fiber(move || loop {
       if tx.is_canceled() {
         break;
       }
@@ -65,7 +65,7 @@ impl<E> RoutineStreamUnit<E> {
   }
 }
 
-impl<E> Stream for RoutineStreamUnit<E> {
+impl<E> Stream for FiberStreamUnit<E> {
   type Item = ();
   type Error = E;
 

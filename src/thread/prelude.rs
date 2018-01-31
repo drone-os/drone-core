@@ -1,4 +1,5 @@
 //! Threads prelude.
 
-pub use super::{Ctt, Ltt, Thread, ThreadTag, ThreadToken, ThreadTokens,
+pub use super::{Ctt, Ltt, Thread, ThreadScope, ThreadScopeGuard,
+                ThreadScopeToken, ThreadTag, ThreadToken, ThreadTokens,
                 ThreadTrigger, Ttt};

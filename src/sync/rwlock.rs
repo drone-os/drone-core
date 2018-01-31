@@ -155,8 +155,7 @@ impl<T> RwLock<T> {
   /// ```
   #[inline(always)]
   pub fn into_inner(self) -> T {
-    let Self { data, .. } = self;
-    unsafe { data.into_inner() }
+    self.data.into_inner()
   }
 
   /// Returns a mutable reference to the underlying data.
