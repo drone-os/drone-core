@@ -3,24 +3,18 @@
 ///
 /// [`AsyncFuture`]: ../async/struct.AsyncFuture.html
 #[macro_export]
-macro_rules! io_await {
-  ($operation:ty, $sess:ident $(, $arg:expr)*) => {
+macro_rules! ioawait {
+  ($sess:ident . $($rest:tt)*) => {
     {
-      #[allow(unused_imports)]
-      use $crate::io::Operation;
-      type Operator = $operation;
-      #[cfg_attr(feature = "clippy", allow(double_parens))]
-      #[allow(unused_parens)]
-      let operator = Operator::new(($($arg),*));
       #[allow(unreachable_patterns, unreachable_code)]
-      match await!(operator.operate($sess)) {
-        Ok(sess) => {
+      match await!($sess.$($rest)*) {
+        Ok((sess, result)) => {
           $sess = sess;
-          Ok(operator.respond(&$sess))
+          Ok(result(&$sess))
         }
-        Err($crate::io::Error { sess, kind }) => {
+        Err((sess, error)) => {
           $sess = sess;
-          Err(kind)
+          Err(error)
         }
       }
     }
