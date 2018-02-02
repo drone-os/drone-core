@@ -63,12 +63,12 @@ extern crate futures;
 extern crate core;
 
 pub mod async;
+pub mod drivers;
 pub mod fiber;
 pub mod heap;
 pub mod io;
 pub mod mem;
 pub mod origin;
-pub mod peripherals;
 pub mod prelude;
 pub mod reg;
 pub mod sync;
