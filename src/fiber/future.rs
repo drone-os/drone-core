@@ -13,7 +13,7 @@ pub struct FiberFuture<R, E> {
 }
 
 impl<R, E> FiberFuture<R, E> {
-  pub(crate) fn new<T, G>(thread: &T, mut generator: G) -> Self
+  pub(crate) fn new<T, G>(thread: &T, mut gen: G) -> Self
   where
     T: Thread,
     G: Generator<Yield = (), Return = Result<R, E>>,
@@ -26,7 +26,7 @@ impl<R, E> FiberFuture<R, E> {
       if tx.is_canceled() {
         break;
       }
-      match generator.resume() {
+      match gen.resume() {
         Yielded(()) => {}
         Complete(complete) => {
           tx.send(complete).ok();

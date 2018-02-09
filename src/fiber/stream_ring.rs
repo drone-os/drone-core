@@ -15,7 +15,7 @@ impl<I, E> FiberStreamRing<I, E> {
   pub(crate) fn new<T, G, O>(
     thread: &T,
     capacity: usize,
-    mut generator: G,
+    mut gen: G,
     overflow: O,
   ) -> Self
   where
@@ -32,7 +32,7 @@ impl<I, E> FiberStreamRing<I, E> {
       if tx.is_canceled() {
         break;
       }
-      match generator.resume() {
+      match gen.resume() {
         Yielded(None) => {}
         Yielded(Some(value)) => match tx.send(value) {
           Ok(()) => {}
@@ -69,7 +69,7 @@ impl<I, E> FiberStreamRing<I, E> {
   pub(crate) fn new_overwrite<T, G>(
     thread: &T,
     capacity: usize,
-    mut generator: G,
+    mut gen: G,
   ) -> Self
   where
     T: Thread,
@@ -83,7 +83,7 @@ impl<I, E> FiberStreamRing<I, E> {
       if tx.is_canceled() {
         break;
       }
-      match generator.resume() {
+      match gen.resume() {
         Yielded(None) => {}
         Yielded(Some(value)) => match tx.send_overwrite(value) {
           Ok(()) => (),

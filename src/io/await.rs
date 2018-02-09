@@ -6,11 +6,13 @@
 macro_rules! ioawait {
   ($sess:ident . $($rest:tt)*) => {
     {
+      #[allow(unused_imports)]
+      use $crate::io::{Future, Responder};
       #[allow(unreachable_patterns, unreachable_code)]
       match await!($sess.$($rest)*) {
-        Ok((sess, result)) => {
+        Ok((sess, responder)) => {
           $sess = sess;
-          Ok(result(&$sess))
+          Ok(responder.respond(&$sess))
         }
         Err((sess, error)) => {
           $sess = sess;

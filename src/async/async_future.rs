@@ -10,8 +10,8 @@ where
 {
   /// Creates a new `AsyncFuture`.
   #[inline(always)]
-  pub fn new(generator: G) -> Self {
-    AsyncFuture(generator)
+  pub fn new(gen: G) -> Self {
+    AsyncFuture(gen)
   }
 }
 

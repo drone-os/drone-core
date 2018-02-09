@@ -12,7 +12,7 @@ pub struct FiberStreamUnit<E> {
 }
 
 impl<E> FiberStreamUnit<E> {
-  pub(crate) fn new<T, G, O>(thread: &T, mut generator: G, overflow: O) -> Self
+  pub(crate) fn new<T, G, O>(thread: &T, mut gen: G, overflow: O) -> Self
   where
     T: Thread,
     G: Generator<Yield = Option<()>, Return = Result<Option<()>, E>>,
@@ -26,7 +26,7 @@ impl<E> FiberStreamUnit<E> {
       if tx.is_canceled() {
         break;
       }
-      match generator.resume() {
+      match gen.resume() {
         Yielded(None) => {}
         Yielded(Some(())) => match tx.send() {
           Ok(()) => {}

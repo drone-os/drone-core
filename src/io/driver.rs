@@ -1,4 +1,4 @@
-//! Device drivers.
+use io::Resource;
 
 /// Device driver.
 pub trait Driver
@@ -13,14 +13,4 @@ where
 
   /// Releases the resource.
   fn into_res(self) -> Self::Resource;
-}
-
-/// Device resource.
-pub trait Resource
-where
-  Self: Sized + Send + Sync + 'static,
-  Self: From<<Self as Resource>::Input>,
-{
-  /// Input resource.
-  type Input = Self;
 }

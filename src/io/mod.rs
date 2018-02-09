@@ -13,6 +13,8 @@
 //! # struct NotifyNop;
 //! # const NOTIFY_NOP: &NotifyNop = &NotifyNop;
 //! # impl Notify for NotifyNop { fn notify(&self, _id: usize) {} }
+//! use drone_core::io;
+//! use drone_core::io::prelude::*;
 //! use futures::executor;
 //! use futures::future::lazy;
 //!
@@ -22,14 +24,29 @@
 //!   fn push(
 //!     mut self,
 //!     value: usize,
-//!   ) -> impl Future<
-//!     Item = (Buf, impl FnOnce(&Buf) -> usize),
-//!     Error = (Buf, !),
+//!   ) -> impl io::Future<
+//!     Sess = Self,
+//!     Resp = impl for<'r> io::Responder<'r, Self, Output = usize>,
+//!     Error = !,
 //!   > {
 //!     lazy(move || {
 //!       self.0.push(value);
 //!       Ok((self, |buf: &Buf| buf.0.len()))
 //!     })
+//!   }
+//!
+//!   fn push_boxed(
+//!     mut self,
+//!     value: usize,
+//!   ) -> Box<io::Future<
+//!     Sess = Self,
+//!     Resp = io::NoResp,
+//!     Error = !,
+//!   >> {
+//!     Box::new(lazy(move || {
+//!       self.0.push(value);
+//!       Ok((self, io::NoResp))
+//!     }))
 //!   }
 //! }
 //!
@@ -38,14 +55,15 @@
 //!     let mut buf = Buf(Vec::new());
 //!     assert_eq!(ioawait!(buf.push(1))?, 1);
 //!     assert_eq!(ioawait!(buf.push(3))?, 2);
-//!     assert_eq!(ioawait!(buf.push(5))?, 3);
+//!     assert_eq!(ioawait!(buf.push_boxed(5))?, ());
+//!     assert_eq!(ioawait!(buf.push_boxed(7))?, ());
 //!     Ok::<_, !>(buf)
 //!   }));
 //!   loop {
 //!     match executor.poll_future_notify(&NOTIFY_NOP, 0) {
 //!       Ok(Async::NotReady) => continue,
 //!       Ok(Async::Ready(buf)) => {
-//!         assert_eq!(buf.0, vec![1, 3, 5]);
+//!         assert_eq!(buf.0, vec![1, 3, 5, 7]);
 //!         break;
 //!       }
 //!     }
@@ -53,5 +71,17 @@
 //! }
 //! ```
 
+pub mod prelude;
+
 #[macro_use]
 mod await;
+
+mod driver;
+mod future;
+mod resource;
+mod responder;
+
+pub use self::driver::Driver;
+pub use self::future::{Future, Poll};
+pub use self::resource::Resource;
+pub use self::responder::{NoResp, Responder};

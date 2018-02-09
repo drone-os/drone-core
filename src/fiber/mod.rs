@@ -31,12 +31,12 @@ impl Fibers {
     }
   }
 
-  pub(crate) fn add<G>(&self, g: G)
+  pub(crate) fn add<G>(&self, gen: G)
   where
     G: Generator<Yield = (), Return = ()>,
     G: 'static,
   {
-    self.push(Node::new(g));
+    self.push(Node::new(gen));
   }
 
   pub(crate) fn drain(&mut self) {
@@ -88,13 +88,13 @@ impl Fibers {
 
 impl Node {
   #[inline(always)]
-  fn new<G>(g: G) -> Self
+  fn new<G>(gen: G) -> Self
   where
     G: Generator<Yield = (), Return = ()>,
     G: 'static,
   {
     Self {
-      fiber: Box::new(g),
+      fiber: Box::new(gen),
       next: ptr::null_mut(),
     }
   }

@@ -47,12 +47,12 @@ pub trait Thread: Sized + Sync + 'static {
 
   /// Adds a new fiber to the stack. This method accepts a generator.
   #[inline(always)]
-  fn fiber<G>(&self, g: G)
+  fn fiber<G>(&self, gen: G)
   where
     G: Generator<Yield = (), Return = ()>,
     G: Send + 'static,
   {
-    self.fibers().add(g);
+    self.fibers().add(gen);
   }
 
   /// Adds a new fiber to the stack. This method accepts a closure.
@@ -73,14 +73,14 @@ pub trait Thread: Sized + Sync + 'static {
   /// Adds a new fiber to the stack. Returns a `Future` of the fiber's return
   /// value. This method accepts a generator.
   #[inline(always)]
-  fn future<G, R, E>(&self, g: G) -> FiberFuture<R, E>
+  fn future<G, R, E>(&self, gen: G) -> FiberFuture<R, E>
   where
     G: Generator<Yield = (), Return = Result<R, E>>,
     G: Send + 'static,
     R: Send + 'static,
     E: Send + 'static,
   {
-    FiberFuture::new(self, g)
+    FiberFuture::new(self, gen)
   }
 
   /// Adds a new fiber to the stack. Returns a `Future` of the fiber's return
@@ -105,7 +105,7 @@ pub trait Thread: Sized + Sync + 'static {
   /// values. If `overflow` returns `Ok(())`, current value will be skipped.
   /// This method only accepts `()` as values.
   #[inline(always)]
-  fn stream<G, E, O>(&self, overflow: O, g: G) -> FiberStreamUnit<E>
+  fn stream<G, E, O>(&self, overflow: O, gen: G) -> FiberStreamUnit<E>
   where
     G: Generator<Yield = Option<()>, Return = Result<Option<()>, E>>,
     O: Fn() -> Result<(), E>,
@@ -113,20 +113,20 @@ pub trait Thread: Sized + Sync + 'static {
     E: Send + 'static,
     O: Send + 'static,
   {
-    FiberStreamUnit::new(self, g, overflow)
+    FiberStreamUnit::new(self, gen, overflow)
   }
 
   /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
   /// values. Values will be skipped on overflow. This method only accepts `()`
   /// as values.
   #[inline(always)]
-  fn stream_skip<G, E>(&self, g: G) -> FiberStreamUnit<E>
+  fn stream_skip<G, E>(&self, gen: G) -> FiberStreamUnit<E>
   where
     G: Generator<Yield = Option<()>, Return = Result<Option<()>, E>>,
     G: Send + 'static,
     E: Send + 'static,
   {
-    FiberStreamUnit::new(self, g, || Ok(()))
+    FiberStreamUnit::new(self, gen, || Ok(()))
   }
 
   /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
@@ -136,7 +136,7 @@ pub trait Thread: Sized + Sync + 'static {
     &self,
     capacity: usize,
     overflow: O,
-    g: G,
+    gen: G,
   ) -> FiberStreamRing<R, E>
   where
     G: Generator<Yield = Option<R>, Return = Result<Option<R>, E>>,
@@ -146,7 +146,7 @@ pub trait Thread: Sized + Sync + 'static {
     E: Send + 'static,
     O: Send + 'static,
   {
-    FiberStreamRing::new(self, capacity, g, overflow)
+    FiberStreamRing::new(self, capacity, gen, overflow)
   }
 
   /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
@@ -155,7 +155,7 @@ pub trait Thread: Sized + Sync + 'static {
   fn stream_ring_skip<G, R, E>(
     &self,
     capacity: usize,
-    g: G,
+    gen: G,
   ) -> FiberStreamRing<R, E>
   where
     G: Generator<Yield = Option<R>, Return = Result<Option<R>, E>>,
@@ -163,7 +163,7 @@ pub trait Thread: Sized + Sync + 'static {
     R: Send + 'static,
     E: Send + 'static,
   {
-    FiberStreamRing::new(self, capacity, g, |_| Ok(()))
+    FiberStreamRing::new(self, capacity, gen, |_| Ok(()))
   }
 
   /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
@@ -172,7 +172,7 @@ pub trait Thread: Sized + Sync + 'static {
   fn stream_ring_overwrite<G, R, E>(
     &self,
     capacity: usize,
-    g: G,
+    gen: G,
   ) -> FiberStreamRing<R, E>
   where
     G: Generator<Yield = Option<R>, Return = Result<Option<R>, E>>,
@@ -180,6 +180,6 @@ pub trait Thread: Sized + Sync + 'static {
     R: Send + 'static,
     E: Send + 'static,
   {
-    FiberStreamRing::new_overwrite(self, capacity, g)
+    FiberStreamRing::new_overwrite(self, capacity, gen)
   }
 }
