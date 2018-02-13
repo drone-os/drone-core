@@ -1,4 +1,5 @@
 use super::*;
+use bitfield::Bitfield;
 use core::ptr::{read_volatile, write_volatile};
 
 /// Memory-mapped register token. Types which implement this trait should be
@@ -6,7 +7,7 @@ use core::ptr::{read_volatile, write_volatile};
 /// memory-mapped registers.
 pub trait Reg<T: RegTag>: Sized + Send + Sync + 'static {
   /// Type that wraps a raw register value.
-  type Val: RegVal;
+  type Val: Bitfield;
 
   /// Memory address of the register.
   const ADDRESS: usize;
@@ -51,13 +52,13 @@ pub trait RReg<T: RegTag>: Reg<T> {
   /// Reads a register value from its memory address.
   #[inline(always)]
   fn load_val(&self) -> Self::Val {
-    unsafe { Self::Val::from_raw(read_volatile(self.to_ptr())) }
+    unsafe { Self::Val::from_bits(read_volatile(self.to_ptr())) }
   }
 
   /// Returns an unsafe constant pointer to the register's memory address.
   #[inline(always)]
-  fn to_ptr(&self) -> *const <Self::Val as RegVal>::Raw {
-    Self::ADDRESS as *const <Self::Val as RegVal>::Raw
+  fn to_ptr(&self) -> *const <Self::Val as Bitfield>::Bits {
+    Self::ADDRESS as *const <Self::Val as Bitfield>::Bits
   }
 }
 
@@ -65,8 +66,8 @@ pub trait RReg<T: RegTag>: Reg<T> {
 pub trait WReg<T: RegTag>: Reg<T> {
   /// Returns an unsafe mutable pointer to the register's memory address.
   #[inline(always)]
-  fn to_mut_ptr(&self) -> *mut <Self::Val as RegVal>::Raw {
-    Self::ADDRESS as *mut <Self::Val as RegVal>::Raw
+  fn to_mut_ptr(&self) -> *mut <Self::Val as Bitfield>::Bits {
+    Self::ADDRESS as *mut <Self::Val as Bitfield>::Bits
   }
 }
 
@@ -125,7 +126,7 @@ where
   T: RegAtomic,
   U: WReg<T> + RegRef<'a, T>,
   // Extra bound to make the dot operator checking `WRegUnsync` first.
-  U::Val: RegVal,
+  U::Val: Bitfield,
 {
   #[inline(always)]
   fn store<F>(&'a self, f: F)
@@ -138,7 +139,7 @@ where
 
   #[inline(always)]
   fn store_val(&self, val: U::Val) {
-    unsafe { write_volatile(self.to_mut_ptr(), val.raw()) };
+    unsafe { write_volatile(self.to_mut_ptr(), val.bits()) };
   }
 
   #[inline(always)]
@@ -158,18 +159,18 @@ where
       -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
     unsafe {
-      write_volatile(self.to_mut_ptr(), f(&mut self.default()).val().raw());
+      write_volatile(self.to_mut_ptr(), f(&mut self.default()).val().bits());
     }
   }
 
   #[inline(always)]
   fn store_val(&mut self, val: T::Val) {
-    unsafe { write_volatile(self.to_mut_ptr(), val.raw()) };
+    unsafe { write_volatile(self.to_mut_ptr(), val.bits()) };
   }
 
   #[inline(always)]
   fn reset(&'a mut self) {
-    unsafe { write_volatile(self.to_mut_ptr(), self.default_val().raw()) };
+    unsafe { write_volatile(self.to_mut_ptr(), self.default_val().bits()) };
   }
 }
 
@@ -184,7 +185,7 @@ where
       -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
     unsafe {
-      write_volatile(self.to_mut_ptr(), f(&mut self.load()).val().raw());
+      write_volatile(self.to_mut_ptr(), f(&mut self.load()).val().bits());
     }
   }
 }

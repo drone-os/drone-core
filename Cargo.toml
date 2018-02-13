@@ -1,5 +1,5 @@
 [workspace]
-members = ["macros", "macros-core"]
+members = ["macros", "macros-core", "macros2", "macros2-core"]
 
 [package]
 name = "drone-core"
@@ -17,6 +17,10 @@ std = ['futures/use_std']
 [dependencies.drone-core-macros]
 version = "0.8.0"
 path = "macros"
+
+[dependencies.drone-core-macros2]
+version = "0.8.0"
+path = "macros2"
 
 [dependencies.futures]
 version = "0.1"

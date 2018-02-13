@@ -1,5 +1,6 @@
 #![feature(proc_macro)]
 
+#[macro_use]
 extern crate drone_core;
 
 use drone_core::reg::mappings;

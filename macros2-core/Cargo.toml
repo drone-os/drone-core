@@ -1,0 +1,12 @@
+[package]
+name = "drone-macros2-core"
+version = "0.8.0"
+authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
+description = "Drone procedural macros shared lib."
+readme = "README.md"
+license = "MIT/Apache-2.0"
+repository = "https://github.com/drone-os/drone-core"
+
+[dependencies.clippy]
+version = "0.0"
+optional = true

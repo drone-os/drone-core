@@ -7,6 +7,7 @@
 //! ```
 //! # #![feature(proc_macro)]
 //! # use std as core;
+//! # #[macro_use] extern crate drone_core;
 //! use core::mem::size_of_val;
 //! use drone_core::origin::OriginToken;
 //! use drone_core::reg::prelude::*;
@@ -55,20 +56,16 @@ pub mod prelude;
 
 mod field;
 mod hold;
-mod raw;
 #[cfg_attr(feature = "clippy", allow(module_inception))]
 mod reg;
 mod tag;
 mod tokens;
-mod val;
 
 pub use self::field::*;
 pub use self::hold::*;
-pub use self::raw::*;
 pub use self::reg::*;
 pub use self::tag::*;
 pub use self::tokens::*;
-pub use self::val::*;
 pub use drone_core_macros::{reg_mappings as mappings, reg_tokens as tokens};
 
 /// Forkable token.

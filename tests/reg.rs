@@ -1,7 +1,9 @@
 #![feature(proc_macro)]
 
+#[macro_use]
 extern crate drone_core;
 
+use drone_core::bitfield::Bitfield;
 use drone_core::reg::mappings;
 use drone_core::reg::prelude::*;
 use std::mem::size_of;
@@ -24,7 +26,7 @@ mappings! {
 #[test]
 fn reg_val_default() {
   unsafe {
-    assert_eq!(Val::default().raw(), 0xBEEF_CACE);
+    assert_eq!(Val::default().bits(), 0xBEEF_CACE);
   }
 }
 

@@ -92,11 +92,11 @@ fn parse_reg(
       token
     ))?,
   };
-  let raw = match input.next() {
+  let bits = match input.next() {
     Some(TokenTree::Token(Token::Literal(Lit::Int(
-      raw,
+      bits,
       IntTy::Unsuffixed,
-    )))) => Ident::new(format!("u{}", raw)),
+    )))) => Ident::new(format!("u{}", bits)),
     token => Err(format_err!(
       "Invalid tokens after `{:?}`: {:?}",
       address,
@@ -107,7 +107,7 @@ fn parse_reg(
     Some(TokenTree::Token(Token::Literal(
       value @ Lit::Int(_, IntTy::Unsuffixed),
     ))) => value,
-    token => Err(format_err!("Invalid tokens after `{}`: {:?}", raw, token))?,
+    token => Err(format_err!("Invalid tokens after `{}`: {:?}", bits, token))?,
   };
   loop {
     match input.next() {
@@ -115,7 +115,7 @@ fn parse_reg(
       Some(TokenTree::Token(Token::Semi)) => break,
       token => Err(format_err!(
         "Invalid tokens after `{} {:?}`: {:?}",
-        raw,
+        bits,
         trait_name,
         token
       ))?,
@@ -147,7 +147,7 @@ fn parse_reg(
                 &attrs,
                 name,
                 tts,
-                &raw,
+                &bits,
                 &mut field_affix,
                 &mut field_field,
                 &mut field_name,
@@ -302,31 +302,9 @@ fn parse_reg(
       }
 
       #(#attrs)*
-      #[derive(Clone, Copy)]
-      pub struct Val {
-        raw: #raw,
-      }
-
-      impl reg::RegVal for self::Val {
-        type Raw = #raw;
-
-        const DEFAULT: #raw = #reset;
-
-        #[inline(always)]
-        unsafe fn from_raw(raw: #raw) -> Self {
-          Self { raw }
-        }
-
-        #[inline(always)]
-        fn raw(&self) -> #raw {
-          self.raw
-        }
-
-        #[inline(always)]
-        fn raw_mut(&mut self) -> &mut #raw {
-          &mut self.raw
-        }
-      }
+      #[derive(Bitfield, Clone, Copy)]
+      #[bitfield(default = #reset)]
+      pub struct Val(#bits);
     }
   })
 }
@@ -335,7 +313,7 @@ fn parse_field(
   attrs: &[Tokens],
   name: Ident,
   input: Vec<TokenTree>,
-  raw: &Ident,
+  bits: &Ident,
   field_affix: &mut Vec<String>,
   field_field: &mut Vec<Ident>,
   field_name: &mut Vec<Ident>,
@@ -445,7 +423,7 @@ fn parse_field(
         impl<'a, _T: reg::RegTag> self::Hold<'a, _T> {
           #(#attrs)*
           #[inline(always)]
-          pub fn #field(&self) -> #raw {
+          pub fn #field(&self) -> #bits {
             self.reg.#field.read(&self.val)
           }
         }
@@ -456,7 +434,7 @@ fn parse_field(
         impl<'a, _T: reg::RegTag> self::Hold<'a, _T> {
           #(#attrs)*
           #[inline(always)]
-          pub fn #write_field(&mut self, bits: #raw) -> &mut Self {
+          pub fn #write_field(&mut self, bits: #bits) -> &mut Self {
             self.reg.#field.write(&mut self.val, bits);
             self
           }
