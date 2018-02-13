@@ -28,7 +28,7 @@
 //!     ENABLE { // field name
 //!       0 // offset
 //!       1 // width
-//!       RRegField WRegField // list of marker traits for the field
+//!       RRRegField WWRegField // list of marker traits for the field
 //!     }
 //!   }
 //! }
@@ -52,6 +52,7 @@
 //! }
 //! ```
 
+pub mod marker;
 pub mod prelude;
 
 mod field;

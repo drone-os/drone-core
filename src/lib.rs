@@ -67,6 +67,7 @@ extern crate core;
 
 pub mod async;
 pub mod bitfield;
+pub mod drivers;
 pub mod fiber;
 pub mod heap;
 pub mod io;

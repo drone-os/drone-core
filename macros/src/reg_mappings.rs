@@ -377,7 +377,7 @@ fn parse_field(
     let toggle_field = Ident::new(format!("toggle_{}", affix));
     trait_attrs.push(Vec::new());
     trait_name.push(Ident::new("RegFieldBit"));
-    if trait_name.iter().any(|name| name == "RRegField") {
+    if trait_name.iter().any(|name| name == "RRRegField") {
       impls.push(quote! {
         impl<'a, _T: reg::RegTag> self::Hold<'a, _T> {
           #(#attrs)*
@@ -388,7 +388,7 @@ fn parse_field(
         }
       });
     }
-    if trait_name.iter().any(|name| name == "WRegField") {
+    if trait_name.iter().any(|name| name == "WWRegField") {
       impls.push(quote! {
         impl<'a, _T: reg::RegTag> self::Hold<'a, _T> {
           #(#attrs)*
@@ -418,7 +418,7 @@ fn parse_field(
     let write_field = Ident::new(format!("write_{}", affix));
     trait_attrs.push(Vec::new());
     trait_name.push(Ident::new("RegFieldBits"));
-    if trait_name.iter().any(|name| name == "RRegField") {
+    if trait_name.iter().any(|name| name == "RRRegField") {
       impls.push(quote! {
         impl<'a, _T: reg::RegTag> self::Hold<'a, _T> {
           #(#attrs)*
@@ -429,7 +429,7 @@ fn parse_field(
         }
       });
     }
-    if trait_name.iter().any(|name| name == "WRegField") {
+    if trait_name.iter().any(|name| name == "WWRegField") {
       impls.push(quote! {
         impl<'a, _T: reg::RegTag> self::Hold<'a, _T> {
           #(#attrs)*

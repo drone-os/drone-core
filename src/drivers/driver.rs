@@ -1,4 +1,4 @@
-use io::Resource;
+use drivers::Resource;
 
 /// Device driver.
 pub trait Driver

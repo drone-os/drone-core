@@ -18,8 +18,8 @@ mappings! {
   #[doc = "test reg attribute"]
   TEST_REG {
     0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg;
-    TEST_BIT { 0 1 RRegField WRegField }
-    TEST_BITS { 1 3 RRegField WRegField }
+    TEST_BIT { 0 1 RRRegField WWRegField }
+    TEST_BITS { 1 3 RRRegField WWRegField }
   }
 }
 

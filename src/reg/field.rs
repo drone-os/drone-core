@@ -21,7 +21,7 @@ pub trait RegFieldBit<T: RegTag>: RegField<T> {}
 pub trait RegFieldBits<T: RegTag>: RegField<T> {}
 
 /// Register field that can read its value.
-pub trait RRegField<T: RegTag>
+pub trait RRRegField<T: RegTag>
 where
   Self: RegField<T>,
   Self::Reg: RReg<T>,
@@ -39,7 +39,7 @@ where
 }
 
 /// Register field that can write its value.
-pub trait WRegField<T: RegTag>
+pub trait WWRegField<T: RegTag>
 where
   Self: RegField<T>,
   Self::Reg: WReg<T>,
@@ -47,17 +47,17 @@ where
 }
 
 /// Register field that can only read its value.
-pub trait RoRegField<T: RegTag>
+pub trait RoRRegField<T: RegTag>
 where
-  Self: RRegField<T>,
+  Self: RRRegField<T>,
   Self::Reg: RReg<T>,
 {
 }
 
 /// Register field that can only write its value.
-pub trait WoRegField<T: RegTag>
+pub trait WoWRegField<T: RegTag>
 where
-  Self: WRegField<T>,
+  Self: WWRegField<T>,
   Self::Reg: WReg<T>,
 {
 }
@@ -65,7 +65,7 @@ where
 /// Write-only field of write-only register.
 pub trait WoWoRegField<T: RegTag>
 where
-  Self: WoRegField<T>,
+  Self: WoWRegField<T>,
   Self::Reg: WoReg<T>,
 {
   /// Creates a new reset value.
@@ -82,9 +82,9 @@ where
 }
 
 /// Single-bit register field that can read its value.
-pub trait RRegFieldBit<T: RegTag>
+pub trait RRRegFieldBit<T: RegTag>
 where
-  Self: RegFieldBit<T> + RRegField<T>,
+  Self: RegFieldBit<T> + RRRegField<T>,
   Self::Reg: RReg<T>,
 {
   /// Reads the state of the bit from `val`.
@@ -95,9 +95,9 @@ where
 }
 
 /// Single-bit register field that can write its value.
-pub trait WRegFieldBit<T: RegTag>
+pub trait WWRegFieldBit<T: RegTag>
 where
-  Self: RegFieldBit<T> + WRegField<T>,
+  Self: RegFieldBit<T> + WWRegField<T>,
   Self::Reg: WReg<T>,
 {
   /// Sets the bit in `val`.
@@ -113,7 +113,7 @@ where
 /// Single-bit write-only field of write-only register.
 pub trait WoWoRegFieldBit<T: RegTag>
 where
-  Self: RegFieldBit<T> + WoRegField<T>,
+  Self: RegFieldBit<T> + WoWRegField<T>,
   Self::Reg: WoReg<T>,
 {
   /// Sets the bit in memory.
@@ -127,9 +127,9 @@ where
 }
 
 /// Multiple-bits register field that can read its value.
-pub trait RRegFieldBits<T: RegTag>
+pub trait RRRegFieldBits<T: RegTag>
 where
-  Self: RegFieldBits<T> + RRegField<T>,
+  Self: RegFieldBits<T> + RRRegField<T>,
   Self::Reg: RReg<T>,
 {
   /// Reads the bits from `val`.
@@ -143,9 +143,9 @@ where
 }
 
 /// Multiple-bits register field that can write its value.
-pub trait WRegFieldBits<T: RegTag>
+pub trait WWRegFieldBits<T: RegTag>
 where
-  Self: RegFieldBits<T> + WRegField<T>,
+  Self: RegFieldBits<T> + WWRegField<T>,
   Self::Reg: WReg<T>,
 {
   /// Write `bits` to `val`.
@@ -159,7 +159,7 @@ where
 /// Multiple-bits write-only field of write-only register.
 pub trait WoWoRegFieldBits<T: RegTag>
 where
-  Self: RegFieldBits<T> + WoRegField<T>,
+  Self: RegFieldBits<T> + WoWRegField<T>,
   Self::Reg: WoReg<T>,
 {
   /// Sets the bit in memory.
@@ -169,7 +169,7 @@ where
 impl<T, U> WoWoRegField<T> for U
 where
   T: RegTag,
-  U: WoRegField<T>,
+  U: WoWRegField<T>,
   U::Reg: WoReg<T>,
 {
   #[inline(always)]
@@ -198,10 +198,10 @@ where
   }
 }
 
-impl<T, U> RRegFieldBit<T> for U
+impl<T, U> RRRegFieldBit<T> for U
 where
   T: RegTag,
-  U: RegFieldBit<T> + RRegField<T>,
+  U: RegFieldBit<T> + RRRegField<T>,
   U::Reg: RReg<T>,
 {
   #[inline(always)]
@@ -219,10 +219,10 @@ where
   }
 }
 
-impl<T, U> WRegFieldBit<T> for U
+impl<T, U> WWRegFieldBit<T> for U
 where
   T: RegTag,
-  U: RegFieldBit<T> + WRegField<T>,
+  U: RegFieldBit<T> + WWRegField<T>,
   U::Reg: WReg<T>,
 {
   #[inline(always)]
@@ -256,7 +256,7 @@ where
 impl<T, U> WoWoRegFieldBit<T> for U
 where
   T: RegTag,
-  U: RegFieldBit<T> + WoRegField<T>,
+  U: RegFieldBit<T> + WoWRegField<T>,
   U::Reg: WoReg<T>,
 {
   #[inline(always)]
@@ -281,10 +281,10 @@ where
   }
 }
 
-impl<T, U> RRegFieldBits<T> for U
+impl<T, U> RRRegFieldBits<T> for U
 where
   T: RegTag,
-  U: RegFieldBits<T> + RRegField<T>,
+  U: RegFieldBits<T> + RRRegField<T>,
   U::Reg: RReg<T>,
 {
   #[inline(always)]
@@ -306,10 +306,10 @@ where
   }
 }
 
-impl<T, U> WRegFieldBits<T> for U
+impl<T, U> WWRegFieldBits<T> for U
 where
   T: RegTag,
-  U: RegFieldBits<T> + WRegField<T>,
+  U: RegFieldBits<T> + WWRegField<T>,
   U::Reg: WReg<T>,
 {
   #[inline(always)]
@@ -331,7 +331,7 @@ where
 impl<T, U> WoWoRegFieldBits<T> for U
 where
   T: RegTag,
-  U: RegFieldBits<T> + WoRegField<T>,
+  U: RegFieldBits<T> + WoWRegField<T>,
   U::Reg: WoReg<T>,
 {
   #[inline(always)]

@@ -14,7 +14,6 @@
 //! # const NOTIFY_NOP: &NotifyNop = &NotifyNop;
 //! # impl Notify for NotifyNop { fn notify(&self, _id: usize) {} }
 //! use drone_core::io;
-//! use drone_core::io::prelude::*;
 //! use futures::executor;
 //! use futures::future::lazy;
 //!
@@ -71,17 +70,11 @@
 //! }
 //! ```
 
-pub mod prelude;
-
 #[macro_use]
 mod await;
 
-mod driver;
 mod future;
-mod resource;
 mod responder;
 
-pub use self::driver::Driver;
 pub use self::future::{Future, Poll};
-pub use self::resource::Resource;
 pub use self::responder::{NoResp, Responder};
