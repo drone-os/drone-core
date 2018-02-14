@@ -19,8 +19,8 @@ where
     + BitXorAssign,
 {
   const ZERO: I;
-  const TX_LOCK: I;
   const RX_LOCK: I;
+  const TX_LOCK: I;
   const COMPLETE: I;
 
   fn state_load(&self, order: Ordering) -> I;
@@ -34,10 +34,10 @@ where
   ) -> Result<I, I>;
 
   #[cfg_attr(feature = "clippy", allow(mut_from_ref))]
-  unsafe fn tx_task_mut(&self) -> &mut Option<Task>;
+  unsafe fn rx_task_mut(&self) -> &mut Option<Task>;
 
   #[cfg_attr(feature = "clippy", allow(mut_from_ref))]
-  unsafe fn rx_task_mut(&self) -> &mut Option<Task>;
+  unsafe fn tx_task_mut(&self) -> &mut Option<Task>;
 
   #[inline]
   fn update<F, R, E>(

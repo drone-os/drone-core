@@ -21,7 +21,7 @@ impl<R, E> FiberFuture<R, E> {
     R: Send + 'static,
     E: Send + 'static,
   {
-    let (tx, rx) = channel();
+    let (rx, tx) = channel();
     thread.fibers().add(move || loop {
       if tx.is_canceled() {
         break;

@@ -70,10 +70,8 @@
 //! }
 //! ```
 
-#[macro_use]
-mod await;
-
 mod future;
+mod macros;
 mod responder;
 
 pub use self::future::{Future, Poll};

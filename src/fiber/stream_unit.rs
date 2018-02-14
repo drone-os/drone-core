@@ -21,7 +21,7 @@ impl<E> FiberStreamUnit<E> {
     E: Send + 'static,
     O: Send + 'static,
   {
-    let (mut tx, rx) = channel();
+    let (rx, mut tx) = channel();
     thread.fiber(move || loop {
       if tx.is_canceled() {
         break;

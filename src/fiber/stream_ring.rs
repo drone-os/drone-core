@@ -27,7 +27,7 @@ impl<I, E> FiberStreamRing<I, E> {
     E: Send + 'static,
     O: Send + 'static,
   {
-    let (mut tx, rx) = channel(capacity);
+    let (rx, mut tx) = channel(capacity);
     thread.fibers().add(move || loop {
       if tx.is_canceled() {
         break;
@@ -78,7 +78,7 @@ impl<I, E> FiberStreamRing<I, E> {
     I: Send + 'static,
     E: Send + 'static,
   {
-    let (mut tx, rx) = channel(capacity);
+    let (rx, mut tx) = channel(capacity);
     thread.fibers().add(move || loop {
       if tx.is_canceled() {
         break;

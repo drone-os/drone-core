@@ -23,8 +23,8 @@ pub const MAX_CAPACITY: usize = 1 << size_of::<usize>() * 8 - LOCK_BITS;
 const LOCK_MASK: usize = (1 << LOCK_BITS) - 1;
 const LOCK_BITS: usize = 3;
 const COMPLETE: usize = 1 << 2;
-const TX_LOCK: usize = 1 << 1;
-const RX_LOCK: usize = 1;
+const RX_LOCK: usize = 1 << 1;
+const TX_LOCK: usize = 1;
 
 // Layout of the state field:
 //     CCCC_LLLL
@@ -32,23 +32,23 @@ const RX_LOCK: usize = 1;
 struct Inner<E> {
   state: AtomicUsize,
   err: UnsafeCell<Option<E>>,
-  tx_task: UnsafeCell<Option<Task>>,
   rx_task: UnsafeCell<Option<Task>>,
+  tx_task: UnsafeCell<Option<Task>>,
 }
 
-/// Creates a new asynchronous channel, returning the sender/receiver halves.
+/// Creates a new asynchronous channel, returning the receiver/sender halves.
 /// All units sent on the [`Sender`] will become available on the [`Receiver`].
 ///
-/// Only one ['Sender']/[`Receiver`] is supported.
+/// Only one [`Receiver`]/['Sender'] is supported.
 ///
-/// [`Sender`]: struct.Sender.html
 /// [`Receiver`]: struct.Receiver.html
+/// [`Sender`]: struct.Sender.html
 #[inline]
-pub fn channel<E>() -> (Sender<E>, Receiver<E>) {
+pub fn channel<E>() -> (Receiver<E>, Sender<E>) {
   let inner = Arc::new(Inner::new());
-  let sender = Sender::new(Arc::clone(&inner));
-  let receiver = Receiver::new(inner);
-  (sender, receiver)
+  let receiver = Receiver::new(Arc::clone(&inner));
+  let sender = Sender::new(inner);
+  (receiver, sender)
 }
 
 unsafe impl<E: Send> Send for Inner<E> {}
@@ -60,16 +60,16 @@ impl<E> Inner<E> {
     Self {
       state: AtomicUsize::new(0),
       err: UnsafeCell::new(None),
-      tx_task: UnsafeCell::new(None),
       rx_task: UnsafeCell::new(None),
+      tx_task: UnsafeCell::new(None),
     }
   }
 }
 
 impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
   const ZERO: usize = 0;
-  const TX_LOCK: usize = TX_LOCK;
   const RX_LOCK: usize = RX_LOCK;
+  const TX_LOCK: usize = TX_LOCK;
   const COMPLETE: usize = COMPLETE;
 
   #[inline(always)]
@@ -89,13 +89,13 @@ impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
   }
 
   #[inline(always)]
-  unsafe fn tx_task_mut(&self) -> &mut Option<Task> {
-    &mut *self.tx_task.get()
+  unsafe fn rx_task_mut(&self) -> &mut Option<Task> {
+    &mut *self.rx_task.get()
   }
 
   #[inline(always)]
-  unsafe fn rx_task_mut(&self) -> &mut Option<Task> {
-    &mut *self.rx_task.get()
+  unsafe fn tx_task_mut(&self) -> &mut Option<Task> {
+    &mut *self.tx_task.get()
   }
 }
 
@@ -120,7 +120,7 @@ mod tests {
 
   #[test]
   fn send_sync() {
-    let (mut tx, rx) = channel::<()>();
+    let (rx, mut tx) = channel::<()>();
     assert_eq!(tx.send(), Ok(()));
     drop(tx);
     let mut executor = executor::spawn(rx);
@@ -140,7 +140,7 @@ mod tests {
 
   #[test]
   fn send_async() {
-    let (mut tx, rx) = channel::<()>();
+    let (rx, mut tx) = channel::<()>();
     let mut executor = executor::spawn(rx);
     COUNTER.with(|counter| {
       counter.0.store(0, Ordering::Relaxed);

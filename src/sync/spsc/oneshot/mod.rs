@@ -17,29 +17,29 @@ use futures::task::Task;
 use sync::spsc::SpscInner;
 
 const COMPLETE: u8 = 1 << 2;
-const TX_LOCK: u8 = 1 << 1;
-const RX_LOCK: u8 = 1;
+const RX_LOCK: u8 = 1 << 1;
+const TX_LOCK: u8 = 1;
 
 struct Inner<T, E> {
   state: AtomicU8,
   data: UnsafeCell<Option<Result<T, E>>>,
-  tx_task: UnsafeCell<Option<Task>>,
   rx_task: UnsafeCell<Option<Task>>,
+  tx_task: UnsafeCell<Option<Task>>,
 }
 
-/// Creates a new asynchronous channel, returning the sender/receiver halves.
+/// Creates a new asynchronous channel, returning the receiver/sender halves.
 /// The data sent on the [`Sender`] will become available on the [`Receiver`].
 ///
-/// Only one ['Sender']/[`Receiver`] is supported.
+/// Only one [`Receiver`]/['Sender'] is supported.
 ///
-/// [`Sender`]: struct.Sender.html
 /// [`Receiver`]: struct.Receiver.html
+/// [`Sender`]: struct.Sender.html
 #[inline]
-pub fn channel<T, E>() -> (Sender<T, E>, Receiver<T, E>) {
+pub fn channel<T, E>() -> (Receiver<T, E>, Sender<T, E>) {
   let inner = Arc::new(Inner::new());
-  let sender = Sender::new(Arc::clone(&inner));
-  let receiver = Receiver::new(inner);
-  (sender, receiver)
+  let receiver = Receiver::new(Arc::clone(&inner));
+  let sender = Sender::new(inner);
+  (receiver, sender)
 }
 
 unsafe impl<T: Send, E: Send> Send for Inner<T, E> {}
@@ -51,16 +51,16 @@ impl<T, E> Inner<T, E> {
     Self {
       state: AtomicU8::new(0),
       data: UnsafeCell::new(None),
-      tx_task: UnsafeCell::new(None),
       rx_task: UnsafeCell::new(None),
+      tx_task: UnsafeCell::new(None),
     }
   }
 }
 
 impl<T, E> SpscInner<AtomicU8, u8> for Inner<T, E> {
   const ZERO: u8 = 0;
-  const TX_LOCK: u8 = TX_LOCK;
   const RX_LOCK: u8 = RX_LOCK;
+  const TX_LOCK: u8 = TX_LOCK;
   const COMPLETE: u8 = COMPLETE;
 
   #[inline(always)]
@@ -80,13 +80,13 @@ impl<T, E> SpscInner<AtomicU8, u8> for Inner<T, E> {
   }
 
   #[inline(always)]
-  unsafe fn tx_task_mut(&self) -> &mut Option<Task> {
-    &mut *self.tx_task.get()
+  unsafe fn rx_task_mut(&self) -> &mut Option<Task> {
+    &mut *self.rx_task.get()
   }
 
   #[inline(always)]
-  unsafe fn rx_task_mut(&self) -> &mut Option<Task> {
-    &mut *self.rx_task.get()
+  unsafe fn tx_task_mut(&self) -> &mut Option<Task> {
+    &mut *self.tx_task.get()
   }
 }
 
@@ -111,7 +111,7 @@ mod tests {
 
   #[test]
   fn send_sync() {
-    let (tx, rx) = channel::<usize, ()>();
+    let (rx, tx) = channel::<usize, ()>();
     assert_eq!(tx.send(Ok(314)), Ok(()));
     let mut executor = executor::spawn(rx);
     COUNTER.with(|counter| {
@@ -126,7 +126,7 @@ mod tests {
 
   #[test]
   fn send_async() {
-    let (tx, rx) = channel::<usize, ()>();
+    let (rx, tx) = channel::<usize, ()>();
     let mut executor = executor::spawn(rx);
     COUNTER.with(|counter| {
       counter.0.store(0, Ordering::Relaxed);

@@ -26,7 +26,7 @@
 //! }
 //!
 //! fn main() {
-//!   let (tx, rx) = oneshot::channel::<usize, !>();
+//!   let (rx, tx) = oneshot::channel::<usize, !>();
 //!   let mut executor = executor::spawn(plus_one(rx));
 //!   assert_eq!(tx.send(Ok(1)), Ok(()));
 //!   assert_eq!(
@@ -65,7 +65,7 @@
 //! }
 //!
 //! fn main() {
-//!   let (mut tx, rx) = ring::channel::<usize, !>(8);
+//!   let (rx, mut tx) = ring::channel::<usize, !>(8);
 //!   let mut executor = executor::spawn(sum(rx));
 //!   assert_eq!(tx.send_overwrite(3), Ok(()));
 //!   assert_eq!(tx.send_overwrite(4), Ok(()));
