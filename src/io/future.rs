@@ -12,13 +12,11 @@ pub trait Future {
   /// I/O error.
   type Error;
 
-  /// I/O equivalent of `Future::poll()`.
+  /// I/O equivalent of `Future::poll`.
   fn poll(&mut self) -> io::Poll<Self>;
 }
 
-/// A type returned from [`io::Future::poll()`].
-///
-/// [`io::Future::poll()`]: trait.Future.html#tymethod.poll
+/// A type returned from [`io::Future::poll`](Future::poll).
 pub type Poll<F> = futures::Poll<
   (<F as io::Future>::Sess, <F as io::Future>::Resp),
   (<F as io::Future>::Sess, <F as io::Future>::Error),

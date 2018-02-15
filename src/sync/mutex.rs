@@ -1,9 +1,3 @@
-//! A mutual exclusion primitive useful for protecting shared data.
-//!
-//! See [`Mutex`] for more details.
-//!
-//! [`Mutex`]: struct.Mutex.html
-
 use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};
 use core::sync::atomic::AtomicBool;
@@ -11,9 +5,8 @@ use core::sync::atomic::Ordering::*;
 
 /// A mutual exclusion primitive useful for protecting shared data.
 ///
-/// This mutex supports only [`try_lock`] method, and hence never blocks.
-///
-/// [`try_lock`]: #method.try_lock
+/// This mutex supports only [`try_lock`](Mutex::try_lock) method, and hence
+/// never blocks.
 pub struct Mutex<T> {
   lock: AtomicBool,
   data: UnsafeCell<T>,
@@ -25,10 +18,8 @@ pub struct Mutex<T> {
 /// The data protected by the mutex can be accessed through this guard via its
 /// `Deref` and `DerefMut` implementations.
 ///
-/// This structure is created by the [`try_lock`] method on [`Mutex`].
-///
-/// [`Mutex`]: struct.Mutex.html
-/// [`try_lock`]: struct.Mutex.html#method.try_lock
+/// This structure is created by the [`try_lock`](Mutex::try_lock) method on
+/// [`Mutex`](Mutex).
 #[must_use]
 pub struct MutexGuard<'a, T: 'a> {
   lock: &'a Mutex<T>,

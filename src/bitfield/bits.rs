@@ -3,9 +3,7 @@ use core::mem::size_of;
 use core::nonzero::Zeroable;
 use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr, Sub};
 
-/// Underlying integer for [`Bitfield`].
-///
-/// [`Bitfield`]: trait.Bitfield.html
+/// Underlying integer for [`Bitfield`](Bitfield).
 pub trait Bits
 where
   Self: Sized

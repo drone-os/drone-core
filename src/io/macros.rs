@@ -1,7 +1,5 @@
-/// Returns a result of the I/O operation. Should be used inside [`AsyncFuture`]
-/// context.
-///
-/// [`AsyncFuture`]: ../async/struct.AsyncFuture.html
+/// Returns a result of the I/O operation. Should be used inside
+/// [`AsyncFuture`](AsyncFuture) context.
 #[macro_export]
 macro_rules! ioawait {
   ($sess:ident . $($tail:tt)*) => {
@@ -23,9 +21,7 @@ macro_rules! ioawait {
   }
 }
 
-/// Analogue of `try!` for [`io::Future`] context.
-///
-/// [`io::Future`]: trait.Future.html
+/// Analogue of `try!` for [`io::Future`](io::Future) context.
 #[macro_export]
 macro_rules! iotry {
   (ioawait!($sess:ident . $($tail:tt)*)) => {

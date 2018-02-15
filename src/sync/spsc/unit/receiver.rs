@@ -4,9 +4,7 @@ use core::sync::atomic::Ordering::*;
 use futures::task;
 use sync::spsc::SpscInner;
 
-/// The receiving-half of [`unit::channel`].
-///
-/// [`unit::channel`]: fn.channel.html
+/// The receiving-half of [`unit::channel`](channel).
 #[must_use]
 pub struct Receiver<E> {
   inner: Arc<Inner<E>>,
@@ -18,10 +16,8 @@ impl<E> Receiver<E> {
     Self { inner }
   }
 
-  /// Gracefully close this [`Receiver`], preventing sending any future
+  /// Gracefully close this `Receiver`, preventing sending any future
   /// messages.
-  ///
-  /// [`Receiver`]: struct.Receiver.html
   #[inline(always)]
   pub fn close(&mut self) {
     self.inner.close_rx()

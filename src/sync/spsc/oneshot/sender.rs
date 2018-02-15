@@ -2,9 +2,7 @@ use super::Inner;
 use alloc::arc::Arc;
 use sync::spsc::SpscInner;
 
-/// The sending-half of [`oneshot::channel`].
-///
-/// [`oneshot::channel`]: fn.channel.html
+/// The sending-half of [`oneshot::channel`](channel).
 pub struct Sender<T, E> {
   inner: Arc<Inner<T, E>>,
 }
@@ -20,8 +18,6 @@ impl<T, E> Sender<T, E> {
   /// If the value is successfully enqueued, then `Ok(())` is returned. If the
   /// receiving end was dropped before this function was called, then `Err` is
   /// returned with the value provided.
-  ///
-  /// [`Receiver`]: struct.Receiver.html
   #[inline(always)]
   pub fn send(self, data: Result<T, E>) -> Result<(), Result<T, E>> {
     self.inner.send(data)
@@ -39,9 +35,9 @@ impl<T, E> Sender<T, E> {
   /// If you're calling this function from a context that does not have a task,
   /// then you can use the [`is_canceled`] API instead.
   ///
-  /// [`Sender`]: struct.Sender.html
-  /// [`Receiver`]: struct.Receiver.html
-  /// [`is_canceled`]: struct.Receiver.html#method.is_canceled
+  /// [`Sender`]: Sender
+  /// [`Receiver`]: super::Receiver
+  /// [`is_canceled`]: Sender::is_canceled
   #[inline(always)]
   pub fn poll_cancel(&mut self) -> Poll<(), ()> {
     self.inner.poll_cancel()
@@ -50,8 +46,8 @@ impl<T, E> Sender<T, E> {
   /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has gone
   /// away.
   ///
-  /// [`Sender`]: struct.Sender.html
-  /// [`Receiver`]: struct.Receiver.html
+  /// [`Sender`]: Sender
+  /// [`Receiver`]: super::Receiver
   #[inline(always)]
   pub fn is_canceled(&self) -> bool {
     self.inner.is_canceled()

@@ -3,21 +3,15 @@ use alloc::arc::Arc;
 use core::sync::atomic::Ordering::*;
 use sync::spsc::SpscInner;
 
-/// The sending-half of [`unit::channel`].
-///
-/// [`unit::channel`]: fn.channel.html
+/// The sending-half of [`unit::channel`](channel).
 pub struct Sender<E> {
   inner: Arc<Inner<E>>,
 }
 
-/// Error returned from [`Sender::send`].
-///
-/// [`Sender::send`]: struct.Sender.html#method.send
+/// Error returned from [`Sender::send`](Sender::send).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SendError {
-  /// The corresponding [`Receiver`] is dropped.
-  ///
-  /// [`Receiver`]: struct.Receiver.html
+  /// The corresponding [`Receiver`](Receiver) is dropped.
   Canceled,
   /// Counter overflow.
   Overflow,
@@ -30,8 +24,6 @@ impl<E> Sender<E> {
   }
 
   /// Sends a unit across the channel.
-  ///
-  /// [`Receiver`]: struct.Receiver.html
   #[inline(always)]
   pub fn send(&mut self) -> Result<(), SendError> {
     self.inner.send()
@@ -42,8 +34,6 @@ impl<E> Sender<E> {
   /// If the value is successfully enqueued, then `Ok(())` is returned. If the
   /// receiving end was dropped before this function was called, then `Err` is
   /// returned with the value provided.
-  ///
-  /// [`Receiver`]: struct.Receiver.html
   #[inline(always)]
   pub fn send_err(self, err: E) -> Result<(), E> {
     self.inner.send_err(err)
@@ -61,9 +51,9 @@ impl<E> Sender<E> {
   /// If you're calling this function from a context that does not have a task,
   /// then you can use the [`is_canceled`] API instead.
   ///
-  /// [`Sender`]: struct.Sender.html
-  /// [`Receiver`]: struct.Receiver.html
-  /// [`is_canceled`]: struct.Receiver.html#method.is_canceled
+  /// [`Sender`]: Sender
+  /// [`Receiver`]: super::Receiver
+  /// [`is_canceled`]: Sender::is_canceled
   #[inline(always)]
   pub fn poll_cancel(&mut self) -> Poll<(), ()> {
     self.inner.poll_cancel()
@@ -72,8 +62,8 @@ impl<E> Sender<E> {
   /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has gone
   /// away.
   ///
-  /// [`Sender`]: struct.Sender.html
-  /// [`Receiver`]: struct.Receiver.html
+  /// [`Sender`]: Sender
+  /// [`Receiver`]: super::Receiver
   #[inline(always)]
   pub fn is_canceled(&self) -> bool {
     self.inner.is_canceled()

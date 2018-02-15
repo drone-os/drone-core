@@ -1,8 +1,6 @@
 //! A single-producer, single-consumer channel for `()`.
 //!
-//! See [`unit::channel`] documentation for more details.
-//!
-//! [`unit::channel`]: fn.channel.html
+//! See [`unit::channel`](channel) documentation for more details.
 
 mod receiver;
 mod sender;
@@ -39,10 +37,10 @@ struct Inner<E> {
 /// Creates a new asynchronous channel, returning the receiver/sender halves.
 /// All units sent on the [`Sender`] will become available on the [`Receiver`].
 ///
-/// Only one [`Receiver`]/['Sender'] is supported.
+/// Only one [`Receiver`]/[`Sender`] is supported.
 ///
-/// [`Receiver`]: struct.Receiver.html
-/// [`Sender`]: struct.Sender.html
+/// [`Receiver`]: Receiver
+/// [`Sender`]: Sender
 #[inline]
 pub fn channel<E>() -> (Receiver<E>, Sender<E>) {
   let inner = Arc::new(Inner::new());

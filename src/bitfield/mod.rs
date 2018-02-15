@@ -62,9 +62,9 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   ///
   /// # Safety
   ///
-  /// `offset` must be less than the size of [`Bits`] in bits.
+  /// * `offset` must be less than the size of [`Bits`] in bits.
   ///
-  /// [`Bits`]: #associatedtype.Bits
+  /// [`Bits`]: Bitfield::Bits
   #[inline(always)]
   unsafe fn read_bit(&self, offset: Self::Bits) -> bool {
     !(self.bits() & bit_at(offset)).is_zero()
@@ -74,9 +74,9 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   ///
   /// # Safety
   ///
-  /// `offset` must be less than the size of [`Bits`] in bits.
+  /// * `offset` must be less than the size of [`Bits`] in bits.
   ///
-  /// [`Bits`]: #associatedtype.Bits
+  /// [`Bits`]: Bitfield::Bits
   #[inline(always)]
   unsafe fn set_bit(&mut self, offset: Self::Bits) {
     *self.bits_mut() = self.bits() | bit_at(offset);
@@ -86,9 +86,9 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   ///
   /// # Safety
   ///
-  /// `offset` must be less than the size of [`Bits`] in bits.
+  /// * `offset` must be less than the size of [`Bits`] in bits.
   ///
-  /// [`Bits`]: #associatedtype.Bits
+  /// [`Bits`]: Bitfield::Bits
   #[inline(always)]
   unsafe fn clear_bit(&mut self, offset: Self::Bits) {
     *self.bits_mut() = self.bits() & !bit_at(offset);
@@ -98,9 +98,9 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   ///
   /// # Safety
   ///
-  /// `offset` must be less than the size of [`Bits`] in bits.
+  /// * `offset` must be less than the size of [`Bits`] in bits.
   ///
-  /// [`Bits`]: #associatedtype.Bits
+  /// [`Bits`]: Bitfield::Bits
   #[inline(always)]
   unsafe fn toggle_bit(&mut self, offset: Self::Bits) {
     *self.bits_mut() = self.bits() ^ bit_at(offset);
@@ -114,7 +114,7 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   /// * `width + offset` must be less than or equal to the size of [`Bits`] in
   /// bits.
   ///
-  /// [`Bits`]: #associatedtype.Bits
+  /// [`Bits`]: Bitfield::Bits
   #[inline(always)]
   unsafe fn read_bits(
     &self,
@@ -137,7 +137,7 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   /// * `width + offset` must be less than or equal to the size of [`Bits`] in
   /// bits.
   ///
-  /// [`Bits`]: #associatedtype.Bits
+  /// [`Bits`]: Bitfield::Bits
   #[inline(always)]
   unsafe fn write_bits(
     &mut self,

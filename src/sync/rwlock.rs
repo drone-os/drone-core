@@ -1,9 +1,3 @@
-//! A reader-writer lock.
-//!
-//! See [`RwLock`] for more details.
-//!
-//! [`RwLock`]: struct.RwLock.html
-
 use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};
 use core::sync::atomic::AtomicUsize;
@@ -14,11 +8,8 @@ const NO_LOCK: usize = usize::min_value();
 
 /// A reader-writer lock.
 ///
-/// This lock supports only [`try_read`] and [`try_write`] method, and hence
-/// never blocks.
-///
-/// [`try_read`]: #method.try_read
-/// [`try_write`]: #method.try_write
+/// This lock supports only [`try_read`](RwLock::try_read) and
+/// [`try_write`](RwLock::try_write) methods, and hence never blocks.
 pub struct RwLock<T> {
   lock: AtomicUsize,
   data: UnsafeCell<T>,
@@ -27,10 +18,8 @@ pub struct RwLock<T> {
 /// RAII structure used to release the shared read access of a lock when
 /// dropped.
 ///
-/// This structure is created by the [`try_read`] method on [`RwLock`].
-///
-/// [`RwLock`]: struct.RwLock.html
-/// [`try_read`]: struct.RwLock.html#method.try_read
+/// This structure is created by the [`try_read`](RwLock::try_read) method on
+/// [`RwLock`](RwLock).
 #[must_use]
 pub struct RwLockReadGuard<'a, T: 'a> {
   lock: &'a RwLock<T>,
@@ -39,10 +28,8 @@ pub struct RwLockReadGuard<'a, T: 'a> {
 /// RAII structure used to release the exclusive write access of a lock when
 /// dropped.
 ///
-/// This structure is created by the [`try_write`] method on [`RwLock`].
-///
-/// [`RwLock`]: struct.RwLock.html
-/// [`try_write`]: struct.RwLock.html#method.try_write
+/// This structure is created by the [`try_write`](RwLock::try_write) method on
+/// [`RwLock`](RwLock).
 #[must_use]
 pub struct RwLockWriteGuard<'a, T: 'a> {
   lock: &'a RwLock<T>,

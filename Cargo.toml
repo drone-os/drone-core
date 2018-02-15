@@ -3,7 +3,7 @@ members = ["macros", "macros-core", "macros2", "macros2-core"]
 
 [package]
 name = "drone-core"
-version = "0.8.0"
+version = "0.8.0" # remember to update html_root_url
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = "Drone is a Hard Real-Time Operating System Framework."
 readme = "README.md"

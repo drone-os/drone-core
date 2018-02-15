@@ -4,26 +4,18 @@ use core::sync::atomic::Ordering::*;
 use futures::task;
 use sync::spsc::SpscInner;
 
-/// The receiving-half of [`oneshot::channel`].
-///
-/// [`oneshot::channel`]: fn.channel.html
+/// The receiving-half of [`oneshot::channel`](channel).
 #[must_use]
 pub struct Receiver<T, E> {
   inner: Arc<Inner<T, E>>,
 }
 
-/// Error returned from [`Receiver::poll`].
-///
-/// [`Receiver::poll`]: struct.Receiver.html#method.poll
+/// Error for `Future` implementation for [`Receiver`](Receiver).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecvError<E> {
-  /// The corresponding [`Sender`] is dropped.
-  ///
-  /// [`Sender`]: struct.Sender.html
+  /// The corresponding [`Sender`](Sender) is dropped.
   Canceled,
-  /// The corresponding [`Sender`] is completed with an error.
-  ///
-  /// [`Sender`]: struct.Sender.html
+  /// The corresponding [`Sender`](Sender) is completed with an error.
   Complete(E),
 }
 
@@ -33,10 +25,7 @@ impl<T, E> Receiver<T, E> {
     Self { inner }
   }
 
-  /// Gracefully close this [`Receiver`], preventing sending any future
-  /// messages.
-  ///
-  /// [`Receiver`]: struct.Receiver.html
+  /// Gracefully close this `Receiver`, preventing sending any future messages.
   #[inline(always)]
   pub fn close(&mut self) {
     self.inner.close_rx()

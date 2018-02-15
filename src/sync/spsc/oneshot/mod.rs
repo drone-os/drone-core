@@ -1,8 +1,6 @@
 //! A single-producer, single-consumer oneshot channel.
 //!
-//! See [`oneshot::channel`] documentation for more details.
-//!
-//! [`oneshot::channel`]: fn.channel.html
+//! See [`oneshot::channel`](channel) documentation for more.
 
 mod receiver;
 mod sender;
@@ -30,10 +28,10 @@ struct Inner<T, E> {
 /// Creates a new asynchronous channel, returning the receiver/sender halves.
 /// The data sent on the [`Sender`] will become available on the [`Receiver`].
 ///
-/// Only one [`Receiver`]/['Sender'] is supported.
+/// Only one [`Receiver`]/[`Sender`] is supported.
 ///
-/// [`Receiver`]: struct.Receiver.html
-/// [`Sender`]: struct.Sender.html
+/// [`Receiver`]: Receiver
+/// [`Sender`]: Sender
 #[inline]
 pub fn channel<T, E>() -> (Receiver<T, E>, Sender<T, E>) {
   let inner = Arc::new(Inner::new());

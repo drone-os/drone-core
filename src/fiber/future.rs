@@ -4,9 +4,7 @@ use thread::prelude::*;
 
 /// A future for result from another thread.
 ///
-/// This future can be created by the instance of [`Thread`].
-///
-/// [`Thread`]: ../trait.Thread.html
+/// This future can be created by the instance of [`Thread`](::thread::Thread).
 #[must_use]
 pub struct FiberFuture<R, E> {
   rx: Receiver<R, E>,

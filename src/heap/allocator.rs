@@ -6,9 +6,7 @@ use core::slice::SliceIndex;
 /// A lock-free allocator that composes multiple memory pools.
 ///
 /// An `Allocator` maintains a sort-order of its pools, so they can be
-/// effectively accessed with [`binary_search`].
-///
-/// [`binary_search`]: trait.Allocator.html#method.binary_search
+/// effectively accessed with [`binary_search`](Allocator::binary_search).
 pub trait Allocator {
   /// Number of memory pools.
   const POOL_COUNT: usize;

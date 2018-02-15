@@ -1,7 +1,5 @@
-/// Returns a result of the future. Should be used inside [`AsyncFuture`]
-/// context.
-///
-/// [`AsyncFuture`]: struct.AsyncFuture.html
+/// Returns a result of the future. Should be used inside
+/// [`AsyncFuture`](AsyncFuture) context.
 #[macro_export]
 macro_rules! await {
   ($future:expr) => {
@@ -26,10 +24,8 @@ macro_rules! await {
   }
 }
 
-/// Asynchronously iterates over a stream. Should be used inside [`AsyncFuture`]
-/// context.
-///
-/// [`AsyncFuture`]: struct.AsyncFuture.html
+/// Asynchronously iterates over a stream. Should be used inside
+/// [`AsyncFuture`](AsyncFuture) context.
 #[macro_export]
 macro_rules! await_for {
   ($pat:pat in $expr:expr => $block:block) => {

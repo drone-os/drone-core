@@ -49,7 +49,7 @@ impl Pool {
   /// Resulting location of the pool should be the sum of `offset` argument
   /// provided to the current method and `start` argument for [`init`] method.
   ///
-  /// [`init`]: struct.Pool.html#method.init
+  /// [`init`]: Pool::init
   #[inline(always)]
   pub const fn new(offset: usize, size: usize, capacity: usize) -> Self {
     Self {

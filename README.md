@@ -16,7 +16,7 @@ Please also refer the installation notes of a corresponding Drone's
 
 ## Platforms
 
-* [ARM Cortex-M](https://github.com/drone-os/drone-cortex-m)
+* [STM32](https://github.com/drone-os/drone-stm32)
 
 ## Demo Applications
 

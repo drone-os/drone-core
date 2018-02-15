@@ -1,8 +1,6 @@
 //! A single-producer, single-consumer channel based on a ring buffer.
 //!
-//! See [`ring::channel`] documentation for more details.
-//!
-//! [`ring::channel`]: fn.channel.html
+//! See [`ring::channel`](channel) documentation for more details.
 
 mod receiver;
 mod sender;
@@ -47,10 +45,10 @@ struct Inner<T, E> {
 /// All data sent on the [`Sender`] will become available on the [`Receiver`] in
 /// the same order as it was sent.
 ///
-/// Only one [`Receiver`]/['Sender'] is supported.
+/// Only one [`Receiver`]/[`Sender`] is supported.
 ///
-/// [`Receiver`]: struct.Receiver.html
-/// [`Sender`]: struct.Sender.html
+/// [`Receiver`]: Receiver
+/// [`Sender`]: Sender
 #[inline]
 pub fn channel<T, E>(capacity: usize) -> (Receiver<T, E>, Sender<T, E>) {
   let inner = Arc::new(Inner::new(capacity));

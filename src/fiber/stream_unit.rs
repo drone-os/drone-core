@@ -3,9 +3,7 @@ use thread::prelude::*;
 
 /// A stream of results from another thread.
 ///
-/// This stream can be created by the instance of [`Thread`].
-///
-/// [`Thread`]: ../trait.Thread.html
+/// This stream can be created by the instance of [`Thread`](::thread::Thread).
 #[must_use]
 pub struct FiberStreamUnit<E> {
   rx: Receiver<E>,

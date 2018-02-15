@@ -12,7 +12,7 @@
 //!
 //! # Platforms
 //!
-//! * [ARM Cortex-M](https://github.com/drone-os/drone-cortex-m)
+//! * [STM32](https://github.com/drone-os/drone-stm32)
 //!
 //! # Demo Applications
 //!
@@ -51,6 +51,7 @@
 #![feature(unreachable)]
 #![feature(untagged_unions)]
 #![warn(missing_docs)]
+#![doc(html_root_url = "https://docs.rs/drone-core/0.8.0")]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
