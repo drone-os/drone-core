@@ -3,12 +3,13 @@
 //! See `drone` documentation for details.
 
 #![warn(missing_docs)]
+#![doc(html_root_url = "https://docs.rs/drone-macros-core/0.8.0")]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 #![cfg_attr(feature = "clippy", allow(precedence))]
 
 #[macro_use]
-extern crate failure;
+extern crate failure_dup as failure;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]

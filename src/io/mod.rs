@@ -75,4 +75,4 @@ mod macros;
 mod responder;
 
 pub use self::future::{Future, Poll};
-pub use self::responder::{NoResp, Responder};
+pub use self::responder::{NoResp, PlainResp, Responder};

@@ -10,6 +10,9 @@ pub trait Responder<'s, S: 's> {
 /// A responder, which do nothing and returns `()`.
 pub struct NoResp;
 
+/// A responder, which simply returns its contained value.
+pub struct PlainResp<T>(pub T);
+
 impl<'s, T, S, O> Responder<'s, S> for T
 where
   T: FnOnce(&'s S) -> O,
@@ -28,4 +31,13 @@ impl<'s, S: 's> Responder<'s, S> for NoResp {
 
   #[inline(always)]
   fn respond(self, _sess: &'s S) {}
+}
+
+impl<'s, S: 's, T> Responder<'s, S> for PlainResp<T> {
+  type Output = T;
+
+  #[inline(always)]
+  fn respond(self, _sess: &'s S) -> T {
+    self.0
+  }
 }

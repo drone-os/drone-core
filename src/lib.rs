@@ -61,6 +61,9 @@ extern crate alloc;
 extern crate drone_core_macros;
 #[macro_reexport(Bitfield)]
 extern crate drone_core_macros2;
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
 extern crate futures;
 
 #[cfg(feature = "std")]

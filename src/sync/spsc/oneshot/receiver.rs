@@ -11,11 +11,13 @@ pub struct Receiver<T, E> {
 }
 
 /// Error for `Future` implementation for [`Receiver`](Receiver).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Fail)]
 pub enum RecvError<E> {
   /// The corresponding [`Sender`](Sender) is dropped.
+  #[fail(display = "Sender is dropped.")]
   Canceled,
-  /// The corresponding [`Sender`](Sender) is completed with an error.
+  /// The corresponding [`Sender`](Sender) completed with an error.
+  #[fail(display = "Received an error: {}", _0)]
   Complete(E),
 }
 

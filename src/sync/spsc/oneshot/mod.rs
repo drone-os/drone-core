@@ -115,8 +115,8 @@ mod tests {
     COUNTER.with(|counter| {
       counter.0.store(0, Ordering::Relaxed);
       assert_eq!(
-        executor.poll_future_notify(counter, 0),
-        Ok(Async::Ready(314))
+        executor.poll_future_notify(counter, 0).unwrap(),
+        Async::Ready(314)
       );
       assert_eq!(counter.0.load(Ordering::Relaxed), 0);
     });
@@ -128,11 +128,14 @@ mod tests {
     let mut executor = executor::spawn(rx);
     COUNTER.with(|counter| {
       counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(executor.poll_future_notify(counter, 0), Ok(Async::NotReady));
+      assert_eq!(
+        executor.poll_future_notify(counter, 0).unwrap(),
+        Async::NotReady
+      );
       assert_eq!(tx.send(Ok(314)), Ok(()));
       assert_eq!(
-        executor.poll_future_notify(counter, 0),
-        Ok(Async::Ready(314))
+        executor.poll_future_notify(counter, 0).unwrap(),
+        Async::Ready(314)
       );
       assert_eq!(counter.0.load(Ordering::Relaxed), 1);
     });

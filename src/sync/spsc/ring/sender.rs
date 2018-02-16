@@ -1,6 +1,5 @@
 use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
 use alloc::arc::Arc;
-use core::fmt::{self, Debug};
 use core::ptr;
 use core::sync::atomic::Ordering::*;
 use sync::spsc::SpscInner;
@@ -11,6 +10,8 @@ pub struct Sender<T, E> {
 }
 
 /// Error returned from [`Sender::send`](Sender::send).
+#[derive(Debug, Fail)]
+#[fail(display = "{}", kind)]
 pub struct SendError<T> {
   /// Value which wasn't sent.
   pub value: T,
@@ -19,11 +20,13 @@ pub struct SendError<T> {
 }
 
 /// Kind of [`SendError`](SendError).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Fail)]
 pub enum SendErrorKind {
   /// The corresponding [`Receiver`](Receiver) is dropped.
+  #[fail(display = "Receiver is dropped.")]
   Canceled,
   /// Buffer overflow.
+  #[fail(display = "Channel buffer overflow.")]
   Overflow,
 }
 
@@ -190,19 +193,3 @@ impl<T> SendError<T> {
     SendError { value, kind }
   }
 }
-
-impl<T> Debug for SendError<T> {
-  #[inline(always)]
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    self.kind.fmt(f)
-  }
-}
-
-impl<T> PartialEq for SendError<T> {
-  #[inline(always)]
-  fn eq(&self, other: &Self) -> bool {
-    self.kind.eq(&other.kind)
-  }
-}
-
-impl<T> Eq for SendError<T> {}

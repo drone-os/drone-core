@@ -159,7 +159,7 @@ mod tests {
   #[test]
   fn send_sync() {
     let (rx, mut tx) = channel::<usize, ()>(10);
-    assert_eq!(tx.send(314), Ok(()));
+    assert_eq!(tx.send(314).unwrap(), ());
     drop(tx);
     let mut executor = executor::spawn(rx);
     COUNTER.with(|counter| {
@@ -183,7 +183,7 @@ mod tests {
     COUNTER.with(|counter| {
       counter.0.store(0, Ordering::Relaxed);
       assert_eq!(executor.poll_stream_notify(counter, 0), Ok(Async::NotReady));
-      assert_eq!(tx.send(314), Ok(()));
+      assert_eq!(tx.send(314).unwrap(), ());
       assert_eq!(
         executor.poll_stream_notify(counter, 0),
         Ok(Async::Ready(Some(314)))

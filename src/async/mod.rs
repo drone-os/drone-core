@@ -30,8 +30,8 @@
 //!   let mut executor = executor::spawn(plus_one(rx));
 //!   assert_eq!(tx.send(Ok(1)), Ok(()));
 //!   assert_eq!(
-//!     executor.poll_future_notify(&NOTIFY_NOP, 0),
-//!     Ok(Async::Ready(2))
+//!     executor.poll_future_notify(&NOTIFY_NOP, 0).unwrap(),
+//!     Async::Ready(2)
 //!   );
 //! }
 //! ```
@@ -72,8 +72,8 @@
 //!   assert_eq!(tx.send_overwrite(5), Ok(()));
 //!   drop(tx);
 //!   assert_eq!(
-//!     executor.poll_future_notify(&NOTIFY_NOP, 0),
-//!     Ok(Async::Ready(12))
+//!     executor.poll_future_notify(&NOTIFY_NOP, 0).unwrap(),
+//!     Async::Ready(12)
 //!   );
 //! }
 //! ```

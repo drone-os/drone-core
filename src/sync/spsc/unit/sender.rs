@@ -9,11 +9,13 @@ pub struct Sender<E> {
 }
 
 /// Error returned from [`Sender::send`](Sender::send).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Fail)]
 pub enum SendError {
   /// The corresponding [`Receiver`](Receiver) is dropped.
+  #[fail(display = "Receiver is dropped.")]
   Canceled,
   /// Counter overflow.
+  #[fail(display = "Channel buffer overflow.")]
   Overflow,
 }
 

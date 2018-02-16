@@ -169,20 +169,23 @@ pub fn derive(input: TokenStream) -> TokenStream {
           let toggle_bit = Ident::new(&format!("toggle_{}", name), call_site);
           fields.push(quote! {
             #(#attrs)*
-            pub fn #set_bit(&mut self) {
+            pub fn #set_bit(&mut self) -> &mut Self {
               unsafe { self.set_bit(#offset as #bits) };
+              self
             }
           });
           fields.push(quote! {
             #(#attrs)*
-            pub fn #clear_bit(&mut self) {
+            pub fn #clear_bit(&mut self) -> &mut Self {
               unsafe { self.clear_bit(#offset as #bits) };
+              self
             }
           });
           fields.push(quote! {
             #(#attrs)*
-            pub fn #toggle_bit(&mut self) {
+            pub fn #toggle_bit(&mut self) -> &mut Self {
               unsafe { self.toggle_bit(#offset as #bits) };
+              self
             }
           });
         }
@@ -200,10 +203,11 @@ pub fn derive(input: TokenStream) -> TokenStream {
           let write_bits = Ident::new(&format!("write_{}", name), call_site);
           fields.push(quote! {
             #(#attrs)*
-            pub fn #write_bits(&mut self, bits: #bits) {
+            pub fn #write_bits(&mut self, bits: #bits) -> &mut Self {
               unsafe {
                 self.write_bits(#offset as #bits, #width as #bits, bits);
               }
+              self
             }
           });
         }

@@ -3,6 +3,7 @@
 //! See `drone` documentation for details.
 
 #![feature(proc_macro)]
+#![doc(html_root_url = "https://docs.rs/drone-core-macros2/0.8.0")]
 #![recursion_limit = "128"]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
