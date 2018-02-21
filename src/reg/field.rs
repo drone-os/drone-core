@@ -124,6 +124,24 @@ where
 
   /// Toggles the bit in memory.
   fn toggle_bit(&self);
+
+  /// An alias for [`set_bit`](WoWoRegFieldBit::set_bit).
+  #[inline(always)]
+  fn store_set(&self) {
+    self.set_bit();
+  }
+
+  /// An alias for [`clear_bit`](WoWoRegFieldBit::clear_bit).
+  #[inline(always)]
+  fn store_cleared(&self) {
+    self.clear_bit();
+  }
+
+  /// An alias for [`toggle_bit`](WoWoRegFieldBit::toggle_bit).
+  #[inline(always)]
+  fn store_toggled(&self) {
+    self.toggle_bit();
+  }
 }
 
 /// Multiple-bits register field that can read its value.
@@ -164,6 +182,15 @@ where
 {
   /// Sets the bit in memory.
   fn write_bits(&self, bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits);
+
+  /// An alias for [`write_bits`](WoWoRegFieldBits::write_bits).
+  #[inline(always)]
+  fn store_written(
+    &self,
+    bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits,
+  ) {
+    self.write_bits(bits);
+  }
 }
 
 impl<T, U> WoWoRegField<T> for U

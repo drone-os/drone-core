@@ -38,12 +38,10 @@ where
 
 /// A set of thread tokens.
 pub trait ThreadTokens {
-  /// Thread array.
-  type Thread: Thread;
-
-  /// Thread register tokens.
-  type Token;
-
   /// Creates a new set of thread tokens.
-  fn new(token: Self::Token) -> Self;
+  ///
+  /// # Safety
+  ///
+  /// Must be called no more than once.
+  unsafe fn new() -> Self;
 }

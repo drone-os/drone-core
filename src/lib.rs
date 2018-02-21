@@ -76,7 +76,6 @@ pub mod fiber;
 pub mod heap;
 pub mod io;
 pub mod mem;
-pub mod origin;
 pub mod prelude;
 pub mod reg;
 pub mod sync;

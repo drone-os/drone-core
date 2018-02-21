@@ -7,7 +7,7 @@ use thread::prelude::*;
 /// A thread-local storage of the task pointer.
 pub struct TaskCell(UnsafeCell<*mut u8>);
 
-/// Initialize the `futures` task system.
+/// Initializes the `futures` task system.
 ///
 /// # Safety
 ///

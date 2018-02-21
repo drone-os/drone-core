@@ -56,7 +56,7 @@ pub(crate) fn reg_tokens(input: TokenStream) -> Result<Tokens, Error> {
     }
 
     impl ::drone_core::reg::RegTokens for #name {
-      fn new(_origin: ::drone_core::origin::OriginToken) -> Self {
+      unsafe fn new() -> Self {
         Self {
           #(#impl_tokens)*
         }
@@ -100,7 +100,7 @@ fn parse_reg(
       pub #reg_name: #prefix::Reg<Srt>,
     },
     quote! {
-      #reg_name: unsafe { #prefix::Reg::new() },
+      #reg_name: #prefix::Reg::new(),
     },
   ))
 }
