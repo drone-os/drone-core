@@ -12,10 +12,10 @@ extern crate drone_core;
 #[allow(unused_imports)]
 use drone_core::prelude::*;
 
+use drone_core::fiber;
 use drone_core::thread::{thread_local, ThreadToken};
 use drone_core::thread::prelude::*;
 use std::marker::PhantomData;
-use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::atomic::AtomicI8;
 use std::sync::atomic::Ordering::*;
@@ -54,11 +54,9 @@ macro_rules! thread_number {
       const THREAD_NUMBER: usize = $position;
     }
 
-    impl<T: ThreadTag> Deref for $name<T> {
-      type Target = ThreadLocal;
-
-      fn deref(&self) -> &ThreadLocal {
-        self.as_thread()
+    impl<T: ThreadTag> AsRef<ThreadLocal> for $name<T> {
+      fn as_ref(&self) -> &ThreadLocal {
+        self.as_thd()
       }
     }
   }
@@ -81,7 +79,7 @@ fn fiber() {
   let inner = Counter(Arc::clone(&counter));
   unsafe {
     let thread = Thread0::<Ltt>::new();
-    thread.fiber(move || {
+    fiber::spawn(thread, move || {
       while inner.0.fetch_add(1, Relaxed) < 2 {
         yield;
       }
@@ -104,7 +102,7 @@ fn fiber_fn() {
   let inner = Counter(Arc::clone(&counter));
   unsafe {
     let thread = Thread1::<Ltt>::new();
-    thread.fiber_fn(move || {
+    fiber::spawn_fn(thread, move || {
       inner.0.fetch_add(1, Relaxed);
     });
     assert_eq!(counter.load(Relaxed), 0);

@@ -1,4 +1,5 @@
 use core::mem;
+use fiber::{spawn, Fiber, FiberState, YieldOption};
 use sync::spsc::oneshot::{channel, Receiver, RecvError};
 use thread::prelude::*;
 
@@ -11,31 +12,6 @@ pub struct FiberFuture<R, E> {
 }
 
 impl<R, E> FiberFuture<R, E> {
-  pub(crate) fn new<T, G>(thread: &T, mut gen: G) -> Self
-  where
-    T: Thread,
-    G: Generator<Yield = (), Return = Result<R, E>>,
-    G: Send + 'static,
-    R: Send + 'static,
-    E: Send + 'static,
-  {
-    let (rx, tx) = channel();
-    thread.fibers().add(move || loop {
-      if tx.is_canceled() {
-        break;
-      }
-      match gen.resume() {
-        Yielded(()) => {}
-        Complete(complete) => {
-          tx.send(complete).ok();
-          break;
-        }
-      }
-      yield;
-    });
-    Self { rx }
-  }
-
   /// Gracefully close this future, preventing sending any future messages.
   #[inline(always)]
   pub fn close(&mut self) {
@@ -54,4 +30,35 @@ impl<R, E> Future for FiberFuture<R, E> {
       RecvError::Canceled => unsafe { mem::unreachable() },
     })
   }
+}
+
+/// Spawns a new future fiber on the given `thread`.
+pub fn spawn_future<T, U, F, Y, R, E>(
+  thread: T,
+  mut fiber: F,
+) -> FiberFuture<R, E>
+where
+  T: AsRef<U>,
+  U: Thread,
+  F: Fiber<Input = (), Yield = Y, Return = Result<R, E>>,
+  F: Send + 'static,
+  Y: YieldOption,
+  R: Send + 'static,
+  E: Send + 'static,
+{
+  let (rx, tx) = channel();
+  spawn(thread, move || loop {
+    if tx.is_canceled() {
+      break;
+    }
+    match fiber.resume(()) {
+      FiberState::Yielded(_) => {}
+      FiberState::Complete(complete) => {
+        tx.send(complete).ok();
+        break;
+      }
+    }
+    yield;
+  });
+  FiberFuture { rx }
 }

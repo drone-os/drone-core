@@ -1,3 +1,5 @@
+use core::ops::{Generator, GeneratorState};
+
 /// A generator-based future.
 #[must_use]
 pub struct AsyncFuture<G, R, E>(G)
@@ -25,8 +27,8 @@ where
   #[inline(always)]
   fn poll(&mut self) -> Poll<R, E> {
     match self.0.resume() {
-      Yielded(()) => Ok(Async::NotReady),
-      Complete(complete) => complete.map(Async::Ready),
+      GeneratorState::Yielded(()) => Ok(Async::NotReady),
+      GeneratorState::Complete(complete) => complete.map(Async::Ready),
     }
   }
 }

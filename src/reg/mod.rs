@@ -43,10 +43,10 @@
 //! }
 //!
 //! fn main() {
-//!   let regs = unsafe { RegIndex::new() };
-//!   assert_eq!(size_of_val(&regs.stk_ctrl.enable), 0);
-//!   assert_eq!(size_of_val(&regs.stk_ctrl), 0);
-//!   assert_eq!(size_of_val(&regs), 0);
+//!   let reg = unsafe { RegIndex::new() };
+//!   assert_eq!(size_of_val(&reg.stk_ctrl.enable), 0);
+//!   assert_eq!(size_of_val(&reg.stk_ctrl), 0);
+//!   assert_eq!(size_of_val(&reg), 0);
 //! }
 //! ```
 

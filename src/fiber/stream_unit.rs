@@ -1,3 +1,4 @@
+use fiber::{spawn, Fiber, FiberState};
 use sync::spsc::unit::{channel, Receiver, SendError};
 use thread::prelude::*;
 
@@ -10,52 +11,6 @@ pub struct FiberStreamUnit<E> {
 }
 
 impl<E> FiberStreamUnit<E> {
-  pub(crate) fn new<T, G, O>(thread: &T, mut gen: G, overflow: O) -> Self
-  where
-    T: Thread,
-    G: Generator<Yield = Option<()>, Return = Result<Option<()>, E>>,
-    O: Fn() -> Result<(), E>,
-    G: Send + 'static,
-    E: Send + 'static,
-    O: Send + 'static,
-  {
-    let (rx, mut tx) = channel();
-    thread.fiber(move || loop {
-      if tx.is_canceled() {
-        break;
-      }
-      match gen.resume() {
-        Yielded(None) => {}
-        Yielded(Some(())) => match tx.send() {
-          Ok(()) => {}
-          Err(SendError::Canceled) => {
-            break;
-          }
-          Err(SendError::Overflow) => match overflow() {
-            Ok(()) => {}
-            Err(err) => {
-              tx.send_err(err).ok();
-              break;
-            }
-          },
-        },
-        Complete(Ok(None)) => {
-          break;
-        }
-        Complete(Ok(Some(()))) => {
-          tx.send().ok();
-          break;
-        }
-        Complete(Err(err)) => {
-          tx.send_err(err).ok();
-          break;
-        }
-      }
-      yield;
-    });
-    Self { rx }
-  }
-
   /// Gracefully close this stream, preventing sending any future messages.
   #[inline(always)]
   pub fn close(&mut self) {
@@ -71,4 +26,70 @@ impl<E> Stream for FiberStreamUnit<E> {
   fn poll(&mut self) -> Poll<Option<()>, E> {
     self.rx.poll()
   }
+}
+
+/// Spawns a new unit stream fiber on the given `thread`.
+pub fn spawn_stream<T, U, O, F, E>(
+  thread: T,
+  overflow: O,
+  mut fiber: F,
+) -> FiberStreamUnit<E>
+where
+  T: AsRef<U>,
+  U: Thread,
+  O: Fn() -> Result<(), E>,
+  F: Fiber<Input = (), Yield = Option<()>, Return = Result<Option<()>, E>>,
+  O: Send + 'static,
+  F: Send + 'static,
+  E: Send + 'static,
+{
+  let (rx, mut tx) = channel();
+  spawn(thread, move || loop {
+    if tx.is_canceled() {
+      break;
+    }
+    match fiber.resume(()) {
+      FiberState::Yielded(None) => {}
+      FiberState::Yielded(Some(())) => match tx.send() {
+        Ok(()) => {}
+        Err(SendError::Canceled) => {
+          break;
+        }
+        Err(SendError::Overflow) => match overflow() {
+          Ok(()) => {}
+          Err(err) => {
+            tx.send_err(err).ok();
+            break;
+          }
+        },
+      },
+      FiberState::Complete(Ok(None)) => {
+        break;
+      }
+      FiberState::Complete(Ok(Some(()))) => {
+        tx.send().ok();
+        break;
+      }
+      FiberState::Complete(Err(err)) => {
+        tx.send_err(err).ok();
+        break;
+      }
+    }
+    yield;
+  });
+  FiberStreamUnit { rx }
+}
+
+/// Spawns a new unit stream fiber on the given `thread`. Overflows will be
+/// ignored.
+#[inline(always)]
+pub fn spawn_stream_skip<T, U, F, E>(thread: T, fiber: F) -> FiberStreamUnit<E>
+where
+  T: AsRef<U>,
+  U: Thread,
+  F: Fiber<Input = (), Yield = Option<()>, Return = Result<Option<()>, E>>,
+  F: Send + 'static,
+  E: Send + 'static,
+{
+  spawn_stream(thread, || Ok(()), fiber)
 }

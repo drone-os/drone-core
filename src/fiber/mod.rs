@@ -1,101 +1,54 @@
-//! Stackless semicoroutines.
+//! Fibers.
 
+mod chain;
+mod closure;
 mod future;
+mod generator;
 mod stream_ring;
 mod stream_unit;
 
-pub use self::future::FiberFuture;
-pub use self::stream_ring::FiberStreamRing;
-pub use self::stream_unit::FiberStreamUnit;
+pub use self::chain::Chain;
+pub use self::closure::{new_fn, spawn_fn, FiberFn};
+pub use self::future::{spawn_future, FiberFuture};
+pub use self::generator::{new, spawn, FiberGen};
+pub use self::stream_ring::{spawn_stream_ring, spawn_stream_ring_overwrite,
+                            spawn_stream_ring_skip, FiberStreamRing};
+pub use self::stream_unit::{spawn_stream, spawn_stream_skip, FiberStreamUnit};
 
-use core::ptr;
-use core::sync::atomic::AtomicPtr;
-use core::sync::atomic::Ordering::*;
+/// Lightweight thread of execution.
+pub trait Fiber {
+  /// The type of [`resume`](Fiber::resume) input argument.
+  type Input;
 
-/// A lock-free stack of fibers.
-pub struct Fibers {
-  head: AtomicPtr<Node>,
+  /// The type of value this fiber yields.
+  type Yield;
+
+  /// The type of value this fiber returns.
+  type Return;
+
+  /// Resumes the execution of this fiber.
+  fn resume(
+    &mut self,
+    input: Self::Input,
+  ) -> FiberState<Self::Yield, Self::Return>;
 }
 
-struct Node {
-  fiber: Box<Generator<Yield = (), Return = ()>>,
-  next: *mut Node,
+/// A fiber suitable for [`Chain`](Chain).
+pub trait FiberRoot: Send + 'static {
+  /// Resumes the execution of this fiber. Returns `true` if it's still alive.
+  fn advance(&mut self) -> bool;
 }
 
-impl Fibers {
-  /// Creates an empty `Fibers`.
-  #[inline(always)]
-  pub const fn new() -> Self {
-    Self {
-      head: AtomicPtr::new(ptr::null_mut()),
-    }
-  }
-
-  pub(crate) fn add<G>(&self, gen: G)
-  where
-    G: Generator<Yield = (), Return = ()>,
-    G: 'static,
-  {
-    self.push(Node::new(gen));
-  }
-
-  pub(crate) fn drain(&mut self) {
-    let mut prev = ptr::null_mut();
-    let mut curr = self.head.load(Acquire);
-    while !curr.is_null() {
-      unsafe {
-        let next = (*curr).next;
-        match (*curr).fiber.resume() {
-          Yielded(()) => {
-            prev = curr;
-          }
-          Complete(()) => {
-            if prev.is_null() {
-              prev = self.head.compare_and_swap(curr, next, Relaxed);
-              if prev == curr {
-                prev = ptr::null_mut();
-              } else {
-                loop {
-                  prev = (*prev).next;
-                  if prev == curr {
-                    (*prev).next = next;
-                    break;
-                  }
-                }
-              }
-            } else {
-              (*prev).next = next;
-            }
-            drop(Box::from_raw(curr));
-          }
-        }
-        curr = next;
-      }
-    }
-  }
-
-  fn push(&self, node: Node) {
-    let node = Box::into_raw(Box::new(node));
-    loop {
-      let head = self.head.load(Relaxed);
-      unsafe { (*node).next = head };
-      if self.head.compare_and_swap(head, node, Release) == head {
-        break;
-      }
-    }
-  }
+/// The result of a fiber resumption.
+pub enum FiberState<Y, R> {
+  /// The fiber suspended with a value.
+  Yielded(Y),
+  /// The fiber completed with a return value.
+  Complete(R),
 }
 
-impl Node {
-  #[inline(always)]
-  fn new<G>(gen: G) -> Self
-  where
-    G: Generator<Yield = (), Return = ()>,
-    G: 'static,
-  {
-    Self {
-      fiber: Box::new(gen),
-      next: ptr::null_mut(),
-    }
-  }
-}
+/// One of `()` or `!`.
+pub trait YieldOption: Send + 'static {}
+
+impl YieldOption for () {}
+impl YieldOption for ! {}

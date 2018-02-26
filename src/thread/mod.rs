@@ -10,23 +10,15 @@ pub mod prelude;
 
 mod tag;
 mod task;
-mod token;
 
 pub use self::tag::*;
 pub use self::task::{init, TaskCell};
-pub use self::token::{ThreadToken, ThreadTokens};
 pub use drone_core_macros::thread_local;
 
-use fiber::{FiberFuture, FiberStreamRing, FiberStreamUnit, Fibers};
+use fiber::Chain;
 
 /// An index of the current thread.
 static mut CURRENT: usize = 0;
-
-/// Returns a static reference to the current thread.
-#[inline(always)]
-pub fn current<T: Thread>() -> &'static T {
-  unsafe { (*T::all()).get_unchecked(CURRENT) }
-}
 
 /// A thread interface.
 pub trait Thread: Sized + Sync + 'static {
@@ -34,152 +26,64 @@ pub trait Thread: Sized + Sync + 'static {
   fn all() -> *mut [Self];
 
   /// Returns a reference to the fibers stack.
-  fn fibers(&self) -> &Fibers;
+  fn fibers(&self) -> &Chain;
 
   /// Returns a mutable reference to the fibers stack.
-  fn fibers_mut(&mut self) -> &mut Fibers;
+  fn fibers_mut(&mut self) -> &mut Chain;
 
   /// Returns the cell for the task pointer.
   fn task(&self) -> &TaskCell;
 
   /// Returns a mutable reference to the stored index of the preempted thread.
   fn preempted(&mut self) -> &mut usize;
+}
 
-  /// Adds a new fiber to the stack. This method accepts a generator.
-  #[inline(always)]
-  fn fiber<G>(&self, gen: G)
-  where
-    G: Generator<Yield = (), Return = ()>,
-    G: Send + 'static,
-  {
-    self.fibers().add(gen);
+/// Thread token.
+pub trait ThreadToken<T>
+where
+  Self: Sized + Clone + Copy,
+  Self: Send + Sync + 'static,
+  Self: AsRef<<Self as ThreadToken<T>>::Thread>,
+  T: ThreadTag,
+{
+  /// Thread array.
+  type Thread: Thread;
+
+  /// A thread position within threads array.
+  const THREAD_NUMBER: usize;
+
+  /// A thread handler function, which should be passed to hardware.
+  ///
+  /// # Safety
+  ///
+  /// Must not be called concurrently.
+  unsafe extern "C" fn handler() {
+    let thread = (*Self::Thread::all()).get_unchecked_mut(Self::THREAD_NUMBER);
+    *thread.preempted() = CURRENT;
+    CURRENT = Self::THREAD_NUMBER;
+    thread.fibers_mut().drain();
+    CURRENT = *thread.preempted();
   }
 
-  /// Adds a new fiber to the stack. This method accepts a closure.
+  /// Returns a reference to the thread.
   #[inline(always)]
-  fn fiber_fn<F>(&self, f: F)
-  where
-    F: FnOnce(),
-    F: Send + 'static,
-  {
-    self.fibers().add(|| {
-      if false {
-        yield;
-      }
-      f()
-    });
+  fn as_thd(&self) -> &Self::Thread {
+    unsafe { (*Self::Thread::all()).get_unchecked(Self::THREAD_NUMBER) }
   }
+}
 
-  /// Adds a new fiber to the stack. Returns a `Future` of the fiber's return
-  /// value. This method accepts a generator.
-  #[inline(always)]
-  fn future<G, R, E>(&self, gen: G) -> FiberFuture<R, E>
-  where
-    G: Generator<Yield = (), Return = Result<R, E>>,
-    G: Send + 'static,
-    R: Send + 'static,
-    E: Send + 'static,
-  {
-    FiberFuture::new(self, gen)
-  }
+/// A set of thread tokens.
+pub trait ThreadTokens {
+  /// Creates a new set of thread tokens.
+  ///
+  /// # Safety
+  ///
+  /// Must be called no more than once.
+  unsafe fn new() -> Self;
+}
 
-  /// Adds a new fiber to the stack. Returns a `Future` of the fiber's return
-  /// value. This method accepts a closure.
-  #[inline(always)]
-  fn future_fn<F, R, E>(&self, f: F) -> FiberFuture<R, E>
-  where
-    F: FnOnce() -> Result<R, E>,
-    F: Send + 'static,
-    R: Send + 'static,
-    E: Send + 'static,
-  {
-    FiberFuture::new(self, || {
-      if false {
-        yield;
-      }
-      f()
-    })
-  }
-
-  /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
-  /// values. If `overflow` returns `Ok(())`, current value will be skipped.
-  /// This method only accepts `()` as values.
-  #[inline(always)]
-  fn stream<G, E, O>(&self, overflow: O, gen: G) -> FiberStreamUnit<E>
-  where
-    G: Generator<Yield = Option<()>, Return = Result<Option<()>, E>>,
-    O: Fn() -> Result<(), E>,
-    G: Send + 'static,
-    E: Send + 'static,
-    O: Send + 'static,
-  {
-    FiberStreamUnit::new(self, gen, overflow)
-  }
-
-  /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
-  /// values. Values will be skipped on overflow. This method only accepts `()`
-  /// as values.
-  #[inline(always)]
-  fn stream_skip<G, E>(&self, gen: G) -> FiberStreamUnit<E>
-  where
-    G: Generator<Yield = Option<()>, Return = Result<Option<()>, E>>,
-    G: Send + 'static,
-    E: Send + 'static,
-  {
-    FiberStreamUnit::new(self, gen, || Ok(()))
-  }
-
-  /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
-  /// values. If `overflow` returns `Ok(())`, currenct value will be skipped.
-  #[inline(always)]
-  fn stream_ring<G, R, E, O>(
-    &self,
-    capacity: usize,
-    overflow: O,
-    gen: G,
-  ) -> FiberStreamRing<R, E>
-  where
-    G: Generator<Yield = Option<R>, Return = Result<Option<R>, E>>,
-    O: Fn(R) -> Result<(), E>,
-    G: Send + 'static,
-    R: Send + 'static,
-    E: Send + 'static,
-    O: Send + 'static,
-  {
-    FiberStreamRing::new(self, capacity, gen, overflow)
-  }
-
-  /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
-  /// values. New values will be skipped on overflow.
-  #[inline(always)]
-  fn stream_ring_skip<G, R, E>(
-    &self,
-    capacity: usize,
-    gen: G,
-  ) -> FiberStreamRing<R, E>
-  where
-    G: Generator<Yield = Option<R>, Return = Result<Option<R>, E>>,
-    G: Send + 'static,
-    R: Send + 'static,
-    E: Send + 'static,
-  {
-    FiberStreamRing::new(self, capacity, gen, |_| Ok(()))
-  }
-
-  /// Adds a new fiber to the stack. Returns a `Stream` of fiber's yielded
-  /// values. Old values will be overwritten on overflow.
-  #[inline(always)]
-  fn stream_ring_overwrite<G, R, E>(
-    &self,
-    capacity: usize,
-    gen: G,
-  ) -> FiberStreamRing<R, E>
-  where
-    G: Generator<Yield = Option<R>, Return = Result<Option<R>, E>>,
-    G: Send + 'static,
-    R: Send + 'static,
-    E: Send + 'static,
-  {
-    FiberStreamRing::new_overwrite(self, capacity, gen)
-  }
+/// Returns a static reference to the current thread.
+#[inline(always)]
+pub fn current<T: Thread>() -> &'static T {
+  unsafe { (*T::all()).get_unchecked(CURRENT) }
 }

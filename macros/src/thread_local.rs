@@ -89,12 +89,12 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
   let field_name = &field_name;
 
   Ok(quote! {
-    use ::drone_core::fiber::Fibers;
+    use ::drone_core::fiber::Chain;
     use ::drone_core::thread::TaskCell;
 
     #(#attrs)*
     pub struct #name {
-      fibers: Fibers,
+      fibers: Chain,
       task: TaskCell,
       preempted: usize,
       #(
@@ -109,7 +109,7 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
       #[inline(always)]
       pub const fn new(_index: usize) -> Self {
         Self {
-          fibers: Fibers::new(),
+          fibers: Chain::new(),
           task: TaskCell::new(),
           preempted: 0,
           #(#field_name: { #(#field_init)* }),*
@@ -124,12 +124,12 @@ pub(crate) fn thread_local(input: TokenStream) -> Result<Tokens, Error> {
       }
 
       #[inline(always)]
-      fn fibers(&self) -> &Fibers {
+      fn fibers(&self) -> &Chain {
         &self.fibers
       }
 
       #[inline(always)]
-      fn fibers_mut(&mut self) -> &mut Fibers {
+      fn fibers_mut(&mut self) -> &mut Chain {
         &mut self.fibers
       }
 
