@@ -26,13 +26,13 @@ static mut THREADS: [ThreadLocal; 2] =
 thread_local! {
   /// Test doc attribute
   #[doc = "test attribute"]
-  ThreadLocal;
-  THREADS;
+  pub struct ThreadLocal;
+  extern static THREADS;
 
   #[allow(dead_code)]
-  pub foo: usize = { 0 }
+  pub foo: usize = 0;
   #[allow(dead_code)]
-  bar: isize = { 1 - 2 }
+  bar: isize = 1 - 2;
 }
 
 macro_rules! thread_number {

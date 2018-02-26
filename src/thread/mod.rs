@@ -13,7 +13,7 @@ mod task;
 
 pub use self::tag::*;
 pub use self::task::{init, TaskCell};
-pub use drone_core_macros::thread_local;
+pub use drone_core_macros2::thread_local;
 
 use fiber::Chain;
 

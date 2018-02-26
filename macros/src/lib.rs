@@ -23,7 +23,6 @@ extern crate syn;
 mod heap;
 mod reg_mappings;
 mod reg_tokens;
-mod thread_local;
 
 use proc_macro::TokenStream;
 
@@ -43,10 +42,4 @@ pub fn reg_mappings(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn reg_tokens(input: TokenStream) -> TokenStream {
   tokens!(reg_tokens::reg_tokens(input))
-}
-
-#[doc(hidden)]
-#[proc_macro]
-pub fn thread_local(input: TokenStream) -> TokenStream {
-  tokens!(thread_local::thread_local(input))
 }

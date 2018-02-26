@@ -14,7 +14,7 @@ struct BitField {
   write: bool,
 }
 
-pub fn derive(input: TokenStream) -> TokenStream {
+pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let call_site = Span::call_site();
   let input = parse::<DeriveInput>(input).unwrap();
   let name = input.ident;

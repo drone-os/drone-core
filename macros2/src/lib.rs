@@ -1,6 +1,6 @@
 //! Drone procedural macros.
 //!
-//! See `drone` documentation for details.
+//! See `drone-core` documentation for details.
 
 #![feature(proc_macro)]
 #![doc(html_root_url = "https://docs.rs/drone-core-macros2/0.8.0")]
@@ -16,13 +16,20 @@ extern crate proc_macro;
 extern crate proc_macro2;
 #[macro_use]
 extern crate quote;
+#[macro_use]
 extern crate syn;
 
 mod bitfield;
+mod thread_local;
 
 use proc_macro::TokenStream;
 
 #[proc_macro_derive(Bitfield, attributes(bitfield))]
 pub fn derive_bitfield(input: TokenStream) -> TokenStream {
-  bitfield::derive(input)
+  bitfield::proc_macro_derive(input)
+}
+
+#[proc_macro]
+pub fn thread_local(input: TokenStream) -> TokenStream {
+  thread_local::proc_macro(input)
 }
