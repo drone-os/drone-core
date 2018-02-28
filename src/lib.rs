@@ -83,7 +83,7 @@ pub mod reg;
 pub mod sync;
 pub mod thread;
 
-pub use drone_core_macros::heap;
+pub use drone_core_macros2::{heap, thread};
 
 #[prelude_import]
 #[allow(unused_imports)]

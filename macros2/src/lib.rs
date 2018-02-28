@@ -4,11 +4,12 @@
 
 #![feature(proc_macro)]
 #![doc(html_root_url = "https://docs.rs/drone-core-macros2/0.8.0")]
-#![recursion_limit = "128"]
+#![recursion_limit = "256"]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 #![cfg_attr(feature = "clippy", allow(precedence))]
 
+#[macro_use]
 extern crate drone_macros2_core;
 #[macro_use]
 extern crate if_chain;
@@ -20,7 +21,8 @@ extern crate quote;
 extern crate syn;
 
 mod bitfield;
-mod thread_local;
+mod heap;
+mod thread;
 
 use proc_macro::TokenStream;
 
@@ -30,6 +32,11 @@ pub fn derive_bitfield(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn thread_local(input: TokenStream) -> TokenStream {
-  thread_local::proc_macro(input)
+pub fn heap(input: TokenStream) -> TokenStream {
+  heap::proc_macro(input)
+}
+
+#[proc_macro]
+pub fn thread(input: TokenStream) -> TokenStream {
+  thread::proc_macro(input)
 }

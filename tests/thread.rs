@@ -12,21 +12,20 @@ extern crate drone_core;
 #[allow(unused_imports)]
 use drone_core::prelude::*;
 
-use drone_core::fiber;
-use drone_core::thread::{thread_local, ThreadToken};
+use drone_core::{fiber, thread};
+use drone_core::thread::ThdToken;
 use drone_core::thread::prelude::*;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::AtomicI8;
 use std::sync::atomic::Ordering::*;
 
-static mut THREADS: [ThreadLocal; 2] =
-  [ThreadLocal::new(0), ThreadLocal::new(1)];
+static mut THREADS: [Thd; 2] = [Thd::new(0), Thd::new(1)];
 
-thread_local! {
+thread! {
   /// Test doc attribute
   #[doc = "test attribute"]
-  pub struct ThreadLocal;
+  pub struct Thd;
   extern static THREADS;
 
   #[allow(dead_code)]
@@ -38,24 +37,24 @@ thread_local! {
 macro_rules! thread_number {
   ($name:ident, $position:expr) => {
     #[derive(Clone, Copy)]
-    struct $name<T: ThreadTag> {
+    struct $name<T: ThdTag> {
       _tag: PhantomData<T>,
     }
 
-    impl<T: ThreadTag> $name<T> {
+    impl<T: ThdTag> $name<T> {
       unsafe fn new() -> Self {
         Self { _tag: PhantomData }
       }
     }
 
-    impl<T: ThreadTag> ThreadToken<T> for $name<T> {
-      type Thread = ThreadLocal;
+    impl<T: ThdTag> ThdToken<T> for $name<T> {
+      type Thd = Thd;
 
-      const THREAD_NUMBER: usize = $position;
+      const THD_NUM: usize = $position;
     }
 
-    impl<T: ThreadTag> AsRef<ThreadLocal> for $name<T> {
-      fn as_ref(&self) -> &ThreadLocal {
+    impl<T: ThdTag> AsRef<Thd> for $name<T> {
+      fn as_ref(&self) -> &Thd {
         self.as_thd()
       }
     }

@@ -1,137 +1,145 @@
+use drone_macros2_core::emit_err;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::{parse, Attribute, Data, DeriveInput, Fields, Ident, Index, Lit,
-          Meta, NestedMeta, PathArguments, Type};
-use syn::punctuated::Pair;
+use syn::{parse, Data, DeriveInput, Fields, Ident, Index, IntSuffix, LitInt,
+          LitStr, PathArguments, Type};
+use syn::punctuated::{Pair, Punctuated};
 use syn::spanned::Spanned;
+use syn::synom::Synom;
 
-struct BitField {
-  name: Ident,
-  offset: u64,
-  width: Option<u64>,
-  doc: Option<String>,
-  read: bool,
-  write: bool,
+#[derive(Default)]
+struct Bitfield {
+  fields: Vec<Field>,
+  default: Option<LitInt>,
+}
+
+struct Field {
+  ident: Ident,
+  mode: Mode,
+  offset: LitInt,
+  width: Option<LitInt>,
+  doc: Option<LitStr>,
+}
+
+enum Mode {
+  Read,
+  ReadWrite,
+  Write,
+}
+
+impl Synom for Bitfield {
+  named!(parse -> Self, do_parse!(
+    parens: parens!(do_parse!(
+      fields: call!(Punctuated::<Field, Token![,]>::parse_separated) >>
+      default: option!(do_parse!(
+        cond!(!fields.is_empty(), punct!(,)) >>
+        keyword!(default) >>
+        punct!(=) >>
+        default: syn!(LitInt) >>
+        (default)
+      )) >>
+      option!(punct!(,)) >>
+      (Bitfield {
+        fields: fields.into_iter().collect(),
+        default,
+      })
+    )) >>
+    (parens.1)
+  ));
+}
+
+impl Synom for Field {
+  named!(parse -> Self, do_parse!(
+    ident: syn!(Ident) >>
+    parens: parens!(do_parse!(
+      mode: syn!(Mode) >>
+      punct!(,) >>
+      offset: syn!(LitInt) >>
+      width: option!(do_parse!(
+        punct!(,) >>
+        width: syn!(LitInt) >>
+        (width)
+      )) >>
+      doc: option!(do_parse!(
+        punct!(,) >>
+        doc: syn!(LitStr) >>
+        (doc)
+      )) >>
+      (Field { ident, mode, offset, width, doc })
+    )) >>
+    (parens.1)
+  ));
+}
+
+impl Synom for Mode {
+  named!(parse -> Self, do_parse!(
+    ident: syn!(Ident) >>
+    mode: switch!(value!(ident.as_ref()),
+      "r" => value!(Mode::Read) |
+      "rw" => value!(Mode::ReadWrite) |
+      "w" => value!(Mode::Write) |
+      _ => reject!()
+    ) >>
+    (mode)
+  ));
+}
+
+impl Mode {
+  fn is_read(&self) -> bool {
+    match *self {
+      Mode::Read | Mode::ReadWrite => true,
+      Mode::Write => false,
+    }
+  }
+
+  fn is_write(&self) -> bool {
+    match *self {
+      Mode::Read => false,
+      Mode::ReadWrite | Mode::Write => true,
+    }
+  }
 }
 
 pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
-  let call_site = Span::call_site();
+  let (def_site, call_site) = (Span::def_site(), Span::call_site());
   let input = parse::<DeriveInput>(input).unwrap();
-  let name = input.ident;
+  let input_span = input.span();
+  let DeriveInput {
+    ident, attrs, data, ..
+  } = input;
   let var = quote!(self);
   let zero_index = Index {
     index: 0,
     span: call_site,
   };
   let access = quote_spanned!(call_site => #var.#zero_index);
-  let (mut default, mut fields) = (None, Vec::new());
-  for attr in &input.attrs {
+  let bitfield = attrs.into_iter().find(|attr| {
     if_chain! {
       if attr.path.leading_colon.is_none();
       if let Some(Pair::End(x)) = attr.path.segments.first();
       if let PathArguments::None = x.arguments;
       if x.ident == "bitfield";
-      then {
-        if let Some(Meta::List(x)) = attr.interpret_meta() {
-          for x in x.nested.iter() {
-            if let &NestedMeta::Meta(ref x) = x {
-              match x {
-                &Meta::NameValue(ref x) => {
-                  if x.ident == "default" {
-                    if default.is_none() {
-                      let lit = &x.lit;
-                      default = Some(quote!(#lit));
-                    } else {
-                      duplicate_attr(attr, x.ident);
-                    }
-                  }
-                }
-                &Meta::List(ref x) if x.nested.len() > 1 => {
-                  let offset;
-                  let (mut width, mut doc) = (None, None);
-                  let (mut read, mut write) = (false, false);
-                  if let NestedMeta::Meta(Meta::Word(x)) = x.nested[0] {
-                    if x == "rw" {
-                      read = true;
-                      write = true;
-                    } else if x == "r" {
-                      read = true;
-                    } else if x == "w" {
-                      write = true;
-                    } else {
-                      invalid_attr(attr);
-                      continue;
-                    }
-                  } else {
-                    invalid_attr(attr);
-                    continue;
-                  }
-                  if let NestedMeta::Literal(Lit::Int(ref x)) = x.nested[1] {
-                    offset = x.value()
-                  } else {
-                    invalid_attr(attr);
-                    continue;
-                  }
-                  if x.nested.len() > 2 {
-                    match x.nested[2] {
-                      NestedMeta::Literal(Lit::Int(ref x)) => {
-                        width = Some(x.value());
-                      }
-                      NestedMeta::Literal(Lit::Str(ref x)) => {
-                        doc = Some(x.value());
-                      }
-                      _ => {
-                        invalid_attr(attr);
-                        continue;
-                      }
-                    }
-                  }
-                  if x.nested.len() > 3 {
-                    if_chain! {
-                      if x.nested.len() == 4 && doc.is_none();
-                      if let NestedMeta::Literal(Lit::Str(ref x)) = x.nested[3];
-                      then {
-                        doc = Some(x.value());
-                      } else {
-                        invalid_attr(attr);
-                        continue;
-                      }
-                    }
-                  }
-                  fields.push(BitField {
-                    name: x.ident,
-                    offset,
-                    width,
-                    doc,
-                    read,
-                    write,
-                  });
-                }
-                _ => {
-                  invalid_attr(attr);
-                }
-              }
-            } else {
-              invalid_attr(attr);
-            }
-          }
-        } else {
-          invalid_attr(attr);
-        }
-      }
+      then { true } else { false }
     }
-  }
-  let default = default.unwrap_or_else(|| quote!(0));
+  });
+  let Bitfield { fields, default } = match bitfield {
+    Some(attr) => try_parse2!(attr.span(), attr.tts),
+    None => Bitfield::default(),
+  };
+  let default =
+    default.unwrap_or_else(|| LitInt::new(0, IntSuffix::None, def_site));
   let bits = if_chain! {
-    if let Data::Struct(ref x) = input.data;
-    if let Fields::Unnamed(ref x) = x.fields;
-    if let Some(Pair::End(x)) = x.unnamed.first();
-    if let Type::Path(ref x) = x.ty;
+    if let Data::Struct(x) = data;
+    if let Fields::Unnamed(mut x) = x.fields;
+    if let Some(Pair::End(x)) = x.unnamed.pop();
+    if let Type::Path(x) = x.ty;
     then {
       x
     } else {
-      invalid_struct(&input);
-      return TokenStream::empty();
+      return emit_err(
+        input_span,
+        "Bitfield can be derived only from a tuple struct with one field",
+      );
     }
   };
 
@@ -139,23 +147,23 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     .into_iter()
     .flat_map(|field| {
       let mut fields = Vec::new();
-      let BitField {
-        name,
+      let Field {
+        ident,
+        mode,
         offset,
         width,
         doc,
-        read,
-        write,
       } = field;
-      let width = width.unwrap_or(1);
+      let width =
+        width.unwrap_or_else(|| LitInt::new(1, IntSuffix::None, def_site));
       let mut attrs = vec![quote!(#[inline(always)])];
       if let Some(doc) = doc {
         attrs.push(quote!(#[doc = #doc]));
       }
       let attrs = &attrs;
-      if width == 1 {
-        if read {
-          let read_bit = Ident::new(&format!("{}", name), call_site);
+      if width.value() == 1 {
+        if mode.is_read() {
+          let read_bit = Ident::new(&format!("{}", ident), call_site);
           fields.push(quote! {
             #(#attrs)*
             pub fn #read_bit(&self) -> bool {
@@ -163,10 +171,10 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
             }
           });
         }
-        if write {
-          let set_bit = Ident::new(&format!("set_{}", name), call_site);
-          let clear_bit = Ident::new(&format!("clear_{}", name), call_site);
-          let toggle_bit = Ident::new(&format!("toggle_{}", name), call_site);
+        if mode.is_write() {
+          let set_bit = Ident::new(&format!("set_{}", ident), call_site);
+          let clear_bit = Ident::new(&format!("clear_{}", ident), call_site);
+          let toggle_bit = Ident::new(&format!("toggle_{}", ident), call_site);
           fields.push(quote! {
             #(#attrs)*
             pub fn #set_bit(&mut self) -> &mut Self {
@@ -190,8 +198,8 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
           });
         }
       } else {
-        if read {
-          let read_bits = Ident::new(&format!("{}", name), call_site);
+        if mode.is_read() {
+          let read_bits = Ident::new(&format!("{}", ident), call_site);
           fields.push(quote! {
             #(#attrs)*
             pub fn #read_bits(&self) -> #bits {
@@ -199,8 +207,8 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
             }
           });
         }
-        if write {
-          let write_bits = Ident::new(&format!("write_{}", name), call_site);
+        if mode.is_write() {
+          let write_bits = Ident::new(&format!("write_{}", ident), call_site);
           fields.push(quote! {
             #(#attrs)*
             pub fn #write_bits(&mut self, bits: #bits) -> &mut Self {
@@ -222,14 +230,14 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
 
       use self::drone_core::bitfield::Bitfield;
 
-      impl Bitfield for #name {
+      impl Bitfield for #ident {
         type Bits = #bits;
 
         const DEFAULT: #bits = #default;
 
         #[inline(always)]
         unsafe fn from_bits(bits: #bits) -> Self {
-          #name(bits)
+          #ident(bits)
         }
 
         #[inline(always)]
@@ -243,34 +251,10 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         }
       }
 
-      impl #name {
+      impl #ident {
         #(#field_tokens)*
       }
     }
   };
   expanded.into()
-}
-
-fn invalid_struct(input: &DeriveInput) {
-  input
-    .span()
-    .unstable()
-    .error("Bitfield can be derived only from a tuple struct with one field")
-    .emit();
-}
-
-fn invalid_attr(attr: &Attribute) {
-  attr
-    .span()
-    .unstable()
-    .error("Invalid attribute format")
-    .emit();
-}
-
-fn duplicate_attr(attr: &Attribute, ident: Ident) {
-  attr
-    .span()
-    .unstable()
-    .error(format!("Duplicate key `{}`", ident))
-    .emit();
 }

@@ -1,25 +1,25 @@
 /// Thread token tag.
-pub trait ThreadTag: Sized + Clone + Copy + Send + Sync + Default + 'static {}
+pub trait ThdTag: Sized + Clone + Copy + Send + Sync + Default + 'static {}
 
 /// Triggerable thread token tag.
-pub trait ThreadTrigger: ThreadTag {}
+pub trait ThdTrigger: ThdTag {}
 
 /// Controllable thread token tag.
 #[derive(Clone, Copy, Default)]
 pub struct Ctt;
 
-impl ThreadTag for Ctt {}
-impl ThreadTrigger for Ctt {}
+impl ThdTag for Ctt {}
+impl ThdTrigger for Ctt {}
 
 /// Triggerable thread token tag.
 #[derive(Clone, Copy, Default)]
 pub struct Ttt;
 
-impl ThreadTag for Ttt {}
-impl ThreadTrigger for Ttt {}
+impl ThdTag for Ttt {}
+impl ThdTrigger for Ttt {}
 
 /// Limited thread token tag.
 #[derive(Clone, Copy, Default)]
 pub struct Ltt;
 
-impl ThreadTag for Ltt {}
+impl ThdTag for Ltt {}

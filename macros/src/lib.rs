@@ -20,17 +20,10 @@ extern crate proc_macro;
 extern crate quote;
 extern crate syn;
 
-mod heap;
 mod reg_mappings;
 mod reg_tokens;
 
 use proc_macro::TokenStream;
-
-#[doc(hidden)]
-#[proc_macro]
-pub fn heap(input: TokenStream) -> TokenStream {
-  tokens!(heap::heap(input))
-}
 
 #[doc(hidden)]
 #[proc_macro]

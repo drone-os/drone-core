@@ -1,11 +1,11 @@
 use drone_macros2_core::{ExternStatic, NewStruct};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::{parse, Attribute, Expr, Ident, Type, Visibility};
+use syn::{Attribute, Expr, Ident, Type, Visibility};
 use syn::synom::Synom;
 
-struct ThreadLocal {
-  thread_local: NewStruct,
+struct Thread {
+  thread: NewStruct,
   array: ExternStatic,
   fields: Vec<Field>,
 }
@@ -32,26 +32,32 @@ impl Synom for Field {
   ));
 }
 
-impl Synom for ThreadLocal {
+impl Synom for Thread {
   named!(parse -> Self, do_parse!(
-    thread_local: syn!(NewStruct) >>
+    thread: syn!(NewStruct) >>
     array: syn!(ExternStatic) >>
     fields: many0!(syn!(Field)) >>
-    (ThreadLocal { thread_local, array, fields })
+    (Thread { thread, array, fields })
   ));
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
   let call_site = Span::call_site();
-  let input = parse::<ThreadLocal>(input).unwrap();
-  let thread_local_attrs = input.thread_local.attrs;
-  let thread_local_vis = input.thread_local.vis;
-  let thread_local_ident = input.thread_local.ident;
-  let array_ident = input.array.ident;
+  let Thread {
+    thread:
+      NewStruct {
+        attrs: thread_attrs,
+        vis: thread_vis,
+        ident: thread_ident,
+      },
+    array: ExternStatic { ident: array_ident },
+    fields,
+  } = try_parse!(call_site, input);
+  let rt = Ident::from("__thread_rt");
   let new_ident = Ident::new("new", call_site);
   let mut field_tokens = Vec::new();
   let mut field_ctor_tokens = Vec::new();
-  for field in input.fields {
+  for field in fields {
     let Field {
       attrs,
       vis,
@@ -64,52 +70,52 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
   }
 
   let expanded = quote! {
-    mod rt {
+    mod #rt {
       extern crate drone_core;
 
       pub use self::drone_core::fiber::Chain;
       pub use self::drone_core::thread::{TaskCell, Thread};
     }
 
-    #(#thread_local_attrs)*
-    #thread_local_vis struct #thread_local_ident {
-      fibers: rt::Chain,
-      task: rt::TaskCell,
+    #(#thread_attrs)*
+    #thread_vis struct #thread_ident {
+      fibers: #rt::Chain,
+      task: #rt::TaskCell,
       preempted: usize,
       #(#field_tokens,)*
     }
 
-    impl #thread_local_ident {
+    impl #thread_ident {
       /// Creates a new blank thread.
       #[inline(always)]
       pub const fn #new_ident(_index: usize) -> Self {
         Self {
-          fibers: rt::Chain::new(),
-          task: rt::TaskCell::new(),
+          fibers: #rt::Chain::new(),
+          task: #rt::TaskCell::new(),
           preempted: 0,
           #(#field_ctor_tokens,)*
         }
       }
     }
 
-    impl rt::Thread for #thread_local_ident {
+    impl #rt::Thread for #thread_ident {
       #[inline(always)]
       fn all() -> *mut [Self] {
         unsafe { &mut #array_ident }
       }
 
       #[inline(always)]
-      fn fibers(&self) -> &rt::Chain {
+      fn fibers(&self) -> &#rt::Chain {
         &self.fibers
       }
 
       #[inline(always)]
-      fn fibers_mut(&mut self) -> &mut rt::Chain {
+      fn fibers_mut(&mut self) -> &mut #rt::Chain {
         &mut self.fibers
       }
 
       #[inline(always)]
-      fn task(&self) -> &rt::TaskCell {
+      fn task(&self) -> &#rt::TaskCell {
         &self.task
       }
 

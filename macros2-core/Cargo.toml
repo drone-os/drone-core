@@ -8,6 +8,7 @@ license = "MIT/Apache-2.0"
 repository = "https://github.com/drone-os/drone-core"
 
 [dependencies]
+proc-macro2 = { version = "0.2", features = ["nightly"] }
 syn = "0.12"
 
 [dependencies.clippy]

@@ -34,7 +34,7 @@
 //!
 //! tokens! {
 //!   /// Register tokens.
-//!   RegIndex;
+//!   RegIdx;
 //!
 //!   STK {
 //!     /// SysTick control and status register.
@@ -43,7 +43,7 @@
 //! }
 //!
 //! fn main() {
-//!   let reg = unsafe { RegIndex::new() };
+//!   let reg = unsafe { RegIdx::new() };
 //!   assert_eq!(size_of_val(&reg.stk_ctrl.enable), 0);
 //!   assert_eq!(size_of_val(&reg.stk_ctrl), 0);
 //!   assert_eq!(size_of_val(&reg), 0);

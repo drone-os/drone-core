@@ -13,11 +13,9 @@ mod task;
 
 pub use self::tag::*;
 pub use self::task::{init, TaskCell};
-pub use drone_core_macros2::thread_local;
 
 use fiber::Chain;
 
-/// An index of the current thread.
 static mut CURRENT: usize = 0;
 
 /// A thread interface.
@@ -39,18 +37,18 @@ pub trait Thread: Sized + Sync + 'static {
 }
 
 /// Thread token.
-pub trait ThreadToken<T>
+pub trait ThdToken<T>
 where
   Self: Sized + Clone + Copy,
   Self: Send + Sync + 'static,
-  Self: AsRef<<Self as ThreadToken<T>>::Thread>,
-  T: ThreadTag,
+  Self: AsRef<<Self as ThdToken<T>>::Thd>,
+  T: ThdTag,
 {
   /// Thread array.
-  type Thread: Thread;
+  type Thd: Thread;
 
   /// A thread position within threads array.
-  const THREAD_NUMBER: usize;
+  const THD_NUM: usize;
 
   /// A thread handler function, which should be passed to hardware.
   ///
@@ -58,22 +56,22 @@ where
   ///
   /// Must not be called concurrently.
   unsafe extern "C" fn handler() {
-    let thread = (*Self::Thread::all()).get_unchecked_mut(Self::THREAD_NUMBER);
+    let thread = (*Self::Thd::all()).get_unchecked_mut(Self::THD_NUM);
     *thread.preempted() = CURRENT;
-    CURRENT = Self::THREAD_NUMBER;
+    CURRENT = Self::THD_NUM;
     thread.fibers_mut().drain();
     CURRENT = *thread.preempted();
   }
 
   /// Returns a reference to the thread.
   #[inline(always)]
-  fn as_thd(&self) -> &Self::Thread {
-    unsafe { (*Self::Thread::all()).get_unchecked(Self::THREAD_NUMBER) }
+  fn as_thd(&self) -> &Self::Thd {
+    unsafe { (*Self::Thd::all()).get_unchecked(Self::THD_NUM) }
   }
 }
 
 /// A set of thread tokens.
-pub trait ThreadTokens {
+pub trait ThdTokens {
   /// Creates a new set of thread tokens.
   ///
   /// # Safety

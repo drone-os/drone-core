@@ -14,10 +14,11 @@ use std as core;
 heap! {
   /// Test doc attribute
   #[doc = "test attribute"]
-  Heap;
+  pub struct Heap;
   /// Test doc attribute
   #[doc = "test attribute"]
-  ALLOC;
+  pub static ALLOC;
+
   size = 4096;
   pools = [
     [0x4; 512],

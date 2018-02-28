@@ -1,3 +1,3 @@
 //! Threads prelude.
 
-pub use super::{Ctt, Ltt, Thread, ThreadTag, ThreadToken, ThreadTrigger, Ttt};
+pub use super::{Ctt, Ltt, ThdTag, ThdToken, ThdTrigger, Thread, Ttt};

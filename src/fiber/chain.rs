@@ -33,6 +33,7 @@ impl Chain {
   }
 
   /// Advances all fibers, removing completed ones.
+  #[inline(never)]
   pub fn drain(&mut self) {
     let mut prev = ptr::null_mut();
     let mut curr = self.head.load(Acquire);
