@@ -1,201 +1,171 @@
-use drone_macros_core::parse_own_name;
-use failure::{err_msg, Error};
+use drone_macros_core::{unkeywordize, NewStruct};
 use inflector::Inflector;
 use proc_macro::TokenStream;
-use quote::Tokens;
-use std::{env, mem, vec};
+use proc_macro2::Span;
+use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use syn::{parse_token_trees, DelimToken, Delimited, Ident, Lit, Token,
-          TokenTree};
+use syn::{parse_str, Attribute, Ident, LitStr};
+use syn::synom::Synom;
 
-pub(crate) fn reg_tokens(input: TokenStream) -> Result<Tokens, Error> {
-  let input = parse_token_trees(&input.to_string()).map_err(err_msg)?;
-  let mut input = input.into_iter();
-  let mut path = Vec::new();
-  let mut struct_tokens = Vec::new();
-  let mut impl_tokens = Vec::new();
-  let (attrs, name) = parse_own_name(&mut input)?;
-  let name =
-    name.ok_or_else(|| format_err!("Unexpected end of macro invokation"))?;
-  let mut inputs = vec![input];
-  while let Some(mut input) = inputs.pop() {
-    loop {
-      match input.next() {
-        Some(TokenTree::Token(Token::Ident(name))) => {
-          if name == "include" {
-            inputs.push(parse_include(&mut input)?.into_iter());
-          } else {
-            path.push(name);
-          }
-        }
-        Some(TokenTree::Token(Token::ModSep)) => {}
-        Some(TokenTree::Delimited(Delimited {
-          delim: DelimToken::Brace,
-          tts: tokens,
-        })) => {
-          let mut path = mem::replace(&mut path, Vec::new());
-          let name = match path.pop() {
-            Some(name) => name,
-            None => Err(format_err!("Invalid tokens: {{ ... }}"))?,
-          };
-          let (mut x, mut y) = parse_block(path, name, tokens)?;
-          struct_tokens.append(&mut x);
-          impl_tokens.append(&mut y);
-        }
-        None => break,
-        token => Err(format_err!("Invalid token: {:?}", token))?,
-      }
-    }
-  }
-
-  Ok(quote! {
-    #(#attrs)*
-    pub struct #name {
-      #(#struct_tokens)*
-    }
-
-    impl ::drone_core::reg::RegTokens for #name {
-      unsafe fn new() -> Self {
-        Self {
-          #(#impl_tokens)*
-        }
-      }
-    }
-  })
+struct RegTokens {
+  tokens: NewStruct,
+  includes: Vec<Include>,
+  blocks: Blocks,
 }
 
-fn parse_block(
-  path: Vec<Ident>,
-  name: Ident,
-  input: Vec<TokenTree>,
-) -> Result<(Vec<Tokens>, Vec<Tokens>), Error> {
-  let mut input = input.into_iter();
-  let mut struct_tokens = Vec::new();
-  let mut impl_tokens = Vec::new();
-  let name = Ident::new(name.as_ref().to_snake_case());
-  while let (attrs, Some(reg_name)) = parse_own_name(&mut input)? {
-    let (x, y) = parse_reg(&path, &name, attrs, reg_name)?;
-    struct_tokens.push(x);
-    impl_tokens.push(y);
-  }
+struct Blocks(Vec<Block>);
 
-  Ok((struct_tokens, impl_tokens))
+struct Include {
+  var: LitStr,
+  path: LitStr,
 }
 
-fn parse_reg(
-  path: &[Ident],
-  block_name: &Ident,
-  attrs: Vec<Tokens>,
-  name: Ident,
-) -> Result<(Tokens, Tokens), Error> {
-  let name = Ident::new(name.as_ref().to_snake_case());
-  let reg_name = Ident::new(format!("{}_{}", block_name, name));
-  let mod_sep = &path.iter().map(|_| Token::ModSep).collect::<Vec<_>>();
-  let prefix = &quote!(::#(#path #mod_sep)*#block_name::#name);
-
-  Ok((
-    quote! {
-      #(#attrs)*
-      pub #reg_name: #prefix::Reg<Srt>,
-    },
-    quote! {
-      #reg_name: #prefix::Reg::new(),
-    },
-  ))
+struct Block {
+  ident: Ident,
+  regs: Vec<Reg>,
 }
 
-fn parse_include(
-  input: &mut vec::IntoIter<TokenTree>,
-) -> Result<Vec<TokenTree>, Error> {
-  let mut env = None;
-  let mut path = None;
-  match input.next() {
-    Some(TokenTree::Token(Token::Not)) => {}
-    token => Err(format_err!("Invalid token: {:?}", token))?,
+struct Reg {
+  attrs: Vec<Attribute>,
+  ident: Ident,
+}
+
+impl Synom for RegTokens {
+  named!(parse -> Self, do_parse!(
+    tokens: syn!(NewStruct) >>
+    includes: many0!(syn!(Include)) >>
+    blocks: syn!(Blocks) >>
+    (RegTokens { tokens, includes, blocks })
+  ));
+}
+
+impl Synom for Blocks {
+  named!(parse -> Self, do_parse!(
+    blocks: many0!(syn!(Block)) >>
+    (Blocks(blocks))
+  ));
+}
+
+impl Synom for Include {
+  named!(parse -> Self, do_parse!(
+    ident: syn!(Ident) >>
+    switch!(value!(ident.as_ref()),
+      "include" => value!(()) |
+      _ => reject!()
+    ) >>
+    punct!(!) >>
+    parens: parens!(do_parse!(
+      ident: syn!(Ident) >>
+      switch!(value!(ident.as_ref()),
+        "concat" => value!(()) |
+        _ => reject!()
+      ) >>
+      punct!(!) >>
+      parens: parens!(do_parse!(
+        ident: syn!(Ident) >>
+        switch!(value!(ident.as_ref()),
+          "env" => value!(()) |
+          _ => reject!()
+        ) >>
+        punct!(!) >>
+        var: map!(parens!(syn!(LitStr)), |x| x.1) >>
+        punct!(,) >>
+        path: syn!(LitStr) >>
+        (Include { var, path })
+      )) >>
+      (parens.1)
+    )) >>
+    punct!(;) >>
+    (parens.1)
+  ));
+}
+
+impl Synom for Block {
+  named!(parse -> Self, do_parse!(
+    ident: syn!(Ident) >>
+    braces: braces!(do_parse!(
+      regs: many0!(syn!(Reg)) >>
+      (Block { ident, regs })
+    )) >>
+    (braces.1)
+  ));
+}
+
+impl Synom for Reg {
+  named!(parse -> Self, do_parse!(
+    attrs: many0!(Attribute::parse_outer) >>
+    ident: syn!(Ident) >>
+    punct!(;) >>
+    (Reg { attrs, ident })
+  ));
+}
+
+pub fn proc_macro(input: TokenStream) -> TokenStream {
+  let call_site = Span::call_site();
+  let RegTokens {
+    tokens:
+      NewStruct {
+        attrs: tokens_attrs,
+        vis: tokens_vis,
+        ident: tokens_ident,
+      },
+    includes,
+    blocks: Blocks(mut blocks),
+  } = try_parse!(call_site, input);
+  let rt = Ident::from("__reg_tokens_rt");
+  let new = Ident::new("new", call_site);
+  include_blocks(includes, &mut blocks);
+  let mut tokens_tokens = Vec::new();
+  let mut tokens_ctor_tokens = Vec::new();
+  for Block { ident, regs } in blocks {
+    let block = ident.as_ref().to_snake_case();
+    let block_ident =
+      Ident::new(&unkeywordize(block.as_str().into()), call_site);
+    for Reg { attrs, ident } in regs {
+      let reg_struct = Ident::new(&ident.as_ref().to_pascal_case(), call_site);
+      let reg_name = Ident::new(
+        &format!("{}_{}", block, ident.as_ref().to_snake_case()),
+        call_site,
+      );
+      tokens_tokens.push(quote! {
+        #(#attrs)*
+        pub #reg_name: #block_ident::#reg_struct<#rt::Srt>
+      });
+      tokens_ctor_tokens.push(quote! {
+        #reg_name: #block_ident::#reg_struct::#new()
+      });
+    }
   }
-  match input.next() {
-    Some(TokenTree::Delimited(Delimited {
-      delim: DelimToken::Paren,
-      tts: tokens,
-    })) => {
-      let mut tokens = tokens.into_iter();
-      match tokens.next() {
-        Some(TokenTree::Token(Token::Ident(ref name))) if name == "concat" => {}
-        token => Err(format_err!("Invalid token: {:?}", token))?,
-      }
-      match tokens.next() {
-        Some(TokenTree::Token(Token::Not)) => {}
-        token => Err(format_err!("Invalid token: {:?}", token))?,
-      }
-      match tokens.next() {
-        Some(TokenTree::Delimited(Delimited {
-          delim: DelimToken::Paren,
-          tts: tokens,
-        })) => {
-          let mut tokens = tokens.into_iter();
-          match tokens.next() {
-            Some(TokenTree::Token(Token::Ident(ref name))) if name == "env" => {
-            }
-            token => Err(format_err!("Invalid token: {:?}", token))?,
-          }
-          match tokens.next() {
-            Some(TokenTree::Token(Token::Not)) => {}
-            token => Err(format_err!("Invalid token: {:?}", token))?,
-          }
-          match tokens.next() {
-            Some(TokenTree::Delimited(Delimited {
-              delim: DelimToken::Paren,
-              tts: tokens,
-            })) => {
-              let mut tokens = tokens.into_iter();
-              match tokens.next() {
-                Some(TokenTree::Token(Token::Literal(Lit::Str(string, _)))) => {
-                  env = Some(string);
-                }
-                token => Err(format_err!("Invalid token: {:?}", token))?,
-              }
-              match tokens.next() {
-                None => {}
-                token => Err(format_err!("Invalid token: {:?}", token))?,
-              }
-            }
-            token => Err(format_err!("Invalid token: {:?}", token))?,
-          }
-          match tokens.next() {
-            Some(TokenTree::Token(Token::Comma)) => {}
-            token => Err(format_err!("Invalid token: {:?}", token))?,
-          }
-          match tokens.next() {
-            Some(TokenTree::Token(Token::Literal(Lit::Str(string, _)))) => {
-              path = Some(string);
-            }
-            token => Err(format_err!("Invalid token: {:?}", token))?,
-          }
-          match tokens.next() {
-            None => {}
-            token => Err(format_err!("Invalid token: {:?}", token))?,
-          }
-        }
-        token => Err(format_err!("Invalid token: {:?}", token))?,
-      }
-      match tokens.next() {
-        None => {}
-        token => Err(format_err!("Invalid token: {:?}", token))?,
+
+  let expanded = quote! {
+    mod #rt {
+      extern crate drone_core;
+
+      pub use self::drone_core::reg::{RegTokens, Srt};
+    }
+
+    #(#tokens_attrs)*
+    #tokens_vis struct #tokens_ident {
+      #(#tokens_tokens),*
+    }
+
+    impl #rt::RegTokens for #tokens_ident {
+      unsafe fn #new() -> Self {
+        Self { #(#tokens_ctor_tokens,)* }
       }
     }
-    token => Err(format_err!("Invalid token: {:?}", token))?,
-  }
-  match input.next() {
-    Some(TokenTree::Token(Token::Semi)) => {}
-    token => Err(format_err!("Invalid token: {:?}", token))?,
-  }
-  let path = format!("{}{}", env::var(env.unwrap())?, path.unwrap());
-  let mut content = String::new();
-  if let Ok(mut file) = File::open(path) {
-    file.read_to_string(&mut content)?;
-    Ok(parse_token_trees(&content).map_err(err_msg)?)
-  } else {
-    Ok(Vec::new())
+  };
+  expanded.into()
+}
+
+fn include_blocks(includes: Vec<Include>, blocks: &mut Vec<Block>) {
+  for Include { var, path } in includes {
+    let path = format!("{}{}", env::var(var.value()).unwrap(), path.value());
+    let mut file = File::open(path).unwrap();
+    let mut content = String::new();
+    file.read_to_string(&mut content).unwrap();
+    let Blocks(mut extern_blocks) = parse_str(&content).unwrap();
+    blocks.append(&mut extern_blocks);
   }
 }

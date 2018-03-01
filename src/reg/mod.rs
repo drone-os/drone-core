@@ -10,11 +10,11 @@
 //! # #[macro_use] extern crate drone_core;
 //! use core::mem::size_of_val;
 //! use drone_core::reg::prelude::*;
-//! use drone_core::reg::{tokens, mappings};
+//! use drone_core::reg::{tokens, map};
 //!
-//! mappings! {
+//! map! {
 //!   /// SysTick timer.
-//!   STK; // block name
+//!   pub mod STK; // block name
 //!
 //!   /// SysTick control and status register.
 //!   CTRL { // register name
@@ -34,7 +34,7 @@
 //!
 //! tokens! {
 //!   /// Register tokens.
-//!   RegIdx;
+//!   pub struct RegIdx;
 //!
 //!   STK {
 //!     /// SysTick control and status register.
@@ -63,7 +63,7 @@ pub use self::field::*;
 pub use self::hold::*;
 pub use self::reg::*;
 pub use self::tag::*;
-pub use drone_core_macros::{reg_mappings as mappings, reg_tokens as tokens};
+pub use drone_core_macros::{reg_map as map, reg_tokens as tokens};
 
 /// Forkable token.
 pub trait RegFork {

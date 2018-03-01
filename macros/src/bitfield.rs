@@ -1,4 +1,4 @@
-use drone_macros2_core::emit_err;
+use drone_macros_core::emit_err;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::{parse, Data, DeriveInput, Fields, Ident, Index, IntSuffix, LitInt,

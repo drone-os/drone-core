@@ -1,8 +1,7 @@
 //! Drone procedural macros.
 //!
-//! See `drone` documentation for details.
+//! See `drone-core` documentation for details.
 
-#![feature(const_atomic_bool_new)]
 #![feature(proc_macro)]
 #![doc(html_root_url = "https://docs.rs/drone-core-macros/0.8.0")]
 #![recursion_limit = "512"]
@@ -13,26 +12,44 @@
 #[macro_use]
 extern crate drone_macros_core;
 #[macro_use]
-extern crate failure_dup as failure;
+extern crate if_chain;
 extern crate inflector;
 extern crate proc_macro;
+extern crate proc_macro2;
 #[macro_use]
 extern crate quote;
+#[macro_use]
 extern crate syn;
 
-mod reg_mappings;
+mod bitfield;
+mod heap;
+mod reg_map;
 mod reg_tokens;
+mod thr;
 
 use proc_macro::TokenStream;
 
-#[doc(hidden)]
-#[proc_macro]
-pub fn reg_mappings(input: TokenStream) -> TokenStream {
-  tokens!(reg_mappings::reg_mappings(input))
+#[proc_macro_derive(Bitfield, attributes(bitfield))]
+pub fn derive_bitfield(input: TokenStream) -> TokenStream {
+  bitfield::proc_macro_derive(input)
 }
 
-#[doc(hidden)]
+#[proc_macro]
+pub fn heap(input: TokenStream) -> TokenStream {
+  heap::proc_macro(input)
+}
+
+#[proc_macro]
+pub fn reg_map(input: TokenStream) -> TokenStream {
+  reg_map::proc_macro(input)
+}
+
 #[proc_macro]
 pub fn reg_tokens(input: TokenStream) -> TokenStream {
-  tokens!(reg_tokens::reg_tokens(input))
+  reg_tokens::proc_macro(input)
+}
+
+#[proc_macro]
+pub fn thr(input: TokenStream) -> TokenStream {
+  thr::proc_macro(input)
 }

@@ -1,4 +1,4 @@
-use drone_macros2_core::{emit_err, NewStatic, NewStruct};
+use drone_macros_core::{emit_err, NewStatic, NewStruct};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::{Ident, LitInt};

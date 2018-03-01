@@ -9,18 +9,9 @@ repository = "https://github.com/drone-os/drone-core"
 
 [dependencies]
 lazy_static = "1"
-quote = "0.3"
+proc-macro2 = { version = "0.2", features = ["nightly"] }
 regex = "0.2"
-
-[dependencies.syn]
-version = "0.11"
-features = ["full", "parsing", "printing"]
-
-[dependencies.failure-dup]
-git = "https://github.com/drone-os/failure-dup"
-branch = "version-0.1"
-default-features = false
-features = ["std"]
+syn = "0.12"
 
 [dependencies.clippy]
 version = "0.0"

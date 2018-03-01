@@ -1,4 +1,4 @@
-use drone_macros2_core::{ExternStatic, NewStruct};
+use drone_macros_core::{ExternStatic, NewStruct};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::{Attribute, Expr, Ident, Type, Visibility};

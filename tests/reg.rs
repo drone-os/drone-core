@@ -4,16 +4,16 @@
 extern crate drone_core;
 
 use drone_core::bitfield::Bitfield;
-use drone_core::reg::mappings;
+use drone_core::reg::map;
 use drone_core::reg::prelude::*;
 use std::mem::size_of;
 use test_block::TestReg;
 use test_block::test_reg::Val;
 
-mappings! {
+map! {
   /// Test block doc attribute
   #[doc = "test block attribute"]
-  TEST_BLOCK;
+  pub mod TEST_BLOCK;
   /// Test reg doc attribute
   #[doc = "test reg attribute"]
   TEST_REG {

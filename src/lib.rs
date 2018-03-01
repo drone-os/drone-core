@@ -60,9 +60,8 @@
 #![cfg_attr(feature = "clippy", allow(precedence, inline_always))]
 
 extern crate alloc;
-extern crate drone_core_macros;
 #[macro_reexport(Bitfield)]
-extern crate drone_core_macros2;
+extern crate drone_core_macros;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
@@ -83,7 +82,7 @@ pub mod reg;
 pub mod sync;
 pub mod thr;
 
-pub use drone_core_macros2::{heap, thr};
+pub use drone_core_macros::{heap, thr};
 
 #[prelude_import]
 #[allow(unused_imports)]
