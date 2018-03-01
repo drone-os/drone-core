@@ -12,20 +12,20 @@ extern crate drone_core;
 #[allow(unused_imports)]
 use drone_core::prelude::*;
 
-use drone_core::{fiber, thread};
-use drone_core::thread::ThdToken;
-use drone_core::thread::prelude::*;
+use drone_core::{fib, thr};
+use drone_core::thr::ThrToken;
+use drone_core::thr::prelude::*;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::AtomicI8;
 use std::sync::atomic::Ordering::*;
 
-static mut THREADS: [Thd; 2] = [Thd::new(0), Thd::new(1)];
+static mut THREADS: [Thr; 2] = [Thr::new(0), Thr::new(1)];
 
-thread! {
+thr! {
   /// Test doc attribute
   #[doc = "test attribute"]
-  pub struct Thd;
+  pub struct Thr;
   extern static THREADS;
 
   #[allow(dead_code)]
@@ -34,35 +34,35 @@ thread! {
   bar: isize = 1 - 2;
 }
 
-macro_rules! thread_number {
+macro_rules! thr_num {
   ($name:ident, $position:expr) => {
     #[derive(Clone, Copy)]
-    struct $name<T: ThdTag> {
+    struct $name<T: ThrTag> {
       _tag: PhantomData<T>,
     }
 
-    impl<T: ThdTag> $name<T> {
+    impl<T: ThrTag> $name<T> {
       unsafe fn new() -> Self {
         Self { _tag: PhantomData }
       }
     }
 
-    impl<T: ThdTag> ThdToken<T> for $name<T> {
-      type Thd = Thd;
+    impl<T: ThrTag> ThrToken<T> for $name<T> {
+      type Thr = Thr;
 
-      const THD_NUM: usize = $position;
+      const THR_NUM: usize = $position;
     }
 
-    impl<T: ThdTag> AsRef<Thd> for $name<T> {
-      fn as_ref(&self) -> &Thd {
-        self.as_thd()
+    impl<T: ThrTag> AsRef<Thr> for $name<T> {
+      fn as_ref(&self) -> &Thr {
+        self.as_thr()
       }
     }
   }
 }
 
-thread_number!(Thread0, 0);
-thread_number!(Thread1, 1);
+thr_num!(Thr0, 0);
+thr_num!(Thr1, 1);
 
 struct Counter(Arc<AtomicI8>);
 
@@ -77,20 +77,20 @@ fn fiber() {
   let counter = Arc::new(AtomicI8::new(0));
   let inner = Counter(Arc::clone(&counter));
   unsafe {
-    let thread = Thread0::<Ltt>::new();
-    fiber::spawn(thread, move || {
+    let thr = Thr0::<Ltt>::new();
+    fib::spawn(thr, move || {
       while inner.0.fetch_add(1, Relaxed) < 2 {
         yield;
       }
     });
     assert_eq!(counter.load(Relaxed), 0);
-    Thread0::<Ltt>::handler();
+    Thr0::<Ltt>::handler();
     assert_eq!(counter.load(Relaxed), 1);
-    Thread0::<Ltt>::handler();
+    Thr0::<Ltt>::handler();
     assert_eq!(counter.load(Relaxed), 2);
-    Thread0::<Ltt>::handler();
+    Thr0::<Ltt>::handler();
     assert_eq!(counter.load(Relaxed), -4);
-    Thread0::<Ltt>::handler();
+    Thr0::<Ltt>::handler();
     assert_eq!(counter.load(Relaxed), -4);
   }
 }
@@ -100,14 +100,14 @@ fn fiber_fn() {
   let counter = Arc::new(AtomicI8::new(0));
   let inner = Counter(Arc::clone(&counter));
   unsafe {
-    let thread = Thread1::<Ltt>::new();
-    fiber::spawn_fn(thread, move || {
+    let thr = Thr1::<Ltt>::new();
+    fib::spawn_fn(thr, move || {
       inner.0.fetch_add(1, Relaxed);
     });
     assert_eq!(counter.load(Relaxed), 0);
-    Thread1::<Ltt>::handler();
+    Thr1::<Ltt>::handler();
     assert_eq!(counter.load(Relaxed), -2);
-    Thread1::<Ltt>::handler();
+    Thr1::<Ltt>::handler();
     assert_eq!(counter.load(Relaxed), -2);
   }
 }

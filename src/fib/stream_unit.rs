@@ -1,10 +1,10 @@
-use fiber::{spawn, Fiber, FiberState};
+use fib::{spawn, Fiber, FiberState};
 use sync::spsc::unit::{channel, Receiver, SendError};
-use thread::prelude::*;
+use thr::prelude::*;
 
 /// A stream of results from another thread.
 ///
-/// This stream can be created by the instance of [`Thread`](::thread::Thread).
+/// This stream can be created by the instance of [`Thread`](::thr::Thread).
 #[must_use]
 pub struct FiberStreamUnit<E> {
   rx: Receiver<E>,
@@ -28,11 +28,11 @@ impl<E> Stream for FiberStreamUnit<E> {
   }
 }
 
-/// Spawns a new unit stream fiber on the given `thread`.
+/// Spawns a new unit stream fiber on the given `thr`.
 pub fn spawn_stream<T, U, O, F, E>(
-  thread: T,
+  thr: T,
   overflow: O,
-  mut fiber: F,
+  mut fib: F,
 ) -> FiberStreamUnit<E>
 where
   T: AsRef<U>,
@@ -44,11 +44,11 @@ where
   E: Send + 'static,
 {
   let (rx, mut tx) = channel();
-  spawn(thread, move || loop {
+  spawn(thr, move || loop {
     if tx.is_canceled() {
       break;
     }
-    match fiber.resume(()) {
+    match fib.resume(()) {
       FiberState::Yielded(None) => {}
       FiberState::Yielded(Some(())) => match tx.send() {
         Ok(()) => {}
@@ -80,10 +80,10 @@ where
   FiberStreamUnit { rx }
 }
 
-/// Spawns a new unit stream fiber on the given `thread`. Overflows will be
+/// Spawns a new unit stream fiber on the given `thr`. Overflows will be
 /// ignored.
 #[inline(always)]
-pub fn spawn_stream_skip<T, U, F, E>(thread: T, fiber: F) -> FiberStreamUnit<E>
+pub fn spawn_stream_skip<T, U, F, E>(thr: T, fib: F) -> FiberStreamUnit<E>
 where
   T: AsRef<U>,
   U: Thread,
@@ -91,5 +91,5 @@ where
   F: Send + 'static,
   E: Send + 'static,
 {
-  spawn_stream(thread, || Ok(()), fiber)
+  spawn_stream(thr, || Ok(()), fib)
 }

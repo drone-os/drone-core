@@ -22,7 +22,7 @@ extern crate syn;
 
 mod bitfield;
 mod heap;
-mod thread;
+mod thr;
 
 use proc_macro::TokenStream;
 
@@ -37,6 +37,6 @@ pub fn heap(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn thread(input: TokenStream) -> TokenStream {
-  thread::proc_macro(input)
+pub fn thr(input: TokenStream) -> TokenStream {
+  thr::proc_macro(input)
 }

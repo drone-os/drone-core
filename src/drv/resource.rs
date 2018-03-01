@@ -2,8 +2,8 @@
 pub trait Resource
 where
   Self: Sized + Send + Sync + 'static,
-  Self: From<<Self as Resource>::Input>,
+  Self: From<<Self as Resource>::Source>,
 {
-  /// Input resource.
-  type Input = Self;
+  /// Source resource.
+  type Source = Self;
 }

@@ -1,6 +1,6 @@
 use core::ops::{Generator, GeneratorState};
-use fiber::{Fiber, FiberRoot, FiberState};
-use thread::Thread;
+use fib::{Fiber, FiberRoot, FiberState};
+use thr::Thread;
 
 /// A generator fiber.
 pub struct FiberGen<G>(G)
@@ -54,14 +54,14 @@ where
   FiberGen(gen)
 }
 
-/// Spawns a new generator fiber on the given `thread`.
+/// Spawns a new generator fiber on the given `thr`.
 #[inline(always)]
-pub fn spawn<T, U, G>(thread: T, gen: G)
+pub fn spawn<T, U, G>(thr: T, gen: G)
 where
   T: AsRef<U>,
   U: Thread,
   G: Generator<Yield = (), Return = ()>,
   G: Send + 'static,
 {
-  thread.as_ref().fibers().add(new(gen))
+  thr.as_ref().fib_chain().add(new(gen))
 }

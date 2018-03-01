@@ -4,8 +4,8 @@ use proc_macro2::Span;
 use syn::{Attribute, Expr, Ident, Type, Visibility};
 use syn::synom::Synom;
 
-struct Thread {
-  thread: NewStruct,
+struct Thr {
+  thr: NewStruct,
   array: ExternStatic,
   fields: Vec<Field>,
 }
@@ -32,28 +32,28 @@ impl Synom for Field {
   ));
 }
 
-impl Synom for Thread {
+impl Synom for Thr {
   named!(parse -> Self, do_parse!(
-    thread: syn!(NewStruct) >>
+    thr: syn!(NewStruct) >>
     array: syn!(ExternStatic) >>
     fields: many0!(syn!(Field)) >>
-    (Thread { thread, array, fields })
+    (Thr { thr, array, fields })
   ));
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
   let call_site = Span::call_site();
-  let Thread {
-    thread:
+  let Thr {
+    thr:
       NewStruct {
-        attrs: thread_attrs,
-        vis: thread_vis,
-        ident: thread_ident,
+        attrs: thr_attrs,
+        vis: thr_vis,
+        ident: thr_ident,
       },
     array: ExternStatic { ident: array_ident },
     fields,
   } = try_parse!(call_site, input);
-  let rt = Ident::from("__thread_rt");
+  let rt = Ident::from("__thr_rt");
   let new_ident = Ident::new("new", call_site);
   let mut field_tokens = Vec::new();
   let mut field_ctor_tokens = Vec::new();
@@ -73,24 +73,24 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     mod #rt {
       extern crate drone_core;
 
-      pub use self::drone_core::fiber::Chain;
-      pub use self::drone_core::thread::{TaskCell, Thread};
+      pub use self::drone_core::fib::Chain;
+      pub use self::drone_core::thr::{TaskCell, Thread};
     }
 
-    #(#thread_attrs)*
-    #thread_vis struct #thread_ident {
-      fibers: #rt::Chain,
+    #(#thr_attrs)*
+    #thr_vis struct #thr_ident {
+      fib_chain: #rt::Chain,
       task: #rt::TaskCell,
       preempted: usize,
       #(#field_tokens,)*
     }
 
-    impl #thread_ident {
-      /// Creates a new blank thread.
+    impl #thr_ident {
+      /// Creates a new thread.
       #[inline(always)]
       pub const fn #new_ident(_index: usize) -> Self {
         Self {
-          fibers: #rt::Chain::new(),
+          fib_chain: #rt::Chain::new(),
           task: #rt::TaskCell::new(),
           preempted: 0,
           #(#field_ctor_tokens,)*
@@ -98,20 +98,20 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       }
     }
 
-    impl #rt::Thread for #thread_ident {
+    impl #rt::Thread for #thr_ident {
       #[inline(always)]
       fn all() -> *mut [Self] {
         unsafe { &mut #array_ident }
       }
 
       #[inline(always)]
-      fn fibers(&self) -> &#rt::Chain {
-        &self.fibers
+      fn fib_chain(&self) -> &#rt::Chain {
+        &self.fib_chain
       }
 
       #[inline(always)]
-      fn fibers_mut(&mut self) -> &mut #rt::Chain {
-        &mut self.fibers
+      fn fib_chain_mut(&mut self) -> &mut #rt::Chain {
+        &mut self.fib_chain
       }
 
       #[inline(always)]

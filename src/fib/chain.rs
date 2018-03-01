@@ -1,7 +1,7 @@
-use super::FiberRoot;
 use core::ptr;
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::*;
+use fib::FiberRoot;
 
 /// A lock-free stack of fibers.
 pub struct Chain {
@@ -9,7 +9,7 @@ pub struct Chain {
 }
 
 struct Node {
-  fiber: Box<FiberRoot>,
+  fib: Box<FiberRoot>,
   next: *mut Node,
 }
 
@@ -23,8 +23,8 @@ impl Chain {
   }
 
   /// Adds a fiber first in the chain.
-  pub fn add<F: FiberRoot>(&self, fiber: F) {
-    self.push(Node::new(fiber));
+  pub fn add<F: FiberRoot>(&self, fib: F) {
+    self.push(Node::new(fib));
   }
 
   /// Returns `true` if the chain contains no fibers.
@@ -40,7 +40,7 @@ impl Chain {
     while !curr.is_null() {
       unsafe {
         let next = (*curr).next;
-        if (*curr).fiber.advance() {
+        if (*curr).fib.advance() {
           prev = curr;
         } else {
           if prev.is_null() {
@@ -80,9 +80,9 @@ impl Chain {
 
 impl Node {
   #[inline(always)]
-  fn new<F: FiberRoot>(fiber: F) -> Self {
+  fn new<F: FiberRoot>(fib: F) -> Self {
     Self {
-      fiber: Box::new(fiber),
+      fib: Box::new(fib),
       next: ptr::null_mut(),
     }
   }

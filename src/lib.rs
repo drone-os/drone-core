@@ -73,17 +73,17 @@ extern crate core;
 
 pub mod async;
 pub mod bitfield;
-pub mod drivers;
-pub mod fiber;
+pub mod drv;
+pub mod fib;
 pub mod heap;
 pub mod io;
 pub mod mem;
 pub mod prelude;
 pub mod reg;
 pub mod sync;
-pub mod thread;
+pub mod thr;
 
-pub use drone_core_macros2::{heap, thread};
+pub use drone_core_macros2::{heap, thr};
 
 #[prelude_import]
 #[allow(unused_imports)]

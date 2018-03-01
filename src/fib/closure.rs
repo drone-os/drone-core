@@ -1,5 +1,5 @@
-use fiber::{Fiber, FiberRoot, FiberState};
-use thread::Thread;
+use fib::{Fiber, FiberRoot, FiberState};
+use thr::Thread;
 
 /// A closure fiber.
 pub struct FiberFn<F, R>(Option<F>)
@@ -44,14 +44,14 @@ where
   FiberFn(Some(f))
 }
 
-/// Spawns a new closure fiber on the given `thread`.
+/// Spawns a new closure fiber on the given `thr`.
 #[inline(always)]
-pub fn spawn_fn<T, U, F>(thread: T, f: F)
+pub fn spawn_fn<T, U, F>(thr: T, f: F)
 where
   T: AsRef<U>,
   U: Thread,
   F: FnOnce(),
   F: Send + 'static,
 {
-  thread.as_ref().fibers().add(new_fn(f))
+  thr.as_ref().fib_chain().add(new_fn(f))
 }

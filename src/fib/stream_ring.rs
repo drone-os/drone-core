@@ -1,10 +1,10 @@
-use fiber::{spawn, Fiber, FiberState};
+use fib::{spawn, Fiber, FiberState};
 use sync::spsc::ring::{channel, Receiver, SendError, SendErrorKind};
-use thread::prelude::*;
+use thr::prelude::*;
 
 /// A stream of results from another thread.
 ///
-/// This stream can be created by the instance of [`Thread`](::thread::Thread).
+/// This stream can be created by the instance of [`Thread`](::thr::Thread).
 #[must_use]
 pub struct FiberStreamRing<I, E> {
   rx: Receiver<I, E>,
@@ -28,12 +28,12 @@ impl<I, E> Stream for FiberStreamRing<I, E> {
   }
 }
 
-/// Spawns a new ring stream fiber on the given `thread`.
+/// Spawns a new ring stream fiber on the given `thr`.
 pub fn spawn_stream_ring<T, U, O, F, I, E>(
-  thread: T,
+  thr: T,
   capacity: usize,
   overflow: O,
-  mut fiber: F,
+  mut fib: F,
 ) -> FiberStreamRing<I, E>
 where
   T: AsRef<U>,
@@ -46,11 +46,11 @@ where
   E: Send + 'static,
 {
   let (rx, mut tx) = channel(capacity);
-  spawn(thread, move || loop {
+  spawn(thr, move || loop {
     if tx.is_canceled() {
       break;
     }
-    match fiber.resume(()) {
+    match fib.resume(()) {
       FiberState::Yielded(None) => {}
       FiberState::Yielded(Some(value)) => match tx.send(value) {
         Ok(()) => {}
@@ -84,13 +84,13 @@ where
   FiberStreamRing { rx }
 }
 
-/// Spawns a new ring stream fiber on the given `thread`. Overflows will be
+/// Spawns a new ring stream fiber on the given `thr`. Overflows will be
 /// ignored.
 #[inline(always)]
 pub fn spawn_stream_ring_skip<T, U, F, I, E>(
-  thread: T,
+  thr: T,
   capacity: usize,
-  fiber: F,
+  fib: F,
 ) -> FiberStreamRing<I, E>
 where
   T: AsRef<U>,
@@ -100,15 +100,14 @@ where
   I: Send + 'static,
   E: Send + 'static,
 {
-  spawn_stream_ring(thread, capacity, |_| Ok(()), fiber)
+  spawn_stream_ring(thr, capacity, |_| Ok(()), fib)
 }
 
-/// Spawns a new ring stream fiber on the given `thread`. Overflows will
-/// overwrite.
+/// Spawns a new ring stream fiber on the given `thr`. Overflows will overwrite.
 pub fn spawn_stream_ring_overwrite<T, U, F, I, E>(
-  thread: T,
+  thr: T,
   capacity: usize,
-  mut fiber: F,
+  mut fib: F,
 ) -> FiberStreamRing<I, E>
 where
   T: AsRef<U>,
@@ -119,11 +118,11 @@ where
   E: Send + 'static,
 {
   let (rx, mut tx) = channel(capacity);
-  spawn(thread, move || loop {
+  spawn(thr, move || loop {
     if tx.is_canceled() {
       break;
     }
-    match fiber.resume(()) {
+    match fib.resume(()) {
       FiberState::Yielded(None) => {}
       FiberState::Yielded(Some(value)) => match tx.send_overwrite(value) {
         Ok(()) => (),

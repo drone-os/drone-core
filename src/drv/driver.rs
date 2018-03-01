@@ -1,4 +1,4 @@
-use drivers::Resource;
+use drv::Resource;
 
 /// Device driver.
 pub trait Driver
@@ -9,7 +9,7 @@ where
   type Resource: Resource;
 
   /// Creates a new driver from the resource `res`.
-  fn from_res(res: <Self::Resource as Resource>::Input) -> Self;
+  fn from_res(res: <Self::Resource as Resource>::Source) -> Self;
 
   /// Releases the resource.
   fn into_res(self) -> Self::Resource;

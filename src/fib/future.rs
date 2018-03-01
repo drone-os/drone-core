@@ -1,11 +1,11 @@
 use core::mem;
-use fiber::{spawn, Fiber, FiberState, YieldOption};
+use fib::{spawn, Fiber, FiberState, YieldOption};
 use sync::spsc::oneshot::{channel, Receiver, RecvError};
-use thread::prelude::*;
+use thr::prelude::*;
 
 /// A future for result from another thread.
 ///
-/// This future can be created by the instance of [`Thread`](::thread::Thread).
+/// This future can be created by the instance of [`Thread`](::thr::Thread).
 #[must_use]
 pub struct FiberFuture<R, E> {
   rx: Receiver<R, E>,
@@ -32,11 +32,8 @@ impl<R, E> Future for FiberFuture<R, E> {
   }
 }
 
-/// Spawns a new future fiber on the given `thread`.
-pub fn spawn_future<T, U, F, Y, R, E>(
-  thread: T,
-  mut fiber: F,
-) -> FiberFuture<R, E>
+/// Spawns a new future fiber on the given `thr`.
+pub fn spawn_future<T, U, F, Y, R, E>(thr: T, mut fib: F) -> FiberFuture<R, E>
 where
   T: AsRef<U>,
   U: Thread,
@@ -47,11 +44,11 @@ where
   E: Send + 'static,
 {
   let (rx, tx) = channel();
-  spawn(thread, move || loop {
+  spawn(thr, move || loop {
     if tx.is_canceled() {
       break;
     }
-    match fiber.resume(()) {
+    match fib.resume(()) {
       FiberState::Yielded(_) => {}
       FiberState::Complete(complete) => {
         tx.send(complete).ok();
