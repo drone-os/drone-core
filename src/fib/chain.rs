@@ -33,36 +33,38 @@ impl Chain {
   }
 
   /// Advances all fibers, removing completed ones.
+  ///
+  /// # Safety
+  ///
+  /// Must not be called concurrently.
   #[inline(never)]
-  pub fn drain(&mut self) {
+  pub unsafe fn drain(&self) {
     let mut prev = ptr::null_mut();
     let mut curr = self.head.load(Acquire);
     while !curr.is_null() {
-      unsafe {
-        let next = (*curr).next;
-        if (*curr).fib.advance() {
-          prev = curr;
-        } else {
-          if prev.is_null() {
-            prev = self.head.compare_and_swap(curr, next, Relaxed);
-            if prev == curr {
-              prev = ptr::null_mut();
-            } else {
-              loop {
-                prev = (*prev).next;
-                if prev == curr {
-                  (*prev).next = next;
-                  break;
-                }
+      let next = (*curr).next;
+      if (*curr).fib.advance() {
+        prev = curr;
+      } else {
+        if prev.is_null() {
+          prev = self.head.compare_and_swap(curr, next, Relaxed);
+          if prev == curr {
+            prev = ptr::null_mut();
+          } else {
+            loop {
+              prev = (*prev).next;
+              if prev == curr {
+                (*prev).next = next;
+                break;
               }
             }
-          } else {
-            (*prev).next = next;
           }
-          drop(Box::from_raw(curr));
+        } else {
+          (*prev).next = next;
         }
-        curr = next;
+        drop(Box::from_raw(curr));
       }
+      curr = next;
     }
   }
 

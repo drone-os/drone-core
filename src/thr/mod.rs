@@ -8,32 +8,47 @@
 
 pub mod prelude;
 
+mod preempt;
 mod tag;
 mod task;
 
+pub use self::preempt::{current, with_preempted, PreemptedCell};
 pub use self::tag::*;
 pub use self::task::{init, TaskCell};
 
 use fib::Chain;
-
-static mut CURRENT: usize = 0;
+use sv::Supervisor;
 
 /// A thread interface.
 pub trait Thread: Sized + Sync + 'static {
-  /// Returns a mutable pointer to the static array of threads.
-  fn all() -> *mut [Self];
+  /// Thread-local storage.
+  type Local: ThreadLocal;
+
+  /// Supervisor.
+  type Sv: Supervisor;
+
+  /// Returns a pointer to the first thread.
+  fn first() -> *const Self;
 
   /// Returns a reference to the fibers stack.
   fn fib_chain(&self) -> &Chain;
 
-  /// Returns a mutable reference to the fibers stack.
-  fn fib_chain_mut(&mut self) -> &mut Chain;
+  /// Returns a thread-local storage. A safe way to get it is via
+  /// [`current`](current).
+  ///
+  /// # Safety
+  ///
+  /// Must be called only if the current thread is active.
+  unsafe fn get_local(&self) -> &Self::Local;
+}
 
+/// A thread-local storage.
+pub trait ThreadLocal: Sized + 'static {
   /// Returns the cell for the task pointer.
   fn task(&self) -> &TaskCell;
 
   /// Returns a mutable reference to the stored index of the preempted thread.
-  fn preempted(&mut self) -> &mut usize;
+  fn preempted(&self) -> &PreemptedCell;
 }
 
 /// Thread token.
@@ -44,29 +59,16 @@ where
   Self: AsRef<<Self as ThrToken<T>>::Thr>,
   T: ThrTag,
 {
-  /// Thread array.
+  /// Thread.
   type Thr: Thread;
 
   /// A thread position within threads array.
   const THR_NUM: usize;
 
-  /// A thread handler function, which should be passed to hardware.
-  ///
-  /// # Safety
-  ///
-  /// Must not be called concurrently.
-  unsafe extern "C" fn handler() {
-    let thr = (*Self::Thr::all()).get_unchecked_mut(Self::THR_NUM);
-    *thr.preempted() = CURRENT;
-    CURRENT = Self::THR_NUM;
-    thr.fib_chain_mut().drain();
-    CURRENT = *thr.preempted();
-  }
-
   /// Returns a reference to the thread.
   #[inline(always)]
-  fn as_thr(&self) -> &Self::Thr {
-    unsafe { (*Self::Thr::all()).get_unchecked(Self::THR_NUM) }
+  fn get_thr() -> &'static Self::Thr {
+    unsafe { &*Self::Thr::first().add(Self::THR_NUM) }
   }
 }
 
@@ -80,8 +82,14 @@ pub trait ThrTokens {
   unsafe fn new() -> Self;
 }
 
-/// Returns a static reference to the current thread.
-#[inline(always)]
-pub fn current<T: Thread>() -> &'static T {
-  unsafe { (*T::all()).get_unchecked(CURRENT) }
+/// A thread handler function.
+///
+/// # Safety
+///
+/// Must not be called concurrently.
+pub unsafe fn thread_resume<T: ThrToken<U>, U: ThrTag>() {
+  let thr = T::get_thr();
+  with_preempted(thr.get_local().preempted(), T::THR_NUM, || {
+    thr.fib_chain().drain();
+  })
 }

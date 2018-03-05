@@ -50,6 +50,7 @@
 #![feature(proc_macro)]
 #![feature(slice_concat_ext)]
 #![feature(slice_get_slice)]
+#![feature(universal_impl_trait)]
 #![feature(unreachable)]
 #![feature(untagged_unions)]
 #![warn(missing_docs)]
@@ -79,6 +80,7 @@ pub mod io;
 pub mod mem;
 pub mod prelude;
 pub mod reg;
+pub mod sv;
 pub mod sync;
 pub mod thr;
 
