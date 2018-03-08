@@ -54,9 +54,8 @@ where
   FiberGen(gen)
 }
 
-/// Spawns a new generator fiber on the given `thr`.
-#[inline(always)]
-pub fn spawn<T, U, G>(thr: T, gen: G)
+/// Adds a new generator fiber on the given `thr`.
+pub fn add<T, U, G>(thr: T, gen: G)
 where
   T: AsRef<U>,
   U: Thread,

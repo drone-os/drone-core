@@ -1,4 +1,4 @@
-use fib::{spawn, Fiber, FiberState};
+use fib::{self, Fiber, FiberState};
 use sync::spsc::ring::{channel, Receiver, SendError, SendErrorKind};
 use thr::prelude::*;
 
@@ -28,8 +28,8 @@ impl<I, E> Stream for FiberStreamRing<I, E> {
   }
 }
 
-/// Spawns a new ring stream fiber on the given `thr`.
-pub fn spawn_stream_ring<T, U, O, F, I, E>(
+/// Adds a new ring stream fiber on the given `thr`.
+pub fn add_stream_ring<T, U, O, F, I, E>(
   thr: T,
   capacity: usize,
   overflow: O,
@@ -46,7 +46,7 @@ where
   E: Send + 'static,
 {
   let (rx, mut tx) = channel(capacity);
-  spawn(thr, move || loop {
+  fib::add(thr, move || loop {
     if tx.is_canceled() {
       break;
     }
@@ -84,10 +84,8 @@ where
   FiberStreamRing { rx }
 }
 
-/// Spawns a new ring stream fiber on the given `thr`. Overflows will be
-/// ignored.
-#[inline(always)]
-pub fn spawn_stream_ring_skip<T, U, F, I, E>(
+/// Adds a new ring stream fiber on the given `thr`. Overflows will be ignored.
+pub fn add_stream_ring_skip<T, U, F, I, E>(
   thr: T,
   capacity: usize,
   fib: F,
@@ -100,11 +98,11 @@ where
   I: Send + 'static,
   E: Send + 'static,
 {
-  spawn_stream_ring(thr, capacity, |_| Ok(()), fib)
+  add_stream_ring(thr, capacity, |_| Ok(()), fib)
 }
 
-/// Spawns a new ring stream fiber on the given `thr`. Overflows will overwrite.
-pub fn spawn_stream_ring_overwrite<T, U, F, I, E>(
+/// Adds a new ring stream fiber on the given `thr`. Overflows will overwrite.
+pub fn add_stream_ring_overwrite<T, U, F, I, E>(
   thr: T,
   capacity: usize,
   mut fib: F,
@@ -118,7 +116,7 @@ where
   E: Send + 'static,
 {
   let (rx, mut tx) = channel(capacity);
-  spawn(thr, move || loop {
+  fib::add(thr, move || loop {
     if tx.is_canceled() {
       break;
     }

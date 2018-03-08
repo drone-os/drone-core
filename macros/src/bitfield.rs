@@ -1,4 +1,5 @@
 use drone_macros_core::emit_err;
+use inflector::Inflector;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::{parse, Data, DeriveInput, Fields, Ident, Index, IntSuffix, LitInt,
@@ -105,8 +106,10 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let input = parse::<DeriveInput>(input).unwrap();
   let input_span = input.span();
   let DeriveInput {
-    ident, attrs, data, ..
+    attrs, ident, data, ..
   } = input;
+  let scope =
+    Ident::from(format!("__bitfield_{}", ident.as_ref().to_snake_case()));
   let var = quote!(self);
   let zero_index = Index {
     index: 0,
@@ -225,7 +228,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     .collect::<Vec<_>>();
 
   let expanded = quote! {
-    mod scope {
+    mod #scope {
       extern crate drone_core;
 
       use self::drone_core::bitfield::Bitfield;

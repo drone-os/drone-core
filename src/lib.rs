@@ -62,6 +62,8 @@
 
 extern crate alloc;
 #[macro_reexport(Bitfield)]
+#[macro_reexport(Driver)]
+#[macro_reexport(Resource)]
 extern crate drone_core_macros;
 extern crate failure;
 #[macro_use]

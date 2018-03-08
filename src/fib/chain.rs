@@ -15,7 +15,6 @@ struct Node {
 
 impl Chain {
   /// Creates an empty `Chain`.
-  #[inline(always)]
   pub const fn new() -> Self {
     Self {
       head: AtomicPtr::new(ptr::null_mut()),
@@ -81,7 +80,6 @@ impl Chain {
 }
 
 impl Node {
-  #[inline(always)]
   fn new<F: FiberRoot>(fib: F) -> Self {
     Self {
       fib: Box::new(fib),

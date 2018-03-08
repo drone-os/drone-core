@@ -1,4 +1,4 @@
-use fib::{spawn, Fiber, FiberState};
+use fib::{self, Fiber, FiberState};
 use sync::spsc::unit::{channel, Receiver, SendError};
 use thr::prelude::*;
 
@@ -28,8 +28,8 @@ impl<E> Stream for FiberStreamUnit<E> {
   }
 }
 
-/// Spawns a new unit stream fiber on the given `thr`.
-pub fn spawn_stream<T, U, O, F, E>(
+/// Adds a new unit stream fiber on the given `thr`.
+pub fn add_stream<T, U, O, F, E>(
   thr: T,
   overflow: O,
   mut fib: F,
@@ -44,7 +44,7 @@ where
   E: Send + 'static,
 {
   let (rx, mut tx) = channel();
-  spawn(thr, move || loop {
+  fib::add(thr, move || loop {
     if tx.is_canceled() {
       break;
     }
@@ -80,10 +80,8 @@ where
   FiberStreamUnit { rx }
 }
 
-/// Spawns a new unit stream fiber on the given `thr`. Overflows will be
-/// ignored.
-#[inline(always)]
-pub fn spawn_stream_skip<T, U, F, E>(thr: T, fib: F) -> FiberStreamUnit<E>
+/// Adds a new unit stream fiber on the given `thr`. Overflows will be ignored.
+pub fn add_stream_skip<T, U, F, E>(thr: T, fib: F) -> FiberStreamUnit<E>
 where
   T: AsRef<U>,
   U: Thread,
@@ -91,5 +89,5 @@ where
   F: Send + 'static,
   E: Send + 'static,
 {
-  spawn_stream(thr, || Ok(()), fib)
+  add_stream(thr, || Ok(()), fib)
 }

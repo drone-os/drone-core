@@ -92,7 +92,7 @@ fn fiber() {
   let inner = Counter(Arc::clone(&counter));
   unsafe {
     let thr = Thr0::<Ltt>::new();
-    fib::spawn(thr, move || {
+    fib::add(thr, move || {
       while inner.0.fetch_add(1, Relaxed) < 2 {
         yield;
       }
@@ -115,7 +115,7 @@ fn fiber_fn() {
   let inner = Counter(Arc::clone(&counter));
   unsafe {
     let thr = Thr1::<Ltt>::new();
-    fib::spawn_fn(thr, move || {
+    fib::add_fn(thr, move || {
       inner.0.fetch_add(1, Relaxed);
     });
     assert_eq!(counter.load(Relaxed), 0);

@@ -44,9 +44,8 @@ where
   FiberFn(Some(f))
 }
 
-/// Spawns a new closure fiber on the given `thr`.
-#[inline(always)]
-pub fn spawn_fn<T, U, F>(thr: T, f: F)
+/// Adds a new closure fiber on the given `thr`.
+pub fn add_fn<T, U, F>(thr: T, f: F)
 where
   T: AsRef<U>,
   U: Thread,

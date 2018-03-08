@@ -1,5 +1,5 @@
 use core::mem;
-use fib::{spawn, Fiber, FiberState, YieldOption};
+use fib::{self, Fiber, FiberState, YieldOption};
 use sync::spsc::oneshot::{channel, Receiver, RecvError};
 use thr::prelude::*;
 
@@ -23,7 +23,6 @@ impl<R, E> Future for FiberFuture<R, E> {
   type Item = R;
   type Error = E;
 
-  #[inline(always)]
   fn poll(&mut self) -> Poll<R, E> {
     self.rx.poll().map_err(|err| match err {
       RecvError::Complete(err) => err,
@@ -32,8 +31,8 @@ impl<R, E> Future for FiberFuture<R, E> {
   }
 }
 
-/// Spawns a new future fiber on the given `thr`.
-pub fn spawn_future<T, U, F, Y, R, E>(thr: T, mut fib: F) -> FiberFuture<R, E>
+/// Adds a new future fiber on the given `thr`.
+pub fn add_future<T, U, F, Y, R, E>(thr: T, mut fib: F) -> FiberFuture<R, E>
 where
   T: AsRef<U>,
   U: Thread,
@@ -44,7 +43,7 @@ where
   E: Send + 'static,
 {
   let (rx, tx) = channel();
-  spawn(thr, move || loop {
+  fib::add(thr, move || loop {
     if tx.is_canceled() {
       break;
     }

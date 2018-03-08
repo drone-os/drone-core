@@ -8,12 +8,12 @@ mod stream_ring;
 mod stream_unit;
 
 pub use self::chain::Chain;
-pub use self::closure::{new_fn, spawn_fn, FiberFn};
-pub use self::future::{spawn_future, FiberFuture};
-pub use self::generator::{new, spawn, FiberGen};
-pub use self::stream_ring::{spawn_stream_ring, spawn_stream_ring_overwrite,
-                            spawn_stream_ring_skip, FiberStreamRing};
-pub use self::stream_unit::{spawn_stream, spawn_stream_skip, FiberStreamUnit};
+pub use self::closure::{add_fn, new_fn, FiberFn};
+pub use self::future::{add_future, FiberFuture};
+pub use self::generator::{add, new, FiberGen};
+pub use self::stream_ring::{add_stream_ring, add_stream_ring_overwrite,
+                            add_stream_ring_skip, FiberStreamRing};
+pub use self::stream_unit::{add_stream, add_stream_skip, FiberStreamUnit};
 
 /// Lightweight thread of execution.
 pub trait Fiber {

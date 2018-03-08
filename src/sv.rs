@@ -9,11 +9,16 @@ pub trait Supervisor: Sized + 'static {
 /// A supervisor call.
 pub trait SvCall<T: SvService>: Supervisor {
   /// Call the system service.
-  fn call(service: &mut T);
+  ///
+  /// # Safety
+  ///
+  /// Directly calling supervisor services is unsafe in general. User code
+  /// should use wrappers instead.
+  unsafe fn call(service: &mut T);
 }
 
 /// A supervisor service.
-pub trait SvService: Sized + Send {
+pub trait SvService: Sized + Send + 'static {
   /// A system service handler.
   ///
   /// # Safety

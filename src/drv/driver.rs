@@ -1,16 +1,13 @@
 use drv::Resource;
 
 /// Device driver.
-pub trait Driver
-where
-  Self: Sized + Send + Sync + 'static,
-{
+pub trait Driver: Sized + Send + 'static {
   /// Device resource.
   type Resource: Resource;
 
-  /// Creates a new driver from the resource `res`.
-  fn from_res(res: <Self::Resource as Resource>::Source) -> Self;
+  /// Creates a new driver from `source`.
+  fn new(source: <Self::Resource as Resource>::Source) -> Self;
 
   /// Releases the resource.
-  fn into_res(self) -> Self::Resource;
+  fn free(self) -> Self::Resource;
 }
