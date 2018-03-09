@@ -1,5 +1,5 @@
 [workspace]
-members = ["macros", "macros-core"]
+members = ["ctypes", "macros", "macros-core"]
 
 [package]
 name = "drone-core"
@@ -13,6 +13,10 @@ repository = "https://github.com/drone-os/drone-core"
 [features]
 default = []
 std = ['futures/use_std']
+
+[dependencies.drone-ctypes]
+version = "0.8.0"
+path = "ctypes"
 
 [dependencies.drone-core-macros]
 version = "0.8.0"

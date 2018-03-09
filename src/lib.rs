@@ -61,6 +61,8 @@
 #![cfg_attr(feature = "clippy", allow(precedence, inline_always))]
 
 extern crate alloc;
+#[cfg(feature = "std")]
+extern crate core;
 #[macro_reexport(Bitfield)]
 #[macro_reexport(Driver)]
 #[macro_reexport(Resource)]
@@ -70,8 +72,7 @@ extern crate failure;
 extern crate failure_derive;
 extern crate futures;
 
-#[cfg(feature = "std")]
-extern crate core;
+pub extern crate drone_ctypes as ctypes;
 
 pub mod async;
 pub mod bitfield;
