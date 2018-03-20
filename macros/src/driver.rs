@@ -2,7 +2,7 @@ use drone_macros_core::emit_err;
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::{parse, Data, DeriveInput, Fields, Ident, Index, PathArguments};
+use syn::{parse, Data, DeriveInput, Field, Fields, Ident, Index, PathArguments};
 use syn::punctuated::Pair;
 use syn::spanned::Spanned;
 use syn::synom::Synom;
@@ -67,9 +67,9 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let res = if_chain! {
     if let Data::Struct(x) = data;
     if let Fields::Unnamed(mut x) = x.fields;
-    if let Some(Pair::End(x)) = x.unnamed.pop();
+    if let Some(Pair::End(Field { ty, .. })) = x.unnamed.pop();
     then {
-      x
+      ty
     } else {
       return emit_err(
         input_span,

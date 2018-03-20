@@ -3,7 +3,6 @@
 //! ```
 //! # #![feature(conservative_impl_trait)]
 //! # #![feature(generators)]
-//! # #![feature(never_type)]
 //! # #![feature(prelude_import)]
 //! # #![feature(proc_macro)]
 //! # #[macro_use] extern crate drone_core;
@@ -39,7 +38,6 @@
 //! ```
 //! # #![feature(conservative_impl_trait)]
 //! # #![feature(generators)]
-//! # #![feature(never_type)]
 //! # #![feature(prelude_import)]
 //! # #![feature(proc_macro)]
 //! # #[macro_use] extern crate drone_core;

@@ -35,13 +35,13 @@
 #![feature(const_ptr_null_mut)]
 #![feature(const_size_of)]
 #![feature(const_unsafe_cell_new)]
+#![feature(exhaustive_patterns)]
 #![feature(fused)]
 #![feature(generators)]
 #![feature(generator_trait)]
 #![feature(integer_atomics)]
 #![feature(iterator_for_each)]
 #![feature(macro_reexport)]
-#![feature(never_type)]
 #![feature(nonzero)]
 #![feature(optin_builtin_traits)]
 #![feature(pointer_methods)]
@@ -50,6 +50,7 @@
 #![feature(proc_macro)]
 #![feature(slice_concat_ext)]
 #![feature(slice_get_slice)]
+#![feature(slice_internals)]
 #![feature(universal_impl_trait)]
 #![feature(unreachable)]
 #![feature(untagged_unions)]
@@ -67,16 +68,16 @@ extern crate core;
 #[macro_reexport(Driver)]
 #[macro_reexport(Resource)]
 extern crate drone_core_macros;
+extern crate drone_ctypes;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
 extern crate futures;
 
-pub extern crate drone_ctypes as ctypes;
-
 pub mod async;
 pub mod bitfield;
 pub mod drv;
+pub mod ffi;
 pub mod fib;
 pub mod heap;
 pub mod io;
