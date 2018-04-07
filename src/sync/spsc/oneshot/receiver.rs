@@ -54,14 +54,19 @@ impl<T, E> Drop for Receiver<T, E> {
 impl<T, E> Inner<T, E> {
   fn recv(&self) -> Poll<T, RecvError<E>> {
     self
-      .update(self.state_load(Acquire), Acquire, Acquire, |state| {
-        if *state & (COMPLETE | RX_LOCK) != 0 {
-          Err(())
-        } else {
-          *state |= RX_LOCK;
-          Ok(*state)
-        }
-      })
+      .update(
+        self.state_load(Acquire),
+        Acquire,
+        Acquire,
+        |state| {
+          if *state & (COMPLETE | RX_LOCK) != 0 {
+            Err(())
+          } else {
+            *state |= RX_LOCK;
+            Ok(*state)
+          }
+        },
+      )
       .and_then(|state| {
         unsafe { *self.rx_task.get() = Some(task::current()) };
         self.update(state, AcqRel, Relaxed, |state| {

@@ -2,10 +2,9 @@ use drone_macros_core::emit_err;
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::{parse, Data, DeriveInput, Field, Fields, Ident, Index, PathArguments};
-use syn::punctuated::Pair;
 use syn::spanned::Spanned;
 use syn::synom::Synom;
+use syn::{parse, Data, DeriveInput, Field, Fields, Ident, Index, PathArguments};
 
 #[derive(Default)]
 struct Driver {
@@ -32,7 +31,7 @@ impl Synom for Driver {
 }
 
 pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
-  let call_site = Span::call_site();
+  let def_site = Span::def_site();
   let input = parse::<DeriveInput>(input).unwrap();
   let input_span = input.span();
   let DeriveInput {
@@ -42,18 +41,18 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     data,
     ..
   } = input;
-  let scope =
-    Ident::from(format!("__driver_{}", ident.as_ref().to_snake_case()));
-  let var = quote!(self);
-  let zero_index = Index {
-    index: 0,
-    span: call_site,
-  };
-  let access = quote_spanned!(call_site => #var.#zero_index);
+  let scope = Ident::new(
+    &format!("__driver_{}", ident.as_ref().to_snake_case()),
+    def_site,
+  );
+  let var = quote_spanned!(def_site => self);
+  let zero_index = Index::from(0);
+  let access = quote!(#var.#zero_index);
   let driver = attrs.into_iter().find(|attr| {
     if_chain! {
       if attr.path.leading_colon.is_none();
-      if let Some(Pair::End(x)) = attr.path.segments.first();
+      if attr.path.segments.len() <= 1;
+      if let Some(x) = attr.path.segments.iter().next();
       if let PathArguments::None = x.arguments;
       if x.ident == "driver";
       then { true } else { false }
@@ -67,7 +66,8 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let res = if_chain! {
     if let Data::Struct(x) = data;
     if let Fields::Unnamed(mut x) = x.fields;
-    if let Some(Pair::End(Field { ty, .. })) = x.unnamed.pop();
+    if x.unnamed.len() <= 1;
+    if let Some(Field { ty, .. }) = x.unnamed.into_iter().next();
     then {
       ty
     } else {
@@ -79,7 +79,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   };
   let mut impl_tokens = Vec::new();
   if !forward {
-    impl_tokens.push(quote! {
+    impl_tokens.push(quote_spanned! { def_site =>
       type Resource = #res;
 
       #[inline(always)]
@@ -93,7 +93,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       }
     });
   } else {
-    impl_tokens.push(quote! {
+    impl_tokens.push(quote_spanned! { def_site =>
       type Resource = <#res as Driver>::Resource;
 
       #[inline(always)]
@@ -108,7 +108,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     });
   }
 
-  let expanded = quote! {
+  let expanded = quote_spanned! { def_site =>
     mod #scope {
       extern crate drone_core;
 

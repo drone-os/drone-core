@@ -1,7 +1,7 @@
 use super::pool::{Fits, Pool};
 use alloc::allocator::{AllocErr, CannotReallocInPlace, Excess, Layout};
-use core::{cmp, ptr};
 use core::slice::SliceIndex;
+use core::{cmp, ptr};
 
 /// A lock-free allocator that composes multiple memory pools.
 ///
@@ -67,11 +67,13 @@ pub trait Allocator {
     loop {
       let pool = self.get_pool_unchecked(pool_idx);
       if let Some(ptr) = pool.alloc() {
-        return Ok(f(ptr.get(), pool));
+        return Ok(f(ptr.as_ptr(), pool));
       }
       pool_idx += 1;
       if pool_idx == Self::POOL_COUNT {
-        return Err(AllocErr::Exhausted { request: layout });
+        return Err(AllocErr::Exhausted {
+          request: layout,
+        });
       }
     }
   }

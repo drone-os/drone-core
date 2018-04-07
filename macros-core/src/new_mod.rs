@@ -1,5 +1,5 @@
-use syn::{Attribute, Ident, Visibility};
 use syn::synom::Synom;
+use syn::{Attribute, Ident, Visibility};
 
 /// Creates a new struct: `mod Foo;`.
 #[allow(missing_docs)]

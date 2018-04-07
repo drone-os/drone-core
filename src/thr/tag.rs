@@ -1,5 +1,8 @@
 /// Thread token tag.
-pub trait ThrTag: Sized + Clone + Copy + Send + Sync + Default + 'static {}
+pub trait ThrTag:
+  Sized + Clone + Copy + Send + Sync + Default + 'static
+{
+}
 
 /// Triggerable thread token tag.
 pub trait ThrTrigger: ThrTag {}

@@ -17,7 +17,8 @@ where
 
   #[inline(always)]
   fn resume(&mut self, _input: ()) -> FiberState<G::Yield, G::Return> {
-    self.0.resume().into()
+    // FIXME Use `Pin` when implemented
+    unsafe { self.0.resume().into() }
   }
 }
 

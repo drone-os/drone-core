@@ -1,8 +1,8 @@
 use drone_macros_core::{ExternStatic, ExternStruct, NewStruct};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::{Attribute, Expr, Ident, Type};
 use syn::synom::Synom;
+use syn::{Attribute, Expr, Ident, Type};
 
 struct Thr {
   thr: NewStruct,
@@ -46,7 +46,7 @@ impl Synom for Thr {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-  let call_site = Span::call_site();
+  let (def_site, call_site) = (Span::def_site(), Span::call_site());
   let Thr {
     thr:
       NewStruct {
@@ -60,12 +60,16 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         vis: local_vis,
         ident: local_ident,
       },
-    sv: ExternStruct { ident: sv_ident },
-    array: ExternStatic { ident: array_ident },
+    sv: ExternStruct {
+      ident: sv_ident,
+    },
+    array: ExternStatic {
+      ident: array_ident,
+    },
     fields,
   } = try_parse!(call_site, input);
-  let rt = Ident::from("__thr_rt");
-  let def_new = Ident::new("new", call_site);
+  let rt = Ident::new("__thr_rt", def_site);
+  let def_new = Ident::from("new");
   let mut thr_tokens = Vec::new();
   let mut thr_ctor_tokens = Vec::new();
   let mut local_tokens = Vec::new();
@@ -78,8 +82,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       ty,
       init,
     } = field;
-    let tokens = quote!(#(#attrs)* pub #ident: #ty);
-    let ctor_tokens = quote!(#ident: #init);
+    let tokens = quote_spanned!(def_site => #(#attrs)* pub #ident: #ty);
+    let ctor_tokens = quote_spanned!(def_site => #ident: #init);
     if shared {
       thr_tokens.push(tokens);
       thr_ctor_tokens.push(ctor_tokens);
@@ -88,14 +92,26 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       local_ctor_tokens.push(ctor_tokens);
     }
   }
-  thr_tokens.push(quote!(fib_chain: #rt::Chain));
-  thr_ctor_tokens.push(quote!(fib_chain: #rt::Chain::new()));
-  local_tokens.push(quote!(task: #rt::TaskCell));
-  local_tokens.push(quote!(preempted: #rt::PreemptedCell));
-  local_ctor_tokens.push(quote!(task: #rt::TaskCell::new()));
-  local_ctor_tokens.push(quote!(preempted: #rt::PreemptedCell::new()));
+  thr_tokens.push(quote_spanned! { def_site =>
+    fib_chain: #rt::Chain
+  });
+  thr_ctor_tokens.push(quote_spanned! { def_site =>
+    fib_chain: #rt::Chain::new()
+  });
+  local_tokens.push(quote_spanned! { def_site =>
+    task: #rt::TaskCell
+  });
+  local_tokens.push(quote_spanned! { def_site =>
+    preempted: #rt::PreemptedCell
+  });
+  local_ctor_tokens.push(quote_spanned! { def_site =>
+    task: #rt::TaskCell::new()
+  });
+  local_ctor_tokens.push(quote_spanned! { def_site =>
+    preempted: #rt::PreemptedCell::new()
+  });
 
-  let expanded = quote! {
+  let expanded = quote_spanned! { def_site =>
     mod #rt {
       extern crate drone_core;
 

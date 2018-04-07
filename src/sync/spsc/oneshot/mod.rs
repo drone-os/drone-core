@@ -74,7 +74,9 @@ impl<T, E> SpscInner<AtomicU8, u8> for Inner<T, E> {
     success: Ordering,
     failure: Ordering,
   ) -> Result<u8, u8> {
-    self.state.compare_exchange(current, new, success, failure)
+    self
+      .state
+      .compare_exchange(current, new, success, failure)
   }
 
   #[inline(always)]

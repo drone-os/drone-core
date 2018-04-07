@@ -1,8 +1,8 @@
 use core::cell::Cell;
 use core::ptr;
 use futures::task;
-use thr::{current, ThreadLocal};
 use thr::prelude::*;
+use thr::{current, ThreadLocal};
 
 /// A thread-local storage of the task pointer.
 pub struct TaskCell(Cell<*mut u8>);

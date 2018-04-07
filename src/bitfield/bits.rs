@@ -1,13 +1,11 @@
 use core::fmt::Debug;
 use core::mem::size_of;
-use core::nonzero::Zeroable;
 use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr, Sub};
 
 /// Underlying integer for [`Bitfield`](Bitfield).
 pub trait Bits
 where
   Self: Sized
-    + Zeroable
     + Debug
     + Copy
     + PartialOrd
@@ -27,6 +25,9 @@ where
 
   /// Returns the value of one.
   fn one() -> Self;
+
+  /// Returns `true` if all bits are zeros.
+  fn is_zero(self) -> bool;
 }
 
 macro_rules! bits {
@@ -46,11 +47,17 @@ macro_rules! bits {
       fn one() -> $type {
         1
       }
+
+      #[inline(always)]
+      fn is_zero(self) -> bool {
+        self == 0
+      }
     }
-  }
+  };
 }
 
 bits!(u8);
 bits!(u16);
 bits!(u32);
 bits!(u64);
+bits!(u128);

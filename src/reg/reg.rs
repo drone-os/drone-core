@@ -113,7 +113,9 @@ pub trait WRegUnsync<'a>: WReg<Urt> + RegRef<'a, Urt> {
 
 /// Register that can read and write its value in a single-threaded context.
 // FIXME https://github.com/rust-lang/rust/issues/46397
-pub trait RwRegUnsync<'a>: RReg<Urt> + WRegUnsync<'a> + RegRef<'a, Urt> {
+pub trait RwRegUnsync<'a>:
+  RReg<Urt> + WRegUnsync<'a> + RegRef<'a, Urt>
+{
   /// Atomically updates the register's value.
   fn modify<F>(&'a mut self, f: F)
   where
@@ -159,7 +161,10 @@ where
       -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
     unsafe {
-      write_volatile(self.to_mut_ptr(), f(&mut self.default()).val().bits());
+      write_volatile(
+        self.to_mut_ptr(),
+        f(&mut self.default()).val().bits(),
+      );
     }
   }
 
@@ -185,7 +190,10 @@ where
       -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
     unsafe {
-      write_volatile(self.to_mut_ptr(), f(&mut self.load()).val().bits());
+      write_volatile(
+        self.to_mut_ptr(),
+        f(&mut self.load()).val().bits(),
+      );
     }
   }
 }

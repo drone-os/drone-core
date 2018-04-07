@@ -234,9 +234,9 @@ where
   #[inline(always)]
   fn read(&self, val: &<U::Reg as Reg<T>>::Val) -> bool {
     unsafe {
-      val.read_bit(<<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
-        U::OFFSET,
-      ))
+      val.read_bit(
+        <<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(U::OFFSET),
+      )
     }
   }
 
@@ -255,27 +255,27 @@ where
   #[inline(always)]
   fn set(&self, val: &mut <U::Reg as Reg<T>>::Val) {
     unsafe {
-      val.set_bit(<<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
-        U::OFFSET,
-      ));
+      val.set_bit(
+        <<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(U::OFFSET),
+      );
     }
   }
 
   #[inline(always)]
   fn clear(&self, val: &mut <U::Reg as Reg<T>>::Val) {
     unsafe {
-      val.clear_bit(<<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
-        U::OFFSET,
-      ));
+      val.clear_bit(
+        <<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(U::OFFSET),
+      );
     }
   }
 
   #[inline(always)]
   fn toggle(&self, val: &mut <U::Reg as Reg<T>>::Val) {
     unsafe {
-      val.toggle_bit(<<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
-        U::OFFSET,
-      ));
+      val.toggle_bit(
+        <<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(U::OFFSET),
+      );
     }
   }
 }

@@ -31,8 +31,6 @@ mod bits;
 
 pub use self::bits::Bits;
 
-use core::nonzero::Zeroable;
-
 /// A packed struct of bits, which fits within a single integer.
 ///
 /// See [the module level documentation](index.html) for more.

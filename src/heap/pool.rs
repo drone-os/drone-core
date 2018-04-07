@@ -1,6 +1,5 @@
 use alloc::allocator::Layout;
-use core::nonzero::NonZero;
-use core::ptr;
+use core::ptr::{self, NonNull};
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::*;
 
@@ -87,7 +86,7 @@ impl Pool {
   ///
   /// This operation should compute in O(1) time.
   #[inline(always)]
-  pub fn alloc(&self) -> Option<NonZero<*mut u8>> {
+  pub fn alloc(&self) -> Option<NonNull<u8>> {
     unsafe { self.alloc_free().or_else(|| self.alloc_head()) }
   }
 
@@ -110,7 +109,7 @@ impl Pool {
   }
 
   #[inline(always)]
-  unsafe fn alloc_free(&self) -> Option<NonZero<*mut u8>> {
+  unsafe fn alloc_free(&self) -> Option<NonNull<u8>> {
     loop {
       let head = self.free.load(Acquire);
       if head.is_null() {
@@ -118,21 +117,24 @@ impl Pool {
       }
       let next = ptr::read(head as *const *mut u8);
       if self.free.compare_and_swap(head, next, Relaxed) == head {
-        break Some(NonZero::new_unchecked(head));
+        break Some(NonNull::new_unchecked(head));
       }
     }
   }
 
   #[inline(always)]
-  unsafe fn alloc_head(&self) -> Option<NonZero<*mut u8>> {
+  unsafe fn alloc_head(&self) -> Option<NonNull<u8>> {
     loop {
       let current = self.head.load(Relaxed);
       if current == self.edge {
         break None;
       }
       let new = current.add(self.size);
-      if self.head.compare_and_swap(current, new, Relaxed) == current {
-        break Some(NonZero::new_unchecked(current));
+      if self
+        .head
+        .compare_and_swap(current, new, Relaxed) == current
+      {
+        break Some(NonNull::new_unchecked(current));
       }
     }
   }

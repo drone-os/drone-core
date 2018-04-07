@@ -12,10 +12,10 @@ extern crate drone_core;
 #[allow(unused_imports)]
 use drone_core::prelude::*;
 
-use drone_core::{fib, thr};
 use drone_core::sv::Supervisor;
 use drone_core::thr::ThrToken;
 use drone_core::thr::prelude::*;
+use drone_core::{fib, thr};
 use std::marker::PhantomData;
 use std::ptr;
 use std::sync::Arc;
@@ -57,7 +57,9 @@ macro_rules! thr_num {
 
     impl<T: ThrTag> $name<T> {
       unsafe fn new() -> Self {
-        Self { _tag: PhantomData }
+        Self {
+          _tag: PhantomData,
+        }
       }
     }
 
@@ -72,7 +74,7 @@ macro_rules! thr_num {
         Self::get_thr()
       }
     }
-  }
+  };
 }
 
 thr_num!(Thr0, 0);

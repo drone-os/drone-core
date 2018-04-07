@@ -19,7 +19,10 @@ pub trait Future {
 /// A type returned from [`io::Future::poll`](Future::poll).
 pub type Poll<F> = futures::Poll<
   (<F as io::Future>::Sess, <F as io::Future>::Resp),
-  (<F as io::Future>::Sess, <F as io::Future>::Error),
+  (
+    <F as io::Future>::Sess,
+    <F as io::Future>::Error,
+  ),
 >;
 
 impl<'s, F, S, R, E> io::Future for F

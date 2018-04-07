@@ -1,7 +1,7 @@
-use core::{fmt, mem, ops, ptr, slice};
 use core::borrow::Borrow;
 use core::slice::memchr;
 use core::str::Utf8Error;
+use core::{fmt, mem, ops, ptr, slice};
 use ffi::{c_char, strlen, CStr};
 
 /// A type representing an owned, C-compatible, nul-terminated string with no

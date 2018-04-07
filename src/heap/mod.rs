@@ -104,8 +104,8 @@
 //! 2. Mark a block as free in the pool. This step should compute in *O(1)*
 //!    time.
 
-mod pool;
 mod allocator;
+mod pool;
 
 pub use self::allocator::Allocator;
 pub use self::pool::Pool;

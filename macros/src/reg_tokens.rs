@@ -5,8 +5,8 @@ use proc_macro2::Span;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use syn::{parse_str, Attribute, Ident, LitStr};
 use syn::synom::Synom;
+use syn::{parse_str, Attribute, Ident, LitStr};
 
 struct RegTokens {
   tokens: NewStruct,
@@ -102,7 +102,7 @@ impl Synom for Reg {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-  let call_site = Span::call_site();
+  let (def_site, call_site) = (Span::def_site(), Span::call_site());
   let RegTokens {
     tokens:
       NewStruct {
@@ -113,32 +113,32 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     includes,
     blocks: Blocks(mut blocks),
   } = try_parse!(call_site, input);
-  let rt = Ident::from("__reg_tokens_rt");
-  let new = Ident::new("new", call_site);
+  let rt = Ident::new("__reg_tokens_rt", def_site);
+  let new = Ident::from("new");
   include_blocks(includes, &mut blocks);
   let mut tokens_tokens = Vec::new();
   let mut tokens_ctor_tokens = Vec::new();
   for Block { ident, regs } in blocks {
     let block = ident.as_ref().to_snake_case();
-    let block_ident =
-      Ident::new(&unkeywordize(block.as_str().into()), call_site);
+    let block_ident = Ident::from(unkeywordize(block.as_str().into()));
     for Reg { attrs, ident } in regs {
-      let reg_struct = Ident::new(&ident.as_ref().to_pascal_case(), call_site);
-      let reg_name = Ident::new(
-        &format!("{}_{}", block, ident.as_ref().to_snake_case()),
-        call_site,
-      );
-      tokens_tokens.push(quote! {
+      let reg_struct = Ident::from(ident.as_ref().to_pascal_case());
+      let reg_name = Ident::from(format!(
+        "{}_{}",
+        block,
+        ident.as_ref().to_snake_case()
+      ));
+      tokens_tokens.push(quote_spanned! { def_site =>
         #(#attrs)*
         pub #reg_name: #block_ident::#reg_struct<#rt::Srt>
       });
-      tokens_ctor_tokens.push(quote! {
+      tokens_ctor_tokens.push(quote_spanned! { def_site =>
         #reg_name: #block_ident::#reg_struct::#new()
       });
     }
   }
 
-  let expanded = quote! {
+  let expanded = quote_spanned! { def_site =>
     mod #rt {
       extern crate drone_core;
 
@@ -161,7 +161,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
 fn include_blocks(includes: Vec<Include>, blocks: &mut Vec<Block>) {
   for Include { var, path } in includes {
-    let path = format!("{}{}", env::var(var.value()).unwrap(), path.value());
+    let path = format!(
+      "{}{}",
+      env::var(var.value()).unwrap(),
+      path.value()
+    );
     let mut file = File::open(path).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();

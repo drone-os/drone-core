@@ -3,8 +3,8 @@ use inflector::Inflector;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::Tokens;
-use syn::{Attribute, Ident, LitInt};
 use syn::synom::Synom;
+use syn::{Attribute, Ident, LitInt};
 
 struct RegMap {
   block: NewMod,
@@ -69,7 +69,7 @@ impl Synom for Field {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-  let call_site = Span::call_site();
+  let (def_site, call_site) = (Span::def_site(), Span::call_site());
   let RegMap {
     block:
       NewMod {
@@ -81,10 +81,14 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
   } = try_parse!(call_site, input);
   let mut block_tokens = Vec::new();
   let mut outer_tokens = Vec::new();
-  let block_mod =
-    gen_block(block_ident, &regs, &mut block_tokens, &mut outer_tokens);
+  let block_mod = gen_block(
+    block_ident,
+    &regs,
+    &mut block_tokens,
+    &mut outer_tokens,
+  );
 
-  let expanded = quote! {
+  let expanded = quote_spanned! { def_site =>
     #(#block_attrs)*
     #block_vis mod #block_mod {
       #(#block_tokens)*
@@ -101,17 +105,16 @@ fn gen_block(
   block_tokens: &mut Vec<Tokens>,
   outer_tokens: &mut Vec<Tokens>,
 ) -> Ident {
-  let call_site = Span::call_site();
-  let block_mod = Ident::new(
-    &unkeywordize(block_ident.as_ref().to_snake_case().into()),
-    call_site,
-  );
+  let def_site = Span::def_site();
+  let block_mod = Ident::from(unkeywordize(
+    block_ident.as_ref().to_snake_case().into(),
+  ));
   let block_prefix = block_ident.as_ref().to_pascal_case();
-  let reg = Ident::new("Reg", call_site);
-  let val = Ident::new("Val", call_site);
-  let hold = Ident::new("Hold", call_site);
-  let this = Ident::new("self", call_site);
-  let new = Ident::new("new", call_site);
+  let reg = Ident::from("Reg");
+  let val = Ident::from("Val");
+  let hold = Ident::from("Hold");
+  let this = Ident::from("self");
+  let new = Ident::from("new");
   for &Reg {
     ref attrs,
     ident,
@@ -122,14 +125,12 @@ fn gen_block(
     ref fields,
   } in regs
   {
-    let reg_mod = Ident::new(
-      &unkeywordize(ident.as_ref().to_snake_case().into()),
-      call_site,
-    );
-    let reg_struct = Ident::new(&ident.as_ref().to_pascal_case(), call_site);
-    let reg_alias =
-      Ident::new(&format!("{}{}", block_prefix, reg_struct), call_site);
-    let val_ty = Ident::new(&format!("u{}", size), call_site);
+    let reg_mod = Ident::from(unkeywordize(
+      ident.as_ref().to_snake_case().into(),
+    ));
+    let reg_struct = Ident::from(ident.as_ref().to_pascal_case());
+    let reg_alias = Ident::from(format!("{}{}", block_prefix, reg_struct));
+    let val_ty = Ident::from(format!("u{}", size));
     let mut reg_struct_tokens = Vec::new();
     let mut reg_ctor_tokens = Vec::new();
     let mut reg_fork_tokens = Vec::new();
@@ -145,11 +146,11 @@ fn gen_block(
       &mut reg_outer_tokens,
     );
     for trait_ident in traits {
-      reg_outer_tokens.push(quote! {
+      reg_outer_tokens.push(quote_spanned! { def_site =>
         impl<T: RegTag> #trait_ident<T> for #reg<T> {}
       });
     }
-    block_tokens.push(quote! {
+    block_tokens.push(quote_spanned! { def_site =>
       #(#attrs)*
       pub mod #reg_mod {
         extern crate core;
@@ -271,7 +272,7 @@ fn gen_block(
 
       pub use self::#reg_mod::#reg as #reg_struct;
     });
-    outer_tokens.push(quote! {
+    outer_tokens.push(quote_spanned! { def_site =>
       pub use #this::#block_mod::#reg_struct as #reg_alias;
     });
   }
@@ -288,7 +289,7 @@ fn gen_reg(
   reg_fork_tokens: &mut Vec<Tokens>,
   reg_outer_tokens: &mut Vec<Tokens>,
 ) {
-  let call_site = Span::call_site();
+  let def_site = Span::def_site();
   for &Field {
     ref attrs,
     ident,
@@ -298,19 +299,19 @@ fn gen_reg(
   } in fields
   {
     let suffix = ident.as_ref().to_snake_case();
-    let field_struct = Ident::new(&ident.as_ref().to_pascal_case(), call_site);
-    let field = Ident::new(&unkeywordize(suffix.as_str().into()), call_site);
-    reg_struct_tokens.push(quote! {
+    let field_struct = Ident::from(ident.as_ref().to_pascal_case());
+    let field = Ident::from(unkeywordize(suffix.as_str().into()));
+    reg_struct_tokens.push(quote_spanned! { def_site =>
       #(#attrs)*
       pub #field: #field_struct<T>
     });
-    reg_ctor_tokens.push(quote! {
+    reg_ctor_tokens.push(quote_spanned! { def_site =>
       #field: #field_struct(T::default())
     });
-    reg_fork_tokens.push(quote! {
+    reg_fork_tokens.push(quote_spanned! { def_site =>
       #field: self.#field.fork()
     });
-    reg_outer_tokens.push(quote! {
+    reg_outer_tokens.push(quote_spanned! { def_site =>
       #(#attrs)*
       #[derive(Clone, Copy)]
       pub struct #field_struct<T: RegTag>(T);
@@ -351,16 +352,16 @@ fn gen_reg(
       }
     });
     for trait_ident in traits {
-      reg_outer_tokens.push(quote! {
+      reg_outer_tokens.push(quote_spanned! { def_site =>
         impl<T: RegTag> #trait_ident<T> for #field_struct<T> {}
       });
     }
     if width.value() == 1 {
-      reg_outer_tokens.push(quote! {
+      reg_outer_tokens.push(quote_spanned! { def_site =>
         impl<T: RegTag> RegFieldBit<T> for #field_struct<T> {}
       });
       if traits.iter().any(|name| name == "RRRegField") {
-        reg_outer_tokens.push(quote! {
+        reg_outer_tokens.push(quote_spanned! { def_site =>
           impl<'a, T: RegTag> #hold<'a, T> {
             #(#attrs)*
             #[inline(always)]
@@ -371,10 +372,10 @@ fn gen_reg(
         });
       }
       if traits.iter().any(|name| name == "WWRegField") {
-        let set_field = Ident::new(&format!("set_{}", suffix), call_site);
-        let clear_field = Ident::new(&format!("clear_{}", suffix), call_site);
-        let toggle_field = Ident::new(&format!("toggle_{}", suffix), call_site);
-        reg_outer_tokens.push(quote! {
+        let set_field = Ident::from(format!("set_{}", suffix));
+        let clear_field = Ident::from(format!("clear_{}", suffix));
+        let toggle_field = Ident::from(format!("toggle_{}", suffix));
+        reg_outer_tokens.push(quote_spanned! { def_site =>
           impl<'a, T: RegTag> #hold<'a, T> {
             #(#attrs)*
             #[inline(always)]
@@ -400,11 +401,11 @@ fn gen_reg(
         });
       }
     } else {
-      reg_outer_tokens.push(quote! {
+      reg_outer_tokens.push(quote_spanned! { def_site =>
         impl<T: RegTag> RegFieldBits<T> for #field_struct<T> {}
       });
       if traits.iter().any(|name| name == "RRRegField") {
-        reg_outer_tokens.push(quote! {
+        reg_outer_tokens.push(quote_spanned! { def_site =>
           impl<'a, T: RegTag> #hold<'a, T> {
             #(#attrs)*
             #[inline(always)]
@@ -415,8 +416,8 @@ fn gen_reg(
         });
       }
       if traits.iter().any(|name| name == "WWRegField") {
-        let write_field = Ident::new(&format!("write_{}", suffix), call_site);
-        reg_outer_tokens.push(quote! {
+        let write_field = Ident::from(format!("write_{}", suffix));
+        reg_outer_tokens.push(quote_spanned! { def_site =>
           impl<'a, T: RegTag> #hold<'a, T> {
             #(#attrs)*
             #[inline(always)]

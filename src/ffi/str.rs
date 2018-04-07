@@ -1,11 +1,11 @@
 use alloc::arc::Arc;
 use alloc::borrow::Cow;
 use alloc::rc::Rc;
-use core::{ascii, fmt, slice, str};
 use core::cmp::Ordering;
 use core::fmt::Write;
 use core::slice::memchr;
 use core::str::Utf8Error;
+use core::{ascii, fmt, slice, str};
 use ffi::{c_char, strlen, CString};
 
 /// Representation of a borrowed C string.
@@ -72,6 +72,7 @@ use ffi::{c_char, strlen, CString};
 ///
 /// [`CString`]: CString
 /// [`from_ptr`]: CString::from_ptr
+#[cfg_attr(feature = "clippy", allow(derive_hash_xor_eq))]
 #[derive(Hash)]
 pub struct CStr {
   inner: [c_char],
@@ -404,6 +405,7 @@ impl CStr {
   /// let boxed = c_string.into_boxed_c_str();
   /// assert_eq!(boxed.into_c_string(), CString::new("foo").unwrap());
   /// ```
+  #[cfg_attr(feature = "clippy", allow(wrong_self_convention))]
   pub fn into_c_string(self: Box<CStr>) -> CString {
     let raw = Box::into_raw(self) as *mut [u8];
     CString {
@@ -442,7 +444,7 @@ impl fmt::Debug for CStr {
 
 impl<'a> Default for &'a CStr {
   fn default() -> &'a CStr {
-    const SLICE: &'static [c_char] = &[0];
+    const SLICE: &[c_char] = &[0];
     unsafe { CStr::from_ptr(SLICE.as_ptr()) }
   }
 }
@@ -457,13 +459,13 @@ impl Eq for CStr {}
 
 impl PartialOrd for CStr {
   fn partial_cmp(&self, other: &CStr) -> Option<Ordering> {
-    self.to_bytes().partial_cmp(&other.to_bytes())
+    self.to_bytes().partial_cmp(other.to_bytes())
   }
 }
 
 impl Ord for CStr {
   fn cmp(&self, other: &CStr) -> Ordering {
-    self.to_bytes().cmp(&other.to_bytes())
+    self.to_bytes().cmp(other.to_bytes())
   }
 }
 

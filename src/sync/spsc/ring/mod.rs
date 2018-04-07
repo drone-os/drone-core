@@ -10,9 +10,9 @@ pub use self::sender::{SendError, SendErrorKind, Sender};
 
 use alloc::arc::Arc;
 use alloc::raw_vec::RawVec;
-use core::{cmp, mem, ptr, slice};
 use core::cell::UnsafeCell;
 use core::sync::atomic::{self, AtomicUsize};
+use core::{cmp, mem, ptr, slice};
 use futures::task::Task;
 use sync::spsc::SpscInner;
 
@@ -79,7 +79,9 @@ impl<T, E> Drop for Inner<T, E> {
     let state = self.state_load(atomic::Ordering::Relaxed);
     let count = state & INDEX_MASK;
     let begin = state >> INDEX_BITS & INDEX_MASK;
-    let end = begin.wrapping_add(count).wrapping_rem(self.buffer.cap());
+    let end = begin
+      .wrapping_add(count)
+      .wrapping_rem(self.buffer.cap());
     match begin.cmp(&end) {
       cmp::Ordering::Equal => unsafe {
         ptr::drop_in_place(slice::from_raw_parts_mut(
@@ -94,7 +96,10 @@ impl<T, E> Drop for Inner<T, E> {
         ));
       },
       cmp::Ordering::Greater => unsafe {
-        ptr::drop_in_place(slice::from_raw_parts_mut(self.buffer.ptr(), end));
+        ptr::drop_in_place(slice::from_raw_parts_mut(
+          self.buffer.ptr(),
+          end,
+        ));
         ptr::drop_in_place(slice::from_raw_parts_mut(
           self.buffer.ptr().offset(begin as isize),
           self.buffer.cap() - begin,
@@ -123,7 +128,9 @@ impl<T, E> SpscInner<AtomicUsize, usize> for Inner<T, E> {
     success: atomic::Ordering,
     failure: atomic::Ordering,
   ) -> Result<usize, usize> {
-    self.state.compare_exchange(current, new, success, failure)
+    self
+      .state
+      .compare_exchange(current, new, success, failure)
   }
 
   #[inline(always)]
@@ -182,13 +189,19 @@ mod tests {
     let mut executor = executor::spawn(rx);
     COUNTER.with(|counter| {
       counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(executor.poll_stream_notify(counter, 0), Ok(Async::NotReady));
+      assert_eq!(
+        executor.poll_stream_notify(counter, 0),
+        Ok(Async::NotReady)
+      );
       assert_eq!(tx.send(314).unwrap(), ());
       assert_eq!(
         executor.poll_stream_notify(counter, 0),
         Ok(Async::Ready(Some(314)))
       );
-      assert_eq!(executor.poll_stream_notify(counter, 0), Ok(Async::NotReady));
+      assert_eq!(
+        executor.poll_stream_notify(counter, 0),
+        Ok(Async::NotReady)
+      );
       drop(tx);
       assert_eq!(
         executor.poll_stream_notify(counter, 0),

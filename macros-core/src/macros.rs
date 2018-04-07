@@ -4,15 +4,13 @@
 /// returns an empty `TokenStream`.
 #[macro_export]
 macro_rules! try_parse {
-  ($span:expr, $input:expr) => {
-    {
-      let span = $span;
-      match ::syn::parse($input) {
-        Ok(value) => value,
-        Err(err) => return $crate::emit_parse_err(span, err),
-      }
+  ($span:expr, $input:expr) => {{
+    let span = $span;
+    match ::syn::parse($input) {
+      Ok(value) => value,
+      Err(err) => return $crate::emit_parse_err(span, err),
     }
-  }
+  }};
 }
 
 /// Matches the result of `syn::parse2`. In case of `Ok` variant, the expression
@@ -21,13 +19,11 @@ macro_rules! try_parse {
 /// returns an empty `TokenStream`.
 #[macro_export]
 macro_rules! try_parse2 {
-  ($span:expr, $input:expr) => {
-    {
-      let span = $span;
-      match ::syn::parse2($input) {
-        Ok(value) => value,
-        Err(err) => return $crate::emit_parse_err(span, err),
-      }
+  ($span:expr, $input:expr) => {{
+    let span = $span;
+    match ::syn::parse2($input) {
+      Ok(value) => value,
+      Err(err) => return $crate::emit_parse_err(span, err),
     }
-  }
+  }};
 }

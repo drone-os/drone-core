@@ -1,9 +1,9 @@
 use drone_macros_core::{emit_err, NewStatic, NewStruct};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::{Ident, LitInt};
 use syn::punctuated::Punctuated;
 use syn::synom::Synom;
+use syn::{Ident, LitInt};
 
 struct Heap {
   heap: NewStruct,
@@ -66,7 +66,7 @@ impl Pool {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-  let call_site = Span::call_site();
+  let (def_site, call_site) = (Span::def_site(), Span::call_site());
   let Heap {
     heap:
       NewStruct {
@@ -83,7 +83,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     size,
     mut pools,
   } = try_parse!(call_site, input);
-  let rt = Ident::from("__heap_rt");
+  let rt = Ident::new("__heap_rt", def_site);
   pools.sort_by_key(|pool| pool.size.value());
   let free = pools
     .iter()
@@ -106,13 +106,13 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       ref size,
       ref capacity,
     } = pool;
-    pools_tokens.push(quote! {
+    pools_tokens.push(quote_spanned! { def_site =>
       #rt::Pool::new(#offset, #size, #capacity)
     });
     offset += pool.length();
   }
 
-  let expanded = quote! {
+  let expanded = quote_spanned! { def_site =>
     mod #rt {
       extern crate alloc;
       extern crate core;

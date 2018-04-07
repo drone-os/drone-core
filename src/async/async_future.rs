@@ -26,7 +26,8 @@ where
 
   #[inline(always)]
   fn poll(&mut self) -> Poll<R, E> {
-    match self.0.resume() {
+    // FIXME Use `Pin` when implemented
+    match unsafe { self.0.resume() } {
       GeneratorState::Yielded(()) => Ok(Async::NotReady),
       GeneratorState::Complete(complete) => complete.map(Async::Ready),
     }

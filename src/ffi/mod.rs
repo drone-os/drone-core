@@ -104,7 +104,10 @@ mod tests {
     let ptr = data.as_ptr() as *const c_char;
     unsafe {
       assert_eq!(CStr::from_ptr(ptr).to_bytes(), b"123");
-      assert_eq!(CStr::from_ptr(ptr).to_bytes_with_nul(), b"123\0");
+      assert_eq!(
+        CStr::from_ptr(ptr).to_bytes_with_nul(),
+        b"123\0"
+      );
     }
   }
 
@@ -135,7 +138,10 @@ mod tests {
   #[test]
   fn formatted() {
     let s = CString::new(&b"abc\x01\x02\n\xE2\x80\xA6\xFF"[..]).unwrap();
-    assert_eq!(format!("{:?}", s), r#""abc\x01\x02\n\xe2\x80\xa6\xff""#);
+    assert_eq!(
+      format!("{:?}", s),
+      r#""abc\x01\x02\n\xe2\x80\xa6\xff""#
+    );
   }
 
   #[test]
@@ -153,7 +159,10 @@ mod tests {
     let ptr = data.as_ptr() as *const c_char;
     unsafe {
       assert_eq!(CStr::from_ptr(ptr).to_str(), Ok("123…"));
-      assert_eq!(CStr::from_ptr(ptr).to_string_lossy(), Borrowed("123…"));
+      assert_eq!(
+        CStr::from_ptr(ptr).to_string_lossy(),
+        Borrowed("123…")
+      );
     }
     let data = b"123\xE2\0";
     let ptr = data.as_ptr() as *const c_char;
@@ -185,7 +194,9 @@ mod tests {
     cstr.hash(&mut s);
     let cstr_hash = s.finish();
     let mut s = DefaultHasher::new();
-    CString::new(&data[..data.len() - 1]).unwrap().hash(&mut s);
+    CString::new(&data[..data.len() - 1])
+      .unwrap()
+      .hash(&mut s);
     let cstring_hash = s.finish();
 
     assert_eq!(cstr_hash, cstring_hash);
@@ -197,7 +208,10 @@ mod tests {
     let cstr = CStr::from_bytes_with_nul(data);
     assert_eq!(cstr.map(CStr::to_bytes), Ok(&b"123"[..]));
     let cstr = CStr::from_bytes_with_nul(data);
-    assert_eq!(cstr.map(CStr::to_bytes_with_nul), Ok(&b"123\0"[..]));
+    assert_eq!(
+      cstr.map(CStr::to_bytes_with_nul),
+      Ok(&b"123\0"[..])
+    );
 
     unsafe {
       let cstr = CStr::from_bytes_with_nul(data);
@@ -225,7 +239,10 @@ mod tests {
     let orig: &[u8] = b"Hello, world!\0";
     let cstr = CStr::from_bytes_with_nul(orig).unwrap();
     let boxed: Box<CStr> = Box::from(cstr);
-    let cstring = cstr.to_owned().into_boxed_c_str().into_c_string();
+    let cstring = cstr
+      .to_owned()
+      .into_boxed_c_str()
+      .into_c_string();
     assert_eq!(cstr, &*boxed);
     assert_eq!(&*boxed, &*cstring);
     assert_eq!(&*cstring, cstr);

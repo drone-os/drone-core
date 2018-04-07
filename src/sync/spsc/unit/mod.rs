@@ -83,7 +83,9 @@ impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
     success: Ordering,
     failure: Ordering,
   ) -> Result<usize, usize> {
-    self.state.compare_exchange(current, new, success, failure)
+    self
+      .state
+      .compare_exchange(current, new, success, failure)
   }
 
   #[inline(always)]
@@ -142,13 +144,19 @@ mod tests {
     let mut executor = executor::spawn(rx);
     COUNTER.with(|counter| {
       counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(executor.poll_stream_notify(counter, 0), Ok(Async::NotReady));
+      assert_eq!(
+        executor.poll_stream_notify(counter, 0),
+        Ok(Async::NotReady)
+      );
       assert_eq!(tx.send().unwrap(), ());
       assert_eq!(
         executor.poll_stream_notify(counter, 0),
         Ok(Async::Ready(Some(())))
       );
-      assert_eq!(executor.poll_stream_notify(counter, 0), Ok(Async::NotReady));
+      assert_eq!(
+        executor.poll_stream_notify(counter, 0),
+        Ok(Async::NotReady)
+      );
       drop(tx);
       assert_eq!(
         executor.poll_stream_notify(counter, 0),

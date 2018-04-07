@@ -176,7 +176,9 @@ impl<T, E> Inner<T, E> {
       .map(|state| {
         state.map(|state| {
           unsafe {
-            (*self.rx_task.get()).as_ref().map(|task| task.notify());
+            (*self.rx_task.get())
+              .as_ref()
+              .map(|task| task.notify());
           }
           self.update(state, Release, Relaxed, |state| {
             *state ^= RX_LOCK;
