@@ -13,7 +13,7 @@ use alloc::raw_vec::RawVec;
 use core::cell::UnsafeCell;
 use core::sync::atomic::{self, AtomicUsize};
 use core::{cmp, mem, ptr, slice};
-use futures::task::Task;
+use futures::task::Waker;
 use sync::spsc::SpscInner;
 
 /// Maximum capacity of the channel.
@@ -37,8 +37,8 @@ struct Inner<T, E> {
   state: AtomicUsize,
   buffer: RawVec<T>,
   err: UnsafeCell<Option<E>>,
-  rx_task: UnsafeCell<Option<Task>>,
-  tx_task: UnsafeCell<Option<Task>>,
+  rx_waker: UnsafeCell<Option<Waker>>,
+  tx_waker: UnsafeCell<Option<Waker>>,
 }
 
 /// Creates a new asynchronous channel, returning the receiver/sender halves.
@@ -68,8 +68,8 @@ impl<T, E> Inner<T, E> {
       state: AtomicUsize::new(0),
       buffer: RawVec::with_capacity(capacity),
       err: UnsafeCell::new(None),
-      rx_task: UnsafeCell::new(None),
-      tx_task: UnsafeCell::new(None),
+      rx_waker: UnsafeCell::new(None),
+      tx_waker: UnsafeCell::new(None),
     }
   }
 }
@@ -134,13 +134,13 @@ impl<T, E> SpscInner<AtomicUsize, usize> for Inner<T, E> {
   }
 
   #[inline(always)]
-  unsafe fn rx_task_mut(&self) -> &mut Option<Task> {
-    &mut *self.rx_task.get()
+  unsafe fn rx_waker_mut(&self) -> &mut Option<Waker> {
+    &mut *self.rx_waker.get()
   }
 
   #[inline(always)]
-  unsafe fn tx_task_mut(&self) -> &mut Option<Task> {
-    &mut *self.tx_task.get()
+  unsafe fn tx_waker_mut(&self) -> &mut Option<Waker> {
+    &mut *self.tx_waker.get()
   }
 }
 
@@ -149,7 +149,7 @@ mod tests {
   use super::*;
   use alloc::arc::Arc;
   use core::sync::atomic::{AtomicUsize, Ordering};
-  use futures::executor::{self, Notify};
+  use futures::prelude::*;
 
   thread_local! {
     static COUNTER: Arc<Counter> = Arc::new(Counter(AtomicUsize::new(0)));
@@ -157,56 +157,48 @@ mod tests {
 
   struct Counter(AtomicUsize);
 
-  impl Notify for Counter {
-    fn notify(&self, _id: usize) {
-      self.0.fetch_add(1, Ordering::Relaxed);
+  impl task::Wake for Counter {
+    fn wake(arc_self: &Arc<Self>) {
+      arc_self.0.fetch_add(1, Ordering::Relaxed);
     }
   }
 
   #[test]
   fn send_sync() {
-    let (rx, mut tx) = channel::<usize, ()>(10);
+    let (mut rx, mut tx) = channel::<usize, ()>(10);
     assert_eq!(tx.send(314).unwrap(), ());
     drop(tx);
-    let mut executor = executor::spawn(rx);
     COUNTER.with(|counter| {
+      let waker = task::Waker::from(Arc::clone(counter));
+      let mut map = task::LocalMap::new();
+      let mut cx = task::Context::without_spawn(&mut map, &waker);
       counter.0.store(0, Ordering::Relaxed);
       assert_eq!(
-        executor.poll_stream_notify(counter, 0),
+        rx.poll_next(&mut cx),
         Ok(Async::Ready(Some(314)))
       );
-      assert_eq!(
-        executor.poll_stream_notify(counter, 0),
-        Ok(Async::Ready(None))
-      );
+      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(None)));
       assert_eq!(counter.0.load(Ordering::Relaxed), 0);
     });
   }
 
   #[test]
   fn send_async() {
-    let (rx, mut tx) = channel::<usize, ()>(10);
-    let mut executor = executor::spawn(rx);
+    let (mut rx, mut tx) = channel::<usize, ()>(10);
     COUNTER.with(|counter| {
+      let waker = task::Waker::from(Arc::clone(counter));
+      let mut map = task::LocalMap::new();
+      let mut cx = task::Context::without_spawn(&mut map, &waker);
       counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(
-        executor.poll_stream_notify(counter, 0),
-        Ok(Async::NotReady)
-      );
+      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Pending));
       assert_eq!(tx.send(314).unwrap(), ());
       assert_eq!(
-        executor.poll_stream_notify(counter, 0),
+        rx.poll_next(&mut cx),
         Ok(Async::Ready(Some(314)))
       );
-      assert_eq!(
-        executor.poll_stream_notify(counter, 0),
-        Ok(Async::NotReady)
-      );
+      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Pending));
       drop(tx);
-      assert_eq!(
-        executor.poll_stream_notify(counter, 0),
-        Ok(Async::Ready(None))
-      );
+      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(None)));
       assert_eq!(counter.0.load(Ordering::Relaxed), 2);
     });
   }

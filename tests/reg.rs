@@ -7,8 +7,8 @@ use drone_core::bitfield::Bitfield;
 use drone_core::reg::map;
 use drone_core::reg::prelude::*;
 use std::mem::size_of;
-use test_block::TestReg;
 use test_block::test_reg::Val;
+use test_block::TestReg;
 
 map! {
   /// Test block doc attribute

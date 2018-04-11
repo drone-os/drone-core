@@ -1,19 +1,33 @@
 //! Async/await syntax.
 //!
 //! ```
-//! # #![feature(conservative_impl_trait)]
+//! # #![feature(const_fn)]
 //! # #![feature(generators)]
 //! # #![feature(prelude_import)]
 //! # #![feature(proc_macro)]
 //! # #[macro_use] extern crate drone_core;
 //! # extern crate futures;
 //! # #[prelude_import] use drone_core::prelude::*;
-//! # use futures::executor::Notify;
-//! # struct NotifyNop;
-//! # const NOTIFY_NOP: &NotifyNop = &NotifyNop;
-//! # impl Notify for NotifyNop { fn notify(&self, _id: usize) {} }
+//! # static mut THREADS: [Thr; 1] = [Thr::new(0)];
+//! # struct Sv;
+//! # struct WakeNop;
+//! # unsafe impl task::UnsafeWake for WakeNop {
+//! #   unsafe fn clone_raw(&self) -> task::Waker { task::Waker::new(self) }
+//! #   unsafe fn drop_raw(&self) {}
+//! #   unsafe fn wake(&self) {}
+//! # }
+//! # impl ::drone_core::sv::Supervisor for Sv {
+//! #   fn first() -> *const Self { ::std::ptr::null() }
+//! # }
+//! # ::drone_core::thr! {
+//! #   struct Thr;
+//! #   struct ThrLocal;
+//! #   extern struct Sv;
+//! #   extern static THREADS;
+//! # }
+//! use drone_core::async::AsyncFuture;
 //! use drone_core::sync::spsc::oneshot;
-//! use futures::executor;
+//! use futures::prelude::*;
 //!
 //! fn plus_one(
 //!   rx: oneshot::Receiver<usize, !>,
@@ -25,30 +39,45 @@
 //! }
 //!
 //! fn main() {
+//! # unsafe { drone_core::thr::init::<Thr>() };
 //!   let (rx, tx) = oneshot::channel::<usize, !>();
-//!   let mut executor = executor::spawn(plus_one(rx));
+//!   let waker = unsafe { task::Waker::new(&WakeNop) };
+//!   let mut map = task::LocalMap::new();
+//!   let mut cx = task::Context::without_spawn(&mut map, &waker);
+//!   let mut fut = plus_one(rx);
 //!   assert_eq!(tx.send(Ok(1)), Ok(()));
-//!   assert_eq!(
-//!     executor.poll_future_notify(&NOTIFY_NOP, 0).unwrap(),
-//!     Async::Ready(2)
-//!   );
+//!   assert_eq!(fut.poll(&mut cx).unwrap(), Async::Ready(2));
 //! }
 //! ```
 //!
 //! ```
-//! # #![feature(conservative_impl_trait)]
+//! # #![feature(const_fn)]
 //! # #![feature(generators)]
 //! # #![feature(prelude_import)]
 //! # #![feature(proc_macro)]
 //! # #[macro_use] extern crate drone_core;
 //! # extern crate futures;
 //! # #[prelude_import] use drone_core::prelude::*;
-//! # use futures::executor::Notify;
-//! # struct NotifyNop;
-//! # const NOTIFY_NOP: &NotifyNop = &NotifyNop;
-//! # impl Notify for NotifyNop { fn notify(&self, _id: usize) {} }
+//! # static mut THREADS: [Thr; 1] = [Thr::new(0)];
+//! # struct Sv;
+//! # struct WakeNop;
+//! # unsafe impl task::UnsafeWake for WakeNop {
+//! #   unsafe fn clone_raw(&self) -> task::Waker { task::Waker::new(self) }
+//! #   unsafe fn drop_raw(&self) {}
+//! #   unsafe fn wake(&self) {}
+//! # }
+//! # impl ::drone_core::sv::Supervisor for Sv {
+//! #   fn first() -> *const Self { ::std::ptr::null() }
+//! # }
+//! # ::drone_core::thr! {
+//! #   struct Thr;
+//! #   struct ThrLocal;
+//! #   extern struct Sv;
+//! #   extern static THREADS;
+//! # }
+//! use drone_core::async::AsyncFuture;
 //! use drone_core::sync::spsc::ring;
-//! use futures::executor;
+//! use futures::prelude::*;
 //!
 //! fn sum(
 //!   rx: ring::Receiver<usize, !>,
@@ -63,21 +92,21 @@
 //! }
 //!
 //! fn main() {
+//! # unsafe { drone_core::thr::init::<Thr>() };
 //!   let (rx, mut tx) = ring::channel::<usize, !>(8);
-//!   let mut executor = executor::spawn(sum(rx));
+//!   let waker = unsafe { task::Waker::new(&WakeNop) };
+//!   let mut map = task::LocalMap::new();
+//!   let mut cx = task::Context::without_spawn(&mut map, &waker);
+//!   let mut fut = sum(rx);
 //!   assert_eq!(tx.send_overwrite(3), Ok(()));
 //!   assert_eq!(tx.send_overwrite(4), Ok(()));
 //!   assert_eq!(tx.send_overwrite(5), Ok(()));
 //!   drop(tx);
-//!   assert_eq!(
-//!     executor.poll_future_notify(&NOTIFY_NOP, 0).unwrap(),
-//!     Async::Ready(12)
-//!   );
+//!   assert_eq!(fut.poll(&mut cx).unwrap(), Async::Ready(12));
 //! }
 //! ```
 
 mod async_future;
-#[macro_use]
-mod await;
+mod macros;
 
 pub use self::async_future::AsyncFuture;

@@ -11,7 +11,7 @@ pub use self::sender::Sender;
 use alloc::arc::Arc;
 use core::cell::UnsafeCell;
 use core::sync::atomic::{AtomicU8, Ordering};
-use futures::task::Task;
+use futures::task::Waker;
 use sync::spsc::SpscInner;
 
 const COMPLETE: u8 = 1 << 2;
@@ -21,8 +21,8 @@ const TX_LOCK: u8 = 1;
 struct Inner<T, E> {
   state: AtomicU8,
   data: UnsafeCell<Option<Result<T, E>>>,
-  rx_task: UnsafeCell<Option<Task>>,
-  tx_task: UnsafeCell<Option<Task>>,
+  rx_waker: UnsafeCell<Option<Waker>>,
+  tx_waker: UnsafeCell<Option<Waker>>,
 }
 
 /// Creates a new asynchronous channel, returning the receiver/sender halves.
@@ -49,8 +49,8 @@ impl<T, E> Inner<T, E> {
     Self {
       state: AtomicU8::new(0),
       data: UnsafeCell::new(None),
-      rx_task: UnsafeCell::new(None),
-      tx_task: UnsafeCell::new(None),
+      rx_waker: UnsafeCell::new(None),
+      tx_waker: UnsafeCell::new(None),
     }
   }
 }
@@ -80,13 +80,13 @@ impl<T, E> SpscInner<AtomicU8, u8> for Inner<T, E> {
   }
 
   #[inline(always)]
-  unsafe fn rx_task_mut(&self) -> &mut Option<Task> {
-    &mut *self.rx_task.get()
+  unsafe fn rx_waker_mut(&self) -> &mut Option<Waker> {
+    &mut *self.rx_waker.get()
   }
 
   #[inline(always)]
-  unsafe fn tx_task_mut(&self) -> &mut Option<Task> {
-    &mut *self.tx_task.get()
+  unsafe fn tx_waker_mut(&self) -> &mut Option<Waker> {
+    &mut *self.tx_waker.get()
   }
 }
 
@@ -95,7 +95,7 @@ mod tests {
   use super::*;
   use alloc::arc::Arc;
   use core::sync::atomic::{AtomicUsize, Ordering};
-  use futures::executor::{self, Notify};
+  use futures::prelude::*;
 
   thread_local! {
     static COUNTER: Arc<Counter> = Arc::new(Counter(AtomicUsize::new(0)));
@@ -103,42 +103,37 @@ mod tests {
 
   struct Counter(AtomicUsize);
 
-  impl Notify for Counter {
-    fn notify(&self, _id: usize) {
-      self.0.fetch_add(1, Ordering::Relaxed);
+  impl task::Wake for Counter {
+    fn wake(arc_self: &Arc<Self>) {
+      arc_self.0.fetch_add(1, Ordering::Relaxed);
     }
   }
 
   #[test]
   fn send_sync() {
-    let (rx, tx) = channel::<usize, ()>();
+    let (mut rx, tx) = channel::<usize, ()>();
     assert_eq!(tx.send(Ok(314)), Ok(()));
-    let mut executor = executor::spawn(rx);
     COUNTER.with(|counter| {
+      let waker = task::Waker::from(Arc::clone(counter));
+      let mut map = task::LocalMap::new();
+      let mut cx = task::Context::without_spawn(&mut map, &waker);
       counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(
-        executor.poll_future_notify(counter, 0).unwrap(),
-        Async::Ready(314)
-      );
+      assert_eq!(rx.poll(&mut cx).unwrap(), Async::Ready(314));
       assert_eq!(counter.0.load(Ordering::Relaxed), 0);
     });
   }
 
   #[test]
   fn send_async() {
-    let (rx, tx) = channel::<usize, ()>();
-    let mut executor = executor::spawn(rx);
+    let (mut rx, tx) = channel::<usize, ()>();
     COUNTER.with(|counter| {
+      let waker = task::Waker::from(Arc::clone(counter));
+      let mut map = task::LocalMap::new();
+      let mut cx = task::Context::without_spawn(&mut map, &waker);
       counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(
-        executor.poll_future_notify(counter, 0).unwrap(),
-        Async::NotReady
-      );
+      assert_eq!(rx.poll(&mut cx).unwrap(), Async::Pending);
       assert_eq!(tx.send(Ok(314)), Ok(()));
-      assert_eq!(
-        executor.poll_future_notify(counter, 0).unwrap(),
-        Async::Ready(314)
-      );
+      assert_eq!(rx.poll(&mut cx).unwrap(), Async::Ready(314));
       assert_eq!(counter.0.load(Ordering::Relaxed), 1);
     });
   }

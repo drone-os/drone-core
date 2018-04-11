@@ -1,5 +1,6 @@
 use super::Inner;
 use alloc::arc::Arc;
+use futures::prelude::*;
 use sync::spsc::SpscInner;
 
 /// The sending-half of [`oneshot::channel`](channel).
@@ -39,8 +40,8 @@ impl<T, E> Sender<T, E> {
   /// [`Receiver`]: super::Receiver
   /// [`is_canceled`]: Sender::is_canceled
   #[inline(always)]
-  pub fn poll_cancel(&mut self) -> Poll<(), ()> {
-    self.inner.poll_cancel()
+  pub fn poll_cancel(&mut self, cx: &mut task::Context) -> Poll<(), ()> {
+    self.inner.poll_cancel(cx)
   }
 
   /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has gone

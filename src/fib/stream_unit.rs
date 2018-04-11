@@ -1,4 +1,5 @@
 use fib::{self, Fiber, FiberState};
+use futures::prelude::*;
 use sync::spsc::unit::{channel, Receiver, SendError};
 use thr::prelude::*;
 
@@ -23,8 +24,8 @@ impl<E> Stream for FiberStreamUnit<E> {
   type Error = E;
 
   #[inline(always)]
-  fn poll(&mut self) -> Poll<Option<()>, E> {
-    self.rx.poll()
+  fn poll_next(&mut self, cx: &mut task::Context) -> Poll<Option<()>, E> {
+    self.rx.poll_next(cx)
   }
 }
 

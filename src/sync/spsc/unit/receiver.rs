@@ -1,7 +1,7 @@
 use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK, RX_LOCK};
 use alloc::arc::Arc;
 use core::sync::atomic::Ordering::*;
-use futures::task;
+use futures::prelude::*;
 use sync::spsc::SpscInner;
 
 /// The receiving-half of [`unit::channel`](channel).
@@ -29,8 +29,8 @@ impl<E> Stream for Receiver<E> {
   type Error = E;
 
   #[inline(always)]
-  fn poll(&mut self) -> Poll<Option<()>, E> {
-    self.inner.recv()
+  fn poll_next(&mut self, cx: &mut task::Context) -> Poll<Option<()>, E> {
+    self.inner.recv(cx)
   }
 }
 
@@ -42,7 +42,7 @@ impl<E> Drop for Receiver<E> {
 }
 
 impl<E> Inner<E> {
-  fn recv(&self) -> Poll<Option<()>, E> {
+  fn recv(&self, cx: &mut task::Context) -> Poll<Option<()>, E> {
     let some_unit = || || Ok(Async::Ready(Some(())));
     self
       .update(
@@ -63,7 +63,7 @@ impl<E> Inner<E> {
       .and_then(|state| {
         state.map_or_else(some_unit(), |state| {
           unsafe {
-            (*self.rx_task.get()).get_or_insert_with(task::current);
+            (*self.rx_waker.get()).get_or_insert_with(|| cx.waker().clone());
           }
           self
             .update(state, AcqRel, Relaxed, |state| {
@@ -77,7 +77,7 @@ impl<E> Inner<E> {
             .and_then(|state| {
               state.map_or_else(some_unit(), |state| {
                 if state & COMPLETE == 0 {
-                  Ok(Async::NotReady)
+                  Ok(Async::Pending)
                 } else {
                   Err(())
                 }

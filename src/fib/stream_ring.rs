@@ -1,4 +1,5 @@
 use fib::{self, Fiber, FiberState};
+use futures::prelude::*;
 use sync::spsc::ring::{channel, Receiver, SendError, SendErrorKind};
 use thr::prelude::*;
 
@@ -23,8 +24,8 @@ impl<I, E> Stream for FiberStreamRing<I, E> {
   type Error = E;
 
   #[inline(always)]
-  fn poll(&mut self) -> Poll<Option<I>, E> {
-    self.rx.poll()
+  fn poll_next(&mut self, cx: &mut task::Context) -> Poll<Option<I>, E> {
+    self.rx.poll_next(cx)
   }
 }
 

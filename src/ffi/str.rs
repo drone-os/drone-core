@@ -106,9 +106,9 @@ pub struct FromBytesWithNulError {
 
 #[derive(Clone, PartialEq, Eq, Debug, Fail)]
 enum FromBytesWithNulErrorKind {
-  #[fail(display = "data provided contains an interior nul byte at byte pos \
-                    {}",
-         _0)]
+  #[fail(
+    display = "data provided contains an interior nul byte at byte pos {}", _0
+  )]
   InteriorNul(usize),
   #[fail(display = "data provided is not nul terminated")]
   NotNulTerminated,

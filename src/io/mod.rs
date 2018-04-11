@@ -1,7 +1,7 @@
 //! Traits, helpers, and type definitions for core I/O functionality.
 //!
 //! ```
-//! # #![feature(conservative_impl_trait)]
+//! # #![feature(const_fn)]
 //! # #![feature(exhaustive_patterns)]
 //! # #![feature(generators)]
 //! # #![feature(prelude_import)]
@@ -9,12 +9,26 @@
 //! # #[macro_use] extern crate drone_core;
 //! # extern crate futures;
 //! # #[prelude_import] use drone_core::prelude::*;
-//! # use futures::executor::Notify;
-//! # struct NotifyNop;
-//! # const NOTIFY_NOP: &NotifyNop = &NotifyNop;
-//! # impl Notify for NotifyNop { fn notify(&self, _id: usize) {} }
+//! # static mut THREADS: [Thr; 1] = [Thr::new(0)];
+//! # struct Sv;
+//! # struct WakeNop;
+//! # unsafe impl task::UnsafeWake for WakeNop {
+//! #   unsafe fn clone_raw(&self) -> task::Waker { task::Waker::new(self) }
+//! #   unsafe fn drop_raw(&self) {}
+//! #   unsafe fn wake(&self) {}
+//! # }
+//! # impl ::drone_core::sv::Supervisor for Sv {
+//! #   fn first() -> *const Self { ::std::ptr::null() }
+//! # }
+//! # ::drone_core::thr! {
+//! #   struct Thr;
+//! #   struct ThrLocal;
+//! #   extern struct Sv;
+//! #   extern static THREADS;
+//! # }
+//! use drone_core::async::AsyncFuture;
 //! use drone_core::io;
-//! use futures::executor;
+//! use futures::prelude::*;
 //! use futures::future::lazy;
 //!
 //! struct Buf(Vec<usize>);
@@ -28,7 +42,7 @@
 //!     Resp = impl for<'r> io::Responder<'r, Self, Output = usize>,
 //!     Error = !,
 //!   > {
-//!     lazy(move || {
+//!     lazy(move |_| {
 //!       self.0.push(value);
 //!       Ok((self, |buf: &Buf| buf.0.len()))
 //!     })
@@ -42,7 +56,7 @@
 //!     Resp = io::NoResp,
 //!     Error = !,
 //!   >> {
-//!     Box::new(lazy(move || {
+//!     Box::new(lazy(move |_| {
 //!       self.0.push(value);
 //!       Ok((self, io::NoResp))
 //!     }))
@@ -50,17 +64,21 @@
 //! }
 //!
 //! fn main() {
-//!   let mut executor = executor::spawn(AsyncFuture::new(|| {
+//! # unsafe { drone_core::thr::init::<Thr>() };
+//!   let waker = unsafe { task::Waker::new(&WakeNop) };
+//!   let mut map = task::LocalMap::new();
+//!   let mut cx = task::Context::without_spawn(&mut map, &waker);
+//!   let mut fut = AsyncFuture::new(|| {
 //!     let mut buf = Buf(Vec::new());
 //!     assert_eq!(ioawait!(buf.push(1))?, 1);
 //!     assert_eq!(ioawait!(buf.push(3))?, 2);
 //!     assert_eq!(ioawait!(buf.push_boxed(5))?, ());
 //!     assert_eq!(ioawait!(buf.push_boxed(7))?, ());
 //!     Ok::<_, !>(buf)
-//!   }));
+//!   });
 //!   loop {
-//!     match executor.poll_future_notify(&NOTIFY_NOP, 0) {
-//!       Ok(Async::NotReady) => continue,
+//!     match fut.poll(&mut cx) {
+//!       Ok(Async::Pending) => continue,
 //!       Ok(Async::Ready(buf)) => {
 //!         assert_eq!(buf.0, vec![1, 3, 5, 7]);
 //!         break;

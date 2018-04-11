@@ -1,5 +1,5 @@
-use syn::Ident;
 use syn::synom::Synom;
+use syn::Ident;
 
 /// Binding to extern static: `extern static Foo;`.
 #[allow(missing_docs)]

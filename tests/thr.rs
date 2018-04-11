@@ -13,14 +13,14 @@ extern crate drone_core;
 use drone_core::prelude::*;
 
 use drone_core::sv::Supervisor;
-use drone_core::thr::ThrToken;
 use drone_core::thr::prelude::*;
+use drone_core::thr::ThrToken;
 use drone_core::{fib, thr};
 use std::marker::PhantomData;
 use std::ptr;
-use std::sync::Arc;
 use std::sync::atomic::AtomicI8;
 use std::sync::atomic::Ordering::*;
+use std::sync::Arc;
 
 static mut THREADS: [Thr; 2] = [Thr::new(0), Thr::new(1)];
 

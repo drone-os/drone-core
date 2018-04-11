@@ -5,10 +5,10 @@ macro_rules! await {
   ($future:expr) => {{
     let mut future = $future;
     loop {
-      let result = future.poll();
+      let poll = $crate::thr::__current_task().__in_cx(|cx| future.poll(cx));
       #[allow(unreachable_patterns, unreachable_code)]
-      match result {
-        Ok(Async::NotReady) => {
+      match poll {
+        Ok(Async::Pending) => {
           yield;
         }
         Ok(Async::Ready(ready)) => {
@@ -30,9 +30,10 @@ macro_rules! await_for {
     let mut stream = $expr;
     loop {
       let $pat = {
-        let result = stream.poll()?;
-        match result {
-          Async::NotReady => {
+        let poll =
+          $crate::thr::__current_task().__in_cx(|cx| stream.poll_next(cx));
+        match poll? {
+          Async::Pending => {
             yield;
             continue;
           }

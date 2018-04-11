@@ -1,4 +1,5 @@
 use futures;
+use futures::task;
 use io;
 
 /// I/O operation future.
@@ -13,7 +14,7 @@ pub trait Future {
   type Error;
 
   /// I/O equivalent of `Future::poll`.
-  fn poll(&mut self) -> io::Poll<Self>;
+  fn poll(&mut self, cx: &mut task::Context) -> io::Poll<Self>;
 }
 
 /// A type returned from [`io::Future::poll`](Future::poll).
@@ -36,7 +37,7 @@ where
   type Error = E;
 
   #[inline(always)]
-  fn poll(&mut self) -> io::Poll<Self> {
-    futures::Future::poll(self)
+  fn poll(&mut self, cx: &mut task::Context) -> io::Poll<Self> {
+    futures::Future::poll(self, cx)
   }
 }

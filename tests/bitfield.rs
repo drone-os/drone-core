@@ -6,9 +6,12 @@ extern crate drone_core;
 use drone_core::bitfield::Bitfield;
 
 #[derive(Bitfield, Copy, Clone)]
-#[bitfield(foo(rw, 0, 1, "Test read-write bit."),
-           bar(r, 1, 2, "Test read-only bits."),
-           baz(w, 3, 3, "Test write-only bits."), default = 0xAA)]
+#[bitfield(
+  foo(rw, 0, 1, "Test read-write bit."),
+  bar(r, 1, 2, "Test read-only bits."),
+  baz(w, 3, 3, "Test write-only bits."),
+  default = 0xAA
+)]
 pub struct Byte(u8);
 
 #[test]

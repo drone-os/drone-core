@@ -14,7 +14,7 @@ mod task;
 
 pub use self::preempt::{current, with_preempted, PreemptedCell};
 pub use self::tag::*;
-pub use self::task::{init, TaskCell};
+pub use self::task::{__current_task, init, TaskCell};
 
 use fib::Chain;
 use sv::Supervisor;
@@ -44,7 +44,7 @@ pub trait Thread: Sized + Sync + 'static {
 
 /// A thread-local storage.
 pub trait ThreadLocal: Sized + 'static {
-  /// Returns the cell for the task pointer.
+  /// Returns the cell for the current task context.
   fn task(&self) -> &TaskCell;
 
   /// Returns a mutable reference to the stored index of the preempted thread.

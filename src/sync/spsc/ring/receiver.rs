@@ -2,7 +2,7 @@ use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
 use alloc::arc::Arc;
 use core::ptr;
 use core::sync::atomic::Ordering::*;
-use futures::task;
+use futures::prelude::*;
 use sync::spsc::SpscInner;
 
 /// The receiving-half of [`ring::channel`](channel).
@@ -30,8 +30,8 @@ impl<T, E> Stream for Receiver<T, E> {
   type Error = E;
 
   #[inline(always)]
-  fn poll(&mut self) -> Poll<Option<T>, E> {
-    self.inner.recv()
+  fn poll_next(&mut self, cx: &mut task::Context) -> Poll<Option<T>, E> {
+    self.inner.recv(cx)
   }
 }
 
@@ -43,7 +43,7 @@ impl<T, E> Drop for Receiver<T, E> {
 }
 
 impl<T, E> Inner<T, E> {
-  fn recv(&self) -> Poll<Option<T>, E> {
+  fn recv(&self, cx: &mut task::Context) -> Poll<Option<T>, E> {
     let some_value = || {
       |index| unsafe {
         Async::Ready(Some(ptr::read(
@@ -70,7 +70,7 @@ impl<T, E> Inner<T, E> {
       .and_then(|state| {
         state.map(some_value()).or_else(|state| {
           unsafe {
-            (*self.rx_task.get()).get_or_insert_with(task::current);
+            (*self.rx_waker.get()).get_or_insert_with(|| cx.waker().clone());
           }
           self
             .update(state, AcqRel, Relaxed, |state| {
@@ -84,7 +84,7 @@ impl<T, E> Inner<T, E> {
             .and_then(|state| {
               state.map(some_value()).or_else(|state| {
                 if state & COMPLETE == 0 {
-                  Ok(Async::NotReady)
+                  Ok(Async::Pending)
                 } else {
                   Err(())
                 }

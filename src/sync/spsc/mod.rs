@@ -3,7 +3,8 @@
 use core::ops::{BitAnd, BitOr, BitOrAssign, BitXorAssign};
 use core::sync::atomic::Ordering;
 use core::sync::atomic::Ordering::*;
-use futures::task::{self, Task};
+use futures::prelude::*;
+use futures::task::Waker;
 
 pub mod oneshot;
 pub mod ring;
@@ -34,10 +35,10 @@ where
   ) -> Result<I, I>;
 
   #[cfg_attr(feature = "clippy", allow(mut_from_ref))]
-  unsafe fn rx_task_mut(&self) -> &mut Option<Task>;
+  unsafe fn rx_waker_mut(&self) -> &mut Option<Waker>;
 
   #[cfg_attr(feature = "clippy", allow(mut_from_ref))]
-  unsafe fn tx_task_mut(&self) -> &mut Option<Task>;
+  unsafe fn tx_waker_mut(&self) -> &mut Option<Waker>;
 
   #[inline]
   fn update<F, R, E>(
@@ -69,7 +70,7 @@ where
     self.state_load(Relaxed) & Self::COMPLETE != Self::ZERO
   }
 
-  fn poll_cancel(&self) -> Poll<(), ()> {
+  fn poll_cancel(&self, cx: &mut task::Context) -> Poll<(), ()> {
     self
       .update(
         self.state_load(Relaxed),
@@ -85,7 +86,7 @@ where
         },
       )
       .and_then(|state| {
-        unsafe { *self.tx_task_mut() = Some(task::current()) };
+        unsafe { *self.tx_waker_mut() = Some(cx.waker().clone()) };
         self.update(state, Release, Relaxed, |state| {
           *state ^= Self::TX_LOCK;
           Ok(*state)
@@ -95,7 +96,7 @@ where
         if state & Self::COMPLETE != Self::ZERO {
           Err(())
         } else {
-          Ok(Async::NotReady)
+          Ok(Async::Pending)
         }
       })
       .or_else(|()| Ok(Async::Ready(())))
@@ -103,7 +104,7 @@ where
 
   fn close_half(
     &self,
-    task_mut: unsafe fn(&Self) -> &mut Option<Task>,
+    waker_mut: unsafe fn(&Self) -> &mut Option<Waker>,
     half_lock: I,
     complete: I,
     success: Ordering,
@@ -128,7 +129,7 @@ where
       .ok()
       .and_then(|state| state)
       .map(|state| {
-        unsafe { task_mut(self).take().map(|task| task.notify()) };
+        unsafe { waker_mut(self).take().as_ref().map(Waker::wake) };
         self.update(state, Release, Relaxed, |state| {
           *state ^= half_lock;
           Ok::<(), ()>(())
@@ -139,7 +140,7 @@ where
   #[inline(always)]
   fn close_rx(&self) {
     self.close_half(
-      Self::tx_task_mut,
+      Self::tx_waker_mut,
       Self::TX_LOCK,
       Self::COMPLETE,
       Acquire,
@@ -175,14 +176,15 @@ where
       .and_then(|x| x)
       .map(|(state, mask)| {
         if mask & Self::RX_LOCK != Self::ZERO {
-          unsafe { self.rx_task_mut().take() };
+          unsafe { self.rx_waker_mut().take() };
         }
         if mask & Self::TX_LOCK != Self::ZERO {
           unsafe {
             self
-              .tx_task_mut()
+              .tx_waker_mut()
               .take()
-              .map(|task| task.notify());
+              .as_ref()
+              .map(Waker::wake);
           }
         }
         self.update(state, Release, Relaxed, |state| {
@@ -195,7 +197,7 @@ where
   #[inline(always)]
   fn drop_tx(&self) {
     self.close_half(
-      Self::rx_task_mut,
+      Self::rx_waker_mut,
       Self::RX_LOCK,
       Self::COMPLETE,
       AcqRel,

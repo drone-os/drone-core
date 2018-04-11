@@ -1,7 +1,7 @@
 use super::{Inner, COMPLETE, RX_LOCK};
 use alloc::arc::Arc;
 use core::sync::atomic::Ordering::*;
-use futures::task;
+use futures::prelude::*;
 use sync::spsc::SpscInner;
 
 /// The receiving-half of [`oneshot::channel`](channel).
@@ -39,8 +39,8 @@ impl<T, E> Future for Receiver<T, E> {
   type Error = RecvError<E>;
 
   #[inline(always)]
-  fn poll(&mut self) -> Poll<T, RecvError<E>> {
-    self.inner.recv()
+  fn poll(&mut self, cx: &mut task::Context) -> Poll<T, RecvError<E>> {
+    self.inner.recv(cx)
   }
 }
 
@@ -52,7 +52,7 @@ impl<T, E> Drop for Receiver<T, E> {
 }
 
 impl<T, E> Inner<T, E> {
-  fn recv(&self) -> Poll<T, RecvError<E>> {
+  fn recv(&self, cx: &mut task::Context) -> Poll<T, RecvError<E>> {
     self
       .update(
         self.state_load(Acquire),
@@ -68,7 +68,7 @@ impl<T, E> Inner<T, E> {
         },
       )
       .and_then(|state| {
-        unsafe { *self.rx_task.get() = Some(task::current()) };
+        unsafe { *self.rx_waker.get() = Some(cx.waker().clone()) };
         self.update(state, AcqRel, Relaxed, |state| {
           *state ^= RX_LOCK;
           Ok(*state)
@@ -76,7 +76,7 @@ impl<T, E> Inner<T, E> {
       })
       .and_then(|state| {
         if state & COMPLETE == 0 {
-          Ok(Async::NotReady)
+          Ok(Async::Pending)
         } else {
           Err(())
         }

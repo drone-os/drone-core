@@ -2,6 +2,8 @@ use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
 use alloc::arc::Arc;
 use core::ptr;
 use core::sync::atomic::Ordering::*;
+use futures::prelude::*;
+use futures::task::Waker;
 use sync::spsc::SpscInner;
 
 /// The sending-half of [`ring::channel`](channel).
@@ -74,8 +76,8 @@ impl<T, E> Sender<T, E> {
   /// [`Receiver`]: super::Receiver
   /// [`is_canceled`]: Sender::is_canceled
   #[inline(always)]
-  pub fn poll_cancel(&mut self) -> Poll<(), ()> {
-    self.inner.poll_cancel()
+  pub fn poll_cancel(&mut self, cx: &mut task::Context) -> Poll<(), ()> {
+    self.inner.poll_cancel(cx)
   }
 
   /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has gone
@@ -176,9 +178,7 @@ impl<T, E> Inner<T, E> {
       .map(|state| {
         state.map(|state| {
           unsafe {
-            (*self.rx_task.get())
-              .as_ref()
-              .map(|task| task.notify());
+            (*self.rx_waker.get()).as_ref().map(Waker::wake);
           }
           self.update(state, Release, Relaxed, |state| {
             *state ^= RX_LOCK;
