@@ -1,4 +1,4 @@
-use alloc::allocator::Layout;
+use core::alloc::{Layout, Opaque};
 use core::ptr::{self, NonNull};
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::*;
@@ -34,10 +34,10 @@ impl<'a> Fits for &'a Layout {
   }
 }
 
-impl Fits for *mut u8 {
+impl Fits for NonNull<Opaque> {
   #[inline(always)]
   fn fits(self, pool: &Pool) -> bool {
-    self < pool.edge
+    (self.as_ptr() as *mut u8) < pool.edge
   }
 }
 
@@ -86,7 +86,7 @@ impl Pool {
   ///
   /// This operation should compute in O(1) time.
   #[inline(always)]
-  pub fn alloc(&self) -> Option<NonNull<u8>> {
+  pub fn alloc(&self) -> Option<NonNull<Opaque>> {
     unsafe { self.alloc_free().or_else(|| self.alloc_head()) }
   }
 
@@ -97,19 +97,25 @@ impl Pool {
   /// # Safety
   ///
   /// `ptr` should not be used after deallocation.
+  #[cfg_attr(feature = "clippy", allow(cast_ptr_alignment))]
   #[inline(always)]
-  pub unsafe fn dealloc(&self, ptr: *mut u8) {
+  pub unsafe fn dealloc(&self, ptr: NonNull<Opaque>) {
     loop {
       let head = self.free.load(Relaxed);
-      ptr::write(ptr as *mut *mut u8, head);
-      if self.free.compare_and_swap(head, ptr, Release) == head {
+      ptr::write(ptr.as_ptr() as *mut *mut u8, head);
+      if self
+        .free
+        .compare_and_swap(head, ptr.as_ptr() as *mut u8, Release)
+        == head
+      {
         break;
       }
     }
   }
 
+  #[cfg_attr(feature = "clippy", allow(cast_ptr_alignment))]
   #[inline(always)]
-  unsafe fn alloc_free(&self) -> Option<NonNull<u8>> {
+  unsafe fn alloc_free(&self) -> Option<NonNull<Opaque>> {
     loop {
       let head = self.free.load(Acquire);
       if head.is_null() {
@@ -117,13 +123,13 @@ impl Pool {
       }
       let next = ptr::read(head as *const *mut u8);
       if self.free.compare_and_swap(head, next, Relaxed) == head {
-        break Some(NonNull::new_unchecked(head));
+        break Some(NonNull::new_unchecked(head as *mut Opaque));
       }
     }
   }
 
   #[inline(always)]
-  unsafe fn alloc_head(&self) -> Option<NonNull<u8>> {
+  unsafe fn alloc_head(&self) -> Option<NonNull<Opaque>> {
     loop {
       let current = self.head.load(Relaxed);
       if current == self.edge {
@@ -134,7 +140,7 @@ impl Pool {
         .head
         .compare_and_swap(current, new, Relaxed) == current
       {
-        break Some(NonNull::new_unchecked(current));
+        break Some(NonNull::new_unchecked(current as *mut Opaque));
       }
     }
   }

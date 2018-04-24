@@ -1,10 +1,8 @@
-#![feature(alloc)]
 #![feature(allocator_api)]
 #![feature(const_fn)]
 #![feature(proc_macro)]
 #![feature(slice_get_slice)]
 
-extern crate alloc;
 extern crate drone_core;
 
 use core::mem::size_of;
@@ -15,9 +13,6 @@ heap! {
   /// Test doc attribute
   #[doc = "test attribute"]
   pub struct Heap;
-  /// Test doc attribute
-  #[doc = "test attribute"]
-  pub static ALLOC;
 
   size = 4096;
   pools = [

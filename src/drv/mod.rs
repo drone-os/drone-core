@@ -10,14 +10,14 @@
 //! struct Foo(Bar);
 //!
 //! #[derive(Driver, Resource)]
-//! struct Bar(Baz);
+//! struct Bar(Option<Baz>);
 //!
 //! #[derive(Resource)]
 //! struct Baz;
 //!
 //! # fn main() {
-//!   let foo: Foo = Foo::new(Baz);
-//!   let baz: Baz = foo.free();
+//! let foo: Foo = Foo::new(Baz);
+//! let baz: Baz = foo.free();
 //! # }
 //! ```
 

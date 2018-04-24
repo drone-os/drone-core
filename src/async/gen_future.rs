@@ -2,24 +2,27 @@ use core::ops::{Generator, GeneratorState};
 use futures::prelude::*;
 use thr::__current_task;
 
-/// A generator-based future.
 #[must_use]
-pub struct AsyncFuture<R, E, G>(G)
+pub struct GenFuture<R, E, G>(G)
 where
   G: Generator<Yield = (), Return = Result<R, E>>;
 
-impl<R, E, G> AsyncFuture<R, E, G>
+impl<R, E, G> GenFuture<R, E, G>
 where
   G: Generator<Yield = (), Return = Result<R, E>>,
 {
-  /// Creates a new `AsyncFuture`.
-  #[inline(always)]
-  pub fn new(gen: G) -> Self {
-    AsyncFuture(gen)
-  }
 }
 
-impl<R, E, G> Future for AsyncFuture<R, E, G>
+/// Creates a new generator-based future.
+#[inline(always)]
+pub fn async<R, E, G>(gen: G) -> GenFuture<R, E, G>
+where
+  G: Generator<Yield = (), Return = Result<R, E>>,
+{
+  GenFuture(gen)
+}
+
+impl<R, E, G> Future for GenFuture<R, E, G>
 where
   G: Generator<Yield = (), Return = Result<R, E>>,
 {

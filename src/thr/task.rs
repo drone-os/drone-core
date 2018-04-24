@@ -8,8 +8,12 @@ use thr::{current, ThreadLocal};
 
 static CURRENT: AtomicUsize = AtomicUsize::new(0);
 
+type StaticContext = *mut task::Context<'static>;
+
 /// A thread-local storage of the task pointer.
-pub struct TaskCell(Cell<*mut task::Context<'static>>);
+pub struct TaskCell(Cell<StaticContext>);
+
+struct Reset<'a>(StaticContext, &'a Cell<StaticContext>);
 
 impl TaskCell {
   /// Creates a new `TaskCell`.
@@ -17,14 +21,16 @@ impl TaskCell {
     TaskCell(Cell::new(ptr::null_mut()))
   }
 
+  #[cfg_attr(feature = "clippy", allow(useless_transmute))]
   pub(crate) fn __set_cx<F, T>(&self, cx: &mut task::Context, f: F) -> T
   where
     F: FnOnce() -> T,
   {
-    let prev_cx = self.0.replace(unsafe { mem::transmute(cx) });
-    let result = f();
-    self.0.set(prev_cx);
-    result
+    let prev_cx = self.0.replace(unsafe {
+      mem::transmute::<*mut task::Context<'_>, *mut task::Context<'static>>(cx)
+    });
+    let _r = Reset(prev_cx, &self.0);
+    f()
   }
 
   #[doc(hidden)]
@@ -33,13 +39,18 @@ impl TaskCell {
     F: FnOnce(&mut task::Context) -> T,
   {
     let cx = self.0.replace(ptr::null_mut());
-    let result = if cx == ptr::null_mut() {
+    if cx.is_null() {
       panic!("not an async context")
     } else {
+      let _r = Reset(cx, &self.0);
       f(unsafe { &mut *cx })
-    };
-    self.0.set(cx);
-    result
+    }
+  }
+}
+
+impl<'a> Drop for Reset<'a> {
+  fn drop(&mut self) {
+    self.1.set(self.0);
   }
 }
 

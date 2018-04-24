@@ -1,4 +1,4 @@
-use drone_macros_core::{emit_err, NewStatic, NewStruct};
+use drone_macros_core::{emit_err, NewStruct};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::punctuated::Punctuated;
@@ -7,7 +7,6 @@ use syn::{Ident, LitInt};
 
 struct Heap {
   heap: NewStruct,
-  alloc: NewStatic,
   size: LitInt,
   pools: Vec<Pool>,
 }
@@ -20,7 +19,6 @@ struct Pool {
 impl Synom for Heap {
   named!(parse -> Self, do_parse!(
     heap: syn!(NewStruct) >>
-    alloc: syn!(NewStatic) >>
 
     ident: syn!(Ident) >>
     switch!(value!(ident.as_ref()),
@@ -43,7 +41,7 @@ impl Synom for Heap {
     ) >>
     punct!(;) >>
 
-    (Heap { heap, alloc, size, pools })
+    (Heap { heap, size, pools })
   ));
 }
 
@@ -74,16 +72,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         vis: heap_vis,
         ident: heap_ident,
       },
-    alloc:
-      NewStatic {
-        attrs: alloc_attrs,
-        vis: alloc_vis,
-        ident: alloc_ident,
-      },
     size,
     mut pools,
   } = try_parse!(call_site, input);
   let rt = Ident::new("__heap_rt", def_site);
+  let def_new = Ident::from("new");
   pools.sort_by_key(|pool| pool.size.value());
   let free = pools
     .iter()
@@ -114,12 +107,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
   let expanded = quote_spanned! { def_site =>
     mod #rt {
-      extern crate alloc;
       extern crate core;
       extern crate drone_core;
-
-      pub use self::alloc::allocator::{Alloc, AllocErr, CannotReallocInPlace,
-                                       Excess, Layout};
+      pub use self::core::alloc::{Alloc, AllocErr, CannotReallocInPlace, Excess,
+                                  GlobalAlloc, Layout, Opaque};
+      pub use self::core::ptr::NonNull;
       pub use self::core::slice::SliceIndex;
       pub use self::drone_core::heap::{Allocator, Pool};
     }
@@ -129,10 +121,14 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       pools: [#rt::Pool; #pools_len],
     }
 
-    #(#alloc_attrs)*
-    #alloc_vis static mut #alloc_ident: #heap_ident = #heap_ident {
-      pools: [#(#pools_tokens),*],
-    };
+    impl #heap_ident {
+      /// Creates a new heap.
+      pub const fn #def_new() -> Self {
+        Self {
+          pools: [#(#pools_tokens),*],
+        }
+      }
+    }
 
     impl #rt::Allocator for #heap_ident {
       const POOL_COUNT: usize = #pools_len;
@@ -154,64 +150,93 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       }
     }
 
-    unsafe impl<'a> #rt::Alloc for &'a #heap_ident {
+    unsafe impl #rt::Alloc for #heap_ident {
       unsafe fn alloc(
         &mut self,
         layout: #rt::Layout,
-      ) -> Result<*mut u8, #rt::AllocErr> {
-        #rt::Allocator::alloc(*self, layout)
+      ) -> Result<#rt::NonNull<#rt::Opaque>, #rt::AllocErr> {
+        #rt::Allocator::alloc(self, layout)
       }
 
-      unsafe fn dealloc(&mut self, ptr: *mut u8, layout: #rt::Layout) {
-        #rt::Allocator::dealloc(*self, ptr, layout)
+      unsafe fn dealloc(
+        &mut self,
+        ptr: #rt::NonNull<#rt::Opaque>,
+        layout: #rt::Layout,
+      ) {
+        #rt::Allocator::dealloc(self, ptr, layout)
       }
 
       #[inline(always)]
       fn usable_size(&self, layout: &#rt::Layout) -> (usize, usize) {
-        unsafe { #rt::Allocator::usable_size(*self, layout) }
+        unsafe { #rt::Allocator::usable_size(self, layout) }
       }
 
       unsafe fn realloc(
         &mut self,
-        ptr: *mut u8,
+        ptr: #rt::NonNull<#rt::Opaque>,
         layout: #rt::Layout,
-        new_layout: #rt::Layout
-      ) -> Result<*mut u8, #rt::AllocErr> {
-        #rt::Allocator::realloc(*self, ptr, layout, new_layout)
+        new_size: usize,
+      ) -> Result<#rt::NonNull<#rt::Opaque>, #rt::AllocErr> {
+        #rt::Allocator::realloc(self, ptr, layout, new_size)
       }
 
       unsafe fn alloc_excess(
         &mut self,
         layout: #rt::Layout,
       ) -> Result<#rt::Excess, #rt::AllocErr> {
-        #rt::Allocator::alloc_excess(*self, layout)
+        #rt::Allocator::alloc_excess(self, layout)
       }
 
       unsafe fn realloc_excess(
         &mut self,
-        ptr: *mut u8,
+        ptr: #rt::NonNull<#rt::Opaque>,
         layout: #rt::Layout,
-        new_layout: #rt::Layout
+        new_size: usize,
       ) -> Result<#rt::Excess, #rt::AllocErr> {
-        #rt::Allocator::realloc_excess(*self, ptr, layout, new_layout)
+        #rt::Allocator::realloc_excess(self, ptr, layout, new_size)
       }
 
       unsafe fn grow_in_place(
         &mut self,
-        ptr: *mut u8,
+        ptr: #rt::NonNull<#rt::Opaque>,
         layout: #rt::Layout,
-        new_layout: #rt::Layout
+        new_size: usize,
       ) -> Result<(), #rt::CannotReallocInPlace> {
-        #rt::Allocator::grow_in_place(*self, ptr, layout, new_layout)
+        #rt::Allocator::grow_in_place(self, ptr, layout, new_size)
       }
 
       unsafe fn shrink_in_place(
         &mut self,
-        ptr: *mut u8,
+        ptr: #rt::NonNull<#rt::Opaque>,
         layout: #rt::Layout,
-        new_layout: #rt::Layout
+        new_size: usize,
       ) -> Result<(), #rt::CannotReallocInPlace> {
-        #rt::Allocator::shrink_in_place(*self, ptr, layout, new_layout)
+        #rt::Allocator::shrink_in_place(self, ptr, layout, new_size)
+      }
+    }
+
+    unsafe impl #rt::GlobalAlloc for #heap_ident {
+      unsafe fn alloc(&self, layout: #rt::Layout) -> *mut #rt::Opaque {
+        #rt::Allocator::alloc(self, layout)
+          .map(#rt::NonNull::as_ptr).unwrap_or(0 as *mut #rt::Opaque)
+      }
+
+      unsafe fn dealloc(&self, ptr: *mut #rt::Opaque, layout: #rt::Layout) {
+        #rt::Allocator::dealloc(self, #rt::NonNull::new_unchecked(ptr), layout)
+      }
+
+      unsafe fn realloc(
+        &self,
+        ptr: *mut #rt::Opaque,
+        layout: #rt::Layout,
+        new_size: usize,
+      ) -> *mut #rt::Opaque {
+        #rt::Allocator::realloc(
+          self,
+          #rt::NonNull::new_unchecked(ptr),
+          layout,
+          new_size,
+        ).map(#rt::NonNull::as_ptr).unwrap_or(0 as *mut #rt::Opaque)
       }
     }
   };

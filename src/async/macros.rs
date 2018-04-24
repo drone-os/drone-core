@@ -5,17 +5,25 @@ macro_rules! await {
   ($future:expr) => {{
     let mut future = $future;
     loop {
-      let poll = $crate::thr::__current_task().__in_cx(|cx| future.poll(cx));
+      let poll = $crate::thr::__current_task().__in_cx(|cx| {
+        #[allow(unused_imports)]
+        use $crate::async::__rt::Future;
+        future.poll(cx)
+      });
       #[allow(unreachable_patterns, unreachable_code)]
       match poll {
-        Ok(Async::Pending) => {
+        $crate::async::__rt::Result::Ok(
+          $crate::async::__rt::Async::Pending,
+        ) => {
           yield;
         }
-        Ok(Async::Ready(ready)) => {
-          break Ok(ready);
+        $crate::async::__rt::Result::Ok($crate::async::__rt::Async::Ready(
+          ready,
+        )) => {
+          break $crate::async::__rt::Result::Ok(ready);
         }
-        Err(err) => {
-          break Err(err);
+        $crate::async::__rt::Result::Err(err) => {
+          break $crate::async::__rt::Result::Err(err);
         }
       }
     }
@@ -30,15 +38,22 @@ macro_rules! await_for {
     let mut stream = $expr;
     loop {
       let $pat = {
-        let poll =
-          $crate::thr::__current_task().__in_cx(|cx| stream.poll_next(cx));
+        let poll = $crate::thr::__current_task().__in_cx(|cx| {
+          #[allow(unused_imports)]
+          use $crate::async::__rt::Stream;
+          stream.poll_next(cx)
+        });
         match poll? {
-          Async::Pending => {
+          $crate::async::__rt::Async::Pending => {
             yield;
             continue;
           }
-          Async::Ready(Some(value)) => value,
-          Async::Ready(None) => {
+          $crate::async::__rt::Async::Ready(
+            $crate::async::__rt::Option::Some(value),
+          ) => value,
+          $crate::async::__rt::Async::Ready(
+            $crate::async::__rt::Option::None,
+          ) => {
             break;
           }
         }

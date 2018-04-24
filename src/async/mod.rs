@@ -25,14 +25,13 @@
 //! #   extern struct Sv;
 //! #   extern static THREADS;
 //! # }
-//! use drone_core::async::AsyncFuture;
 //! use drone_core::sync::spsc::oneshot;
 //! use futures::prelude::*;
 //!
 //! fn plus_one(
 //!   rx: oneshot::Receiver<usize, !>,
 //! ) -> impl Future<Item = usize, Error = oneshot::RecvError<!>> {
-//!   AsyncFuture::new(|| {
+//!   async(|| {
 //!     let number = await!(rx)?;
 //!     Ok(number + 1)
 //!   })
@@ -75,14 +74,13 @@
 //! #   extern struct Sv;
 //! #   extern static THREADS;
 //! # }
-//! use drone_core::async::AsyncFuture;
 //! use drone_core::sync::spsc::ring;
 //! use futures::prelude::*;
 //!
 //! fn sum(
 //!   rx: ring::Receiver<usize, !>,
 //! ) -> impl Future<Item = usize, Error = !> {
-//!   AsyncFuture::new(|| {
+//!   async(|| {
 //!     let mut sum = 0;
 //!     await_for!(number in rx => {
 //!       sum += number;
@@ -106,7 +104,14 @@
 //! }
 //! ```
 
-mod async_future;
+mod gen_future;
 mod macros;
 
-pub use self::async_future::AsyncFuture;
+#[doc(hidden)]
+pub mod __rt {
+  pub use core::option::Option;
+  pub use core::result::Result;
+  pub use futures::{Async, Future, Stream};
+}
+
+pub use self::gen_future::async;

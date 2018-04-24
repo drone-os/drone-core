@@ -4,7 +4,8 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::spanned::Spanned;
 use syn::synom::Synom;
-use syn::{parse, Data, DeriveInput, Field, Fields, Ident, Index, PathArguments};
+use syn::{parse, Data, DeriveInput, Field, Fields, GenericArgument, Ident,
+          Index, PathArguments, Type};
 
 #[derive(Default)]
 struct Driver {
@@ -77,41 +78,88 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       );
     }
   };
+  let option = if_chain! {
+    if let &Type::Path(ref x) = &res;
+    if x.qself.is_none();
+    if x.path.leading_colon.is_none();
+    if x.path.segments.len() == 1;
+    if let Some(x) = x.path.segments.iter().next();
+    if x.ident == "Option";
+    if let PathArguments::AngleBracketed(ref x) = x.arguments;
+    if x.args.len() == 1;
+    if let Some(GenericArgument::Type(x)) = x.args.iter().next();
+    then { Some(x) } else { None }
+  };
   let mut impl_tokens = Vec::new();
   if !forward {
-    impl_tokens.push(quote_spanned! { def_site =>
-      type Resource = #res;
+    if let Some(res) = option {
+      impl_tokens.push(quote_spanned! { def_site =>
+        type Resource = #res;
 
-      #[inline(always)]
-      fn new(source: <Self::Resource as Resource>::Source) -> Self {
-        #ident(<Self::Resource as Resource>::from_source(source))
-      }
+        #[inline(always)]
+        fn new(source: <Self::Resource as Resource>::Source) -> Self {
+          #ident(Some(<Self::Resource as Resource>::from_source(source)))
+        }
 
-      #[inline(always)]
-      fn free(self) -> Self::Resource {
-        #access
-      }
-    });
+        #[inline(always)]
+        fn free(self) -> Self::Resource {
+          #access.unwrap()
+        }
+      });
+    } else {
+      impl_tokens.push(quote_spanned! { def_site =>
+        type Resource = #res;
+
+        #[inline(always)]
+        fn new(source: <Self::Resource as Resource>::Source) -> Self {
+          #ident(<Self::Resource as Resource>::from_source(source))
+        }
+
+        #[inline(always)]
+        fn free(self) -> Self::Resource {
+          #access
+        }
+      });
+    }
   } else {
-    impl_tokens.push(quote_spanned! { def_site =>
-      type Resource = <#res as Driver>::Resource;
+    if let Some(res) = option {
+      impl_tokens.push(quote_spanned! { def_site =>
+        type Resource = <#res as Driver>::Resource;
 
-      #[inline(always)]
-      fn new(source: <Self::Resource as Resource>::Source) -> Self {
-        #ident(<#res as Driver>::new(source))
-      }
+        #[inline(always)]
+        fn new(source: <Self::Resource as Resource>::Source) -> Self {
+          #ident(Some(<#res as Driver>::new(source)))
+        }
 
-      #[inline(always)]
-      fn free(self) -> Self::Resource {
-        Driver::free(#access)
-      }
-    });
+        #[inline(always)]
+        fn free(self) -> Self::Resource {
+          Driver::free(#access).unwrap()
+        }
+      });
+    } else {
+      impl_tokens.push(quote_spanned! { def_site =>
+        type Resource = <#res as Driver>::Resource;
+
+        #[inline(always)]
+        fn new(source: <Self::Resource as Resource>::Source) -> Self {
+          #ident(<#res as Driver>::new(source))
+        }
+
+        #[inline(always)]
+        fn free(self) -> Self::Resource {
+          Driver::free(#access)
+        }
+      });
+    }
   }
 
   let expanded = quote_spanned! { def_site =>
     mod #scope {
+      extern crate core;
       extern crate drone_core;
 
+      #[allow(unused_imports)]
+      use self::core::option::Option::*;
       use self::drone_core::drv::{Driver, Resource};
 
       impl #impl_generics Driver for #ident #ty_generics #where_clause {

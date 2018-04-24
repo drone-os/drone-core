@@ -12,12 +12,10 @@
 //! Allocator is configured statically by `heap!` macro.
 //!
 //! ```
-//! # #![feature(alloc)]
 //! # #![feature(allocator_api)]
 //! # #![feature(const_fn)]
 //! # #![feature(proc_macro)]
 //! # #![feature(slice_get_slice)]
-//! # extern crate alloc;
 //! # extern crate drone_core;
 //! # fn main() {}
 //! # use std as core;
@@ -26,10 +24,6 @@
 //! heap! {
 //!   /// The allocator struct.
 //!   pub struct Heap;
-//!   /// The global allocator.
-//!   // Uncomment the following line to use it as a global allocator.
-//!   // #[global_allocator]
-//!   pub static ALLOC;
 //!
 //!   // The size of the heap should be known at the compile-time. It should
 //!   // equal the sum of all defined pools.
@@ -49,27 +43,22 @@
 //! Allocator needs a simple run-time initialization before using.
 //!
 //! ```
-//! # #![feature(alloc)]
 //! # #![feature(allocator_api)]
 //! # #![feature(const_fn)]
 //! # #![feature(proc_macro)]
 //! # #![feature(slice_get_slice)]
-//! # extern crate alloc;
 //! # extern crate drone_core;
 //! # use std as core;
 //! # pub mod symbols { #[no_mangle] pub static HEAP_START: usize = 0; }
 //! use drone_core::heap::Allocator;
 //!
-//! mod heap {
-//!   use drone_core::heap;
-//!
-//!   heap! {
-//!     pub struct Heap;
-//!     pub static ALLOC;
-//!     size = 0;
-//!     pools = [];
-//!   }
+//! drone_core::heap! {
+//!   pub struct Heap;
+//!   size = 0;
+//!   pools = [];
 //! }
+//!
+//! static mut ALLOC: Heap = Heap::new();
 //!
 //! extern "C" {
 //!   // A symbol defined in the linker-script. Represents the beginning of the
@@ -78,9 +67,7 @@
 //! }
 //!
 //! fn main() {
-//!   unsafe {
-//!     heap::ALLOC.init(&mut HEAP_START);
-//!   }
+//!   unsafe { ALLOC.init(&mut HEAP_START) };
 //! }
 //! ```
 //!

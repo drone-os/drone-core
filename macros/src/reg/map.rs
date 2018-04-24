@@ -150,6 +150,12 @@ fn gen_block(
         impl<T: RegTag> #trait_ident<T> for #reg<T> {}
       });
     }
+    reg_outer_tokens.push(quote! {
+      #(#attrs)*
+      #[derive(Bitfield, Clone, Copy)]
+      #[bitfield(default = #reset)]
+      pub struct Val(#val_ty);
+    });
     block_tokens.push(quote_spanned! { def_site =>
       #(#attrs)*
       pub mod #reg_mod {
@@ -261,11 +267,6 @@ fn gen_block(
             self.val = val;
           }
         }
-
-        #(#attrs)*
-        #[derive(Bitfield, Clone, Copy)]
-        #[bitfield(default = #reset)]
-        pub struct #val(#val_ty);
 
         #(#reg_outer_tokens)*
       }
