@@ -1,7 +1,9 @@
 #![feature(const_fn)]
 #![feature(generators)]
+#![feature(never_type)]
 #![feature(prelude_import)]
 #![feature(proc_macro)]
+#![feature(proc_macro_path_invoc)]
 
 #[macro_use]
 extern crate drone_core;

@@ -3,8 +3,10 @@
 //! ```
 //! # #![feature(const_fn)]
 //! # #![feature(generators)]
+//! # #![feature(never_type)]
 //! # #![feature(prelude_import)]
 //! # #![feature(proc_macro)]
+//! # #![feature(proc_macro_path_invoc)]
 //! # #[macro_use] extern crate drone_core;
 //! # extern crate futures;
 //! # #[prelude_import] use drone_core::prelude::*;
@@ -52,8 +54,10 @@
 //! ```
 //! # #![feature(const_fn)]
 //! # #![feature(generators)]
+//! # #![feature(never_type)]
 //! # #![feature(prelude_import)]
 //! # #![feature(proc_macro)]
+//! # #![feature(proc_macro_path_invoc)]
 //! # #[macro_use] extern crate drone_core;
 //! # extern crate futures;
 //! # #[prelude_import] use drone_core::prelude::*;

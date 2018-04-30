@@ -64,11 +64,11 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     None => Driver::default(),
   };
   let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-  let res = if_chain! {
-    if let Data::Struct(x) = data;
-    if let Fields::Unnamed(mut x) = x.fields;
+  let mut res = if_chain! {
+    if let Data::Struct(ref x) = &data;
+    if let Fields::Unnamed(ref x) = x.fields;
     if x.unnamed.len() <= 1;
-    if let Some(Field { ty, .. }) = x.unnamed.into_iter().next();
+    if let Some(Field { ref ty, .. }) = x.unnamed.iter().next();
     then {
       ty
     } else {
@@ -78,79 +78,29 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       );
     }
   };
-  let option = if_chain! {
-    if let &Type::Path(ref x) = &res;
-    if x.qself.is_none();
-    if x.path.leading_colon.is_none();
-    if x.path.segments.len() == 1;
-    if let Some(x) = x.path.segments.iter().next();
-    if x.ident == "Option";
-    if let PathArguments::AngleBracketed(ref x) = x.arguments;
-    if x.args.len() == 1;
-    if let Some(GenericArgument::Type(x)) = x.args.iter().next();
-    then { Some(x) } else { None }
-  };
-  let mut impl_tokens = Vec::new();
-  if !forward {
-    if let Some(res) = option {
-      impl_tokens.push(quote_spanned! { def_site =>
-        type Resource = #res;
+  let ref_cell = parse_wrapper("RefCell", &mut res);
+  let option = parse_wrapper("Option", &mut res);
 
-        #[inline(always)]
-        fn new(source: <Self::Resource as Resource>::Source) -> Self {
-          #ident(Some(<Self::Resource as Resource>::from_source(source)))
-        }
-
-        #[inline(always)]
-        fn free(self) -> Self::Resource {
-          #access.unwrap()
-        }
-      });
-    } else {
-      impl_tokens.push(quote_spanned! { def_site =>
-        type Resource = #res;
-
-        #[inline(always)]
-        fn new(source: <Self::Resource as Resource>::Source) -> Self {
-          #ident(<Self::Resource as Resource>::from_source(source))
-        }
-
-        #[inline(always)]
-        fn free(self) -> Self::Resource {
-          #access
-        }
-      });
-    }
+  let mut res_def = quote_spanned!(def_site => #res);
+  let mut free_def = quote_spanned!(def_site => #access);
+  let mut new_def = if !forward {
+    quote_spanned!(def_site => <#res as Resource>::from_source(source))
   } else {
-    if let Some(res) = option {
-      impl_tokens.push(quote_spanned! { def_site =>
-        type Resource = <#res as Driver>::Resource;
-
-        #[inline(always)]
-        fn new(source: <Self::Resource as Resource>::Source) -> Self {
-          #ident(Some(<#res as Driver>::new(source)))
-        }
-
-        #[inline(always)]
-        fn free(self) -> Self::Resource {
-          Driver::free(#access).unwrap()
-        }
-      });
-    } else {
-      impl_tokens.push(quote_spanned! { def_site =>
-        type Resource = <#res as Driver>::Resource;
-
-        #[inline(always)]
-        fn new(source: <Self::Resource as Resource>::Source) -> Self {
-          #ident(<#res as Driver>::new(source))
-        }
-
-        #[inline(always)]
-        fn free(self) -> Self::Resource {
-          Driver::free(#access)
-        }
-      });
-    }
+    quote_spanned!(def_site => <#res as Driver>::new(source))
+  };
+  if option {
+    new_def = quote_spanned!(def_site => Some(#new_def));
+  }
+  if ref_cell {
+    new_def = quote_spanned!(def_site => RefCell::new(#new_def));
+    free_def = quote_spanned!(def_site => #free_def.into_inner());
+  }
+  if option {
+    free_def = quote_spanned!(def_site => #free_def.unwrap());
+  }
+  if forward {
+    res_def = quote_spanned!(def_site => <#res_def as Driver>::Resource);
+    free_def = quote_spanned!(def_site => Driver::free(#free_def));
   }
 
   let expanded = quote_spanned! { def_site =>
@@ -160,12 +110,44 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
 
       #[allow(unused_imports)]
       use self::core::option::Option::*;
+      #[allow(unused_imports)]
+      use self::core::cell::RefCell;
       use self::drone_core::drv::{Driver, Resource};
 
       impl #impl_generics Driver for #ident #ty_generics #where_clause {
-        #(#impl_tokens)*
+        type Resource = #res_def;
+
+        #[inline(always)]
+        fn new(source: <Self::Resource as Resource>::Source) -> Self {
+          #ident(#new_def)
+        }
+
+        #[inline(always)]
+        fn free(self) -> Self::Resource {
+          #free_def
+        }
       }
     }
   };
   expanded.into()
+}
+
+fn parse_wrapper(wrapper: &str, res: &mut &Type) -> bool {
+  if_chain! {
+    if let &Type::Path(ref x) = *res;
+    if x.qself.is_none();
+    if x.path.leading_colon.is_none();
+    if x.path.segments.len() == 1;
+    if let Some(x) = x.path.segments.iter().next();
+    if x.ident == wrapper;
+    if let PathArguments::AngleBracketed(ref x) = x.arguments;
+    if x.args.len() == 1;
+    if let Some(GenericArgument::Type(x)) = x.args.iter().next();
+    then {
+      *res = x;
+      true
+    } else {
+      false
+    }
+  }
 }

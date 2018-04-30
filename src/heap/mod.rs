@@ -15,6 +15,7 @@
 //! # #![feature(allocator_api)]
 //! # #![feature(const_fn)]
 //! # #![feature(proc_macro)]
+//! # #![feature(proc_macro_path_invoc)]
 //! # #![feature(slice_get_slice)]
 //! # extern crate drone_core;
 //! # fn main() {}
@@ -46,6 +47,7 @@
 //! # #![feature(allocator_api)]
 //! # #![feature(const_fn)]
 //! # #![feature(proc_macro)]
+//! # #![feature(proc_macro_path_invoc)]
 //! # #![feature(slice_get_slice)]
 //! # extern crate drone_core;
 //! # use std as core;

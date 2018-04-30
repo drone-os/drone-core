@@ -2,22 +2,32 @@
 //!
 //! ```
 //! # #![feature(proc_macro)]
+//! # extern crate std as core;
 //! # #[macro_use] extern crate drone_core;
+//! use core::cell::RefCell;
 //! use drone_core::drv::Driver;
 //!
 //! #[derive(Driver)]
 //! #[driver(forward)]
-//! struct Foo(Bar);
+//! struct A(B);
 //!
 //! #[derive(Driver, Resource)]
-//! struct Bar(Option<Baz>);
+//! #[driver(forward)]
+//! struct B(Option<C>);
+//!
+//! #[derive(Driver, Resource)]
+//! #[driver(forward)]
+//! struct C(RefCell<D>);
+//!
+//! #[derive(Driver, Resource)]
+//! struct D(RefCell<Option<E>>);
 //!
 //! #[derive(Resource)]
-//! struct Baz;
+//! struct E;
 //!
 //! # fn main() {
-//! let foo: Foo = Foo::new(Baz);
-//! let baz: Baz = foo.free();
+//! let a: A = A::new(E);
+//! let e: E = a.free();
 //! # }
 //! ```
 

@@ -1,4 +1,4 @@
-use core::mem;
+use core::intrinsics::unreachable;
 use fib::{self, Fiber, FiberState, YieldOption};
 use futures::prelude::*;
 use sync::spsc::oneshot::{channel, Receiver, RecvError};
@@ -27,7 +27,7 @@ impl<R, E> Future for FiberFuture<R, E> {
   fn poll(&mut self, cx: &mut task::Context) -> Poll<R, E> {
     self.rx.poll(cx).map_err(|err| match err {
       RecvError::Complete(err) => err,
-      RecvError::Canceled => unsafe { mem::unreachable() },
+      RecvError::Canceled => unsafe { unreachable() },
     })
   }
 }
