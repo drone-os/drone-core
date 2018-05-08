@@ -79,9 +79,7 @@ impl<T, E> Drop for Inner<T, E> {
     let state = self.state_load(atomic::Ordering::Relaxed);
     let count = state & INDEX_MASK;
     let begin = state >> INDEX_BITS & INDEX_MASK;
-    let end = begin
-      .wrapping_add(count)
-      .wrapping_rem(self.buffer.cap());
+    let end = begin.wrapping_add(count).wrapping_rem(self.buffer.cap());
     match begin.cmp(&end) {
       cmp::Ordering::Equal => unsafe {
         ptr::drop_in_place(slice::from_raw_parts_mut(
@@ -96,10 +94,7 @@ impl<T, E> Drop for Inner<T, E> {
         ));
       },
       cmp::Ordering::Greater => unsafe {
-        ptr::drop_in_place(slice::from_raw_parts_mut(
-          self.buffer.ptr(),
-          end,
-        ));
+        ptr::drop_in_place(slice::from_raw_parts_mut(self.buffer.ptr(), end));
         ptr::drop_in_place(slice::from_raw_parts_mut(
           self.buffer.ptr().offset(begin as isize),
           self.buffer.cap() - begin,
@@ -128,9 +123,7 @@ impl<T, E> SpscInner<AtomicUsize, usize> for Inner<T, E> {
     success: atomic::Ordering,
     failure: atomic::Ordering,
   ) -> Result<usize, usize> {
-    self
-      .state
-      .compare_exchange(current, new, success, failure)
+    self.state.compare_exchange(current, new, success, failure)
   }
 
   #[inline(always)]
@@ -173,10 +166,7 @@ mod tests {
       let mut map = task::LocalMap::new();
       let mut cx = task::Context::without_spawn(&mut map, &waker);
       counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(
-        rx.poll_next(&mut cx),
-        Ok(Async::Ready(Some(314)))
-      );
+      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(Some(314))));
       assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(None)));
       assert_eq!(counter.0.load(Ordering::Relaxed), 0);
     });
@@ -192,10 +182,7 @@ mod tests {
       counter.0.store(0, Ordering::Relaxed);
       assert_eq!(rx.poll_next(&mut cx), Ok(Async::Pending));
       assert_eq!(tx.send(314).unwrap(), ());
-      assert_eq!(
-        rx.poll_next(&mut cx),
-        Ok(Async::Ready(Some(314)))
-      );
+      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(Some(314))));
       assert_eq!(rx.poll_next(&mut cx), Ok(Async::Pending));
       drop(tx);
       assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(None)));

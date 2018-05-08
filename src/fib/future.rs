@@ -1,5 +1,5 @@
 use core::intrinsics::unreachable;
-use fib::{self, Fiber, FiberState, YieldOption};
+use fib::{self, Fiber, FiberState, YieldNone};
 use futures::prelude::*;
 use sync::spsc::oneshot::{channel, Receiver, RecvError};
 use thr::prelude::*;
@@ -39,7 +39,7 @@ where
   U: Thread,
   F: Fiber<Input = (), Yield = Y, Return = Result<R, E>>,
   F: Send + 'static,
-  Y: YieldOption,
+  Y: YieldNone,
   R: Send + 'static,
   E: Send + 'static,
 {

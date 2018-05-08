@@ -41,7 +41,6 @@
 #![feature(generator_trait)]
 #![feature(integer_atomics)]
 #![feature(iterator_for_each)]
-#![feature(macro_reexport)]
 #![feature(never_type)]
 #![feature(optin_builtin_traits)]
 #![feature(pointer_methods)]
@@ -52,8 +51,9 @@
 #![feature(slice_get_slice)]
 #![feature(slice_internals)]
 #![feature(untagged_unions)]
+#![feature(use_extern_macros)]
 #![warn(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/drone-core/0.8.0")]
+#![doc(html_root_url = "https://docs.rs/drone-core/0.8.1")]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
@@ -62,9 +62,6 @@
 extern crate alloc;
 #[cfg(feature = "std")]
 extern crate core;
-#[macro_reexport(Bitfield)]
-#[macro_reexport(Driver)]
-#[macro_reexport(Resource)]
 extern crate drone_core_macros;
 extern crate drone_ctypes;
 extern crate failure;
@@ -72,6 +69,7 @@ extern crate failure;
 extern crate failure_derive;
 extern crate futures;
 
+#[macro_use]
 pub mod async;
 pub mod bitfield;
 pub mod drv;
@@ -82,11 +80,12 @@ pub mod io;
 pub mod mem;
 pub mod prelude;
 pub mod reg;
+pub mod stack_adapter;
 pub mod sv;
 pub mod sync;
 pub mod thr;
 
-pub use drone_core_macros::{heap, thr};
+pub use drone_core_macros::{heap, thr, Bitfield, Driver, Resource};
 
 #[prelude_import]
 #[allow(unused_imports)]

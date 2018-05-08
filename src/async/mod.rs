@@ -109,6 +109,7 @@
 //! ```
 
 mod gen_future;
+#[macro_use]
 mod macros;
 
 #[doc(hidden)]

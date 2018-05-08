@@ -6,7 +6,7 @@
 
 #![allow(non_camel_case_types)]
 #![warn(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/drone-ctypes/0.8.0")]
+#![doc(html_root_url = "https://docs.rs/drone-ctypes/0.8.1")]
 #![no_std]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]

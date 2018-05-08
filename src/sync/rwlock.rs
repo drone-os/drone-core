@@ -90,10 +90,7 @@ impl<T> RwLock<T> {
       if current >= WRITE_LOCK - 1 {
         break None;
       }
-      if self
-        .lock
-        .compare_and_swap(current, current + 1, Acquire) == current
-      {
+      if self.lock.compare_and_swap(current, current + 1, Acquire) == current {
         break Some(RwLockReadGuard { lock: self });
       }
     }
@@ -122,10 +119,7 @@ impl<T> RwLock<T> {
   /// ```
   #[inline(always)]
   pub fn try_write(&self) -> Option<RwLockWriteGuard<T>> {
-    if self
-      .lock
-      .compare_and_swap(NO_LOCK, WRITE_LOCK, Acquire) == NO_LOCK
-    {
+    if self.lock.compare_and_swap(NO_LOCK, WRITE_LOCK, Acquire) == NO_LOCK {
       Some(RwLockWriteGuard { lock: self })
     } else {
       None

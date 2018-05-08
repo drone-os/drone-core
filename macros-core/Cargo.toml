@@ -1,6 +1,6 @@
 [package]
 name = "drone-macros-core"
-version = "0.8.0" # remember to update html_root_url
+version = "0.8.1" # remember to update html_root_url
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = "Drone procedural macros shared lib."
 readme = "README.md"
@@ -10,7 +10,7 @@ repository = "https://github.com/drone-os/drone-core"
 [dependencies]
 lazy_static = "1"
 proc-macro2 = { version = "0.3", features = ["nightly"] }
-regex = "0.2"
+regex = "1"
 syn = "0.13"
 
 [dependencies.clippy]

@@ -81,12 +81,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
   } = try_parse!(call_site, input);
   let mut block_tokens = Vec::new();
   let mut outer_tokens = Vec::new();
-  let block_mod = gen_block(
-    block_ident,
-    &regs,
-    &mut block_tokens,
-    &mut outer_tokens,
-  );
+  let block_mod =
+    gen_block(block_ident, &regs, &mut block_tokens, &mut outer_tokens);
 
   let expanded = quote_spanned! { def_site =>
     #(#block_attrs)*
@@ -106,9 +102,8 @@ fn gen_block(
   outer_tokens: &mut Vec<Tokens>,
 ) -> Ident {
   let def_site = Span::def_site();
-  let block_mod = Ident::from(unkeywordize(
-    block_ident.as_ref().to_snake_case().into(),
-  ));
+  let block_mod =
+    Ident::from(unkeywordize(block_ident.as_ref().to_snake_case().into()));
   let block_prefix = block_ident.as_ref().to_pascal_case();
   let reg = Ident::from("Reg");
   let val = Ident::from("Val");
@@ -125,9 +120,8 @@ fn gen_block(
     ref fields,
   } in regs
   {
-    let reg_mod = Ident::from(unkeywordize(
-      ident.as_ref().to_snake_case().into(),
-    ));
+    let reg_mod =
+      Ident::from(unkeywordize(ident.as_ref().to_snake_case().into()));
     let reg_struct = Ident::from(ident.as_ref().to_pascal_case());
     let reg_alias = Ident::from(format!("{}{}", block_prefix, reg_struct));
     let val_ty = Ident::from(format!("u{}", size));

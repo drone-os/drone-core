@@ -60,12 +60,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         vis: local_vis,
         ident: local_ident,
       },
-    sv: ExternStruct {
-      ident: sv_ident,
-    },
-    array: ExternStatic {
-      ident: array_ident,
-    },
+    sv: ExternStruct { ident: sv_ident },
+    array: ExternStatic { ident: array_ident },
     fields,
   } = try_parse!(call_site, input);
   let rt = Ident::new("__thr_rt", def_site);

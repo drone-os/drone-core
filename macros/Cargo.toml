@@ -1,6 +1,6 @@
 [package]
 name = "drone-core-macros"
-version = "0.8.0" # remember to update html_root_url
+version = "0.8.1" # remember to update html_root_url
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = "Drone procedural macros."
 readme = "README.md"
@@ -21,7 +21,7 @@ version = "0.13"
 features = ["full"]
 
 [dependencies.drone-macros-core]
-version = "0.8"
+version = "0.8.1"
 path = "../macros-core"
 
 [dependencies.clippy]

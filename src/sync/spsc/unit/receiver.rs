@@ -45,21 +45,16 @@ impl<E> Inner<E> {
   fn recv(&self, cx: &mut task::Context) -> Poll<Option<()>, E> {
     let some_unit = || || Ok(Async::Ready(Some(())));
     self
-      .update(
-        self.state_load(Acquire),
-        Acquire,
-        Acquire,
-        |state| {
-          if Self::take(state) {
-            Ok(None)
-          } else if *state & COMPLETE == 0 {
-            *state |= RX_LOCK;
-            Ok(Some(*state))
-          } else {
-            Err(())
-          }
-        },
-      )
+      .update(self.state_load(Acquire), Acquire, Acquire, |state| {
+        if Self::take(state) {
+          Ok(None)
+        } else if *state & COMPLETE == 0 {
+          *state |= RX_LOCK;
+          Ok(Some(*state))
+        } else {
+          Err(())
+        }
+      })
       .and_then(|state| {
         state.map_or_else(some_unit(), |state| {
           unsafe {
@@ -87,9 +82,7 @@ impl<E> Inner<E> {
       })
       .or_else(|()| {
         let err = unsafe { &mut *self.err.get() };
-        err
-          .take()
-          .map_or_else(|| Ok(Async::Ready(None)), Err)
+        err.take().map_or_else(|| Ok(Async::Ready(None)), Err)
       })
   }
 

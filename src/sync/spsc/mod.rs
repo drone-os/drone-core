@@ -72,19 +72,14 @@ where
 
   fn poll_cancel(&self, cx: &mut task::Context) -> Poll<(), ()> {
     self
-      .update(
-        self.state_load(Relaxed),
-        Acquire,
-        Relaxed,
-        |state| {
-          if *state & (Self::COMPLETE | Self::TX_LOCK) != Self::ZERO {
-            Err(())
-          } else {
-            *state |= Self::TX_LOCK;
-            Ok(*state)
-          }
-        },
-      )
+      .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {
+        if *state & (Self::COMPLETE | Self::TX_LOCK) != Self::ZERO {
+          Err(())
+        } else {
+          *state |= Self::TX_LOCK;
+          Ok(*state)
+        }
+      })
       .and_then(|state| {
         unsafe { *self.tx_waker_mut() = Some(cx.waker().clone()) };
         self.update(state, Release, Relaxed, |state| {
@@ -110,22 +105,17 @@ where
     success: Ordering,
   ) {
     self
-      .update(
-        self.state_load(Relaxed),
-        success,
-        Relaxed,
-        |state| {
-          if *state & half_lock == Self::ZERO {
-            *state |= half_lock | complete;
-            Ok(Some(*state))
-          } else if *state & complete == Self::ZERO {
-            *state |= complete;
-            Ok(None)
-          } else {
-            Err(())
-          }
-        },
-      )
+      .update(self.state_load(Relaxed), success, Relaxed, |state| {
+        if *state & half_lock == Self::ZERO {
+          *state |= half_lock | complete;
+          Ok(Some(*state))
+        } else if *state & complete == Self::ZERO {
+          *state |= complete;
+          Ok(None)
+        } else {
+          Err(())
+        }
+      })
       .ok()
       .and_then(|state| state)
       .map(|state| {
@@ -139,39 +129,29 @@ where
 
   #[inline(always)]
   fn close_rx(&self) {
-    self.close_half(
-      Self::tx_waker_mut,
-      Self::TX_LOCK,
-      Self::COMPLETE,
-      Acquire,
-    );
+    self.close_half(Self::tx_waker_mut, Self::TX_LOCK, Self::COMPLETE, Acquire);
   }
 
   fn drop_rx(&self) {
     self
-      .update(
-        self.state_load(Relaxed),
-        Acquire,
-        Relaxed,
-        |state| {
-          let mut mask = Self::ZERO;
-          if *state & Self::TX_LOCK == Self::ZERO {
-            mask |= Self::TX_LOCK;
-          }
-          if *state & Self::RX_LOCK == Self::ZERO {
-            mask |= Self::RX_LOCK;
-          }
-          if mask != Self::ZERO {
-            *state |= mask | Self::COMPLETE;
-            Ok(Some((*state, mask)))
-          } else if *state & Self::COMPLETE == Self::ZERO {
-            *state |= Self::COMPLETE;
-            Ok(None)
-          } else {
-            Err(())
-          }
-        },
-      )
+      .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {
+        let mut mask = Self::ZERO;
+        if *state & Self::TX_LOCK == Self::ZERO {
+          mask |= Self::TX_LOCK;
+        }
+        if *state & Self::RX_LOCK == Self::ZERO {
+          mask |= Self::RX_LOCK;
+        }
+        if mask != Self::ZERO {
+          *state |= mask | Self::COMPLETE;
+          Ok(Some((*state, mask)))
+        } else if *state & Self::COMPLETE == Self::ZERO {
+          *state |= Self::COMPLETE;
+          Ok(None)
+        } else {
+          Err(())
+        }
+      })
       .ok()
       .and_then(|x| x)
       .map(|(state, mask)| {
@@ -180,11 +160,7 @@ where
         }
         if mask & Self::TX_LOCK != Self::ZERO {
           unsafe {
-            self
-              .tx_waker_mut()
-              .take()
-              .as_ref()
-              .map(Waker::wake);
+            self.tx_waker_mut().take().as_ref().map(Waker::wake);
           }
         }
         self.update(state, Release, Relaxed, |state| {
@@ -196,11 +172,6 @@ where
 
   #[inline(always)]
   fn drop_tx(&self) {
-    self.close_half(
-      Self::rx_waker_mut,
-      Self::RX_LOCK,
-      Self::COMPLETE,
-      AcqRel,
-    );
+    self.close_half(Self::rx_waker_mut, Self::RX_LOCK, Self::COMPLETE, AcqRel);
   }
 }

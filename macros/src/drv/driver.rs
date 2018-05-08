@@ -4,8 +4,10 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::spanned::Spanned;
 use syn::synom::Synom;
-use syn::{parse, Data, DeriveInput, Field, Fields, GenericArgument, Ident,
-          Index, PathArguments, Type};
+use syn::{
+  parse, Data, DeriveInput, Field, Fields, GenericArgument, Ident, Index,
+  PathArguments, Type,
+};
 
 #[derive(Default)]
 struct Driver {

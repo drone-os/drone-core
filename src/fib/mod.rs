@@ -11,8 +11,10 @@ pub use self::chain::Chain;
 pub use self::closure::{add_fn, new_fn, FiberFn};
 pub use self::future::{add_future, FiberFuture};
 pub use self::generator::{add, new, FiberGen};
-pub use self::stream_ring::{add_stream_ring, add_stream_ring_overwrite,
-                            add_stream_ring_skip, FiberStreamRing};
+pub use self::stream_ring::{
+  add_stream_ring, add_stream_ring_overwrite, add_stream_ring_skip,
+  FiberStreamRing,
+};
 pub use self::stream_unit::{add_stream, add_stream_skip, FiberStreamUnit};
 
 /// Lightweight thread of execution.
@@ -48,7 +50,7 @@ pub enum FiberState<Y, R> {
 }
 
 /// One of `()` or `!`.
-pub trait YieldOption: Send + 'static {}
+pub trait YieldNone: Send + 'static {}
 
-impl YieldOption for () {}
-impl YieldOption for ! {}
+impl YieldNone for () {}
+impl YieldNone for ! {}

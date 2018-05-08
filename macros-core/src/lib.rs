@@ -4,7 +4,7 @@
 
 #![feature(proc_macro)]
 #![warn(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/drone-macros-core/0.8.0")]
+#![doc(html_root_url = "https://docs.rs/drone-macros-core/0.8.1")]
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 #![cfg_attr(feature = "clippy", allow(precedence))]

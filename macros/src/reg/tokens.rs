@@ -123,11 +123,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let block_ident = Ident::from(unkeywordize(block.as_str().into()));
     for Reg { attrs, ident } in regs {
       let reg_struct = Ident::from(ident.as_ref().to_pascal_case());
-      let reg_name = Ident::from(format!(
-        "{}_{}",
-        block,
-        ident.as_ref().to_snake_case()
-      ));
+      let reg_name =
+        Ident::from(format!("{}_{}", block, ident.as_ref().to_snake_case()));
       tokens_tokens.push(quote_spanned! { def_site =>
         #(#attrs)*
         pub #reg_name: #block_ident::#reg_struct<#rt::Srt>
@@ -161,11 +158,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
 fn include_blocks(includes: Vec<Include>, blocks: &mut Vec<Block>) {
   for Include { var, path } in includes {
-    let path = format!(
-      "{}{}",
-      env::var(var.value()).unwrap(),
-      path.value()
-    );
+    let path = format!("{}{}", env::var(var.value()).unwrap(), path.value());
     let mut file = File::open(path).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();

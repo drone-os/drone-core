@@ -3,7 +3,7 @@ members = ["ctypes", "macros", "macros-core"]
 
 [package]
 name = "drone-core"
-version = "0.8.0" # remember to update html_root_url
+version = "0.8.1" # remember to update html_root_url
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = "Drone is a Hard Real-Time Operating System Framework."
 readme = "README.md"
@@ -15,11 +15,11 @@ default = []
 std = ['futures/std']
 
 [dependencies.drone-ctypes]
-version = "0.8.0"
+version = "0.8.1"
 path = "ctypes"
 
 [dependencies.drone-core-macros]
-version = "0.8.0"
+version = "0.8.1"
 path = "macros"
 
 [dependencies.futures]

@@ -7,9 +7,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let def_site = Span::def_site();
   let input = parse::<DeriveInput>(input).unwrap();
   let DeriveInput {
-    ident,
-    generics,
-    ..
+    ident, generics, ..
   } = input;
   let rt = Ident::new(
     &format!("__resource_{}", ident.as_ref().to_snake_case()),

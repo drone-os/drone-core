@@ -57,9 +57,7 @@ macro_rules! thr_num {
 
     impl<T: ThrTag> $name<T> {
       unsafe fn new() -> Self {
-        Self {
-          _tag: PhantomData,
-        }
+        Self { _tag: PhantomData }
       }
     }
 

@@ -161,10 +161,7 @@ where
       -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
     unsafe {
-      write_volatile(
-        self.to_mut_ptr(),
-        f(&mut self.default()).val().bits(),
-      );
+      write_volatile(self.to_mut_ptr(), f(&mut self.default()).val().bits());
     }
   }
 
@@ -190,10 +187,7 @@ where
       -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
     unsafe {
-      write_volatile(
-        self.to_mut_ptr(),
-        f(&mut self.load()).val().bits(),
-      );
+      write_volatile(self.to_mut_ptr(), f(&mut self.load()).val().bits());
     }
   }
 }

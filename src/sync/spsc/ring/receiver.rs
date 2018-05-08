@@ -46,27 +46,20 @@ impl<T, E> Inner<T, E> {
   fn recv(&self, cx: &mut task::Context) -> Poll<Option<T>, E> {
     let some_value = || {
       |index| unsafe {
-        Async::Ready(Some(ptr::read(
-          self.buffer.ptr().offset(index as isize),
-        )))
+        Async::Ready(Some(ptr::read(self.buffer.ptr().offset(index as isize))))
       }
     };
     self
-      .update(
-        self.state_load(Acquire),
-        Acquire,
-        Acquire,
-        |state| {
-          if let Some(index) = Self::take_index(state, self.buffer.cap()) {
-            Ok(Ok(index))
-          } else if *state & COMPLETE == 0 {
-            *state |= RX_LOCK;
-            Ok(Err(*state))
-          } else {
-            Err(())
-          }
-        },
-      )
+      .update(self.state_load(Acquire), Acquire, Acquire, |state| {
+        if let Some(index) = Self::take_index(state, self.buffer.cap()) {
+          Ok(Ok(index))
+        } else if *state & COMPLETE == 0 {
+          *state |= RX_LOCK;
+          Ok(Err(*state))
+        } else {
+          Err(())
+        }
+      })
       .and_then(|state| {
         state.map(some_value()).or_else(|state| {
           unsafe {
@@ -94,9 +87,7 @@ impl<T, E> Inner<T, E> {
       })
       .or_else(|()| {
         let err = unsafe { &mut *self.err.get() };
-        err
-          .take()
-          .map_or_else(|| Ok(Async::Ready(None)), Err)
+        err.take().map_or_else(|| Ok(Async::Ready(None)), Err)
       })
   }
 

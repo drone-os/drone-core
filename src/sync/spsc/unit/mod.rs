@@ -83,9 +83,7 @@ impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
     success: Ordering,
     failure: Ordering,
   ) -> Result<usize, usize> {
-    self
-      .state
-      .compare_exchange(current, new, success, failure)
+    self.state.compare_exchange(current, new, success, failure)
   }
 
   #[inline(always)]
@@ -128,10 +126,7 @@ mod tests {
       let mut map = task::LocalMap::new();
       let mut cx = task::Context::without_spawn(&mut map, &waker);
       counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(
-        rx.poll_next(&mut cx),
-        Ok(Async::Ready(Some(())))
-      );
+      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(Some(()))));
       assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(None)));
       assert_eq!(counter.0.load(Ordering::Relaxed), 0);
     });
@@ -147,10 +142,7 @@ mod tests {
       counter.0.store(0, Ordering::Relaxed);
       assert_eq!(rx.poll_next(&mut cx), Ok(Async::Pending));
       assert_eq!(tx.send().unwrap(), ());
-      assert_eq!(
-        rx.poll_next(&mut cx),
-        Ok(Async::Ready(Some(())))
-      );
+      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(Some(()))));
       assert_eq!(rx.poll_next(&mut cx), Ok(Async::Pending));
       drop(tx);
       assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(None)));

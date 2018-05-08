@@ -84,35 +84,30 @@ impl<E> Drop for Sender<E> {
 impl<E> Inner<E> {
   fn send(&self) -> Result<(), SendError> {
     self
-      .update(
-        self.state_load(Relaxed),
-        Acquire,
-        Relaxed,
-        |state| {
-          let mut lock = *state & LOCK_MASK;
-          if lock & COMPLETE != 0 {
-            return Err(SendError::Canceled);
-          }
-          *state = (*state as isize >> LOCK_BITS) as usize;
-          *state = state.wrapping_add(1);
-          if *state == 0 {
-            return Err(SendError::Overflow);
-          }
-          let rx_locked = if lock & RX_LOCK == 0 {
-            lock |= RX_LOCK;
-            true
-          } else {
-            false
-          };
-          *state <<= LOCK_BITS;
-          *state |= lock;
-          if rx_locked {
-            Ok(Some(*state))
-          } else {
-            Ok(None)
-          }
-        },
-      )
+      .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {
+        let mut lock = *state & LOCK_MASK;
+        if lock & COMPLETE != 0 {
+          return Err(SendError::Canceled);
+        }
+        *state = (*state as isize >> LOCK_BITS) as usize;
+        *state = state.wrapping_add(1);
+        if *state == 0 {
+          return Err(SendError::Overflow);
+        }
+        let rx_locked = if lock & RX_LOCK == 0 {
+          lock |= RX_LOCK;
+          true
+        } else {
+          false
+        };
+        *state <<= LOCK_BITS;
+        *state |= lock;
+        if rx_locked {
+          Ok(Some(*state))
+        } else {
+          Ok(None)
+        }
+      })
       .map(|state| {
         state.map(|state| {
           unsafe {

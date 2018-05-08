@@ -147,9 +147,8 @@ pub trait Allocator {
     layout: Layout,
     new_size: usize,
   ) -> Result<Excess, AllocErr> {
-    self.realloc_with(ptr, layout, new_size, |ptr, pool| {
-      Excess(ptr, pool.size())
-    })
+    self
+      .realloc_with(ptr, layout, new_size, |ptr, pool| Excess(ptr, pool.size()))
   }
 
   #[doc(hidden)]

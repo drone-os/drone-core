@@ -5,8 +5,10 @@ use proc_macro2::Span;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::synom::Synom;
-use syn::{parse, Data, DeriveInput, Fields, Ident, Index, IntSuffix, LitInt,
-          LitStr, PathArguments, Type};
+use syn::{
+  parse, Data, DeriveInput, Fields, Ident, Index, IntSuffix, LitInt, LitStr,
+  PathArguments, Type,
+};
 
 #[derive(Default)]
 struct Bitfield {
@@ -106,10 +108,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let input = parse::<DeriveInput>(input).unwrap();
   let input_span = input.span();
   let DeriveInput {
-    attrs,
-    ident,
-    data,
-    ..
+    attrs, ident, data, ..
   } = input;
   let scope = Ident::new(
     &format!("__bitfield_{}", ident.as_ref().to_snake_case()),
@@ -128,10 +127,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       then { true } else { false }
     }
   });
-  let Bitfield {
-    fields,
-    default,
-  } = match bitfield {
+  let Bitfield { fields, default } = match bitfield {
     Some(attr) => try_parse2!(attr.span(), attr.tts),
     None => Bitfield::default(),
   };

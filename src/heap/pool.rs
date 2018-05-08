@@ -136,10 +136,7 @@ impl Pool {
         break None;
       }
       let new = current.add(self.size);
-      if self
-        .head
-        .compare_and_swap(current, new, Relaxed) == current
-      {
+      if self.head.compare_and_swap(current, new, Relaxed) == current {
         break Some(NonNull::new_unchecked(current as *mut Opaque));
       }
     }
