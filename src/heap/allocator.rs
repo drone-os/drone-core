@@ -91,7 +91,7 @@ pub trait Allocator {
     let old_size = layout.size();
     let in_place = if new_size < old_size {
       true
-    } else if let Ok(()) = self.grow_in_place(ptr, layout.clone(), new_size) {
+    } else if let Ok(()) = self.grow_in_place(ptr, layout, new_size) {
       true
     } else {
       false

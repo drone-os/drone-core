@@ -1,17 +1,13 @@
 //! Adapter pattern for transforming stackful synchronous subroutines into
 //! fibers.
 
-use fib::{Fiber, FiberState};
+use core::sync::atomic::AtomicBool;
 use futures::prelude::*;
 
 /// Interface for running synchronous code asynchronously.
 pub trait Adapter: Sized + Send + 'static {
-  /// Stackful fiber that runs synchronous code.
-  type Stack: Fiber<
-    Input = In<Self::Cmd, Self::ReqRes>,
-    Yield = Out<Self::Req, Self::CmdRes>,
-    Return = !,
-  >;
+  /// See (`Stack`)[Stack].
+  type Stack: Stack<Self::Cmd, Self::CmdRes, Self::Req, Self::ReqRes>;
 
   /// See (`Context`)[Context].
   type Context: Context<Self::Req, Self::ReqRes>;
@@ -46,6 +42,20 @@ pub trait Adapter: Sized + Send + 'static {
     req: Self::Req,
   ) -> Box<Future<Item = Self::ReqRes, Error = Self::Error> + 'a>;
 
+  /// Controls whether single instance of the code should be enforced.
+  ///
+  /// If the code is not reentrant, the method should return a reference to a
+  /// static atomic boolean.
+  fn singleton() -> Option<&'static AtomicBool> {
+    None
+  }
+
+  /// Runs at the first entrance into command loop.
+  fn init() {}
+
+  /// Runs on destruction.
+  fn deinit() {}
+
   /// Returns a future that runs a command `cmd`, and returns its result.
   fn cmd<'a>(
     &'a mut self,
@@ -54,13 +64,29 @@ pub trait Adapter: Sized + Send + 'static {
     let mut input = In { cmd };
     Box::new(async(static move || loop {
       input = match self.stack().resume(input) {
-        FiberState::Yielded(Out::Req(req)) => In {
+        Out::Req(req) => In {
           req_res: await!(self.run_req(req))?,
         },
-        FiberState::Yielded(Out::CmdRes(res)) => break Ok(res),
+        Out::CmdRes(res) => break Ok(res),
       }
     }))
   }
+}
+
+/// Stackful fiber that runs synchronous code.
+///
+/// # Safety
+///
+/// Implementation must respect the following configuration methods:
+///
+/// * [`Adapter::singleton`](Adapter::singleton)
+/// * [`Adapter::init`](Adapter::init)
+/// * [`Adapter::deinit`](Adapter::deinit)
+pub unsafe trait Stack<Cmd, CmdRes, Req, ReqRes>:
+  Sized + 'static
+{
+  /// Resumes the execution of this fiber.
+  fn resume(&mut self, input: In<Cmd, ReqRes>) -> Out<Req, CmdRes>;
 }
 
 /// A handler type to make requests.
