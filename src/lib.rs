@@ -75,6 +75,7 @@ pub mod bitfield;
 pub mod drv;
 pub mod ffi;
 pub mod fib;
+pub mod fs;
 pub mod heap;
 pub mod io;
 pub mod mem;

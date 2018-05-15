@@ -2,7 +2,7 @@ use drone_macros_core::{ExternStatic, ExternStruct, NewStruct};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::synom::Synom;
-use syn::{Attribute, Expr, Ident, Type};
+use syn::{Attribute, Expr, Ident, Index, Type};
 
 struct Thr {
   thr: NewStruct,
@@ -65,6 +65,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     fields,
   } = try_parse!(call_site, input);
   let rt = Ident::new("__thr_rt", def_site);
+  let zero_index = Index::from(0);
   let def_new = Ident::from("new");
   let mut thr_tokens = Vec::new();
   let mut thr_ctor_tokens = Vec::new();
@@ -155,7 +156,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
       #[inline(always)]
       unsafe fn get_local(&self) -> &#local_ident {
-        &self.local.0
+        &self.local.#zero_index
       }
     }
 
