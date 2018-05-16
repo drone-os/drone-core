@@ -123,8 +123,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       if attr.path.segments.len() <= 1;
       if let Some(x) = attr.path.segments.iter().next();
       if let PathArguments::None = x.arguments;
-      if x.ident == "bitfield";
-      then { true } else { false }
+      then { x.ident == "bitfield" } else { false }
     }
   });
   let Bitfield { fields, default } = match bitfield {

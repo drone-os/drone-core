@@ -12,7 +12,3 @@ lazy_static = "1"
 proc-macro2 = { version = "0.3", features = ["nightly"] }
 regex = "1"
 syn = "0.13"
-
-[dependencies.clippy]
-version = "0.0"
-optional = true

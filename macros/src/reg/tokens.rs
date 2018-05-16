@@ -47,6 +47,7 @@ impl Synom for Blocks {
   ));
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(redundant_closure))]
 impl Synom for Include {
   named!(parse -> Self, do_parse!(
     ident: syn!(Ident) >>

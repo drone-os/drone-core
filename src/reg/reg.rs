@@ -40,7 +40,7 @@ pub trait RegRef<'a, T: RegTag>: Reg<T> {
 /// Register that can read its value.
 pub trait RReg<T: RegTag>: Reg<T> {
   /// Reads and wraps a register value from its memory address.
-  #[cfg_attr(feature = "clippy", allow(needless_lifetimes))]
+  #[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
   #[inline(always)]
   fn load<'a>(&'a self) -> <Self as RegRef<'a, T>>::Hold
   where

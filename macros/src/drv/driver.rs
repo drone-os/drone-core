@@ -57,8 +57,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       if attr.path.segments.len() <= 1;
       if let Some(x) = attr.path.segments.iter().next();
       if let PathArguments::None = x.arguments;
-      if x.ident == "driver";
-      then { true } else { false }
+      then { x.ident == "driver" } else { false }
     }
   });
   let Driver { forward } = match driver {

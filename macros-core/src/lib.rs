@@ -5,9 +5,7 @@
 #![feature(proc_macro)]
 #![warn(missing_docs)]
 #![doc(html_root_url = "https://docs.rs/drone-macros-core/0.8.1")]
-#![cfg_attr(feature = "clippy", feature(plugin))]
-#![cfg_attr(feature = "clippy", plugin(clippy))]
-#![cfg_attr(feature = "clippy", allow(precedence))]
+#![cfg_attr(feature = "cargo-clippy", allow(precedence))]
 
 #[macro_use]
 extern crate lazy_static;
@@ -37,7 +35,7 @@ use proc_macro2::Span;
 use syn::synom::ParseError;
 
 /// Emits a parse error on the given span.
-pub fn emit_parse_err(span: Span, err: ParseError) -> TokenStream {
+pub fn emit_parse_err(span: Span, err: &ParseError) -> TokenStream {
   emit_err(span, &format!("{}", err))
 }
 

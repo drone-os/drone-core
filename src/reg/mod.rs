@@ -55,7 +55,7 @@ pub mod prelude;
 
 mod field;
 mod hold;
-#[cfg_attr(feature = "clippy", allow(module_inception))]
+#[cfg_attr(feature = "cargo-clippy", allow(module_inception))]
 mod reg;
 mod tag;
 

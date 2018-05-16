@@ -125,20 +125,12 @@ fn gen_block(
     let reg_struct = Ident::from(ident.as_ref().to_pascal_case());
     let reg_alias = Ident::from(format!("{}{}", block_prefix, reg_struct));
     let val_ty = Ident::from(format!("u{}", size));
-    let mut reg_struct_tokens = Vec::new();
-    let mut reg_ctor_tokens = Vec::new();
-    let mut reg_fork_tokens = Vec::new();
-    let mut reg_outer_tokens = Vec::new();
-    gen_reg(
-      reg,
-      hold,
-      val_ty,
-      fields,
-      &mut reg_struct_tokens,
-      &mut reg_ctor_tokens,
-      &mut reg_fork_tokens,
-      &mut reg_outer_tokens,
-    );
+    let (
+      reg_struct_tokens,
+      reg_ctor_tokens,
+      reg_fork_tokens,
+      mut reg_outer_tokens,
+    ) = gen_reg(reg, hold, val_ty, fields);
     for trait_ident in traits {
       reg_outer_tokens.push(quote_spanned! { def_site =>
         impl<T: RegTag> #trait_ident<T> for #reg<T> {}
@@ -279,12 +271,12 @@ fn gen_reg(
   hold: Ident,
   val_ty: Ident,
   fields: &[Field],
-  reg_struct_tokens: &mut Vec<Tokens>,
-  reg_ctor_tokens: &mut Vec<Tokens>,
-  reg_fork_tokens: &mut Vec<Tokens>,
-  reg_outer_tokens: &mut Vec<Tokens>,
-) {
+) -> (Vec<Tokens>, Vec<Tokens>, Vec<Tokens>, Vec<Tokens>) {
   let def_site = Span::def_site();
+  let mut reg_struct_tokens = Vec::new();
+  let mut reg_ctor_tokens = Vec::new();
+  let mut reg_fork_tokens = Vec::new();
+  let mut reg_outer_tokens = Vec::new();
   for &Field {
     ref attrs,
     ident,
@@ -425,4 +417,10 @@ fn gen_reg(
       }
     }
   }
+  (
+    reg_struct_tokens,
+    reg_ctor_tokens,
+    reg_fork_tokens,
+    reg_outer_tokens,
+  )
 }

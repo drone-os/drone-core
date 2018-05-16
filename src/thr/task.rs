@@ -21,7 +21,7 @@ impl TaskCell {
     TaskCell(Cell::new(ptr::null_mut()))
   }
 
-  #[cfg_attr(feature = "clippy", allow(useless_transmute))]
+  #[cfg_attr(feature = "cargo-clippy", allow(useless_transmute))]
   pub(crate) fn __set_cx<F, T>(&self, cx: &mut task::Context, f: F) -> T
   where
     F: FnOnce() -> T,

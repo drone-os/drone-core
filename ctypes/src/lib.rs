@@ -8,9 +8,7 @@
 #![warn(missing_docs)]
 #![doc(html_root_url = "https://docs.rs/drone-ctypes/0.8.1")]
 #![no_std]
-#![cfg_attr(feature = "clippy", feature(plugin))]
-#![cfg_attr(feature = "clippy", plugin(clippy))]
-#![cfg_attr(feature = "clippy", allow(precedence))]
+#![cfg_attr(feature = "cargo-clippy", allow(precedence))]
 
 use core::fmt;
 

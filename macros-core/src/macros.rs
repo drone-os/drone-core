@@ -8,7 +8,7 @@ macro_rules! try_parse {
     let span = $span;
     match ::syn::parse($input) {
       Ok(value) => value,
-      Err(err) => return $crate::emit_parse_err(span, err),
+      Err(err) => return $crate::emit_parse_err(span, &err),
     }
   }};
 }
@@ -23,7 +23,7 @@ macro_rules! try_parse2 {
     let span = $span;
     match ::syn::parse2($input) {
       Ok(value) => value,
-      Err(err) => return $crate::emit_parse_err(span, err),
+      Err(err) => return $crate::emit_parse_err(span, &err),
     }
   }};
 }

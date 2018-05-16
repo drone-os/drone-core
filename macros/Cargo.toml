@@ -23,7 +23,3 @@ features = ["full"]
 [dependencies.drone-macros-core]
 version = "0.8.1"
 path = "../macros-core"
-
-[dependencies.clippy]
-version = "0.0"
-optional = true

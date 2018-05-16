@@ -16,6 +16,7 @@ struct Pool {
   capacity: LitInt,
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(redundant_closure))]
 impl Synom for Heap {
   named!(parse -> Self, do_parse!(
     heap: syn!(NewStruct) >>
