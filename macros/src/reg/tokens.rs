@@ -1,7 +1,6 @@
 use drone_macros_core::{unkeywordize, NewStruct};
 use inflector::Inflector;
-use proc_macro::TokenStream;
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -51,21 +50,21 @@ impl Synom for Blocks {
 impl Synom for Include {
   named!(parse -> Self, do_parse!(
     ident: syn!(Ident) >>
-    switch!(value!(ident.as_ref()),
+    switch!(value!(ident.to_string().as_ref()),
       "include" => value!(()) |
       _ => reject!()
     ) >>
     punct!(!) >>
     parens: parens!(do_parse!(
       ident: syn!(Ident) >>
-      switch!(value!(ident.as_ref()),
+      switch!(value!(ident.to_string().as_ref()),
         "concat" => value!(()) |
         _ => reject!()
       ) >>
       punct!(!) >>
       parens: parens!(do_parse!(
         ident: syn!(Ident) >>
-        switch!(value!(ident.as_ref()),
+        switch!(value!(ident.to_string().as_ref()),
           "env" => value!(()) |
           _ => reject!()
         ) >>
@@ -113,19 +112,23 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       },
     includes,
     blocks: Blocks(mut blocks),
-  } = try_parse!(call_site, input);
+  } = try_parse2!(call_site, input);
   let rt = Ident::new("__reg_tokens_rt", def_site);
-  let new = Ident::from("new");
+  let new = Ident::new("new", call_site);
   include_blocks(includes, &mut blocks);
   let mut tokens_tokens = Vec::new();
   let mut tokens_ctor_tokens = Vec::new();
   for Block { ident, regs } in blocks {
-    let block = ident.as_ref().to_snake_case();
-    let block_ident = Ident::from(unkeywordize(block.as_str().into()));
+    let block = ident.to_string().to_snake_case();
+    let block_ident =
+      Ident::new(&unkeywordize(block.as_str().into()), call_site);
     for Reg { attrs, ident } in regs {
-      let reg_struct = Ident::from(ident.as_ref().to_pascal_case());
-      let reg_name =
-        Ident::from(format!("{}_{}", block, ident.as_ref().to_snake_case()));
+      let reg_struct =
+        Ident::new(&ident.to_string().to_pascal_case(), call_site);
+      let reg_name = Ident::new(
+        &format!("{}_{}", block, ident.to_string().to_snake_case()),
+        call_site,
+      );
       tokens_tokens.push(quote_spanned! { def_site =>
         #(#attrs)*
         pub #reg_name: #block_ident::#reg_struct<#rt::Srt>

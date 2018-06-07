@@ -9,6 +9,6 @@ repository = "https://github.com/drone-os/drone-core"
 
 [dependencies]
 lazy_static = "1"
-proc-macro2 = { version = "0.3", features = ["nightly"] }
+proc-macro2 = { version = "0.4", features = ["nightly"] }
 regex = "1"
-syn = "0.13"
+syn = "0.14"

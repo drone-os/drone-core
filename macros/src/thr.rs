@@ -1,6 +1,5 @@
 use drone_macros_core::{ExternStatic, ExternStruct, NewStruct};
-use proc_macro::TokenStream;
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
 use syn::synom::Synom;
 use syn::{Attribute, Expr, Ident, Index, Type};
 
@@ -63,10 +62,10 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     sv: ExternStruct { ident: sv_ident },
     array: ExternStatic { ident: array_ident },
     fields,
-  } = try_parse!(call_site, input);
+  } = try_parse2!(call_site, input);
   let rt = Ident::new("__thr_rt", def_site);
   let zero_index = Index::from(0);
-  let def_new = Ident::from("new");
+  let def_new = Ident::new("new", call_site);
   let mut thr_tokens = Vec::new();
   let mut thr_ctor_tokens = Vec::new();
   let mut local_tokens = Vec::new();

@@ -5,6 +5,7 @@
 #![feature(integer_atomics)]
 #![feature(prelude_import)]
 #![feature(proc_macro)]
+#![feature(proc_macro_gen)]
 
 extern crate drone_core;
 

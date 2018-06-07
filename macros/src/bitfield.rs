@@ -1,12 +1,11 @@
-use drone_macros_core::emit_err;
+use drone_macros_core::emit_err2;
 use inflector::Inflector;
-use proc_macro::TokenStream;
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::synom::Synom;
 use syn::{
-  parse, Data, DeriveInput, Fields, Ident, Index, IntSuffix, LitInt, LitStr,
+  parse2, Data, DeriveInput, Fields, Ident, Index, IntSuffix, LitInt, LitStr,
   PathArguments, Type,
 };
 
@@ -77,7 +76,7 @@ impl Synom for Field {
 impl Synom for Mode {
   named!(parse -> Self, do_parse!(
     ident: syn!(Ident) >>
-    mode: switch!(value!(ident.as_ref()),
+    mode: switch!(value!(ident.to_string().as_ref()),
       "r" => value!(Mode::Read) |
       "rw" => value!(Mode::ReadWrite) |
       "w" => value!(Mode::Write) |
@@ -104,14 +103,14 @@ impl Mode {
 }
 
 pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
-  let def_site = Span::def_site();
-  let input = parse::<DeriveInput>(input).unwrap();
+  let (def_site, call_site) = (Span::def_site(), Span::call_site());
+  let input = parse2::<DeriveInput>(input).unwrap();
   let input_span = input.span();
   let DeriveInput {
     attrs, ident, data, ..
   } = input;
   let scope = Ident::new(
-    &format!("__bitfield_{}", ident.as_ref().to_snake_case()),
+    &format!("__bitfield_{}", ident.to_string().to_snake_case()),
     def_site,
   );
   let var = quote_spanned!(def_site => self);
@@ -141,7 +140,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     then {
       x
     } else {
-      return emit_err(
+      return emit_err2(
         input_span,
         "Bitfield can be derived only from a tuple struct with one field",
       );
@@ -168,7 +167,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       let attrs = &attrs;
       if width.value() == 1 {
         if mode.is_read() {
-          let read_bit = Ident::from(format!("{}", ident));
+          let read_bit = Ident::new(&format!("{}", ident), call_site);
           fields.push(quote_spanned! { def_site =>
             #(#attrs)*
             pub fn #read_bit(&self) -> bool {
@@ -177,9 +176,9 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
           });
         }
         if mode.is_write() {
-          let set_bit = Ident::from(format!("set_{}", ident));
-          let clear_bit = Ident::from(format!("clear_{}", ident));
-          let toggle_bit = Ident::from(format!("toggle_{}", ident));
+          let set_bit = Ident::new(&format!("set_{}", ident), call_site);
+          let clear_bit = Ident::new(&format!("clear_{}", ident), call_site);
+          let toggle_bit = Ident::new(&format!("toggle_{}", ident), call_site);
           fields.push(quote_spanned! { def_site =>
             #(#attrs)*
             pub fn #set_bit(&mut self) -> &mut Self {
@@ -204,7 +203,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         }
       } else {
         if mode.is_read() {
-          let read_bits = Ident::from(format!("{}", ident));
+          let read_bits = Ident::new(&format!("{}", ident), call_site);
           fields.push(quote_spanned! { def_site =>
             #(#attrs)*
             pub fn #read_bits(&self) -> #bits {
@@ -213,7 +212,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
           });
         }
         if mode.is_write() {
-          let write_bits = Ident::from(format!("write_{}", ident));
+          let write_bits = Ident::new(&format!("write_{}", ident), call_site);
           fields.push(quote_spanned! { def_site =>
             #(#attrs)*
             pub fn #write_bits(&mut self, bits: #bits) -> &mut Self {

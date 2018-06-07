@@ -29,35 +29,35 @@ use proc_macro::TokenStream;
 
 #[proc_macro_derive(Bitfield, attributes(bitfield))]
 pub fn derive_bitfield(input: TokenStream) -> TokenStream {
-  bitfield::proc_macro_derive(input)
+  bitfield::proc_macro_derive(input.into()).into()
 }
 
 #[proc_macro_derive(Driver, attributes(driver))]
 pub fn derive_driver(input: TokenStream) -> TokenStream {
-  drv::driver::proc_macro_derive(input)
+  drv::driver::proc_macro_derive(input.into()).into()
 }
 
 #[proc_macro]
 pub fn heap(input: TokenStream) -> TokenStream {
-  heap::proc_macro(input)
+  heap::proc_macro(input.into()).into()
 }
 
 #[proc_macro]
 pub fn reg_map(input: TokenStream) -> TokenStream {
-  reg::map::proc_macro(input)
+  reg::map::proc_macro(input.into()).into()
 }
 
 #[proc_macro]
 pub fn reg_tokens(input: TokenStream) -> TokenStream {
-  reg::tokens::proc_macro(input)
+  reg::tokens::proc_macro(input.into()).into()
 }
 
 #[proc_macro_derive(Resource)]
 pub fn derive_resource(input: TokenStream) -> TokenStream {
-  drv::resource::proc_macro_derive(input)
+  drv::resource::proc_macro_derive(input.into()).into()
 }
 
 #[proc_macro]
 pub fn thr(input: TokenStream) -> TokenStream {
-  thr::proc_macro(input)
+  thr::proc_macro(input.into()).into()
 }

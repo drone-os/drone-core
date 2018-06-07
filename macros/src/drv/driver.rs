@@ -1,11 +1,10 @@
-use drone_macros_core::emit_err;
+use drone_macros_core::emit_err2;
 use inflector::Inflector;
-use proc_macro::TokenStream;
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
 use syn::spanned::Spanned;
 use syn::synom::Synom;
 use syn::{
-  parse, Data, DeriveInput, Field, Fields, GenericArgument, Ident, Index,
+  parse2, Data, DeriveInput, Field, Fields, GenericArgument, Ident, Index,
   PathArguments, Type,
 };
 
@@ -19,7 +18,7 @@ impl Synom for Driver {
     parens: parens!(do_parse!(
       forward: option!(do_parse!(
         ident: syn!(Ident) >>
-        value: switch!(value!(ident.as_ref()),
+        value: switch!(value!(ident.to_string().as_ref()),
           "forward" => value!(true) |
           _ => reject!()
         ) >>
@@ -35,7 +34,7 @@ impl Synom for Driver {
 
 pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let def_site = Span::def_site();
-  let input = parse::<DeriveInput>(input).unwrap();
+  let input = parse2::<DeriveInput>(input).unwrap();
   let input_span = input.span();
   let DeriveInput {
     attrs,
@@ -45,7 +44,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     ..
   } = input;
   let scope = Ident::new(
-    &format!("__driver_{}", ident.as_ref().to_snake_case()),
+    &format!("__driver_{}", ident.to_string().to_snake_case()),
     def_site,
   );
   let var = quote_spanned!(def_site => self);
@@ -73,7 +72,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     then {
       ty
     } else {
-      return emit_err(
+      return emit_err2(
         input_span,
         "Driver can be derived only from a tuple struct with one field",
       );

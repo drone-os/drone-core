@@ -6,6 +6,7 @@
 //!
 //! ```
 //! # #![feature(proc_macro)]
+//! # #![feature(proc_macro_gen)]
 //! # use std as core;
 //! # #[macro_use] extern crate drone_core;
 //! use core::mem::size_of_val;

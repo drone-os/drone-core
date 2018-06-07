@@ -1,6 +1,7 @@
 #![feature(allocator_api)]
 #![feature(const_fn)]
 #![feature(proc_macro)]
+#![feature(proc_macro_gen)]
 #![feature(slice_get_slice)]
 
 extern crate drone_core;

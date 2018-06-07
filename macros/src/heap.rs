@@ -1,6 +1,5 @@
-use drone_macros_core::{emit_err, NewStruct};
-use proc_macro::TokenStream;
-use proc_macro2::Span;
+use drone_macros_core::{emit_err2, NewStruct};
+use proc_macro2::{Span, TokenStream};
 use syn::punctuated::Punctuated;
 use syn::synom::Synom;
 use syn::{Ident, LitInt};
@@ -22,7 +21,7 @@ impl Synom for Heap {
     heap: syn!(NewStruct) >>
 
     ident: syn!(Ident) >>
-    switch!(value!(ident.as_ref()),
+    switch!(value!(ident.to_string().as_ref()),
       "size" => value!(()) |
       _ => reject!()
     ) >>
@@ -31,7 +30,7 @@ impl Synom for Heap {
     punct!(;) >>
 
     ident: syn!(Ident) >>
-    switch!(value!(ident.as_ref()),
+    switch!(value!(ident.to_string().as_ref()),
       "pools" => value!(()) |
       _ => reject!()
     ) >>
@@ -75,16 +74,16 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       },
     size,
     mut pools,
-  } = try_parse!(call_site, input);
+  } = try_parse2!(call_site, input);
   let rt = Ident::new("__heap_rt", def_site);
-  let def_new = Ident::from("new");
+  let def_new = Ident::new("new", call_site);
   pools.sort_by_key(|pool| pool.size.value());
   let free = pools
     .iter()
     .map(Pool::length)
     .fold(size.value() as i64, |a, e| a - e as i64);
   if free != 0 {
-    return emit_err(
+    return emit_err2(
       call_site,
       &format!(
         "`pools` not matches `size`. Difference is {}. Consider setting \
