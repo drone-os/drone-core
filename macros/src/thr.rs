@@ -107,7 +107,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     preempted: #rt::PreemptedCell::new()
   });
 
-  let expanded = quote_spanned! { def_site =>
+  quote_spanned! { def_site =>
     mod #rt {
       extern crate drone_core;
 
@@ -178,6 +178,5 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
 
     unsafe impl Sync for Local {}
-  };
-  expanded.into()
+  }
 }

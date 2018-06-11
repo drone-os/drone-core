@@ -103,7 +103,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     free_def = quote_spanned!(def_site => Driver::free(#free_def));
   }
 
-  let expanded = quote_spanned! { def_site =>
+  quote_spanned! { def_site =>
     mod #scope {
       extern crate core;
       extern crate drone_core;
@@ -128,8 +128,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         }
       }
     }
-  };
-  expanded.into()
+  }
 }
 
 fn parse_wrapper(wrapper: &str, res: &mut &Type) -> bool {

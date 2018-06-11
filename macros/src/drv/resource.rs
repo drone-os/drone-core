@@ -14,7 +14,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   );
   let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-  let expanded = quote! {
+  quote! {
     mod #rt {
       extern crate drone_core;
       pub use self::drone_core::drv::Resource;
@@ -28,6 +28,5 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         source
       }
     }
-  };
-  expanded.into()
+  }
 }

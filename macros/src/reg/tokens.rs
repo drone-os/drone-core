@@ -139,7 +139,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
   }
 
-  let expanded = quote_spanned! { def_site =>
+  quote_spanned! { def_site =>
     mod #rt {
       extern crate drone_core;
 
@@ -156,8 +156,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         Self { #(#tokens_ctor_tokens,)* }
       }
     }
-  };
-  expanded.into()
+  }
 }
 
 fn include_blocks(includes: Vec<Include>, blocks: &mut Vec<Block>) {

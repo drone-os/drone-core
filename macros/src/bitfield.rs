@@ -228,7 +228,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     })
     .collect::<Vec<_>>();
 
-  let expanded = quote_spanned! { def_site =>
+  quote_spanned! { def_site =>
     mod #scope {
       extern crate drone_core;
 
@@ -259,6 +259,5 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         #(#field_tokens)*
       }
     }
-  };
-  expanded.into()
+  }
 }

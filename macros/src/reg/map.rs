@@ -80,21 +80,20 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
   let mut block_tokens = Vec::new();
   let mut outer_tokens = Vec::new();
   let block_mod =
-    gen_block(block_ident, &regs, &mut block_tokens, &mut outer_tokens);
+    gen_block(&block_ident, &regs, &mut block_tokens, &mut outer_tokens);
 
-  let expanded = quote_spanned! { def_site =>
+  quote_spanned! { def_site =>
     #(#block_attrs)*
     #block_vis mod #block_mod {
       #(#block_tokens)*
     }
 
     #(#outer_tokens)*
-  };
-  expanded.into()
+  }
 }
 
 fn gen_block(
-  block_ident: Ident,
+  block_ident: &Ident,
   regs: &[Reg],
   block_tokens: &mut Vec<TokenStream>,
   outer_tokens: &mut Vec<TokenStream>,
@@ -133,7 +132,7 @@ fn gen_block(
       reg_ctor_tokens,
       reg_fork_tokens,
       mut reg_outer_tokens,
-    ) = gen_reg(reg.clone(), hold.clone(), val_ty.clone(), fields);
+    ) = gen_reg(&reg, &hold, &val_ty, fields);
     for trait_ident in traits {
       reg_outer_tokens.push(quote_spanned! { def_site =>
         impl<T: RegTag> #trait_ident<T> for #reg<T> {}
@@ -270,9 +269,9 @@ fn gen_block(
 }
 
 fn gen_reg(
-  reg: Ident,
-  hold: Ident,
-  val_ty: Ident,
+  reg: &Ident,
+  hold: &Ident,
+  val_ty: &Ident,
   fields: &[Field],
 ) -> (
   Vec<TokenStream>,

@@ -105,7 +105,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     offset += pool.length();
   }
 
-  let expanded = quote_spanned! { def_site =>
+  quote_spanned! { def_site =>
     mod #rt {
       extern crate core;
       extern crate drone_core;
@@ -239,6 +239,5 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         ).map(#rt::NonNull::as_ptr).unwrap_or(0 as *mut #rt::Opaque)
       }
     }
-  };
-  expanded.into()
+  }
 }

@@ -7,11 +7,9 @@ pub struct GenFuture<R, E, G>(G)
 where
   G: Generator<Yield = (), Return = Result<R, E>>;
 
-impl<R, E, G> GenFuture<R, E, G>
-where
-  G: Generator<Yield = (), Return = Result<R, E>>,
-{
-}
+impl<R, E, G> GenFuture<R, E, G> where
+  G: Generator<Yield = (), Return = Result<R, E>>
+{}
 
 /// Creates a new generator-based future.
 #[inline(always)]
