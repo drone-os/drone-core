@@ -110,8 +110,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       extern crate core;
       extern crate drone_core;
       pub use self::core::alloc::{Alloc, AllocErr, CannotReallocInPlace, Excess,
-                                  GlobalAlloc, Layout, Opaque};
-      pub use self::core::ptr::NonNull;
+                                  GlobalAlloc, Layout};
+      pub use self::core::ptr::{self, NonNull};
       pub use self::core::slice::SliceIndex;
       pub use self::drone_core::heap::{Allocator, Pool};
     }
@@ -154,15 +154,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       unsafe fn alloc(
         &mut self,
         layout: #rt::Layout,
-      ) -> Result<#rt::NonNull<#rt::Opaque>, #rt::AllocErr> {
+      ) -> Result<#rt::NonNull<u8>, #rt::AllocErr> {
         #rt::Allocator::alloc(self, layout)
       }
 
-      unsafe fn dealloc(
-        &mut self,
-        ptr: #rt::NonNull<#rt::Opaque>,
-        layout: #rt::Layout,
-      ) {
+      unsafe fn dealloc(&mut self, ptr: #rt::NonNull<u8>, layout: #rt::Layout) {
         #rt::Allocator::dealloc(self, ptr, layout)
       }
 
@@ -173,10 +169,10 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
       unsafe fn realloc(
         &mut self,
-        ptr: #rt::NonNull<#rt::Opaque>,
+        ptr: #rt::NonNull<u8>,
         layout: #rt::Layout,
         new_size: usize,
-      ) -> Result<#rt::NonNull<#rt::Opaque>, #rt::AllocErr> {
+      ) -> Result<#rt::NonNull<u8>, #rt::AllocErr> {
         #rt::Allocator::realloc(self, ptr, layout, new_size)
       }
 
@@ -189,7 +185,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
       unsafe fn realloc_excess(
         &mut self,
-        ptr: #rt::NonNull<#rt::Opaque>,
+        ptr: #rt::NonNull<u8>,
         layout: #rt::Layout,
         new_size: usize,
       ) -> Result<#rt::Excess, #rt::AllocErr> {
@@ -198,7 +194,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
       unsafe fn grow_in_place(
         &mut self,
-        ptr: #rt::NonNull<#rt::Opaque>,
+        ptr: #rt::NonNull<u8>,
         layout: #rt::Layout,
         new_size: usize,
       ) -> Result<(), #rt::CannotReallocInPlace> {
@@ -207,7 +203,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
       unsafe fn shrink_in_place(
         &mut self,
-        ptr: #rt::NonNull<#rt::Opaque>,
+        ptr: #rt::NonNull<u8>,
         layout: #rt::Layout,
         new_size: usize,
       ) -> Result<(), #rt::CannotReallocInPlace> {
@@ -216,27 +212,27 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
 
     unsafe impl #rt::GlobalAlloc for #heap_ident {
-      unsafe fn alloc(&self, layout: #rt::Layout) -> *mut #rt::Opaque {
+      unsafe fn alloc(&self, layout: #rt::Layout) -> *mut u8 {
         #rt::Allocator::alloc(self, layout)
-          .map(#rt::NonNull::as_ptr).unwrap_or(0 as *mut #rt::Opaque)
+          .map(#rt::NonNull::as_ptr).unwrap_or(#rt::ptr::null_mut())
       }
 
-      unsafe fn dealloc(&self, ptr: *mut #rt::Opaque, layout: #rt::Layout) {
+      unsafe fn dealloc(&self, ptr: *mut u8, layout: #rt::Layout) {
         #rt::Allocator::dealloc(self, #rt::NonNull::new_unchecked(ptr), layout)
       }
 
       unsafe fn realloc(
         &self,
-        ptr: *mut #rt::Opaque,
+        ptr: *mut u8,
         layout: #rt::Layout,
         new_size: usize,
-      ) -> *mut #rt::Opaque {
+      ) -> *mut u8 {
         #rt::Allocator::realloc(
           self,
           #rt::NonNull::new_unchecked(ptr),
           layout,
           new_size,
-        ).map(#rt::NonNull::as_ptr).unwrap_or(0 as *mut #rt::Opaque)
+        ).map(#rt::NonNull::as_ptr).unwrap_or(#rt::ptr::null_mut())
       }
     }
   }

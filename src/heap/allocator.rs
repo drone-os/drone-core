@@ -1,5 +1,5 @@
 use super::pool::{Fits, Pool};
-use core::alloc::{AllocErr, CannotReallocInPlace, Excess, Layout, Opaque};
+use core::alloc::{AllocErr, CannotReallocInPlace, Excess, Layout};
 use core::ptr::NonNull;
 use core::slice::SliceIndex;
 use core::{cmp, ptr};
@@ -57,7 +57,7 @@ pub trait Allocator {
   #[inline(always)]
   unsafe fn alloc_with<F, T>(&self, layout: Layout, f: F) -> Result<T, AllocErr>
   where
-    F: FnOnce(NonNull<Opaque>, &Pool) -> T,
+    F: FnOnce(NonNull<u8>, &Pool) -> T,
   {
     let mut pool_idx = self.binary_search(&layout);
     if pool_idx == Self::POOL_COUNT {
@@ -80,13 +80,13 @@ pub trait Allocator {
   #[inline(always)]
   unsafe fn realloc_with<F, T>(
     &self,
-    ptr: NonNull<Opaque>,
+    ptr: NonNull<u8>,
     layout: Layout,
     new_size: usize,
     f: F,
   ) -> Result<T, AllocErr>
   where
-    F: Fn(NonNull<Opaque>, &Pool) -> T,
+    F: Fn(NonNull<u8>, &Pool) -> T,
   {
     let old_size = layout.size();
     let in_place = if new_size < old_size {
@@ -118,7 +118,7 @@ pub trait Allocator {
 
   #[doc(hidden)]
   #[inline(always)]
-  unsafe fn alloc(&self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
+  unsafe fn alloc(&self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
     self.alloc_with(layout, |ptr, _| ptr)
   }
 
@@ -132,10 +132,10 @@ pub trait Allocator {
   #[inline(always)]
   unsafe fn realloc(
     &self,
-    ptr: NonNull<Opaque>,
+    ptr: NonNull<u8>,
     layout: Layout,
     new_size: usize,
-  ) -> Result<NonNull<Opaque>, AllocErr> {
+  ) -> Result<NonNull<u8>, AllocErr> {
     self.realloc_with(ptr, layout, new_size, |ptr, _| ptr)
   }
 
@@ -143,7 +143,7 @@ pub trait Allocator {
   #[inline(always)]
   unsafe fn realloc_excess(
     &self,
-    ptr: NonNull<Opaque>,
+    ptr: NonNull<u8>,
     layout: Layout,
     new_size: usize,
   ) -> Result<Excess, AllocErr> {
@@ -154,7 +154,7 @@ pub trait Allocator {
   #[doc(hidden)]
   #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
   #[inline(always)]
-  unsafe fn dealloc(&self, ptr: NonNull<Opaque>, _layout: Layout) {
+  unsafe fn dealloc(&self, ptr: NonNull<u8>, _layout: Layout) {
     let pool_idx = self.binary_search(ptr);
     let pool = self.get_pool_unchecked(pool_idx);
     pool.dealloc(ptr);
@@ -173,7 +173,7 @@ pub trait Allocator {
   #[inline(always)]
   unsafe fn grow_in_place(
     &self,
-    ptr: NonNull<Opaque>,
+    ptr: NonNull<u8>,
     layout: Layout,
     new_size: usize,
   ) -> Result<(), CannotReallocInPlace> {
@@ -193,7 +193,7 @@ pub trait Allocator {
   #[inline(always)]
   unsafe fn shrink_in_place(
     &self,
-    _ptr: NonNull<Opaque>,
+    _ptr: NonNull<u8>,
     _layout: Layout,
     _new_size: usize,
   ) -> Result<(), CannotReallocInPlace> {
@@ -240,8 +240,8 @@ mod tests {
     }
 
     fn search_ptr(&self, ptr: usize) -> Option<usize> {
-      let pool_idx = self
-        .binary_search(unsafe { NonNull::new_unchecked(ptr as *mut Opaque) });
+      let pool_idx =
+        self.binary_search(unsafe { NonNull::new_unchecked(ptr as *mut u8) });
       if pool_idx < TestHeap::POOL_COUNT {
         unsafe { Some(self.get_pool_unchecked(pool_idx).size()) }
       } else {
@@ -314,27 +314,19 @@ mod tests {
       assert_eq!(m[698], 222);
       *(heap.alloc(layout.clone()).unwrap().as_ptr() as *mut u8) = 123;
       assert_eq!(m[736], 123);
-      heap.dealloc(
-        NonNull::new_unchecked((o + 660) as *mut Opaque),
-        layout.clone(),
-      );
+      heap
+        .dealloc(NonNull::new_unchecked((o + 660) as *mut u8), layout.clone());
       assert_eq!(m[660], 0);
-      heap.dealloc(
-        NonNull::new_unchecked((o + 736) as *mut Opaque),
-        layout.clone(),
-      );
+      heap
+        .dealloc(NonNull::new_unchecked((o + 736) as *mut u8), layout.clone());
       assert_eq!(*(&m[736] as *const _ as *const usize), o + 660);
       *(heap.alloc(layout.clone()).unwrap().as_ptr() as *mut u8) = 202;
       assert_eq!(m[736], 202);
-      heap.dealloc(
-        NonNull::new_unchecked((o + 698) as *mut Opaque),
-        layout.clone(),
-      );
+      heap
+        .dealloc(NonNull::new_unchecked((o + 698) as *mut u8), layout.clone());
       assert_eq!(*(&m[698] as *const _ as *const usize), o + 660);
-      heap.dealloc(
-        NonNull::new_unchecked((o + 736) as *mut Opaque),
-        layout.clone(),
-      );
+      heap
+        .dealloc(NonNull::new_unchecked((o + 736) as *mut u8), layout.clone());
       assert_eq!(*(&m[736] as *const _ as *const usize), o + 698);
     }
   }

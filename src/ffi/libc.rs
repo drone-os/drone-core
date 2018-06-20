@@ -1,5 +1,5 @@
-use alloc::alloc::Global;
-use core::alloc::{GlobalAlloc, Layout, Opaque};
+use alloc::alloc;
+use core::alloc::Layout;
 use core::ptr;
 use ffi::{c_char, c_int, c_void};
 
@@ -51,15 +51,11 @@ pub unsafe extern "C" fn strcmp(
   mut s1: *const c_char,
   mut s2: *const c_char,
 ) -> c_int {
-  loop {
-    match *s1 - *s2 {
-      0 => {
-        s1 = s1.add(1);
-        s2 = s2.add(1);
-      }
-      x => return c_int::from(x),
-    }
+  while *s1 != 0 && *s1 == *s2 {
+    s1 = s1.add(1);
+    s2 = s2.add(1);
   }
+  c_int::from(*s1 - *s2)
 }
 
 /// Allocates size bytes and returns a pointer to the allocated memory. *The
@@ -72,7 +68,7 @@ pub unsafe extern "C" fn strcmp(
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn malloc(size: size_t) -> *mut c_void {
-  Global.alloc(Layout::from_size_align_unchecked(size, 1)) as *mut c_void
+  alloc::alloc(Layout::from_size_align_unchecked(size, 1)) as *mut c_void
 }
 
 /// Allocates memory for an array of `nmemb` elements of `size` bytes each and
@@ -85,7 +81,7 @@ pub unsafe extern "C" fn malloc(size: size_t) -> *mut c_void {
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn calloc(nmemb: size_t, size: size_t) -> *mut c_void {
-  Global.alloc_zeroed(Layout::from_size_align_unchecked(nmemb * size, 1))
+  alloc::alloc_zeroed(Layout::from_size_align_unchecked(nmemb * size, 1))
     as *mut c_void
 }
 
@@ -108,8 +104,8 @@ pub unsafe extern "C" fn realloc(
   ptr: *mut c_void,
   size: size_t,
 ) -> *mut c_void {
-  Global.realloc(
-    ptr as *mut Opaque,
+  alloc::realloc(
+    ptr as *mut u8,
     Layout::from_size_align_unchecked(1, 1),
     size,
   ) as *mut c_void
@@ -126,5 +122,5 @@ pub unsafe extern "C" fn realloc(
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn free(ptr: *mut c_void) {
-  Global.dealloc(ptr as *mut Opaque, Layout::from_size_align_unchecked(1, 1))
+  alloc::dealloc(ptr as *mut u8, Layout::from_size_align_unchecked(1, 1))
 }

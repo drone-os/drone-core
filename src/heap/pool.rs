@@ -1,4 +1,4 @@
-use core::alloc::{Layout, Opaque};
+use core::alloc::Layout;
 use core::ptr::{self, NonNull};
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::*;
@@ -34,7 +34,7 @@ impl<'a> Fits for &'a Layout {
   }
 }
 
-impl Fits for NonNull<Opaque> {
+impl Fits for NonNull<u8> {
   #[inline(always)]
   fn fits(self, pool: &Pool) -> bool {
     (self.as_ptr() as *mut u8) < pool.edge
@@ -86,7 +86,7 @@ impl Pool {
   ///
   /// This operation should compute in O(1) time.
   #[inline(always)]
-  pub fn alloc(&self) -> Option<NonNull<Opaque>> {
+  pub fn alloc(&self) -> Option<NonNull<u8>> {
     unsafe { self.alloc_free().or_else(|| self.alloc_head()) }
   }
 
@@ -99,7 +99,7 @@ impl Pool {
   /// `ptr` should not be used after deallocation.
   #[cfg_attr(feature = "cargo-clippy", allow(cast_ptr_alignment))]
   #[inline(always)]
-  pub unsafe fn dealloc(&self, ptr: NonNull<Opaque>) {
+  pub unsafe fn dealloc(&self, ptr: NonNull<u8>) {
     loop {
       let head = self.free.load(Relaxed);
       ptr::write(ptr.as_ptr() as *mut *mut u8, head);
@@ -115,7 +115,7 @@ impl Pool {
 
   #[cfg_attr(feature = "cargo-clippy", allow(cast_ptr_alignment))]
   #[inline(always)]
-  unsafe fn alloc_free(&self) -> Option<NonNull<Opaque>> {
+  unsafe fn alloc_free(&self) -> Option<NonNull<u8>> {
     loop {
       let head = self.free.load(Acquire);
       if head.is_null() {
@@ -123,13 +123,13 @@ impl Pool {
       }
       let next = ptr::read(head as *const *mut u8);
       if self.free.compare_and_swap(head, next, Relaxed) == head {
-        break Some(NonNull::new_unchecked(head as *mut Opaque));
+        break Some(NonNull::new_unchecked(head));
       }
     }
   }
 
   #[inline(always)]
-  unsafe fn alloc_head(&self) -> Option<NonNull<Opaque>> {
+  unsafe fn alloc_head(&self) -> Option<NonNull<u8>> {
     loop {
       let current = self.head.load(Relaxed);
       if current == self.edge {
@@ -137,7 +137,7 @@ impl Pool {
       }
       let new = current.add(self.size);
       if self.head.compare_and_swap(current, new, Relaxed) == current {
-        break Some(NonNull::new_unchecked(current as *mut Opaque));
+        break Some(NonNull::new_unchecked(current));
       }
     }
   }

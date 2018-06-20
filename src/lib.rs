@@ -53,7 +53,7 @@
 #![feature(untagged_unions)]
 #![feature(use_extern_macros)]
 #![warn(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/drone-core/0.8.1")]
+#![doc(html_root_url = "https://docs.rs/drone-core/0.8.2")]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "cargo-clippy", allow(precedence, inline_always))]
 
