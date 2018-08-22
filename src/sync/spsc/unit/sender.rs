@@ -1,5 +1,5 @@
 use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK, RX_LOCK};
-use alloc::arc::Arc;
+use alloc::sync::Arc;
 use core::sync::atomic::Ordering::*;
 use futures::prelude::*;
 use futures::task::Waker;
@@ -107,8 +107,7 @@ impl<E> Inner<E> {
         } else {
           Ok(None)
         }
-      })
-      .map(|state| {
+      }).map(|state| {
         state.map(|state| {
           unsafe {
             (*self.rx_waker.get()).as_ref().map(Waker::wake);

@@ -1,4 +1,4 @@
-// Ported from rustc b99172311
+// Ported from rustc ec039c7cb
 
 //! Utilities related to FFI bindings.
 //!
@@ -74,21 +74,21 @@
 //! [`CString`]: CString
 //! [`CStr`]: CStr
 
+mod c_str;
+mod c_string;
 mod libc;
-mod str;
-mod string;
 
+pub use self::c_str::{CStr, FromBytesWithNulError};
+pub use self::c_string::{CString, IntoStringError, NulError};
 pub use self::libc::*;
-pub use self::str::{CStr, FromBytesWithNulError};
-pub use self::string::{CString, IntoStringError, NulError};
 pub use drone_ctypes::*;
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use alloc::arc::Arc;
   use alloc::borrow::Cow::{Borrowed, Owned};
   use alloc::rc::Rc;
+  use alloc::sync::Arc;
   use core::hash::{Hash, Hasher};
   use std::collections::hash_map::DefaultHasher;
 

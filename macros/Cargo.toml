@@ -1,6 +1,6 @@
 [package]
 name = "drone-core-macros"
-version = "0.8.2" # remember to update html_root_url
+version = "0.8.3" # remember to update html_root_url
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = "Drone procedural macros."
 readme = "README.md"
@@ -21,5 +21,5 @@ version = "0.14"
 features = ["full"]
 
 [dependencies.drone-macros-core]
-version = "0.8.2"
+version = "0.8.3"
 path = "../macros-core"

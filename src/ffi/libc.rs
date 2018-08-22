@@ -55,7 +55,7 @@ pub unsafe extern "C" fn strcmp(
     s1 = s1.add(1);
     s2 = s2.add(1);
   }
-  c_int::from(*s1 - *s2)
+  c_int::from(*s1) - c_int::from(*s2)
 }
 
 /// Allocates size bytes and returns a pointer to the allocated memory. *The

@@ -5,7 +5,8 @@
 //! Most register should be already mapped by platform crates.
 //!
 //! ```
-//! # #![feature(proc_macro)]
+//! # #![feature(attr_literals)]
+//! # #![feature(extern_in_paths)]
 //! # #![feature(proc_macro_gen)]
 //! # use std as core;
 //! # #[macro_use] extern crate drone_core;

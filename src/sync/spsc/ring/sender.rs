@@ -1,5 +1,5 @@
 use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
-use alloc::arc::Arc;
+use alloc::sync::Arc;
 use core::ptr;
 use core::sync::atomic::Ordering::*;
 use futures::prelude::*;
@@ -126,14 +126,12 @@ impl<T, E> Inner<T, E> {
               } else {
                 Err(*state)
               }
-            })
-            .map(|(state, index)| {
+            }).map(|(state, index)| {
               unsafe {
                 ptr::drop_in_place(self.buffer.ptr().offset(index as isize));
               }
               state
-            })
-            .unwrap_or_else(|state| state);
+            }).unwrap_or_else(|state| state);
         }
       }
     }
@@ -174,8 +172,7 @@ impl<T, E> Inner<T, E> {
         } else {
           Ok(None)
         }
-      })
-      .map(|state| {
+      }).map(|state| {
         state.map(|state| {
           unsafe {
             (*self.rx_waker.get()).as_ref().map(Waker::wake);

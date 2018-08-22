@@ -1,5 +1,5 @@
 use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
-use alloc::arc::Arc;
+use alloc::sync::Arc;
 use core::ptr;
 use core::sync::atomic::Ordering::*;
 use futures::prelude::*;
@@ -59,8 +59,7 @@ impl<T, E> Inner<T, E> {
         } else {
           Err(())
         }
-      })
-      .and_then(|state| {
+      }).and_then(|state| {
         state.map(some_value()).or_else(|state| {
           unsafe {
             (*self.rx_waker.get()).get_or_insert_with(|| cx.waker().clone());
@@ -73,8 +72,7 @@ impl<T, E> Inner<T, E> {
               } else {
                 Ok(Err(*state))
               }
-            })
-            .and_then(|state| {
+            }).and_then(|state| {
               state.map(some_value()).or_else(|state| {
                 if state & COMPLETE == 0 {
                   Ok(Async::Pending)
@@ -84,8 +82,7 @@ impl<T, E> Inner<T, E> {
               })
             })
         })
-      })
-      .or_else(|()| {
+      }).or_else(|()| {
         let err = unsafe { &mut *self.err.get() };
         err.take().map_or_else(|| Ok(Async::Ready(None)), Err)
       })

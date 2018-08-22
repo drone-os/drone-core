@@ -1,6 +1,6 @@
-use alloc::arc::Arc;
 use alloc::borrow::Cow;
 use alloc::rc::Rc;
+use alloc::sync::Arc;
 use core::cmp::Ordering;
 use core::fmt::Write;
 use core::slice::memchr;
@@ -107,7 +107,8 @@ pub struct FromBytesWithNulError {
 #[derive(Clone, PartialEq, Eq, Debug, Fail)]
 enum FromBytesWithNulErrorKind {
   #[fail(
-    display = "data provided contains an interior nul byte at byte pos {}", _0
+    display = "data provided contains an interior nul byte at byte pos {}",
+    _0
   )]
   InteriorNul(usize),
   #[fail(display = "data provided is not nul terminated")]
@@ -236,6 +237,7 @@ impl CStr {
   /// behavior when `ptr` is used inside the `unsafe` block:
   ///
   /// ```no_run
+  /// # #![allow(unused_must_use)]
   /// use drone_core::ffi::{CString};
   ///
   /// let ptr = CString::new("Hello").unwrap().as_ptr();
@@ -251,6 +253,7 @@ impl CStr {
   /// fix the problem, bind the `CString` to a local variable:
   ///
   /// ```no_run
+  /// # #![allow(unused_must_use)]
   /// use drone_core::ffi::{CString};
   ///
   /// let hello = CString::new("Hello").unwrap();
@@ -529,6 +532,27 @@ impl<'a> From<&'a CStr> for Rc<CStr> {
   fn from(s: &CStr) -> Rc<CStr> {
     let rc: Rc<[u8]> = Rc::from(s.to_bytes_with_nul());
     unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
+  }
+}
+
+impl<'a> From<CString> for Cow<'a, CStr> {
+  #[inline]
+  fn from(s: CString) -> Cow<'a, CStr> {
+    Cow::Owned(s)
+  }
+}
+
+impl<'a> From<&'a CStr> for Cow<'a, CStr> {
+  #[inline]
+  fn from(s: &'a CStr) -> Cow<'a, CStr> {
+    Cow::Borrowed(s)
+  }
+}
+
+impl<'a> From<&'a CString> for Cow<'a, CStr> {
+  #[inline]
+  fn from(s: &'a CString) -> Cow<'a, CStr> {
+    Cow::Borrowed(s.as_c_str())
   }
 }
 

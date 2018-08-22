@@ -8,7 +8,7 @@ mod sender;
 pub use self::receiver::Receiver;
 pub use self::sender::{SendError, Sender};
 
-use alloc::arc::Arc;
+use alloc::sync::Arc;
 use core::cell::UnsafeCell;
 use core::mem::size_of;
 use core::sync::atomic::{AtomicUsize, Ordering};
@@ -100,7 +100,7 @@ impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use alloc::arc::Arc;
+  use alloc::sync::Arc;
   use core::sync::atomic::{AtomicUsize, Ordering};
   use futures::prelude::*;
 

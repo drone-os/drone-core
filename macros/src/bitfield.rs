@@ -110,7 +110,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     attrs, ident, data, ..
   } = input;
   let scope = Ident::new(
-    &format!("__bitfield_{}", ident.to_string().to_snake_case()),
+    &format!("__BITFIELD_{}", ident.to_string().to_screaming_snake_case()),
     def_site,
   );
   let var = quote_spanned!(def_site => self);
@@ -225,14 +225,11 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         }
       }
       fields
-    })
-    .collect::<Vec<_>>();
+    }).collect::<Vec<_>>();
 
   quote_spanned! { def_site =>
-    mod #scope {
-      extern crate drone_core;
-
-      use self::drone_core::bitfield::Bitfield;
+    const #scope: () = {
+      use extern::drone_core::bitfield::Bitfield;
 
       impl Bitfield for #ident {
         type Bits = #bits;
@@ -258,6 +255,6 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       impl #ident {
         #(#field_tokens)*
       }
-    }
+    };
   }
 }

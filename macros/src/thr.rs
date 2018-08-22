@@ -63,7 +63,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     array: ExternStatic { ident: array_ident },
     fields,
   } = try_parse2!(call_site, input);
-  let rt = Ident::new("__thr_rt", def_site);
+  let scope = Ident::new("__THR_RT", def_site);
   let zero_index = Index::from(0);
   let def_new = Ident::new("new", call_site);
   let mut thr_tokens = Vec::new();
@@ -89,33 +89,25 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
   }
   thr_tokens.push(quote_spanned! { def_site =>
-    fib_chain: #rt::Chain
+    fib_chain: extern::drone_core::fib::Chain
   });
   thr_ctor_tokens.push(quote_spanned! { def_site =>
-    fib_chain: #rt::Chain::new()
+    fib_chain: Chain::new()
   });
   local_tokens.push(quote_spanned! { def_site =>
-    task: #rt::TaskCell
+    task: extern::drone_core::thr::TaskCell
   });
   local_tokens.push(quote_spanned! { def_site =>
-    preempted: #rt::PreemptedCell
+    preempted: extern::drone_core::thr::PreemptedCell
   });
   local_ctor_tokens.push(quote_spanned! { def_site =>
-    task: #rt::TaskCell::new()
+    task: TaskCell::new()
   });
   local_ctor_tokens.push(quote_spanned! { def_site =>
-    preempted: #rt::PreemptedCell::new()
+    preempted: PreemptedCell::new()
   });
 
   quote_spanned! { def_site =>
-    mod #rt {
-      extern crate drone_core;
-
-      pub use self::drone_core::fib::Chain;
-      pub use self::drone_core::thr::{PreemptedCell, TaskCell, Thread,
-                                      ThreadLocal};
-    }
-
     #(#thr_attrs)*
     #thr_vis struct #thr_ident {
       local: Local,
@@ -129,54 +121,60 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
     struct Local(#local_ident);
 
-    impl #thr_ident {
-      /// Creates a new thread.
-      pub const fn #def_new(_index: usize) -> Self {
-        Self {
-          local: Local(#local_ident::new()),
-          #(#thr_ctor_tokens),*
+    const #scope: () = {
+      use extern::drone_core::fib::Chain;
+      use extern::drone_core::thr::{PreemptedCell, TaskCell, Thread,
+                                    ThreadLocal};
+
+      impl #thr_ident {
+        /// Creates a new thread.
+        pub const fn #def_new(_index: usize) -> Self {
+          Self {
+            local: Local(#local_ident::new()),
+            #(#thr_ctor_tokens),*
+          }
         }
       }
-    }
 
-    impl #rt::Thread for #thr_ident {
-      type Local = #local_ident;
-      type Sv = #sv_ident;
+      impl Thread for #thr_ident {
+        type Local = #local_ident;
+        type Sv = #sv_ident;
 
-      #[inline(always)]
-      fn first() -> *const Self {
-        unsafe { #array_ident.as_ptr() }
+        #[inline(always)]
+        fn first() -> *const Self {
+          unsafe { #array_ident.as_ptr() }
+        }
+
+        #[inline(always)]
+        fn fib_chain(&self) -> &Chain {
+          &self.fib_chain
+        }
+
+        #[inline(always)]
+        unsafe fn get_local(&self) -> &#local_ident {
+          &self.local.#zero_index
+        }
       }
 
-      #[inline(always)]
-      fn fib_chain(&self) -> &#rt::Chain {
-        &self.fib_chain
+      impl #local_ident {
+        const fn new() -> Self {
+          Self { #(#local_ctor_tokens,)* }
+        }
       }
 
-      #[inline(always)]
-      unsafe fn get_local(&self) -> &#local_ident {
-        &self.local.#zero_index
-      }
-    }
+      impl ThreadLocal for #local_ident {
+        #[inline(always)]
+        fn task(&self) -> &TaskCell {
+          &self.task
+        }
 
-    impl #local_ident {
-      const fn new() -> Self {
-        Self { #(#local_ctor_tokens,)* }
-      }
-    }
-
-    impl #rt::ThreadLocal for #local_ident {
-      #[inline(always)]
-      fn task(&self) -> &#rt::TaskCell {
-        &self.task
+        #[inline(always)]
+        fn preempted(&self) -> &PreemptedCell {
+          &self.preempted
+        }
       }
 
-      #[inline(always)]
-      fn preempted(&self) -> &#rt::PreemptedCell {
-        &self.preempted
-      }
-    }
-
-    unsafe impl Sync for Local {}
+      unsafe impl Sync for Local {}
+    };
   }
 }

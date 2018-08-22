@@ -1,4 +1,4 @@
-use core::borrow::Borrow;
+use alloc::borrow::{Borrow, Cow};
 use core::slice::memchr;
 use core::str::Utf8Error;
 use core::{fmt, mem, ops, ptr, slice};
@@ -104,7 +104,10 @@ pub struct CString {
 /// let _: NulError = CString::new(b"f\0oo".to_vec()).unwrap_err();
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug, Fail)]
-#[fail(display = "nul byte found in provided data at position: {}", _0)]
+#[fail(
+  display = "nul byte found in provided data at position: {}",
+  _0
+)]
 pub struct NulError(usize, Vec<u8>);
 
 /// An error indicating invalid UTF-8 when converting a [`CString`] into a
@@ -523,16 +526,23 @@ impl Borrow<CStr> for CString {
   }
 }
 
+impl<'a> From<&'a CStr> for CString {
+  fn from(s: &'a CStr) -> CString {
+    s.to_owned()
+  }
+}
+
+impl<'a> From<Cow<'a, CStr>> for CString {
+  #[inline]
+  fn from(s: Cow<'a, CStr>) -> Self {
+    s.into_owned()
+  }
+}
+
 impl From<Box<CStr>> for CString {
   #[inline]
   fn from(s: Box<CStr>) -> CString {
     s.into_c_string()
-  }
-}
-
-impl<'a> From<&'a CStr> for CString {
-  fn from(s: &'a CStr) -> CString {
-    s.to_owned()
   }
 }
 

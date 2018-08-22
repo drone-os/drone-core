@@ -1,5 +1,5 @@
 use super::Inner;
-use alloc::arc::Arc;
+use alloc::sync::Arc;
 use futures::prelude::*;
 use sync::spsc::SpscInner;
 

@@ -1,10 +1,8 @@
-#![feature(const_cell_new)]
 #![feature(const_fn)]
-#![feature(const_ptr_null_mut)]
+#![feature(extern_in_paths)]
 #![feature(generators)]
 #![feature(integer_atomics)]
 #![feature(prelude_import)]
-#![feature(proc_macro)]
 #![feature(proc_macro_gen)]
 
 extern crate drone_core;

@@ -1,3 +1,3 @@
 #!/bin/bash
 
-exec clippy-driver $@ --cfg procmacro2_semver_exempt
+exec rustup run nightly clippy-driver $@ --cfg procmacro2_semver_exempt

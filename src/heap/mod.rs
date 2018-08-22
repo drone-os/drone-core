@@ -14,10 +14,9 @@
 //! ```
 //! # #![feature(allocator_api)]
 //! # #![feature(const_fn)]
-//! # #![feature(proc_macro)]
+//! # #![feature(extern_in_paths)]
 //! # #![feature(proc_macro_gen)]
 //! # #![feature(proc_macro_path_invoc)]
-//! # #![feature(slice_get_slice)]
 //! # extern crate drone_core;
 //! # fn main() {}
 //! # use std as core;
@@ -47,10 +46,9 @@
 //! ```
 //! # #![feature(allocator_api)]
 //! # #![feature(const_fn)]
-//! # #![feature(proc_macro)]
+//! # #![feature(extern_in_paths)]
 //! # #![feature(proc_macro_gen)]
 //! # #![feature(proc_macro_path_invoc)]
-//! # #![feature(slice_get_slice)]
 //! # extern crate drone_core;
 //! # use std as core;
 //! # pub mod symbols { #[no_mangle] pub static HEAP_START: usize = 0; }

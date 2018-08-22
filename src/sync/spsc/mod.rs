@@ -79,22 +79,19 @@ where
           *state |= Self::TX_LOCK;
           Ok(*state)
         }
-      })
-      .and_then(|state| {
+      }).and_then(|state| {
         unsafe { *self.tx_waker_mut() = Some(cx.waker().clone()) };
         self.update(state, Release, Relaxed, |state| {
           *state ^= Self::TX_LOCK;
           Ok(*state)
         })
-      })
-      .and_then(|state| {
+      }).and_then(|state| {
         if state & Self::COMPLETE != Self::ZERO {
           Err(())
         } else {
           Ok(Async::Pending)
         }
-      })
-      .or_else(|()| Ok(Async::Ready(())))
+      }).or_else(|()| Ok(Async::Ready(())))
   }
 
   fn close_half(
@@ -115,8 +112,7 @@ where
         } else {
           Err(())
         }
-      })
-      .ok()
+      }).ok()
       .and_then(|state| state)
       .map(|state| {
         unsafe { waker_mut(self).take().as_ref().map(Waker::wake) };
@@ -151,8 +147,7 @@ where
         } else {
           Err(())
         }
-      })
-      .ok()
+      }).ok()
       .and_then(|x| x)
       .map(|(state, mask)| {
         if mask & Self::RX_LOCK != Self::ZERO {

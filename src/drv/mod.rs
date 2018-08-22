@@ -1,7 +1,7 @@
 //! Device drivers.
 //!
 //! ```
-//! # #![feature(proc_macro)]
+//! # #![feature(extern_in_paths)]
 //! # extern crate std as core;
 //! # #[macro_use] extern crate drone_core;
 //! use core::cell::RefCell;

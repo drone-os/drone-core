@@ -44,7 +44,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     ..
   } = input;
   let scope = Ident::new(
-    &format!("__driver_{}", ident.to_string().to_snake_case()),
+    &format!("__DRIVER_{}", ident.to_string().to_screaming_snake_case()),
     def_site,
   );
   let var = quote_spanned!(def_site => self);
@@ -104,15 +104,12 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   }
 
   quote_spanned! { def_site =>
-    mod #scope {
-      extern crate core;
-      extern crate drone_core;
-
+    const #scope: () = {
       #[allow(unused_imports)]
-      use self::core::option::Option::*;
+      use extern::core::option::Option::*;
       #[allow(unused_imports)]
-      use self::core::cell::RefCell;
-      use self::drone_core::drv::{Driver, Resource};
+      use extern::core::cell::RefCell;
+      use extern::drone_core::drv::{Driver, Resource};
 
       impl #impl_generics Driver for #ident #ty_generics #where_clause {
         type Resource = #res_def;
@@ -127,7 +124,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
           #free_def
         }
       }
-    }
+    };
   }
 }
 

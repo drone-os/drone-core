@@ -18,6 +18,28 @@
 //!
 //! * [STM32 Nucleo L496ZG-P](https://github.com/drone-os/demo-core-nucleo)
 //!
+//! # Development
+//!
+//! Check:
+//!
+//! ```sh
+//! $ RUSTC_WRAPPER=./clippy-wrapper.sh cargo check --all
+//! ```
+//!
+//! Test:
+//!
+//! ```sh
+//! $ RUSTC_WRAPPER=./rustc-wrapper.sh cargo test --all --exclude drone-core
+//! $ RUSTC_WRAPPER=./rustc-wrapper.sh cargo test --features="std" -p drone-core
+//! ```
+//!
+//! Readme update:
+//!
+//! ```sh
+//! $ cargo readme -o README.md
+//! $ cargo readme -r ctypes -t ../README.tpl -o README.md
+//! ```
+//!
 //! [Rust]: https://www.rust-lang.org/
 //! [cargo-drone]: https://github.com/drone-os/cargo-drone
 //! [xargo]: https://github.com/japaric/xargo
@@ -25,35 +47,21 @@
 #![feature(alloc)]
 #![feature(allocator_api)]
 #![feature(associated_type_defaults)]
-#![feature(const_atomic_bool_new)]
-#![feature(const_atomic_ptr_new)]
-#![feature(const_atomic_usize_new)]
 #![feature(const_fn)]
-#![feature(const_max_value)]
-#![feature(const_min_value)]
-#![feature(const_ptr_null_mut)]
-#![feature(const_size_of)]
-#![feature(const_unsafe_cell_new)]
 #![feature(core_intrinsics)]
 #![feature(exhaustive_patterns)]
-#![feature(fused)]
 #![feature(generators)]
 #![feature(generator_trait)]
 #![feature(integer_atomics)]
-#![feature(iterator_for_each)]
 #![feature(never_type)]
 #![feature(optin_builtin_traits)]
-#![feature(pointer_methods)]
 #![feature(prelude_import)]
-#![feature(proc_macro)]
-#![feature(proc_macro)]
+#![feature(raw_vec_internals)]
 #![feature(slice_concat_ext)]
-#![feature(slice_get_slice)]
 #![feature(slice_internals)]
 #![feature(untagged_unions)]
-#![feature(use_extern_macros)]
 #![warn(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/drone-core/0.8.2")]
+#![doc(html_root_url = "https://docs.rs/drone-core/0.8.3")]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "cargo-clippy", allow(precedence, inline_always))]
 

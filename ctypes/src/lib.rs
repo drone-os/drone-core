@@ -6,7 +6,7 @@
 
 #![allow(non_camel_case_types)]
 #![warn(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/drone-ctypes/0.8.2")]
+#![doc(html_root_url = "https://docs.rs/drone-ctypes/0.8.3")]
 #![no_std]
 #![cfg_attr(feature = "cargo-clippy", allow(precedence))]
 

@@ -8,25 +8,24 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let DeriveInput {
     ident, generics, ..
   } = input;
-  let rt = Ident::new(
-    &format!("__resource_{}", ident.to_string().to_snake_case()),
+  let scope = Ident::new(
+    &format!("__RESOURCE_{}", ident.to_string().to_screaming_snake_case()),
     def_site,
   );
   let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
   quote! {
-    mod #rt {
-      extern crate drone_core;
-      pub use self::drone_core::drv::Resource;
-    }
+    const #scope: () = {
+      use extern::drone_core::drv::Resource;
 
-    impl #impl_generics #rt::Resource for #ident #ty_generics #where_clause {
-      type Source = Self;
+      impl #impl_generics Resource for #ident #ty_generics #where_clause {
+        type Source = Self;
 
-      #[inline(always)]
-      fn from_source(source: Self) -> Self {
-        source
+        #[inline(always)]
+        fn from_source(source: Self) -> Self {
+          source
+        }
       }
-    }
+    };
   }
 }

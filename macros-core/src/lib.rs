@@ -2,9 +2,9 @@
 //!
 //! See `drone-core` documentation for details.
 
-#![feature(proc_macro)]
+#![feature(proc_macro_diagnostic)]
 #![warn(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/drone-macros-core/0.8.2")]
+#![doc(html_root_url = "https://docs.rs/drone-macros-core/0.8.3")]
 #![cfg_attr(feature = "cargo-clippy", allow(precedence))]
 
 #[macro_use]

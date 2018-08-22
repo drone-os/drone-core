@@ -8,6 +8,7 @@ use core::ptr;
 ///
 /// * Must be called no more than once.
 /// * Must be called before accessing `static`s.
+#[cfg_attr(feature = "cargo-clippy", allow(trivially_copy_pass_by_ref))]
 #[inline(always)]
 pub unsafe fn bss_init(start: &mut usize, end: &usize) {
   let start = start as *mut _;
@@ -22,6 +23,7 @@ pub unsafe fn bss_init(start: &mut usize, end: &usize) {
 ///
 /// * Must be called no more than once.
 /// * Must be called before accessing `static`s.
+#[cfg_attr(feature = "cargo-clippy", allow(trivially_copy_pass_by_ref))]
 #[inline(always)]
 pub unsafe fn data_init(start: &mut usize, end: &usize, data: &usize) {
   let start = start as *mut _;

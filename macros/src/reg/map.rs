@@ -127,13 +127,23 @@ fn gen_block(
     let reg_alias =
       Ident::new(&format!("{}{}", block_prefix, reg_struct), call_site);
     let val_ty = Ident::new(&format!("u{}", size), call_site);
-    let (
-      reg_struct_tokens,
-      reg_ctor_tokens,
-      reg_fork_tokens,
-      mut reg_outer_tokens,
-    ) = gen_reg(&reg, &hold, &val_ty, fields);
+    let mut reg_struct_tokens = Vec::new();
+    let mut reg_ctor_tokens = Vec::new();
+    let mut reg_fork_tokens = Vec::new();
+    let mut reg_outer_tokens = Vec::new();
+    gen_reg(
+      &reg,
+      &hold,
+      &val_ty,
+      fields,
+      &mut reg_struct_tokens,
+      &mut reg_ctor_tokens,
+      &mut reg_fork_tokens,
+      &mut reg_outer_tokens,
+    );
     for trait_ident in traits {
+      let mut trait_ident = trait_ident.clone();
+      trait_ident.set_span(def_site);
       reg_outer_tokens.push(quote_spanned! { def_site =>
         impl<T: RegTag> #trait_ident<T> for #reg<T> {}
       });
@@ -142,17 +152,14 @@ fn gen_block(
       #(#attrs)*
       #[derive(Bitfield, Clone, Copy)]
       #[bitfield(default = #reset)]
-      pub struct Val(#val_ty);
+      pub struct #val(#val_ty);
     });
     block_tokens.push(quote_spanned! { def_site =>
       #(#attrs)*
       pub mod #reg_mod {
-        extern crate core;
-        extern crate drone_core;
-
-        use self::drone_core::reg::prelude::*;
-        use self::core::convert::From;
-        use self::core::default::Default;
+        use extern::drone_core::reg::prelude::*;
+        use extern::core::convert::From;
+        use extern::core::default::Default;
 
         #(#attrs)*
         #[derive(Clone, Copy)]
@@ -268,22 +275,18 @@ fn gen_block(
   block_mod
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 fn gen_reg(
   reg: &Ident,
   hold: &Ident,
   val_ty: &Ident,
   fields: &[Field],
-) -> (
-  Vec<TokenStream>,
-  Vec<TokenStream>,
-  Vec<TokenStream>,
-  Vec<TokenStream>,
+  reg_struct_tokens: &mut Vec<TokenStream>,
+  reg_ctor_tokens: &mut Vec<TokenStream>,
+  reg_fork_tokens: &mut Vec<TokenStream>,
+  reg_outer_tokens: &mut Vec<TokenStream>,
 ) {
   let (def_site, call_site) = (Span::def_site(), Span::call_site());
-  let mut reg_struct_tokens = Vec::new();
-  let mut reg_ctor_tokens = Vec::new();
-  let mut reg_fork_tokens = Vec::new();
-  let mut reg_outer_tokens = Vec::new();
   for &Field {
     ref attrs,
     ref ident,
@@ -347,6 +350,8 @@ fn gen_reg(
       }
     });
     for trait_ident in traits {
+      let mut trait_ident = trait_ident.clone();
+      trait_ident.set_span(def_site);
       reg_outer_tokens.push(quote_spanned! { def_site =>
         impl<T: RegTag> #trait_ident<T> for #field_struct<T> {}
       });
@@ -425,10 +430,4 @@ fn gen_reg(
       }
     }
   }
-  (
-    reg_struct_tokens,
-    reg_ctor_tokens,
-    reg_fork_tokens,
-    reg_outer_tokens,
-  )
 }
