@@ -1,6 +1,5 @@
 #![feature(allocator_api)]
 #![feature(const_fn)]
-#![feature(extern_in_paths)]
 #![feature(proc_macro_gen)]
 
 extern crate drone_core;

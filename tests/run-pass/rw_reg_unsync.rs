@@ -1,5 +1,3 @@
-#![feature(attr_literals)]
-#![feature(extern_in_paths)]
 #![feature(proc_macro_gen)]
 
 #[macro_use]

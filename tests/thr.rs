@@ -1,5 +1,4 @@
 #![feature(const_fn)]
-#![feature(extern_in_paths)]
 #![feature(generators)]
 #![feature(integer_atomics)]
 #![feature(prelude_import)]

@@ -1,6 +1,3 @@
-#![feature(attr_literals)]
-#![feature(extern_in_paths)]
-
 #[macro_use]
 extern crate drone_core;
 

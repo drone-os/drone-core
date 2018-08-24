@@ -5,7 +5,7 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::synom::Synom;
 use syn::{
-  parse2, Data, DeriveInput, Fields, Ident, Index, IntSuffix, LitInt, LitStr,
+  parse2, Data, DeriveInput, Fields, Ident, IntSuffix, LitInt, LitStr,
   PathArguments, Type,
 };
 
@@ -109,13 +109,10 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let DeriveInput {
     attrs, ident, data, ..
   } = input;
-  let scope = Ident::new(
-    &format!("__BITFIELD_{}", ident.to_string().to_screaming_snake_case()),
+  let rt = Ident::new(
+    &format!("__bitfield_rt_{}", ident.to_string().to_snake_case()),
     def_site,
   );
-  let var = quote_spanned!(def_site => self);
-  let zero_index = Index::from(0);
-  let access = quote!(#var.#zero_index);
   let bitfield = attrs.into_iter().find(|attr| {
     if_chain! {
       if attr.path.leading_colon.is_none();
@@ -130,7 +127,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     None => Bitfield::default(),
   };
   let default =
-    default.unwrap_or_else(|| LitInt::new(0, IntSuffix::None, def_site));
+    default.unwrap_or_else(|| LitInt::new(0, IntSuffix::None, call_site));
   let bits = if_chain! {
     if let Data::Struct(x) = data;
     if let Fields::Unnamed(mut x) = x.fields;
@@ -159,19 +156,19 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         doc,
       } = field;
       let width =
-        width.unwrap_or_else(|| LitInt::new(1, IntSuffix::None, def_site));
-      let mut attrs = vec![quote_spanned!(def_site => #[inline(always)])];
+        width.unwrap_or_else(|| LitInt::new(1, IntSuffix::None, call_site));
+      let mut attrs = vec![quote!(#[inline(always)])];
       if let Some(doc) = doc {
-        attrs.push(quote_spanned!(def_site => #[doc = #doc]));
+        attrs.push(quote!(#[doc = #doc]));
       }
       let attrs = &attrs;
       if width.value() == 1 {
         if mode.is_read() {
           let read_bit = Ident::new(&format!("{}", ident), call_site);
-          fields.push(quote_spanned! { def_site =>
+          fields.push(quote! {
             #(#attrs)*
             pub fn #read_bit(&self) -> bool {
-              unsafe { self.read_bit(#offset as #bits) }
+              unsafe { #rt::Bitfield::read_bit(self, #offset as #bits) }
             }
           });
         }
@@ -179,24 +176,24 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
           let set_bit = Ident::new(&format!("set_{}", ident), call_site);
           let clear_bit = Ident::new(&format!("clear_{}", ident), call_site);
           let toggle_bit = Ident::new(&format!("toggle_{}", ident), call_site);
-          fields.push(quote_spanned! { def_site =>
+          fields.push(quote! {
             #(#attrs)*
             pub fn #set_bit(&mut self) -> &mut Self {
-              unsafe { self.set_bit(#offset as #bits) };
+              unsafe { #rt::Bitfield::set_bit(self, #offset as #bits) };
               self
             }
           });
-          fields.push(quote_spanned! { def_site =>
+          fields.push(quote! {
             #(#attrs)*
             pub fn #clear_bit(&mut self) -> &mut Self {
-              unsafe { self.clear_bit(#offset as #bits) };
+              unsafe { #rt::Bitfield::clear_bit(self, #offset as #bits) };
               self
             }
           });
-          fields.push(quote_spanned! { def_site =>
+          fields.push(quote! {
             #(#attrs)*
             pub fn #toggle_bit(&mut self) -> &mut Self {
-              unsafe { self.toggle_bit(#offset as #bits) };
+              unsafe { #rt::Bitfield::toggle_bit(self, #offset as #bits) };
               self
             }
           });
@@ -204,20 +201,31 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       } else {
         if mode.is_read() {
           let read_bits = Ident::new(&format!("{}", ident), call_site);
-          fields.push(quote_spanned! { def_site =>
+          fields.push(quote! {
             #(#attrs)*
             pub fn #read_bits(&self) -> #bits {
-              unsafe { self.read_bits(#offset as #bits, #width as #bits) }
+              unsafe {
+                #rt::Bitfield::read_bits(
+                  self,
+                  #offset as #bits,
+                  #width as #bits,
+                )
+              }
             }
           });
         }
         if mode.is_write() {
           let write_bits = Ident::new(&format!("write_{}", ident), call_site);
-          fields.push(quote_spanned! { def_site =>
+          fields.push(quote! {
             #(#attrs)*
             pub fn #write_bits(&mut self, bits: #bits) -> &mut Self {
               unsafe {
-                self.write_bits(#offset as #bits, #width as #bits, bits);
+                #rt::Bitfield::write_bits(
+                  self,
+                  #offset as #bits,
+                  #width as #bits,
+                  bits,
+                );
               }
               self
             }
@@ -227,34 +235,36 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       fields
     }).collect::<Vec<_>>();
 
-  quote_spanned! { def_site =>
-    const #scope: () = {
-      use extern::drone_core::bitfield::Bitfield;
+  quote! {
+    mod #rt {
+      extern crate drone_core;
 
-      impl Bitfield for #ident {
-        type Bits = #bits;
+      pub use self::drone_core::bitfield::Bitfield;
+    }
 
-        const DEFAULT: #bits = #default;
+    impl #rt::Bitfield for #ident {
+      type Bits = #bits;
 
-        #[inline(always)]
-        unsafe fn from_bits(bits: #bits) -> Self {
-          #ident(bits)
-        }
+      const DEFAULT: #bits = #default;
 
-        #[inline(always)]
-        fn bits(&self) -> #bits {
-          #access
-        }
-
-        #[inline(always)]
-        fn bits_mut(&mut self) -> &mut #bits {
-          &mut #access
-        }
+      #[inline(always)]
+      unsafe fn from_bits(bits: #bits) -> Self {
+        #ident(bits)
       }
 
-      impl #ident {
-        #(#field_tokens)*
+      #[inline(always)]
+      fn bits(&self) -> #bits {
+        self.0
       }
-    };
+
+      #[inline(always)]
+      fn bits_mut(&mut self) -> &mut #bits {
+        &mut self.0
+      }
+    }
+
+    impl #ident {
+      #(#field_tokens)*
+    }
   }
 }

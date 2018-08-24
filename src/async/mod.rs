@@ -2,7 +2,6 @@
 //!
 //! ```
 //! # #![feature(const_fn)]
-//! # #![feature(extern_in_paths)]
 //! # #![feature(generators)]
 //! # #![feature(never_type)]
 //! # #![feature(prelude_import)]
@@ -54,7 +53,6 @@
 //!
 //! ```
 //! # #![feature(const_fn)]
-//! # #![feature(extern_in_paths)]
 //! # #![feature(generators)]
 //! # #![feature(never_type)]
 //! # #![feature(prelude_import)]

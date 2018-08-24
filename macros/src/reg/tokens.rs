@@ -113,8 +113,13 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     includes,
     blocks: Blocks(mut blocks),
   } = try_parse2!(call_site, input);
-  let scope = Ident::new("__REG_TOKENS_RT", def_site);
-  let new = Ident::new("new", call_site);
+  let rt = Ident::new(
+    &format!(
+      "__reg_tokens_rt_{}",
+      tokens_ident.to_string().to_snake_case()
+    ),
+    def_site,
+  );
   include_blocks(includes, &mut blocks);
   let mut tokens_tokens = Vec::new();
   let mut tokens_ctor_tokens = Vec::new();
@@ -129,31 +134,33 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         &format!("{}_{}", block, ident.to_string().to_snake_case()),
         call_site,
       );
-      tokens_tokens.push(quote_spanned! { def_site =>
+      tokens_tokens.push(quote! {
         #(#attrs)*
-        pub #reg_name: #block_ident::#reg_struct<extern::drone_core::reg::Srt>
+        pub #reg_name: #block_ident::#reg_struct<#rt::Srt>
       });
-      tokens_ctor_tokens.push(quote_spanned! { def_site =>
-        #reg_name: #block_ident::#reg_struct::#new()
+      tokens_ctor_tokens.push(quote! {
+        #reg_name: #block_ident::#reg_struct::new()
       });
     }
   }
 
-  quote_spanned! { def_site =>
+  quote! {
+    mod #rt {
+      extern crate drone_core;
+
+      pub use self::drone_core::reg::{RegTokens, Srt};
+    }
+
     #(#tokens_attrs)*
     #tokens_vis struct #tokens_ident {
       #(#tokens_tokens),*
     }
 
-    const #scope: () = {
-      use extern::drone_core::reg::RegTokens;
-
-      impl RegTokens for #tokens_ident {
-        unsafe fn #new() -> Self {
-          Self { #(#tokens_ctor_tokens,)* }
-        }
+    impl #rt::RegTokens for #tokens_ident {
+      unsafe fn new() -> Self {
+        Self { #(#tokens_ctor_tokens,)* }
       }
-    };
+    }
   }
 }
 

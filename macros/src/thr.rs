@@ -1,7 +1,7 @@
 use drone_macros_core::{ExternStatic, ExternStruct, NewStruct};
 use proc_macro2::{Span, TokenStream};
 use syn::synom::Synom;
-use syn::{Attribute, Expr, Ident, Index, Type};
+use syn::{Attribute, Expr, Ident, Type};
 
 struct Thr {
   thr: NewStruct,
@@ -63,9 +63,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     array: ExternStatic { ident: array_ident },
     fields,
   } = try_parse2!(call_site, input);
-  let scope = Ident::new("__THR_RT", def_site);
-  let zero_index = Index::from(0);
-  let def_new = Ident::new("new", call_site);
+  let rt = Ident::new("__thr_rt", def_site);
+  let local = Ident::new("Local", def_site);
   let mut thr_tokens = Vec::new();
   let mut thr_ctor_tokens = Vec::new();
   let mut local_tokens = Vec::new();
@@ -78,8 +77,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       ty,
       init,
     } = field;
-    let tokens = quote_spanned!(def_site => #(#attrs)* pub #ident: #ty);
-    let ctor_tokens = quote_spanned!(def_site => #ident: #init);
+    let tokens = quote!(#(#attrs)* pub #ident: #ty);
+    let ctor_tokens = quote!(#ident: #init);
     if shared {
       thr_tokens.push(tokens);
       thr_ctor_tokens.push(ctor_tokens);
@@ -88,29 +87,25 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       local_ctor_tokens.push(ctor_tokens);
     }
   }
-  thr_tokens.push(quote_spanned! { def_site =>
-    fib_chain: extern::drone_core::fib::Chain
-  });
-  thr_ctor_tokens.push(quote_spanned! { def_site =>
-    fib_chain: Chain::new()
-  });
-  local_tokens.push(quote_spanned! { def_site =>
-    task: extern::drone_core::thr::TaskCell
-  });
-  local_tokens.push(quote_spanned! { def_site =>
-    preempted: extern::drone_core::thr::PreemptedCell
-  });
-  local_ctor_tokens.push(quote_spanned! { def_site =>
-    task: TaskCell::new()
-  });
-  local_ctor_tokens.push(quote_spanned! { def_site =>
-    preempted: PreemptedCell::new()
-  });
+  thr_tokens.push(quote!(fib_chain: #rt::Chain));
+  thr_ctor_tokens.push(quote!(fib_chain: #rt::Chain::new()));
+  local_tokens.push(quote!(task: #rt::TaskCell));
+  local_tokens.push(quote!(preempted: #rt::PreemptedCell));
+  local_ctor_tokens.push(quote!(task: #rt::TaskCell::new()));
+  local_ctor_tokens.push(quote!(preempted: #rt::PreemptedCell::new()));
 
-  quote_spanned! { def_site =>
+  quote! {
+    mod #rt {
+      extern crate drone_core;
+
+      pub use self::drone_core::fib::Chain;
+      pub use self::drone_core::thr::{PreemptedCell, TaskCell, Thread,
+                                      ThreadLocal};
+    }
+
     #(#thr_attrs)*
     #thr_vis struct #thr_ident {
-      local: Local,
+      local: #local,
       #(#thr_tokens),*
     }
 
@@ -119,62 +114,56 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       #(#local_tokens),*
     }
 
-    struct Local(#local_ident);
+    struct #local(#local_ident);
 
-    const #scope: () = {
-      use extern::drone_core::fib::Chain;
-      use extern::drone_core::thr::{PreemptedCell, TaskCell, Thread,
-                                    ThreadLocal};
-
-      impl #thr_ident {
-        /// Creates a new thread.
-        pub const fn #def_new(_index: usize) -> Self {
-          Self {
-            local: Local(#local_ident::new()),
-            #(#thr_ctor_tokens),*
-          }
+    impl #thr_ident {
+      /// Creates a new thread.
+      pub const fn new(_index: usize) -> Self {
+        Self {
+          local: #local(#local_ident::new()),
+          #(#thr_ctor_tokens),*
         }
       }
+    }
 
-      impl Thread for #thr_ident {
-        type Local = #local_ident;
-        type Sv = #sv_ident;
+    impl #rt::Thread for #thr_ident {
+      type Local = #local_ident;
+      type Sv = #sv_ident;
 
-        #[inline(always)]
-        fn first() -> *const Self {
-          unsafe { #array_ident.as_ptr() }
-        }
-
-        #[inline(always)]
-        fn fib_chain(&self) -> &Chain {
-          &self.fib_chain
-        }
-
-        #[inline(always)]
-        unsafe fn get_local(&self) -> &#local_ident {
-          &self.local.#zero_index
-        }
+      #[inline(always)]
+      fn first() -> *const Self {
+        unsafe { #array_ident.as_ptr() }
       }
 
-      impl #local_ident {
-        const fn new() -> Self {
-          Self { #(#local_ctor_tokens,)* }
-        }
+      #[inline(always)]
+      fn fib_chain(&self) -> &#rt::Chain {
+        &self.fib_chain
       }
 
-      impl ThreadLocal for #local_ident {
-        #[inline(always)]
-        fn task(&self) -> &TaskCell {
-          &self.task
-        }
+      #[inline(always)]
+      unsafe fn get_local(&self) -> &#local_ident {
+        &self.local.0
+      }
+    }
 
-        #[inline(always)]
-        fn preempted(&self) -> &PreemptedCell {
-          &self.preempted
-        }
+    impl #local_ident {
+      const fn new() -> Self {
+        Self { #(#local_ctor_tokens,)* }
+      }
+    }
+
+    impl #rt::ThreadLocal for #local_ident {
+      #[inline(always)]
+      fn task(&self) -> &#rt::TaskCell {
+        &self.task
       }
 
-      unsafe impl Sync for Local {}
-    };
+      #[inline(always)]
+      fn preempted(&self) -> &#rt::PreemptedCell {
+        &self.preempted
+      }
+    }
+
+    unsafe impl Sync for #local {}
   }
 }

@@ -4,7 +4,7 @@ use proc_macro2::{Span, TokenStream};
 use syn::spanned::Spanned;
 use syn::synom::Synom;
 use syn::{
-  parse2, Data, DeriveInput, Field, Fields, GenericArgument, Ident, Index,
+  parse2, Data, DeriveInput, Field, Fields, GenericArgument, Ident,
   PathArguments, Type,
 };
 
@@ -43,13 +43,10 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     data,
     ..
   } = input;
-  let scope = Ident::new(
-    &format!("__DRIVER_{}", ident.to_string().to_screaming_snake_case()),
+  let rt = Ident::new(
+    &format!("__driver_rt_{}", ident.to_string().to_snake_case()),
     def_site,
   );
-  let var = quote_spanned!(def_site => self);
-  let zero_index = Index::from(0);
-  let access = quote!(#var.#zero_index);
   let driver = attrs.into_iter().find(|attr| {
     if_chain! {
       if attr.path.leading_colon.is_none();
@@ -81,50 +78,51 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let ref_cell = parse_wrapper("RefCell", &mut res);
   let option = parse_wrapper("Option", &mut res);
 
-  let mut res_def = quote_spanned!(def_site => #res);
-  let mut free_def = quote_spanned!(def_site => #access);
+  let mut res_def = quote!(#res);
+  let mut free_def = quote!(self.0);
   let mut new_def = if !forward {
-    quote_spanned!(def_site => <#res as Resource>::from_source(source))
+    quote!(<#res as #rt::Resource>::from_source(source))
   } else {
-    quote_spanned!(def_site => <#res as Driver>::new(source))
+    quote!(<#res as #rt::Driver>::new(source))
   };
   if option {
-    new_def = quote_spanned!(def_site => Some(#new_def));
+    new_def = quote!(#rt::Some(#new_def));
   }
   if ref_cell {
-    new_def = quote_spanned!(def_site => RefCell::new(#new_def));
-    free_def = quote_spanned!(def_site => #free_def.into_inner());
+    new_def = quote!(#rt::RefCell::new(#new_def));
+    free_def = quote!(#free_def.into_inner());
   }
   if option {
-    free_def = quote_spanned!(def_site => #free_def.unwrap());
+    free_def = quote!(#free_def.unwrap());
   }
   if forward {
-    res_def = quote_spanned!(def_site => <#res_def as Driver>::Resource);
-    free_def = quote_spanned!(def_site => Driver::free(#free_def));
+    res_def = quote!(<#res_def as #rt::Driver>::Resource);
+    free_def = quote!(#rt::Driver::free(#free_def));
   }
 
-  quote_spanned! { def_site =>
-    const #scope: () = {
-      #[allow(unused_imports)]
-      use extern::core::option::Option::*;
-      #[allow(unused_imports)]
-      use extern::core::cell::RefCell;
-      use extern::drone_core::drv::{Driver, Resource};
+  quote! {
+    mod #rt {
+      extern crate core;
+      extern crate drone_core;
 
-      impl #impl_generics Driver for #ident #ty_generics #where_clause {
-        type Resource = #res_def;
+      pub use self::core::option::Option::*;
+      pub use self::core::cell::RefCell;
+      pub use self::drone_core::drv::{Driver, Resource};
+    }
 
-        #[inline(always)]
-        fn new(source: <Self::Resource as Resource>::Source) -> Self {
-          #ident(#new_def)
-        }
+    impl #impl_generics #rt::Driver for #ident #ty_generics #where_clause {
+      type Resource = #res_def;
 
-        #[inline(always)]
-        fn free(self) -> Self::Resource {
-          #free_def
-        }
+      #[inline(always)]
+      fn new(source: <Self::Resource as #rt::Resource>::Source) -> Self {
+        #ident(#new_def)
       }
-    };
+
+      #[inline(always)]
+      fn free(self) -> Self::Resource {
+        #free_def
+      }
+    }
   }
 }
 
