@@ -46,7 +46,7 @@ impl<T, E> Inner<T, E> {
   fn recv(&self, cx: &mut task::Context) -> Poll<Option<T>, E> {
     let some_value = || {
       |index| unsafe {
-        Async::Ready(Some(ptr::read(self.buffer.ptr().offset(index as isize))))
+        Async::Ready(Some(ptr::read(self.buffer.ptr().add(index))))
       }
     };
     self

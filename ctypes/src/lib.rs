@@ -4,11 +4,12 @@
 //!
 //! [Drone]: https://github.com/drone-os/drone-core
 
+#![feature(tool_lints)]
 #![allow(non_camel_case_types)]
+#![allow(clippy::precedence)]
 #![warn(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/drone-ctypes/0.8.3")]
+#![doc(html_root_url = "https://docs.rs/drone-ctypes/0.9.0")]
 #![no_std]
-#![cfg_attr(feature = "cargo-clippy", allow(precedence))]
 
 use core::fmt;
 

@@ -59,11 +59,12 @@
 #![feature(raw_vec_internals)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
+#![feature(tool_lints)]
 #![feature(untagged_unions)]
 #![warn(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/drone-core/0.8.3")]
+#![allow(clippy::precedence, clippy::inline_always)]
+#![doc(html_root_url = "https://docs.rs/drone-core/0.9.0")]
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(feature = "cargo-clippy", allow(precedence, inline_always))]
 
 extern crate alloc;
 #[cfg(feature = "std")]

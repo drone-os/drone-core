@@ -34,10 +34,10 @@ where
     failure: Ordering,
   ) -> Result<I, I>;
 
-  #[cfg_attr(feature = "cargo-clippy", allow(mut_from_ref))]
+  #[allow(clippy::mut_from_ref)]
   unsafe fn rx_waker_mut(&self) -> &mut Option<Waker>;
 
-  #[cfg_attr(feature = "cargo-clippy", allow(mut_from_ref))]
+  #[allow(clippy::mut_from_ref)]
   unsafe fn tx_waker_mut(&self) -> &mut Option<Waker>;
 
   #[inline]

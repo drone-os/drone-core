@@ -1,4 +1,4 @@
-use syn::synom::Synom;
+use syn::parse::{Parse, ParseStream, Result};
 use syn::Ident;
 
 /// Binding to extern struct: `extern struct Foo;`.
@@ -7,12 +7,12 @@ pub struct ExternStruct {
   pub ident: Ident,
 }
 
-impl Synom for ExternStruct {
-  named!(parse -> Self, do_parse!(
-    keyword!(extern) >>
-    keyword!(struct) >>
-    ident: syn!(Ident) >>
-    punct!(;) >>
-    (ExternStruct { ident })
-  ));
+impl Parse for ExternStruct {
+  fn parse(input: ParseStream) -> Result<Self> {
+    input.parse::<Token![extern]>()?;
+    input.parse::<Token![struct]>()?;
+    let ident = input.parse()?;
+    input.parse::<Token![;]>()?;
+    Ok(Self { ident })
+  }
 }

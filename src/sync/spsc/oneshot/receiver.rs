@@ -1,6 +1,8 @@
 use super::{Inner, COMPLETE, RX_LOCK};
 use alloc::sync::Arc;
+use core::fmt;
 use core::sync::atomic::Ordering::*;
+use failure::{Backtrace, Fail};
 use futures::prelude::*;
 use sync::spsc::SpscInner;
 
@@ -11,13 +13,11 @@ pub struct Receiver<T, E> {
 }
 
 /// Error for `Future` implementation for [`Receiver`](Receiver).
-#[derive(Debug, Fail)]
+#[derive(Debug)]
 pub enum RecvError<E> {
   /// The corresponding [`Sender`](Sender) is dropped.
-  #[fail(display = "Sender is dropped.")]
   Canceled,
   /// The corresponding [`Sender`](Sender) completed with an error.
-  #[fail(display = "Received an error: {}", _0)]
   Complete(E),
 }
 
@@ -80,5 +80,27 @@ impl<T, E> Inner<T, E> {
           .ok_or(RecvError::Canceled)
           .and_then(|x| x.map(Async::Ready).map_err(RecvError::Complete))
       })
+  }
+}
+
+impl<E> Fail for RecvError<E>
+where
+  E: fmt::Display + fmt::Debug + Send + Sync + 'static,
+{
+  fn cause(&self) -> Option<&Fail> {
+    None
+  }
+
+  fn backtrace(&self) -> Option<&Backtrace> {
+    None
+  }
+}
+
+impl<E: fmt::Display> fmt::Display for RecvError<E> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      RecvError::Canceled => write!(f, "Sender is dropped."),
+      RecvError::Complete(err) => write!(f, "Received an error: {}", err),
+    }
   }
 }

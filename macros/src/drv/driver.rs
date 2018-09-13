@@ -1,11 +1,10 @@
-use drone_macros_core::emit_err2;
 use inflector::Inflector;
-use proc_macro2::{Span, TokenStream};
+use proc_macro::TokenStream;
+use proc_macro2::Span;
+use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::synom::Synom;
 use syn::{
-  parse2, Data, DeriveInput, Field, Fields, GenericArgument, Ident,
-  PathArguments, Type,
+  Data, DeriveInput, Field, Fields, GenericArgument, Ident, PathArguments, Type,
 };
 
 #[derive(Default)]
@@ -13,28 +12,21 @@ struct Driver {
   forward: bool,
 }
 
-impl Synom for Driver {
-  named!(parse -> Self, do_parse!(
-    parens: parens!(do_parse!(
-      forward: option!(do_parse!(
-        ident: syn!(Ident) >>
-        value: switch!(value!(ident.to_string().as_ref()),
-          "forward" => value!(true) |
-          _ => reject!()
-        ) >>
-        (value)
-      )) >>
-      (Driver {
-        forward: forward.unwrap_or(false),
-      })
-    )) >>
-    (parens.1)
-  ));
+impl Parse for Driver {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let content;
+    parenthesized!(content in input);
+    match content.parse::<Option<Ident>>()? {
+      Some(ref ident) if ident == "forward" => Ok(Self { forward: true }),
+      Some(_) => Err(input.error("invalid attribute")),
+      None => Ok(Self { forward: false }),
+    }
+  }
 }
 
 pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let def_site = Span::def_site();
-  let input = parse2::<DeriveInput>(input).unwrap();
+  let input = parse_macro_input!(input as DeriveInput);
   let input_span = input.span();
   let DeriveInput {
     attrs,
@@ -57,7 +49,10 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     }
   });
   let Driver { forward } = match driver {
-    Some(attr) => try_parse2!(attr.span(), attr.tts),
+    Some(attr) => {
+      let input = attr.tts.into();
+      parse_macro_input!(input as Driver)
+    }
     None => Driver::default(),
   };
   let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -69,10 +64,9 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     then {
       ty
     } else {
-      return emit_err2(
-        input_span,
+      return Error::new(input_span,
         "Driver can be derived only from a tuple struct with one field",
-      );
+      ).to_compile_error().into();
     }
   };
   let ref_cell = parse_wrapper("RefCell", &mut res);
@@ -100,7 +94,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     free_def = quote!(#rt::Driver::free(#free_def));
   }
 
-  quote! {
+  let expanded = quote! {
     mod #rt {
       extern crate core;
       extern crate drone_core;
@@ -123,7 +117,8 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         #free_def
       }
     }
-  }
+  };
+  expanded.into()
 }
 
 fn parse_wrapper(wrapper: &str, res: &mut &Type) -> bool {

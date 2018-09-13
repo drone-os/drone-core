@@ -1,4 +1,4 @@
-use syn::synom::Synom;
+use syn::parse::{Parse, ParseStream, Result};
 use syn::{Attribute, Ident, Visibility};
 
 /// Creates a new struct: `mod Foo;`.
@@ -9,13 +9,13 @@ pub struct NewMod {
   pub ident: Ident,
 }
 
-impl Synom for NewMod {
-  named!(parse -> Self, do_parse!(
-    attrs: many0!(Attribute::parse_outer) >>
-    vis: syn!(Visibility) >>
-    keyword!(mod) >>
-    ident: syn!(Ident) >>
-    punct!(;) >>
-    (NewMod { attrs, vis, ident })
-  ));
+impl Parse for NewMod {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let attrs = input.call(Attribute::parse_outer)?;
+    let vis = input.parse()?;
+    input.parse::<Token![mod]>()?;
+    let ident = input.parse()?;
+    input.parse::<Token![;]>()?;
+    Ok(Self { attrs, vis, ident })
+  }
 }

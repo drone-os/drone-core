@@ -72,7 +72,7 @@ use ffi::{c_char, strlen, CString};
 ///
 /// [`CString`]: CString
 /// [`from_ptr`]: CString::from_ptr
-#[cfg_attr(feature = "cargo-clippy", allow(derive_hash_xor_eq))]
+#[allow(clippy::derive_hash_xor_eq)]
 #[derive(Hash)]
 pub struct CStr {
   inner: [c_char],
@@ -408,7 +408,7 @@ impl CStr {
   /// let boxed = c_string.into_boxed_c_str();
   /// assert_eq!(boxed.into_c_string(), CString::new("foo").unwrap());
   /// ```
-  #[cfg_attr(feature = "cargo-clippy", allow(wrong_self_convention))]
+  #[allow(clippy::wrong_self_convention)]
   pub fn into_c_string(self: Box<CStr>) -> CString {
     let raw = Box::into_raw(self) as *mut [u8];
     CString {

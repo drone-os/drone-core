@@ -97,7 +97,7 @@ impl Pool {
   /// # Safety
   ///
   /// `ptr` should not be used after deallocation.
-  #[cfg_attr(feature = "cargo-clippy", allow(cast_ptr_alignment))]
+  #[allow(clippy::cast_ptr_alignment)]
   #[inline(always)]
   pub unsafe fn dealloc(&self, ptr: NonNull<u8>) {
     loop {
@@ -113,7 +113,7 @@ impl Pool {
     }
   }
 
-  #[cfg_attr(feature = "cargo-clippy", allow(cast_ptr_alignment))]
+  #[allow(clippy::cast_ptr_alignment)]
   #[inline(always)]
   unsafe fn alloc_free(&self) -> Option<NonNull<u8>> {
     loop {

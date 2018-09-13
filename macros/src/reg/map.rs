@@ -1,8 +1,9 @@
 use drone_macros_core::{unkeywordize, NewMod};
 use inflector::Inflector;
-use proc_macro2::{Span, TokenStream};
+use proc_macro::TokenStream;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use std::collections::HashSet;
-use syn::synom::Synom;
+use syn::parse::{Parse, ParseStream, Result};
 use syn::{Attribute, Ident, LitInt};
 
 struct RegMap {
@@ -28,47 +29,70 @@ struct Field {
   traits: Vec<Ident>,
 }
 
-impl Synom for RegMap {
-  named!(parse -> Self, do_parse!(
-    block: syn!(NewMod) >>
-    regs: many0!(syn!(Reg)) >>
-    (RegMap { block, regs })
-  ));
+impl Parse for RegMap {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let block = input.parse()?;
+    let mut regs = Vec::new();
+    while !input.is_empty() {
+      regs.push(input.parse()?);
+    }
+    Ok(Self { block, regs })
+  }
 }
 
-impl Synom for Reg {
-  named!(parse -> Self, do_parse!(
-    attrs: many0!(Attribute::parse_outer) >>
-    ident: syn!(Ident) >>
-    braces: braces!(do_parse!(
-      address: syn!(LitInt) >>
-      size: map!(syn!(LitInt), |x| x.value() as u8) >>
-      reset: syn!(LitInt) >>
-      traits: many0!(syn!(Ident)) >>
-      punct!(;) >>
-      fields: many0!(syn!(Field)) >>
-      (Reg { attrs, ident, address, size, reset, traits, fields })
-    )) >>
-    (braces.1)
-  ));
+impl Parse for Reg {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let attrs = input.call(Attribute::parse_outer)?;
+    let ident = input.parse()?;
+    let content;
+    braced!(content in input);
+    let address = content.parse()?;
+    let size = content.parse::<LitInt>()?.value() as u8;
+    let reset = content.parse()?;
+    let mut traits = Vec::new();
+    while !content.peek(Token![;]) {
+      traits.push(content.parse()?);
+    }
+    content.parse::<Token![;]>()?;
+    let mut fields = Vec::new();
+    while !content.is_empty() {
+      fields.push(content.parse()?);
+    }
+    Ok(Self {
+      attrs,
+      ident,
+      address,
+      size,
+      reset,
+      traits,
+      fields,
+    })
+  }
 }
 
-impl Synom for Field {
-  named!(parse -> Self, do_parse!(
-    attrs: many0!(Attribute::parse_outer) >>
-    ident: syn!(Ident) >>
-    braces: braces!(do_parse!(
-      offset: syn!(LitInt) >>
-      width: syn!(LitInt) >>
-      traits: many0!(syn!(Ident)) >>
-      (Field { attrs, ident, offset, width, traits })
-    )) >>
-    (braces.1)
-  ));
+impl Parse for Field {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let attrs = input.call(Attribute::parse_outer)?;
+    let ident = input.parse()?;
+    let content;
+    braced!(content in input);
+    let offset = content.parse()?;
+    let width = content.parse()?;
+    let mut traits = Vec::new();
+    while !content.is_empty() {
+      traits.push(content.parse()?);
+    }
+    Ok(Self {
+      attrs,
+      ident,
+      offset,
+      width,
+      traits,
+    })
+  }
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-  let call_site = Span::call_site();
   let RegMap {
     block:
       NewMod {
@@ -77,27 +101,28 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         ident: block_ident,
       },
     regs,
-  } = try_parse2!(call_site, input);
+  } = parse_macro_input!(input as RegMap);
   let mut block_tokens = Vec::new();
   let mut outer_tokens = Vec::new();
   let block_mod =
     gen_block(&block_ident, &regs, &mut block_tokens, &mut outer_tokens);
 
-  quote! {
+  let expanded = quote! {
     #(#block_attrs)*
     #block_vis mod #block_mod {
       #(#block_tokens)*
     }
 
     #(#outer_tokens)*
-  }
+  };
+  expanded.into()
 }
 
 fn gen_block(
   block_ident: &Ident,
   regs: &[Reg],
-  block_tokens: &mut Vec<TokenStream>,
-  outer_tokens: &mut Vec<TokenStream>,
+  block_tokens: &mut Vec<TokenStream2>,
+  outer_tokens: &mut Vec<TokenStream2>,
 ) -> Ident {
   let (def_site, call_site) = (Span::def_site(), Span::call_site());
   let block_mod = Ident::new(
@@ -284,10 +309,10 @@ fn gen_reg(
   val_ty: &Ident,
   fields: &[Field],
   imports: &mut HashSet<Ident>,
-  reg_struct_tokens: &mut Vec<TokenStream>,
-  reg_ctor_tokens: &mut Vec<TokenStream>,
-  reg_fork_tokens: &mut Vec<TokenStream>,
-  reg_outer_tokens: &mut Vec<TokenStream>,
+  reg_struct_tokens: &mut Vec<TokenStream2>,
+  reg_ctor_tokens: &mut Vec<TokenStream2>,
+  reg_fork_tokens: &mut Vec<TokenStream2>,
+  reg_outer_tokens: &mut Vec<TokenStream2>,
 ) {
   let (def_site, call_site) = (Span::def_site(), Span::call_site());
   let rt = Ident::new("__rt", def_site);

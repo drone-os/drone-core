@@ -89,14 +89,14 @@ impl<T, E> Drop for Inner<T, E> {
       },
       cmp::Ordering::Less => unsafe {
         ptr::drop_in_place(slice::from_raw_parts_mut(
-          self.buffer.ptr().offset(begin as isize),
+          self.buffer.ptr().add(begin),
           end - begin,
         ));
       },
       cmp::Ordering::Greater => unsafe {
         ptr::drop_in_place(slice::from_raw_parts_mut(self.buffer.ptr(), end));
         ptr::drop_in_place(slice::from_raw_parts_mut(
-          self.buffer.ptr().offset(begin as isize),
+          self.buffer.ptr().add(begin),
           self.buffer.cap() - begin,
         ));
       },

@@ -1,10 +1,11 @@
 use inflector::Inflector;
-use proc_macro2::{Span, TokenStream};
-use syn::{parse2, DeriveInput, Ident};
+use proc_macro::TokenStream;
+use proc_macro2::Span;
+use syn::{DeriveInput, Ident};
 
 pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let def_site = Span::def_site();
-  let input = parse2::<DeriveInput>(input).unwrap();
+  let input = parse_macro_input!(input as DeriveInput);
   let DeriveInput {
     ident, generics, ..
   } = input;
@@ -14,7 +15,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   );
   let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-  quote! {
+  let expanded = quote! {
     mod #rt {
       extern crate drone_core;
 
@@ -29,5 +30,6 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         source
       }
     }
-  }
+  };
+  expanded.into()
 }

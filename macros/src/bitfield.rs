@@ -1,12 +1,10 @@
-use drone_macros_core::emit_err2;
 use inflector::Inflector;
-use proc_macro2::{Span, TokenStream};
-use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
-use syn::synom::Synom;
+use proc_macro::TokenStream;
+use proc_macro2::Span;
+use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::{
-  parse2, Data, DeriveInput, Fields, Ident, IntSuffix, LitInt, LitStr,
-  PathArguments, Type,
+  Data, DeriveInput, Fields, Ident, IntSuffix, LitInt, LitStr, PathArguments,
+  Type,
 };
 
 #[derive(Default)]
@@ -29,61 +27,76 @@ enum Mode {
   Write,
 }
 
-impl Synom for Bitfield {
-  named!(parse -> Self, do_parse!(
-    parens: parens!(do_parse!(
-      fields: call!(Punctuated::<Field, Token![,]>::parse_separated) >>
-      default: option!(do_parse!(
-        cond!(!fields.is_empty(), punct!(,)) >>
-        keyword!(default) >>
-        punct!(=) >>
-        default: syn!(LitInt) >>
-        (default)
-      )) >>
-      option!(punct!(,)) >>
-      (Bitfield {
-        fields: fields.into_iter().collect(),
-        default,
-      })
-    )) >>
-    (parens.1)
-  ));
+impl Parse for Bitfield {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let content;
+    parenthesized!(content in input);
+    let mut fields = Vec::new();
+    let mut default = None;
+    let mut last_comma = true;
+    while last_comma && !content.is_empty() {
+      if content.peek(Token![default]) {
+        content.parse::<Token![default]>()?;
+        content.parse::<Token![=]>()?;
+        if default.is_some() {
+          return Err(content.error("`default` is already defined"));
+        }
+        default = Some(content.parse()?);
+      } else {
+        fields.push(content.parse()?);
+      }
+      last_comma = content.parse::<Option<Token![,]>>()?.is_some();
+    }
+    Ok(Self {
+      fields: fields.into_iter().collect(),
+      default,
+    })
+  }
 }
 
-impl Synom for Field {
-  named!(parse -> Self, do_parse!(
-    ident: syn!(Ident) >>
-    parens: parens!(do_parse!(
-      mode: syn!(Mode) >>
-      punct!(,) >>
-      offset: syn!(LitInt) >>
-      width: option!(do_parse!(
-        punct!(,) >>
-        width: syn!(LitInt) >>
-        (width)
-      )) >>
-      doc: option!(do_parse!(
-        punct!(,) >>
-        doc: syn!(LitStr) >>
-        (doc)
-      )) >>
-      (Field { ident, mode, offset, width, doc })
-    )) >>
-    (parens.1)
-  ));
+impl Parse for Field {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let ident = input.parse()?;
+    let content;
+    parenthesized!(content in input);
+    let mode = content.parse()?;
+    content.parse::<Token![,]>()?;
+    let offset = content.parse()?;
+    let width = if content.peek(Token![,]) && content.peek2(LitInt) {
+      content.parse::<Token![,]>()?;
+      Some(content.parse()?)
+    } else {
+      None
+    };
+    let doc = if content.peek(Token![,]) && content.peek2(LitStr) {
+      content.parse::<Token![,]>()?;
+      Some(content.parse()?)
+    } else {
+      None
+    };
+    Ok(Self {
+      ident,
+      mode,
+      offset,
+      width,
+      doc,
+    })
+  }
 }
 
-impl Synom for Mode {
-  named!(parse -> Self, do_parse!(
-    ident: syn!(Ident) >>
-    mode: switch!(value!(ident.to_string().as_ref()),
-      "r" => value!(Mode::Read) |
-      "rw" => value!(Mode::ReadWrite) |
-      "w" => value!(Mode::Write) |
-      _ => reject!()
-    ) >>
-    (mode)
-  ));
+impl Parse for Mode {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let ident = input.parse::<Ident>()?;
+    if ident == "r" {
+      Ok(Mode::Read)
+    } else if ident == "rw" {
+      Ok(Mode::ReadWrite)
+    } else if ident == "w" {
+      Ok(Mode::Write)
+    } else {
+      Err(input.error("invalid mode"))
+    }
+  }
 }
 
 impl Mode {
@@ -104,8 +117,7 @@ impl Mode {
 
 pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   let (def_site, call_site) = (Span::def_site(), Span::call_site());
-  let input = parse2::<DeriveInput>(input).unwrap();
-  let input_span = input.span();
+  let input = parse_macro_input!(input as DeriveInput);
   let DeriveInput {
     attrs, ident, data, ..
   } = input;
@@ -123,7 +135,10 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     }
   });
   let Bitfield { fields, default } = match bitfield {
-    Some(attr) => try_parse2!(attr.span(), attr.tts),
+    Some(attr) => {
+      let input = attr.tts.into();
+      parse_macro_input!(input as Bitfield)
+    }
     None => Bitfield::default(),
   };
   let default =
@@ -137,10 +152,9 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     then {
       x
     } else {
-      return emit_err2(
-        input_span,
+      return Error::new(call_site,
         "Bitfield can be derived only from a tuple struct with one field",
-      );
+      ).to_compile_error().into();
     }
   };
 
@@ -235,7 +249,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       fields
     }).collect::<Vec<_>>();
 
-  quote! {
+  let expanded = quote! {
     mod #rt {
       extern crate drone_core;
 
@@ -266,5 +280,6 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     impl #ident {
       #(#field_tokens)*
     }
-  }
+  };
+  expanded.into()
 }

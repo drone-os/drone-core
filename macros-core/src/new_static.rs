@@ -1,4 +1,4 @@
-use syn::synom::Synom;
+use syn::parse::{Parse, ParseStream, Result};
 use syn::{Attribute, Ident, Visibility};
 
 /// Creates a new static: `static Foo;`.
@@ -9,13 +9,13 @@ pub struct NewStatic {
   pub ident: Ident,
 }
 
-impl Synom for NewStatic {
-  named!(parse -> Self, do_parse!(
-    attrs: many0!(Attribute::parse_outer) >>
-    vis: syn!(Visibility) >>
-    keyword!(static) >>
-    ident: syn!(Ident) >>
-    punct!(;) >>
-    (NewStatic { attrs, vis, ident })
-  ));
+impl Parse for NewStatic {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let attrs = input.call(Attribute::parse_outer)?;
+    let vis = input.parse()?;
+    input.parse::<Token![static]>()?;
+    let ident = input.parse()?;
+    input.parse::<Token![;]>()?;
+    Ok(Self { attrs, vis, ident })
+  }
 }

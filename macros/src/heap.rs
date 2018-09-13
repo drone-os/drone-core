@@ -1,7 +1,8 @@
-use drone_macros_core::{emit_err2, NewStruct};
-use proc_macro2::{Span, TokenStream};
+use drone_macros_core::NewStruct;
+use proc_macro::TokenStream;
+use proc_macro2::Span;
+use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
-use syn::synom::Synom;
 use syn::{Ident, LitInt};
 
 struct Heap {
@@ -15,46 +16,51 @@ struct Pool {
   capacity: LitInt,
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(redundant_closure))]
-impl Synom for Heap {
-  named!(parse -> Self, do_parse!(
-    heap: syn!(NewStruct) >>
-
-    ident: syn!(Ident) >>
-    switch!(value!(ident.to_string().as_ref()),
-      "size" => value!(()) |
-      _ => reject!()
-    ) >>
-    punct!(=) >>
-    size: syn!(LitInt) >>
-    punct!(;) >>
-
-    ident: syn!(Ident) >>
-    switch!(value!(ident.to_string().as_ref()),
-      "pools" => value!(()) |
-      _ => reject!()
-    ) >>
-    punct!(=) >>
-    pools: map!(
-      brackets!(call!(Punctuated::<Pool, Token![,]>::parse_terminated)),
-      |x| x.1.into_iter().collect()
-    ) >>
-    punct!(;) >>
-
-    (Heap { heap, size, pools })
-  ));
+impl Parse for Heap {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let heap = input.parse()?;
+    let mut size = None;
+    let mut pools = Vec::new();
+    while !input.is_empty() {
+      let ident = input.parse::<Ident>()?;
+      input.parse::<Token![=]>()?;
+      if ident == "size" {
+        if size.is_some() {
+          return Err(input.error("`size` is already defined"));
+        }
+        size = Some(input.parse()?);
+      } else if ident == "pools" {
+        if !pools.is_empty() {
+          return Err(input.error("`pools` is already defined"));
+        }
+        let content;
+        bracketed!(content in input);
+        pools = content
+          .call(Punctuated::<Pool, Token![,]>::parse_terminated)?
+          .into_iter()
+          .collect();
+      } else {
+        return Err(input.error("invalid option"));
+      }
+      input.parse::<Token![;]>()?;
+    }
+    Ok(Self {
+      heap,
+      size: size.ok_or_else(|| input.error("`size` is not defined"))?,
+      pools,
+    })
+  }
 }
 
-impl Synom for Pool {
-  named!(parse -> Self, do_parse!(
-    brackets: brackets!(do_parse!(
-      size: syn!(LitInt) >>
-      punct!(;) >>
-      capacity: syn!(LitInt) >>
-      (Pool { size, capacity })
-    )) >>
-    (brackets.1)
-  ));
+impl Parse for Pool {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let content;
+    bracketed!(content in input);
+    let size = content.parse()?;
+    content.parse::<Token![;]>()?;
+    let capacity = content.parse()?;
+    Ok(Self { size, capacity })
+  }
 }
 
 impl Pool {
@@ -74,7 +80,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       },
     size,
     mut pools,
-  } = try_parse2!(call_site, input);
+  } = parse_macro_input!(input as Heap);
   let rt = Ident::new("__heap_rt", def_site);
   pools.sort_by_key(|pool| pool.size.value());
   let free = pools
@@ -82,7 +88,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     .map(Pool::length)
     .fold(size.value() as i64, |a, e| a - e as i64);
   if free != 0 {
-    return emit_err2(
+    return Error::new(
       call_site,
       &format!(
         "`pools` not matches `size`. Difference is {}. Consider setting \
@@ -90,7 +96,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         -free,
         size.value() as i64 - free
       ),
-    );
+    ).to_compile_error()
+    .into();
   }
   let (mut pools_tokens, mut offset, pools_len) = (Vec::new(), 0, pools.len());
   for pool in &pools {
@@ -102,7 +109,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     offset += pool.length();
   }
 
-  quote! {
+  let expanded = quote! {
     mod #rt {
       extern crate core;
       extern crate drone_core;
@@ -235,5 +242,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         ).map(#rt::NonNull::as_ptr).unwrap_or(#rt::ptr::null_mut())
       }
     }
-  }
+  };
+  expanded.into()
 }

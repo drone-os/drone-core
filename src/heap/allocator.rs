@@ -76,7 +76,7 @@ pub trait Allocator {
   }
 
   #[doc(hidden)]
-  #[cfg_attr(feature = "cargo-clippy", allow(cast_ptr_alignment))]
+  #[allow(clippy::cast_ptr_alignment)]
   #[inline(always)]
   unsafe fn realloc_with<F, T>(
     &self,
@@ -152,7 +152,7 @@ pub trait Allocator {
   }
 
   #[doc(hidden)]
-  #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+  #[allow(clippy::needless_pass_by_value)]
   #[inline(always)]
   unsafe fn dealloc(&self, ptr: NonNull<u8>, _layout: Layout) {
     let pool_idx = self.binary_search(ptr);
@@ -169,7 +169,7 @@ pub trait Allocator {
   }
 
   #[doc(hidden)]
-  #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+  #[allow(clippy::needless_pass_by_value)]
   #[inline(always)]
   unsafe fn grow_in_place(
     &self,
@@ -189,7 +189,7 @@ pub trait Allocator {
   }
 
   #[doc(hidden)]
-  #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+  #[allow(clippy::needless_pass_by_value)]
   #[inline(always)]
   unsafe fn shrink_in_place(
     &self,

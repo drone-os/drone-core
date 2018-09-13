@@ -1,4 +1,4 @@
-use syn::synom::Synom;
+use syn::parse::{Parse, ParseStream, Result};
 use syn::Ident;
 
 /// Binding to extern static: `extern static Foo;`.
@@ -7,12 +7,12 @@ pub struct ExternStatic {
   pub ident: Ident,
 }
 
-impl Synom for ExternStatic {
-  named!(parse -> Self, do_parse!(
-    keyword!(extern) >>
-    keyword!(static) >>
-    ident: syn!(Ident) >>
-    punct!(;) >>
-    (ExternStatic { ident })
-  ));
+impl Parse for ExternStatic {
+  fn parse(input: ParseStream) -> Result<Self> {
+    input.parse::<Token![extern]>()?;
+    input.parse::<Token![static]>()?;
+    let ident = input.parse()?;
+    input.parse::<Token![;]>()?;
+    Ok(Self { ident })
+  }
 }

@@ -1,7 +1,8 @@
 use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
 use alloc::sync::Arc;
-use core::ptr;
 use core::sync::atomic::Ordering::*;
+use core::{fmt, ptr};
+use failure::{Backtrace, Fail};
 use futures::prelude::*;
 use futures::task::Waker;
 use sync::spsc::SpscInner;
@@ -12,8 +13,7 @@ pub struct Sender<T, E> {
 }
 
 /// Error returned from [`Sender::send`](Sender::send).
-#[derive(Debug, Fail)]
-#[fail(display = "{}", kind)]
+#[derive(Debug)]
 pub struct SendError<T> {
   /// Value which wasn't sent.
   pub value: T,
@@ -127,9 +127,7 @@ impl<T, E> Inner<T, E> {
                 Err(*state)
               }
             }).map(|(state, index)| {
-              unsafe {
-                ptr::drop_in_place(self.buffer.ptr().offset(index as isize));
-              }
+              unsafe { ptr::drop_in_place(self.buffer.ptr().add(index)) };
               state
             }).unwrap_or_else(|state| state);
         }
@@ -160,9 +158,7 @@ impl<T, E> Inner<T, E> {
 
   #[inline(always)]
   fn put<U>(&self, value: T, state: usize, index: usize) -> Result<(), U> {
-    unsafe {
-      ptr::write(self.buffer.ptr().offset(index as isize), value);
-    }
+    unsafe { ptr::write(self.buffer.ptr().add(index), value) };
     self
       .update(state, AcqRel, Relaxed, |state| {
         *state = state.wrapping_add(1);
@@ -190,5 +186,24 @@ impl<T> SendError<T> {
   #[inline(always)]
   fn new(value: T, kind: SendErrorKind) -> Self {
     SendError { value, kind }
+  }
+}
+
+impl<T> Fail for SendError<T>
+where
+  T: fmt::Display + fmt::Debug + Send + Sync + 'static,
+{
+  fn cause(&self) -> Option<&Fail> {
+    Some(&self.kind)
+  }
+
+  fn backtrace(&self) -> Option<&Backtrace> {
+    None
+  }
+}
+
+impl<T: fmt::Display> fmt::Display for SendError<T> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    self.kind.fmt(f)
   }
 }

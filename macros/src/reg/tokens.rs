@@ -1,10 +1,11 @@
 use drone_macros_core::{unkeywordize, NewStruct};
 use inflector::Inflector;
-use proc_macro2::{Span, TokenStream};
+use proc_macro::TokenStream;
+use proc_macro2::Span;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use syn::synom::Synom;
+use syn::parse::{Parse, ParseStream, Result};
 use syn::{parse_str, Attribute, Ident, LitStr};
 
 struct RegTokens {
@@ -30,75 +31,83 @@ struct Reg {
   ident: Ident,
 }
 
-impl Synom for RegTokens {
-  named!(parse -> Self, do_parse!(
-    tokens: syn!(NewStruct) >>
-    includes: many0!(syn!(Include)) >>
-    blocks: syn!(Blocks) >>
-    (RegTokens { tokens, includes, blocks })
-  ));
+impl Parse for RegTokens {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let tokens = input.parse()?;
+    let mut includes = Vec::new();
+    while input.peek(Ident) && input.peek2(Token![!]) {
+      includes.push(input.parse()?);
+    }
+    let blocks = input.parse()?;
+    Ok(Self {
+      tokens,
+      includes,
+      blocks,
+    })
+  }
 }
 
-impl Synom for Blocks {
-  named!(parse -> Self, do_parse!(
-    blocks: many0!(syn!(Block)) >>
-    (Blocks(blocks))
-  ));
+impl Parse for Blocks {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let mut blocks = Vec::new();
+    while !input.is_empty() {
+      blocks.push(input.parse()?);
+    }
+    Ok(Blocks(blocks))
+  }
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(redundant_closure))]
-impl Synom for Include {
-  named!(parse -> Self, do_parse!(
-    ident: syn!(Ident) >>
-    switch!(value!(ident.to_string().as_ref()),
-      "include" => value!(()) |
-      _ => reject!()
-    ) >>
-    punct!(!) >>
-    parens: parens!(do_parse!(
-      ident: syn!(Ident) >>
-      switch!(value!(ident.to_string().as_ref()),
-        "concat" => value!(()) |
-        _ => reject!()
-      ) >>
-      punct!(!) >>
-      parens: parens!(do_parse!(
-        ident: syn!(Ident) >>
-        switch!(value!(ident.to_string().as_ref()),
-          "env" => value!(()) |
-          _ => reject!()
-        ) >>
-        punct!(!) >>
-        var: map!(parens!(syn!(LitStr)), |x| x.1) >>
-        punct!(,) >>
-        path: syn!(LitStr) >>
-        (Include { var, path })
-      )) >>
-      (parens.1)
-    )) >>
-    punct!(;) >>
-    (parens.1)
-  ));
+impl Parse for Include {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let ident = input.parse::<Ident>()?;
+    input.parse::<Token![!]>()?;
+    if ident != "include" {
+      return Err(input.error("invalid macro"));
+    }
+    let include_content;
+    parenthesized!(include_content in input);
+    input.parse::<Token![;]>()?;
+    let ident = include_content.parse::<Ident>()?;
+    include_content.parse::<Token![!]>()?;
+    if ident != "concat" {
+      return Err(include_content.error("invalid macro"));
+    }
+    let concat_content;
+    parenthesized!(concat_content in include_content);
+    let ident = concat_content.parse::<Ident>()?;
+    concat_content.parse::<Token![!]>()?;
+    if ident != "env" {
+      return Err(concat_content.error("invalid macro"));
+    }
+    let env_content;
+    parenthesized!(env_content in concat_content);
+    let var = env_content.parse()?;
+    concat_content.parse::<Token![,]>()?;
+    let path = concat_content.parse()?;
+    Ok(Self { var, path })
+  }
 }
 
-impl Synom for Block {
-  named!(parse -> Self, do_parse!(
-    ident: syn!(Ident) >>
-    braces: braces!(do_parse!(
-      regs: many0!(syn!(Reg)) >>
-      (Block { ident, regs })
-    )) >>
-    (braces.1)
-  ));
+impl Parse for Block {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let ident = input.parse()?;
+    let content;
+    braced!(content in input);
+    let mut regs = Vec::new();
+    while !content.is_empty() {
+      regs.push(content.parse()?);
+    }
+    Ok(Self { ident, regs })
+  }
 }
 
-impl Synom for Reg {
-  named!(parse -> Self, do_parse!(
-    attrs: many0!(Attribute::parse_outer) >>
-    ident: syn!(Ident) >>
-    punct!(;) >>
-    (Reg { attrs, ident })
-  ));
+impl Parse for Reg {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let attrs = input.call(Attribute::parse_outer)?;
+    let ident = input.parse()?;
+    input.parse::<Token![;]>()?;
+    Ok(Self { attrs, ident })
+  }
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
@@ -112,7 +121,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       },
     includes,
     blocks: Blocks(mut blocks),
-  } = try_parse2!(call_site, input);
+  } = parse_macro_input!(input as RegTokens);
   let rt = Ident::new(
     &format!(
       "__reg_tokens_rt_{}",
@@ -144,7 +153,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
   }
 
-  quote! {
+  let expanded = quote! {
     mod #rt {
       extern crate drone_core;
 
@@ -161,7 +170,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         Self { #(#tokens_ctor_tokens,)* }
       }
     }
-  }
+  };
+  expanded.into()
 }
 
 fn include_blocks(includes: Vec<Include>, blocks: &mut Vec<Block>) {

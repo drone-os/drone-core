@@ -48,9 +48,10 @@
 //! # extern crate drone_core;
 //! # use std as core;
 //! # pub mod symbols { #[no_mangle] pub static HEAP_START: usize = 0; }
+//! use drone_core::heap;
 //! use drone_core::heap::Allocator;
 //!
-//! drone_core::heap! {
+//! heap! {
 //!   pub struct Heap;
 //!   size = 0;
 //!   pools = [];

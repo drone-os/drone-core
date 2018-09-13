@@ -1,6 +1,7 @@
 use drone_macros_core::{ExternStatic, ExternStruct, NewStruct};
-use proc_macro2::{Span, TokenStream};
-use syn::synom::Synom;
+use proc_macro::TokenStream;
+use proc_macro2::Span;
+use syn::parse::{Parse, ParseStream, Result};
 use syn::{Attribute, Expr, Ident, Type};
 
 struct Thr {
@@ -19,33 +20,48 @@ struct Field {
   init: Expr,
 }
 
-impl Synom for Field {
-  named!(parse -> Self, do_parse!(
-    attrs: many0!(Attribute::parse_outer) >>
-    shared: map!(option!(keyword!(pub)), |x| x.is_some()) >>
-    ident: syn!(Ident) >>
-    punct!(:) >>
-    ty: syn!(Type) >>
-    punct!(=) >>
-    init: syn!(Expr) >>
-    punct!(;) >>
-    (Field { attrs, shared, ident, ty, init })
-  ));
+impl Parse for Field {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let attrs = input.call(Attribute::parse_outer)?;
+    let shared = input.parse::<Option<Token![pub]>>()?.is_some();
+    let ident = input.parse()?;
+    input.parse::<Token![:]>()?;
+    let ty = input.parse()?;
+    input.parse::<Token![=]>()?;
+    let init = input.parse()?;
+    input.parse::<Token![;]>()?;
+    Ok(Self {
+      attrs,
+      shared,
+      ident,
+      ty,
+      init,
+    })
+  }
 }
 
-impl Synom for Thr {
-  named!(parse -> Self, do_parse!(
-    thr: syn!(NewStruct) >>
-    local: syn!(NewStruct) >>
-    sv: syn!(ExternStruct) >>
-    array: syn!(ExternStatic) >>
-    fields: many0!(syn!(Field)) >>
-    (Thr { thr, local, sv, array, fields })
-  ));
+impl Parse for Thr {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let thr = input.parse()?;
+    let local = input.parse()?;
+    let sv = input.parse()?;
+    let array = input.parse()?;
+    let mut fields = Vec::new();
+    while !input.is_empty() {
+      fields.push(input.parse()?);
+    }
+    Ok(Self {
+      thr,
+      local,
+      sv,
+      array,
+      fields,
+    })
+  }
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-  let (def_site, call_site) = (Span::def_site(), Span::call_site());
+  let def_site = Span::def_site();
   let Thr {
     thr:
       NewStruct {
@@ -62,7 +78,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     sv: ExternStruct { ident: sv_ident },
     array: ExternStatic { ident: array_ident },
     fields,
-  } = try_parse2!(call_site, input);
+  } = parse_macro_input!(input as Thr);
   let rt = Ident::new("__thr_rt", def_site);
   let local = Ident::new("Local", def_site);
   let mut thr_tokens = Vec::new();
@@ -94,7 +110,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
   local_ctor_tokens.push(quote!(task: #rt::TaskCell::new()));
   local_ctor_tokens.push(quote!(preempted: #rt::PreemptedCell::new()));
 
-  quote! {
+  let expanded = quote! {
     mod #rt {
       extern crate drone_core;
 
@@ -165,5 +181,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
 
     unsafe impl Sync for #local {}
-  }
+  };
+  expanded.into()
 }
