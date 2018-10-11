@@ -1,10 +1,12 @@
 /// Thread token tag.
+#[marker]
 pub trait ThrTag:
   Sized + Clone + Copy + Send + Sync + Default + 'static
 {
 }
 
 /// Triggerable thread token tag.
+#[marker]
 pub trait ThrTrigger: ThrTag {}
 
 /// Controllable thread token tag.

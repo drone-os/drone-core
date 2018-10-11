@@ -11,7 +11,8 @@ lazy_static! {
       final | macro | offsetof | override | priv | proc | pure | sizeof | typeof
       | unsized | virtual | yield ) $
     "
-  ).unwrap();
+  )
+  .unwrap();
 }
 
 /// Inserts an underscore at the beginning of the string if the string is a

@@ -247,7 +247,8 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         }
       }
       fields
-    }).collect::<Vec<_>>();
+    })
+    .collect::<Vec<_>>();
 
   let expanded = quote! {
     mod #rt {

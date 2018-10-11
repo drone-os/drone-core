@@ -14,15 +14,18 @@
 //! ```
 //! # #![feature(allocator_api)]
 //! # #![feature(const_fn)]
-//! # #![feature(proc_macro_gen)]
 //! # extern crate drone_core;
 //! # fn main() {}
 //! # use std as core;
+//! use core::alloc::Layout;
 //! use drone_core::heap;
+//! use drone_core::heap::Pool;
 //!
 //! heap! {
 //!   /// The allocator struct.
 //!   pub struct Heap;
+//!   extern fn alloc_hook;
+//!   extern fn dealloc_hook;
 //!
 //!   // The size of the heap should be known at the compile-time. It should
 //!   // equal the sum of all defined pools.
@@ -35,6 +38,9 @@
 //!     [0x800; 0x20],  // 2048-byte blocks with the capacity of 0x20
 //!   ];
 //! }
+//!
+//! fn alloc_hook(_layout: Layout, _pool: &Pool) {}
+//! fn dealloc_hook(_layout: Layout, _pool: &Pool) {}
 //! ```
 //!
 //! # Initialization
@@ -44,15 +50,17 @@
 //! ```
 //! # #![feature(allocator_api)]
 //! # #![feature(const_fn)]
-//! # #![feature(proc_macro_gen)]
 //! # extern crate drone_core;
 //! # use std as core;
 //! # pub mod symbols { #[no_mangle] pub static HEAP_START: usize = 0; }
+//! use core::alloc::Layout;
 //! use drone_core::heap;
-//! use drone_core::heap::Allocator;
+//! use drone_core::heap::{Allocator, Pool};
 //!
 //! heap! {
 //!   pub struct Heap;
+//!   extern fn alloc_hook;
+//!   extern fn dealloc_hook;
 //!   size = 0;
 //!   pools = [];
 //! }
@@ -64,6 +72,9 @@
 //!   // heap region.
 //!   static mut HEAP_START: usize;
 //! }
+//!
+//! fn alloc_hook(_layout: Layout, _pool: &Pool) {}
+//! fn dealloc_hook(_layout: Layout, _pool: &Pool) {}
 //!
 //! fn main() {
 //!   unsafe { ALLOC.init(&mut HEAP_START) };

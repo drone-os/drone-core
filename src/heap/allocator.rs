@@ -19,7 +19,6 @@ pub trait Allocator {
   /// * Must be called no more than once.
   /// * Must be called before using the allocator.
   /// * `start` must be word-aligned.
-  #[inline(always)]
   unsafe fn init(&mut self, start: &mut usize) {
     for i in 0..Self::POOL_COUNT {
       self.get_pool_unchecked_mut(i).init(start);
@@ -37,8 +36,13 @@ pub trait Allocator {
   where
     I: SliceIndex<[Pool]>;
 
+  /// Allocation hook.
+  fn alloc_hook(layout: Layout, pool: &Pool);
+
+  /// Deallocation hook.
+  fn dealloc_hook(layout: Layout, pool: &Pool);
+
   /// Binary searches the pools for a least-sized one which fits `value`.
-  #[inline(always)]
   fn binary_search<T: Fits>(&self, value: T) -> usize {
     let (mut left, mut right) = (0, Self::POOL_COUNT);
     while right > left {
@@ -54,143 +58,78 @@ pub trait Allocator {
   }
 
   #[doc(hidden)]
-  #[inline(always)]
-  unsafe fn alloc_with<F, T>(&self, layout: Layout, f: F) -> Result<T, AllocErr>
-  where
-    F: FnOnce(NonNull<u8>, &Pool) -> T,
-  {
-    let mut pool_idx = self.binary_search(&layout);
-    if pool_idx == Self::POOL_COUNT {
-      return Err(AllocErr);
-    }
-    loop {
+  unsafe fn alloc<'a, T: WithPool<'a, U>, U: MaybePool<'a>>(
+    &'a self,
+    layout: Layout,
+  ) -> Result<T, AllocErr> {
+    for pool_idx in self.binary_search(&layout)..Self::POOL_COUNT {
       let pool = self.get_pool_unchecked(pool_idx);
       if let Some(ptr) = pool.alloc() {
-        return Ok(f(ptr, pool));
-      }
-      pool_idx += 1;
-      if pool_idx == Self::POOL_COUNT {
-        return Err(AllocErr);
+        Self::alloc_hook(layout, pool);
+        return Ok(T::from(ptr, || U::from(pool)));
       }
     }
+    Err(AllocErr)
   }
 
   #[doc(hidden)]
   #[allow(clippy::cast_ptr_alignment)]
-  #[inline(always)]
-  unsafe fn realloc_with<F, T>(
-    &self,
+  unsafe fn realloc<'a, T: WithPool<'a, U>, U: MaybePool<'a>>(
+    &'a self,
     ptr: NonNull<u8>,
     layout: Layout,
     new_size: usize,
-    f: F,
-  ) -> Result<T, AllocErr>
-  where
-    F: Fn(NonNull<u8>, &Pool) -> T,
-  {
-    let old_size = layout.size();
-    let in_place = if new_size < old_size {
-      true
-    } else if let Ok(()) = self.grow_in_place(ptr, layout, new_size) {
-      true
+  ) -> Result<T, AllocErr> {
+    if new_size < layout.size() {
+      Ok(T::from(ptr, || {
+        U::from(self.get_pool_unchecked(self.binary_search(ptr)))
+      }))
+    } else if let Ok(pool) = self.grow_in_place(ptr, layout, new_size) {
+      Ok(T::from(ptr, || pool))
     } else {
-      false
-    };
-    let new_layout =
-      Layout::from_size_align_unchecked(new_size, layout.align());
-    if in_place {
-      Ok(f(
-        ptr,
-        self.get_pool_unchecked(self.binary_search(&new_layout)),
-      ))
-    } else {
-      self.alloc_with(new_layout, |new_ptr, pool| {
-        ptr::copy_nonoverlapping(
-          ptr.as_ptr() as *const usize,
-          new_ptr.as_ptr() as *mut usize,
-          cmp::min(old_size, new_size),
-        );
-        self.dealloc(ptr, layout);
-        f(new_ptr, pool)
-      })
+      self
+        .alloc(Layout::from_size_align_unchecked(new_size, layout.align()))
+        .map(|new_ptr: T| {
+          ptr::copy_nonoverlapping(
+            ptr.as_ptr() as *const usize,
+            new_ptr.as_ptr() as *mut usize,
+            cmp::min(layout.size(), new_size),
+          );
+          self.dealloc(ptr, layout);
+          new_ptr
+        })
     }
   }
 
   #[doc(hidden)]
-  #[inline(always)]
-  unsafe fn alloc(&self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
-    self.alloc_with(layout, |ptr, _| ptr)
-  }
-
-  #[doc(hidden)]
-  #[inline(always)]
-  unsafe fn alloc_excess(&self, layout: Layout) -> Result<Excess, AllocErr> {
-    self.alloc_with(layout, |ptr, pool| Excess(ptr, pool.size()))
-  }
-
-  #[doc(hidden)]
-  #[inline(always)]
-  unsafe fn realloc(
-    &self,
-    ptr: NonNull<u8>,
-    layout: Layout,
-    new_size: usize,
-  ) -> Result<NonNull<u8>, AllocErr> {
-    self.realloc_with(ptr, layout, new_size, |ptr, _| ptr)
-  }
-
-  #[doc(hidden)]
-  #[inline(always)]
-  unsafe fn realloc_excess(
-    &self,
-    ptr: NonNull<u8>,
-    layout: Layout,
-    new_size: usize,
-  ) -> Result<Excess, AllocErr> {
-    self
-      .realloc_with(ptr, layout, new_size, |ptr, pool| Excess(ptr, pool.size()))
-  }
-
-  #[doc(hidden)]
-  #[allow(clippy::needless_pass_by_value)]
-  #[inline(always)]
-  unsafe fn dealloc(&self, ptr: NonNull<u8>, _layout: Layout) {
-    let pool_idx = self.binary_search(ptr);
-    let pool = self.get_pool_unchecked(pool_idx);
+  unsafe fn dealloc(&self, ptr: NonNull<u8>, layout: Layout) {
+    let pool = self.get_pool_unchecked(self.binary_search(ptr));
+    Self::dealloc_hook(layout, pool);
     pool.dealloc(ptr);
   }
 
   #[doc(hidden)]
-  #[inline(always)]
   unsafe fn usable_size(&self, layout: &Layout) -> (usize, usize) {
-    let pool_idx = self.binary_search(layout);
-    let pool = self.get_pool_unchecked(pool_idx);
+    let pool = self.get_pool_unchecked(self.binary_search(layout));
     (0, pool.size())
   }
 
   #[doc(hidden)]
-  #[allow(clippy::needless_pass_by_value)]
-  #[inline(always)]
-  unsafe fn grow_in_place(
-    &self,
+  unsafe fn grow_in_place<'a, T: MaybePool<'a>>(
+    &'a self,
     ptr: NonNull<u8>,
     layout: Layout,
     new_size: usize,
-  ) -> Result<(), CannotReallocInPlace> {
-    let pool_idx = self.binary_search(ptr);
-    let pool = self.get_pool_unchecked(pool_idx);
-    let new_layout =
-      Layout::from_size_align_unchecked(new_size, layout.align());
-    if new_layout.fits(pool) {
-      Ok(())
+  ) -> Result<T, CannotReallocInPlace> {
+    let pool = self.get_pool_unchecked(self.binary_search(ptr));
+    if Layout::from_size_align_unchecked(new_size, layout.align()).fits(pool) {
+      Ok(T::from(pool))
     } else {
       Err(CannotReallocInPlace)
     }
   }
 
   #[doc(hidden)]
-  #[allow(clippy::needless_pass_by_value)]
-  #[inline(always)]
   unsafe fn shrink_in_place(
     &self,
     _ptr: NonNull<u8>,
@@ -198,6 +137,75 @@ pub trait Allocator {
     _new_size: usize,
   ) -> Result<(), CannotReallocInPlace> {
     Ok(())
+  }
+}
+
+pub trait MaybePool<'a> {
+  fn from(pool: &'a Pool) -> Self;
+}
+
+impl<'a> MaybePool<'a> for () {
+  #[inline(always)]
+  fn from(_pool: &'a Pool) {}
+}
+
+impl<'a> MaybePool<'a> for &'a Pool {
+  #[inline(always)]
+  fn from(pool: Self) -> Self {
+    pool
+  }
+}
+
+pub trait WithPool<'a, T: MaybePool<'a>> {
+  fn from<F>(ptr: NonNull<u8>, pool: F) -> Self
+  where
+    F: FnOnce() -> T;
+
+  fn as_ptr(&self) -> *mut u8;
+}
+
+impl<'a> WithPool<'a, ()> for NonNull<u8> {
+  #[inline(always)]
+  fn from<F>(ptr: NonNull<u8>, _pool: F) -> Self
+  where
+    F: FnOnce(),
+  {
+    ptr
+  }
+
+  #[inline(always)]
+  fn as_ptr(&self) -> *mut u8 {
+    NonNull::as_ptr(*self)
+  }
+}
+
+impl<'a> WithPool<'a, &'a Pool> for (NonNull<u8>, &'a Pool) {
+  #[inline(always)]
+  fn from<F>(ptr: NonNull<u8>, pool: F) -> Self
+  where
+    F: FnOnce() -> &'a Pool,
+  {
+    (ptr, pool())
+  }
+
+  #[inline(always)]
+  fn as_ptr(&self) -> *mut u8 {
+    NonNull::as_ptr(self.0)
+  }
+}
+
+impl<'a> WithPool<'a, &'a Pool> for Excess {
+  #[inline(always)]
+  fn from<F>(ptr: NonNull<u8>, pool: F) -> Self
+  where
+    F: FnOnce() -> &'a Pool,
+  {
+    Excess(ptr, pool().size())
+  }
+
+  #[inline(always)]
+  fn as_ptr(&self) -> *mut u8 {
+    NonNull::as_ptr(self.0)
   }
 }
 
@@ -226,6 +234,10 @@ mod tests {
     {
       self.pools.get_unchecked_mut(index)
     }
+
+    fn alloc_hook(_layout: Layout, _pool: &Pool) {}
+
+    fn dealloc_hook(_layout: Layout, _pool: &Pool) {}
   }
 
   impl TestHeap {
@@ -247,6 +259,11 @@ mod tests {
       } else {
         None
       }
+    }
+
+    unsafe fn alloc_and_set(&self, layout: Layout, value: u8) {
+      *(self.alloc::<NonNull<u8>, ()>(layout).unwrap().as_ptr() as *mut u8) =
+        value;
     }
   }
 
@@ -308,25 +325,21 @@ mod tests {
     let layout = Layout::from_size_align(32, 1).unwrap();
     unsafe {
       heap.init(mem::transmute(o));
-      *(heap.alloc(layout.clone()).unwrap().as_ptr() as *mut u8) = 111;
+      heap.alloc_and_set(layout, 111);
       assert_eq!(m[660], 111);
-      *(heap.alloc(layout.clone()).unwrap().as_ptr() as *mut u8) = 222;
+      heap.alloc_and_set(layout, 222);
       assert_eq!(m[698], 222);
-      *(heap.alloc(layout.clone()).unwrap().as_ptr() as *mut u8) = 123;
+      heap.alloc_and_set(layout, 123);
       assert_eq!(m[736], 123);
-      heap
-        .dealloc(NonNull::new_unchecked((o + 660) as *mut u8), layout.clone());
+      heap.dealloc(NonNull::new_unchecked((o + 660) as *mut u8), layout);
       assert_eq!(m[660], 0);
-      heap
-        .dealloc(NonNull::new_unchecked((o + 736) as *mut u8), layout.clone());
+      heap.dealloc(NonNull::new_unchecked((o + 736) as *mut u8), layout);
       assert_eq!(*(&m[736] as *const _ as *const usize), o + 660);
-      *(heap.alloc(layout.clone()).unwrap().as_ptr() as *mut u8) = 202;
+      heap.alloc_and_set(layout, 202);
       assert_eq!(m[736], 202);
-      heap
-        .dealloc(NonNull::new_unchecked((o + 698) as *mut u8), layout.clone());
+      heap.dealloc(NonNull::new_unchecked((o + 698) as *mut u8), layout);
       assert_eq!(*(&m[698] as *const _ as *const usize), o + 660);
-      heap
-        .dealloc(NonNull::new_unchecked((o + 736) as *mut u8), layout.clone());
+      heap.dealloc(NonNull::new_unchecked((o + 736) as *mut u8), layout);
       assert_eq!(*(&m[736] as *const _ as *const usize), o + 698);
     }
   }

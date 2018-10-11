@@ -50,6 +50,7 @@ pub enum FiberState<Y, R> {
 }
 
 /// One of `()` or `!`.
+#[marker]
 pub trait YieldNone: Send + 'static {}
 
 impl YieldNone for () {}

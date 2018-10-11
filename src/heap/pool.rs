@@ -21,26 +21,6 @@ pub struct Pool {
   size: usize,
 }
 
-/// Trait for values that can be checked against a `Pool`.
-pub trait Fits: Copy {
-  /// The method tests that `self` fits `pool`.
-  fn fits(self, pool: &Pool) -> bool;
-}
-
-impl<'a> Fits for &'a Layout {
-  #[inline(always)]
-  fn fits(self, pool: &Pool) -> bool {
-    self.size() <= pool.size
-  }
-}
-
-impl Fits for NonNull<u8> {
-  #[inline(always)]
-  fn fits(self, pool: &Pool) -> bool {
-    (self.as_ptr() as *mut u8) < pool.edge
-  }
-}
-
 impl Pool {
   /// Creates an empty `Pool`.
   ///
@@ -49,7 +29,6 @@ impl Pool {
   /// provided to the current method and `start` argument for [`init`] method.
   ///
   /// [`init`]: Pool::init
-  #[inline(always)]
   pub const fn new(offset: usize, size: usize, capacity: usize) -> Self {
     Self {
       free: AtomicPtr::new(ptr::null_mut()),
@@ -67,7 +46,6 @@ impl Pool {
   ///
   /// * Must be called no more than once.
   /// * Must be called before using the pool.
-  #[inline(always)]
   pub unsafe fn init(&mut self, start: &mut usize) {
     let offset = start as *mut _ as usize;
     let head = self.head.get_mut();
@@ -85,7 +63,6 @@ impl Pool {
   /// exhausted.
   ///
   /// This operation should compute in O(1) time.
-  #[inline(always)]
   pub fn alloc(&self) -> Option<NonNull<u8>> {
     unsafe { self.alloc_free().or_else(|| self.alloc_head()) }
   }
@@ -96,25 +73,21 @@ impl Pool {
   ///
   /// # Safety
   ///
-  /// `ptr` should not be used after deallocation.
+  /// * `ptr` should be a valid allocation.
+  /// * `ptr` should not be used after deallocation.
   #[allow(clippy::cast_ptr_alignment)]
-  #[inline(always)]
   pub unsafe fn dealloc(&self, ptr: NonNull<u8>) {
     loop {
-      let head = self.free.load(Relaxed);
+      let head = self.free.load(Acquire);
       ptr::write(ptr.as_ptr() as *mut *mut u8, head);
-      if self
-        .free
-        .compare_and_swap(head, ptr.as_ptr() as *mut u8, Release)
-        == head
-      {
+      let next = ptr.as_ptr() as *mut u8;
+      if self.free.compare_and_swap(head, next, AcqRel) == head {
         break;
       }
     }
   }
 
   #[allow(clippy::cast_ptr_alignment)]
-  #[inline(always)]
   unsafe fn alloc_free(&self) -> Option<NonNull<u8>> {
     loop {
       let head = self.free.load(Acquire);
@@ -122,23 +95,40 @@ impl Pool {
         break None;
       }
       let next = ptr::read(head as *const *mut u8);
-      if self.free.compare_and_swap(head, next, Relaxed) == head {
+      if self.free.compare_and_swap(head, next, AcqRel) == head {
         break Some(NonNull::new_unchecked(head));
       }
     }
   }
 
-  #[inline(always)]
   unsafe fn alloc_head(&self) -> Option<NonNull<u8>> {
     loop {
-      let current = self.head.load(Relaxed);
-      if current == self.edge {
+      let head = self.head.load(Relaxed);
+      if head == self.edge {
         break None;
       }
-      let new = current.add(self.size);
-      if self.head.compare_and_swap(current, new, Relaxed) == current {
-        break Some(NonNull::new_unchecked(current));
+      let next = head.add(self.size);
+      if self.head.compare_and_swap(head, next, Relaxed) == head {
+        break Some(NonNull::new_unchecked(head));
       }
     }
+  }
+}
+
+pub trait Fits: Copy {
+  fn fits(self, pool: &Pool) -> bool;
+}
+
+impl<'a> Fits for &'a Layout {
+  #[inline(always)]
+  fn fits(self, pool: &Pool) -> bool {
+    self.size() <= pool.size
+  }
+}
+
+impl Fits for NonNull<u8> {
+  #[inline(always)]
+  fn fits(self, pool: &Pool) -> bool {
+    (self.as_ptr() as *mut u8) < pool.edge
   }
 }

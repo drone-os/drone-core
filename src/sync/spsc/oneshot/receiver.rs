@@ -61,19 +61,22 @@ impl<T, E> Inner<T, E> {
           *state |= RX_LOCK;
           Ok(*state)
         }
-      }).and_then(|state| {
+      })
+      .and_then(|state| {
         unsafe { *self.rx_waker.get() = Some(cx.waker().clone()) };
         self.update(state, AcqRel, Relaxed, |state| {
           *state ^= RX_LOCK;
           Ok(*state)
         })
-      }).and_then(|state| {
+      })
+      .and_then(|state| {
         if state & COMPLETE == 0 {
           Ok(Async::Pending)
         } else {
           Err(())
         }
-      }).or_else(|()| {
+      })
+      .or_else(|()| {
         let data = unsafe { &mut *self.data.get() };
         data
           .take()

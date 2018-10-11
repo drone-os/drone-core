@@ -11,7 +11,7 @@
 #![doc(html_root_url = "https://docs.rs/drone-ctypes/0.9.0")]
 #![no_std]
 
-use core::fmt;
+pub use core::ffi::c_void;
 
 /// Equivalent to C's `char` type.
 pub type c_char = u8;
@@ -61,16 +61,3 @@ pub type c_float = f32;
 
 /// Equivalent to C's `double` type.
 pub type c_double = f64;
-
-/// Equivalent to C's `void` type when used as a pointer.
-#[repr(u8)]
-pub enum c_void {
-  #[doc(hidden)]
-  __variant,
-}
-
-impl fmt::Debug for c_void {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    f.pad("c_void")
-  }
-}

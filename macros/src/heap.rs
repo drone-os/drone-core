@@ -1,4 +1,4 @@
-use drone_macros_core::NewStruct;
+use drone_macros_core::{ExternFn, NewStruct};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::parse::{Error, Parse, ParseStream, Result};
@@ -7,6 +7,8 @@ use syn::{Ident, LitInt};
 
 struct Heap {
   heap: NewStruct,
+  alloc_hook: ExternFn,
+  dealloc_hook: ExternFn,
   size: LitInt,
   pools: Vec<Pool>,
 }
@@ -19,6 +21,8 @@ struct Pool {
 impl Parse for Heap {
   fn parse(input: ParseStream) -> Result<Self> {
     let heap = input.parse()?;
+    let alloc_hook = input.parse()?;
+    let dealloc_hook = input.parse()?;
     let mut size = None;
     let mut pools = Vec::new();
     while !input.is_empty() {
@@ -46,6 +50,8 @@ impl Parse for Heap {
     }
     Ok(Self {
       heap,
+      alloc_hook,
+      dealloc_hook,
       size: size.ok_or_else(|| input.error("`size` is not defined"))?,
       pools,
     })
@@ -78,6 +84,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         vis: heap_vis,
         ident: heap_ident,
       },
+    alloc_hook: ExternFn {
+      ident: alloc_hook_ident,
+    },
+    dealloc_hook: ExternFn {
+      ident: dealloc_hook_ident,
+    },
     size,
     mut pools,
   } = parse_macro_input!(input as Heap);
@@ -96,7 +108,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         -free,
         size.value() as i64 - free
       ),
-    ).to_compile_error()
+    )
+    .to_compile_error()
     .into();
   }
   let (mut pools_tokens, mut offset, pools_len) = (Vec::new(), 0, pools.len());
@@ -155,6 +168,16 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       {
         self.pools.get_unchecked_mut(index)
       }
+
+      #[inline(always)]
+      fn alloc_hook(layout: #rt::Layout, pool: &#rt::Pool) {
+        #alloc_hook_ident(layout, pool)
+      }
+
+      #[inline(always)]
+      fn dealloc_hook(layout: #rt::Layout, pool: &#rt::Pool) {
+        #dealloc_hook_ident(layout, pool)
+      }
     }
 
     unsafe impl #rt::Alloc for #heap_ident {
@@ -169,7 +192,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         #rt::Allocator::dealloc(self, ptr, layout)
       }
 
-      #[inline(always)]
       fn usable_size(&self, layout: &#rt::Layout) -> (usize, usize) {
         unsafe { #rt::Allocator::usable_size(self, layout) }
       }
@@ -187,7 +209,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         &mut self,
         layout: #rt::Layout,
       ) -> Result<#rt::Excess, #rt::AllocErr> {
-        #rt::Allocator::alloc_excess(self, layout)
+        #rt::Allocator::alloc(self, layout)
       }
 
       unsafe fn realloc_excess(
@@ -196,7 +218,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         layout: #rt::Layout,
         new_size: usize,
       ) -> Result<#rt::Excess, #rt::AllocErr> {
-        #rt::Allocator::realloc_excess(self, ptr, layout, new_size)
+        #rt::Allocator::realloc(self, ptr, layout, new_size)
       }
 
       unsafe fn grow_in_place(

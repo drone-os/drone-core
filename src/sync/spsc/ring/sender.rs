@@ -126,10 +126,12 @@ impl<T, E> Inner<T, E> {
               } else {
                 Err(*state)
               }
-            }).map(|(state, index)| {
+            })
+            .map(|(state, index)| {
               unsafe { ptr::drop_in_place(self.buffer.ptr().add(index)) };
               state
-            }).unwrap_or_else(|state| state);
+            })
+            .unwrap_or_else(|state| state);
         }
       }
     }
@@ -168,7 +170,8 @@ impl<T, E> Inner<T, E> {
         } else {
           Ok(None)
         }
-      }).map(|state| {
+      })
+      .map(|state| {
         state.map(|state| {
           unsafe {
             (*self.rx_waker.get()).as_ref().map(Waker::wake);

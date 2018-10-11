@@ -1,10 +1,13 @@
 /// Register token tag.
+#[marker]
 pub trait RegTag: Sized + Send + Sync + Default + 'static {}
 
 /// Owned register token tag.
+#[marker]
 pub trait RegOwned: RegTag {}
 
 /// Atomic register token tag.
+#[marker]
 pub trait RegAtomic: RegTag {}
 
 /// Unsynchronized register token tag.

@@ -107,7 +107,8 @@ impl<E> Inner<E> {
         } else {
           Ok(None)
         }
-      }).map(|state| {
+      })
+      .map(|state| {
         state.map(|state| {
           unsafe {
             (*self.rx_waker.get()).as_ref().map(Waker::wake);

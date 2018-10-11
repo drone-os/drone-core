@@ -1,7 +1,8 @@
 use alloc::alloc;
 use core::alloc::Layout;
+use core::ffi::c_void;
 use core::ptr;
-use ffi::{c_char, c_int, c_void};
+use ffi::{c_char, c_int};
 
 /// A type able to represent the size of any object in bytes.
 #[allow(non_camel_case_types)]

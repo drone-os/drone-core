@@ -1,5 +1,3 @@
-#![feature(proc_macro_gen)]
-
 #[macro_use]
 extern crate drone_core;
 

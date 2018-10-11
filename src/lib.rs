@@ -53,6 +53,7 @@
 #![feature(generators)]
 #![feature(generator_trait)]
 #![feature(integer_atomics)]
+#![feature(marker_trait_attr)]
 #![feature(never_type)]
 #![feature(optin_builtin_traits)]
 #![feature(prelude_import)]

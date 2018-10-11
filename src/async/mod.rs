@@ -5,7 +5,6 @@
 //! # #![feature(generators)]
 //! # #![feature(never_type)]
 //! # #![feature(prelude_import)]
-//! # #![feature(proc_macro_gen)]
 //! # #![feature(proc_macro_path_invoc)]
 //! # #[macro_use] extern crate drone_core;
 //! # extern crate futures;
@@ -56,7 +55,6 @@
 //! # #![feature(generators)]
 //! # #![feature(never_type)]
 //! # #![feature(prelude_import)]
-//! # #![feature(proc_macro_gen)]
 //! # #![feature(proc_macro_path_invoc)]
 //! # #[macro_use] extern crate drone_core;
 //! # extern crate futures;
