@@ -60,7 +60,6 @@
 #![feature(raw_vec_internals)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
-#![feature(tool_lints)]
 #![feature(untagged_unions)]
 #![warn(missing_docs)]
 #![allow(clippy::precedence, clippy::inline_always)]

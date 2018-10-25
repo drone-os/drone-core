@@ -2,8 +2,6 @@
 //!
 //! See `drone-core` documentation for details.
 
-#![feature(proc_macro_diagnostic)]
-#![feature(tool_lints)]
 #![warn(missing_docs)]
 #![allow(clippy::precedence)]
 #![doc(html_root_url = "https://docs.rs/drone-macros-core/0.9.0")]

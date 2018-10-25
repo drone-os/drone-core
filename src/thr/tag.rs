@@ -9,12 +9,12 @@ pub trait ThrTag:
 #[marker]
 pub trait ThrTrigger: ThrTag {}
 
-/// Controllable thread token tag.
+/// Unrestricted thread token tag.
 #[derive(Clone, Copy, Default)]
-pub struct Ctt;
+pub struct Utt;
 
-impl ThrTag for Ctt {}
-impl ThrTrigger for Ctt {}
+impl ThrTag for Utt {}
+impl ThrTrigger for Utt {}
 
 /// Triggerable thread token tag.
 #[derive(Clone, Copy, Default)]
@@ -23,8 +23,8 @@ pub struct Ttt;
 impl ThrTag for Ttt {}
 impl ThrTrigger for Ttt {}
 
-/// Limited thread token tag.
+/// Attachable thread token tag.
 #[derive(Clone, Copy, Default)]
-pub struct Ltt;
+pub struct Att;
 
-impl ThrTag for Ltt {}
+impl ThrTag for Att {}

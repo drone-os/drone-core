@@ -88,20 +88,20 @@ fn fiber() {
   let counter = Arc::new(AtomicI8::new(0));
   let inner = Counter(Arc::clone(&counter));
   unsafe {
-    let thr = Thr0::<Ltt>::new();
+    let thr = Thr0::<Att>::new();
     fib::add(thr, move || {
       while inner.0.fetch_add(1, Relaxed) < 2 {
         yield;
       }
     });
     assert_eq!(counter.load(Relaxed), 0);
-    Thr0::<Ltt>::get_thr().fib_chain().drain();
+    Thr0::<Att>::get_thr().fib_chain().drain();
     assert_eq!(counter.load(Relaxed), 1);
-    Thr0::<Ltt>::get_thr().fib_chain().drain();
+    Thr0::<Att>::get_thr().fib_chain().drain();
     assert_eq!(counter.load(Relaxed), 2);
-    Thr0::<Ltt>::get_thr().fib_chain().drain();
+    Thr0::<Att>::get_thr().fib_chain().drain();
     assert_eq!(counter.load(Relaxed), -4);
-    Thr0::<Ltt>::get_thr().fib_chain().drain();
+    Thr0::<Att>::get_thr().fib_chain().drain();
     assert_eq!(counter.load(Relaxed), -4);
   }
 }
@@ -111,14 +111,14 @@ fn fiber_fn() {
   let counter = Arc::new(AtomicI8::new(0));
   let inner = Counter(Arc::clone(&counter));
   unsafe {
-    let thr = Thr1::<Ltt>::new();
+    let thr = Thr1::<Att>::new();
     fib::add_fn(thr, move || {
       inner.0.fetch_add(1, Relaxed);
     });
     assert_eq!(counter.load(Relaxed), 0);
-    Thr1::<Ltt>::get_thr().fib_chain().drain();
+    Thr1::<Att>::get_thr().fib_chain().drain();
     assert_eq!(counter.load(Relaxed), -2);
-    Thr1::<Ltt>::get_thr().fib_chain().drain();
+    Thr1::<Att>::get_thr().fib_chain().drain();
     assert_eq!(counter.load(Relaxed), -2);
   }
 }

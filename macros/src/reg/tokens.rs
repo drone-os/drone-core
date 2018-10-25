@@ -2,24 +2,15 @@ use drone_macros_core::{unkeywordize, NewStruct};
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use std::env;
-use std::fs::File;
-use std::io::prelude::*;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{parse_str, Attribute, Ident, LitStr};
+use syn::{Attribute, Ident};
 
 struct RegTokens {
   tokens: NewStruct,
-  includes: Vec<Include>,
   blocks: Blocks,
 }
 
 struct Blocks(Vec<Block>);
-
-struct Include {
-  var: LitStr,
-  path: LitStr,
-}
 
 struct Block {
   ident: Ident,
@@ -34,16 +25,8 @@ struct Reg {
 impl Parse for RegTokens {
   fn parse(input: ParseStream) -> Result<Self> {
     let tokens = input.parse()?;
-    let mut includes = Vec::new();
-    while input.peek(Ident) && input.peek2(Token![!]) {
-      includes.push(input.parse()?);
-    }
     let blocks = input.parse()?;
-    Ok(Self {
-      tokens,
-      includes,
-      blocks,
-    })
+    Ok(Self { tokens, blocks })
   }
 }
 
@@ -54,37 +37,6 @@ impl Parse for Blocks {
       blocks.push(input.parse()?);
     }
     Ok(Blocks(blocks))
-  }
-}
-
-impl Parse for Include {
-  fn parse(input: ParseStream) -> Result<Self> {
-    let ident = input.parse::<Ident>()?;
-    input.parse::<Token![!]>()?;
-    if ident != "include" {
-      return Err(input.error("invalid macro"));
-    }
-    let include_content;
-    parenthesized!(include_content in input);
-    input.parse::<Token![;]>()?;
-    let ident = include_content.parse::<Ident>()?;
-    include_content.parse::<Token![!]>()?;
-    if ident != "concat" {
-      return Err(include_content.error("invalid macro"));
-    }
-    let concat_content;
-    parenthesized!(concat_content in include_content);
-    let ident = concat_content.parse::<Ident>()?;
-    concat_content.parse::<Token![!]>()?;
-    if ident != "env" {
-      return Err(concat_content.error("invalid macro"));
-    }
-    let env_content;
-    parenthesized!(env_content in concat_content);
-    let var = env_content.parse()?;
-    concat_content.parse::<Token![,]>()?;
-    let path = concat_content.parse()?;
-    Ok(Self { var, path })
   }
 }
 
@@ -119,8 +71,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         vis: tokens_vis,
         ident: tokens_ident,
       },
-    includes,
-    blocks: Blocks(mut blocks),
+    blocks: Blocks(blocks),
   } = parse_macro_input!(input as RegTokens);
   let rt = Ident::new(
     &format!(
@@ -129,7 +80,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     ),
     def_site,
   );
-  include_blocks(includes, &mut blocks);
   let mut tokens_tokens = Vec::new();
   let mut tokens_ctor_tokens = Vec::new();
   for Block { ident, regs } in blocks {
@@ -172,15 +122,4 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
   };
   expanded.into()
-}
-
-fn include_blocks(includes: Vec<Include>, blocks: &mut Vec<Block>) {
-  for Include { var, path } in includes {
-    let path = format!("{}{}", env::var(var.value()).unwrap(), path.value());
-    let mut file = File::open(path).unwrap();
-    let mut content = String::new();
-    file.read_to_string(&mut content).unwrap();
-    let Blocks(mut extern_blocks) = parse_str(&content).unwrap();
-    blocks.append(&mut extern_blocks);
-  }
 }

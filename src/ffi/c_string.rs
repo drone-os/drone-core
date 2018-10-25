@@ -104,10 +104,7 @@ pub struct CString {
 /// let _: NulError = CString::new(b"f\0oo".to_vec()).unwrap_err();
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug, Fail)]
-#[fail(
-  display = "nul byte found in provided data at position: {}",
-  _0
-)]
+#[fail(display = "nul byte found in provided data at position: {}", _0)]
 pub struct NulError(usize, Vec<u8>);
 
 /// An error indicating invalid UTF-8 when converting a [`CString`] into a
@@ -157,6 +154,7 @@ impl CString {
   /// the position of the nul byte.
   ///
   /// [`NulError`]: NulError
+  #[allow(clippy::new_ret_no_self)]
   pub fn new<T: Into<Vec<u8>>>(t: T) -> Result<CString, NulError> {
     Self::_new(t.into())
   }

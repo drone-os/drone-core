@@ -172,6 +172,7 @@ fn gen_block(
         pub use self::drone_core::reg::prelude::*;
         pub use self::core::convert::From;
         pub use self::core::default::Default;
+        pub use self::core::marker::PhantomData;
       }
 
       use super::super::{#(#imports),*};
@@ -462,5 +463,16 @@ fn gen_reg(
         });
       }
     }
+  }
+  if fields.is_empty() {
+    reg_struct_tokens.push(quote! {
+      _marker: #rt::PhantomData<#t>
+    });
+    reg_ctor_tokens.push(quote! {
+      _marker: #rt::PhantomData
+    });
+    reg_fork_tokens.push(quote! {
+      _marker: #rt::PhantomData
+    });
   }
 }

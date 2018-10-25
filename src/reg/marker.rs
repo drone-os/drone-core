@@ -18,7 +18,8 @@ where
   R: RReg<Urt>,
   R: WReg<Urt>,
   R: for<'a> RwRegUnsync<'a>,
-{}
+{
+}
 
 // }}}
 // {{{ URoReg
@@ -153,7 +154,8 @@ where
   R: WoReg<Frt>,
   R: for<'a> WRegAtomic<'a, Frt>,
   R: RegFork,
-{}
+{
+}
 
 // }}}
 // {{{ URwRwRegFieldBit
@@ -172,7 +174,8 @@ where
   R: WWRegFieldBit<Urt>,
   R: RRRegFieldBit<Urt>,
   R::Reg: URwReg,
-{}
+{
+}
 
 // }}}
 // {{{ URwRwRegFieldBits
@@ -191,7 +194,8 @@ where
   R: WWRegFieldBits<Urt>,
   R: RRRegFieldBits<Urt>,
   R::Reg: URwReg,
-{}
+{
+}
 
 // }}}
 // {{{ UWoRwRegFieldBit
@@ -210,7 +214,8 @@ where
   R: WWRegFieldBit<Urt>,
   R: WoWRegField<Urt>,
   R::Reg: URwReg,
-{}
+{
+}
 
 // }}}
 // {{{ UWoRwRegFieldBits
@@ -229,7 +234,8 @@ where
   R: WWRegFieldBits<Urt>,
   R: WoWRegField<Urt>,
   R::Reg: URwReg,
-{}
+{
+}
 
 // }}}
 // {{{ UWoWoRegFieldBit
@@ -246,7 +252,8 @@ impl<R> UWoWoRegFieldBit for R
 where
   R: WoWoRegFieldBit<Urt>,
   R::Reg: UWoReg,
-{}
+{
+}
 
 // }}}
 // {{{ UWoWoRegFieldBits
@@ -263,7 +270,8 @@ impl<R> UWoWoRegFieldBits for R
 where
   R: WoWoRegFieldBits<Urt>,
   R::Reg: UWoReg,
-{}
+{
+}
 
 // }}}
 // {{{ URoRwRegFieldBit
@@ -282,7 +290,8 @@ where
   R: RRRegFieldBit<Urt>,
   R: RoRRegField<Urt>,
   R::Reg: URwReg,
-{}
+{
+}
 
 // }}}
 // {{{ URoRwRegFieldBits
@@ -301,7 +310,8 @@ where
   R: RRRegFieldBits<Urt>,
   R: RoRRegField<Urt>,
   R::Reg: URwReg,
-{}
+{
+}
 
 // }}}
 // {{{ URoRoRegFieldBit
@@ -320,7 +330,8 @@ where
   R: RRRegFieldBit<Urt>,
   R: RoRRegField<Urt>,
   R::Reg: URoReg,
-{}
+{
+}
 
 // }}}
 // {{{ URoRoRegFieldBits
@@ -339,7 +350,8 @@ where
   R: RRRegFieldBits<Urt>,
   R: RoRRegField<Urt>,
   R::Reg: URoReg,
-{}
+{
+}
 
 // }}}
 // {{{ SRwRwRegFieldBit
@@ -358,7 +370,8 @@ where
   R: WWRegFieldBit<Srt>,
   R: RRRegFieldBit<Srt>,
   R::Reg: SRwReg,
-{}
+{
+}
 
 // }}}
 // {{{ SRwRwRegFieldBits
@@ -377,7 +390,8 @@ where
   R: WWRegFieldBits<Srt>,
   R: RRRegFieldBits<Srt>,
   R::Reg: SRwReg,
-{}
+{
+}
 
 // }}}
 // {{{ SWoRwRegFieldBit
@@ -396,7 +410,8 @@ where
   R: WWRegFieldBit<Srt>,
   R: WoWRegField<Srt>,
   R::Reg: SRwReg,
-{}
+{
+}
 
 // }}}
 // {{{ SWoRwRegFieldBits
@@ -415,7 +430,8 @@ where
   R: WWRegFieldBits<Srt>,
   R: WoWRegField<Srt>,
   R::Reg: SRwReg,
-{}
+{
+}
 
 // }}}
 // {{{ SWoWoRegFieldBit
@@ -432,7 +448,8 @@ impl<R> SWoWoRegFieldBit for R
 where
   R: WoWoRegFieldBit<Srt>,
   R::Reg: SWoReg,
-{}
+{
+}
 
 // }}}
 // {{{ SWoWoRegFieldBits
@@ -449,7 +466,8 @@ impl<R> SWoWoRegFieldBits for R
 where
   R: WoWoRegFieldBits<Srt>,
   R::Reg: SWoReg,
-{}
+{
+}
 
 // }}}
 // {{{ SRoRwRegFieldBit
@@ -468,7 +486,8 @@ where
   R: RRRegFieldBit<Srt>,
   R: RoRRegField<Srt>,
   R::Reg: SRwReg,
-{}
+{
+}
 
 // }}}
 // {{{ SRoRwRegFieldBits
@@ -487,7 +506,8 @@ where
   R: RRRegFieldBits<Srt>,
   R: RoRRegField<Srt>,
   R::Reg: SRwReg,
-{}
+{
+}
 
 // }}}
 // {{{ SRoRoRegFieldBit
@@ -506,7 +526,8 @@ where
   R: RRRegFieldBit<Srt>,
   R: RoRRegField<Srt>,
   R::Reg: SRoReg,
-{}
+{
+}
 
 // }}}
 // {{{ SRoRoRegFieldBits
@@ -525,7 +546,8 @@ where
   R: RRRegFieldBits<Srt>,
   R: RoRRegField<Srt>,
   R::Reg: SRoReg,
-{}
+{
+}
 
 // }}}
 // {{{ FRwRwRegFieldBit
@@ -546,7 +568,8 @@ where
   R: RRRegFieldBit<Frt>,
   R: RegFork,
   R::Reg: FRwReg,
-{}
+{
+}
 
 // }}}
 // {{{ FRwRwRegFieldBits
@@ -567,7 +590,8 @@ where
   R: RRRegFieldBits<Frt>,
   R: RegFork,
   R::Reg: FRwReg,
-{}
+{
+}
 
 // }}}
 // {{{ FWoRwRegFieldBit
@@ -588,7 +612,8 @@ where
   R: WoWRegField<Frt>,
   R: RegFork,
   R::Reg: FRwReg,
-{}
+{
+}
 
 // }}}
 // {{{ FWoRwRegFieldBits
@@ -609,7 +634,8 @@ where
   R: WoWRegField<Frt>,
   R: RegFork,
   R::Reg: FRwReg,
-{}
+{
+}
 
 // }}}
 // {{{ FWoWoRegFieldBit
@@ -628,7 +654,8 @@ where
   R: WoWoRegFieldBit<Frt>,
   R: RegFork,
   R::Reg: FWoReg,
-{}
+{
+}
 
 // }}}
 // {{{ FWoWoRegFieldBits
@@ -647,7 +674,8 @@ where
   R: WoWoRegFieldBits<Frt>,
   R: RegFork,
   R::Reg: FWoReg,
-{}
+{
+}
 
 // }}}
 // {{{ FRoRwRegFieldBit
@@ -668,7 +696,8 @@ where
   R: RoRRegField<Frt>,
   R: RegFork,
   R::Reg: FRwReg,
-{}
+{
+}
 
 // }}}
 // {{{ FRoRwRegFieldBits
@@ -689,7 +718,8 @@ where
   R: RoRRegField<Frt>,
   R: RegFork,
   R::Reg: FRwReg,
-{}
+{
+}
 
 // }}}
 // {{{ FRoRoRegFieldBit
@@ -710,7 +740,8 @@ where
   R: RoRRegField<Frt>,
   R: RegFork,
   R::Reg: FRoReg,
-{}
+{
+}
 
 // }}}
 // {{{ FRoRoRegFieldBits
@@ -731,7 +762,8 @@ where
   R: RoRRegField<Frt>,
   R: RegFork,
   R::Reg: FRoReg,
-{}
+{
+}
 
 // }}}
 // vim: set fdm=marker fmr={{{,}}} :
