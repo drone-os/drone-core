@@ -98,7 +98,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         pub #reg_name: #block_ident::#reg_struct<#rt::Srt>
       });
       tokens_ctor_tokens.push(quote! {
-        #reg_name: #block_ident::#reg_struct::new()
+        #reg_name: <#block_ident::#reg_struct<_> as #rt::Reg<_>>::new()
       });
     }
   }
@@ -107,7 +107,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     mod #rt {
       extern crate drone_core;
 
-      pub use self::drone_core::reg::{RegTokens, Srt};
+      pub use self::drone_core::reg::{Reg, RegTokens, Srt};
     }
 
     #(#tokens_attrs)*

@@ -3,7 +3,6 @@ name = "drone-core-macros"
 version = "0.9.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 description = "Drone procedural macros."
-readme = "README.md"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/drone-os/drone-core"
 

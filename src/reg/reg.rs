@@ -11,6 +11,13 @@ pub trait Reg<T: RegTag>: Sized + Send + Sync + 'static {
 
   /// Memory address of the register.
   const ADDRESS: usize;
+
+  /// Creates a new rigester token.
+  ///
+  /// # Safety
+  ///
+  /// Must be called only inside an implementation of `RegTokens`.
+  unsafe fn new() -> Self;
 }
 
 /// Referenceable register.

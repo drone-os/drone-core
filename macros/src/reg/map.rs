@@ -199,17 +199,15 @@ fn gen_block(
         #(#reg_struct_tokens),*
       }
 
-      impl<#t: #rt::RegTag> Reg<#t> {
-        #[inline(always)]
-        pub(crate) unsafe fn new() -> Self {
-          Self { #(#reg_ctor_tokens,)* }
-        }
-      }
-
       impl<#t: #rt::RegTag> #rt::Reg<#t> for Reg<#t> {
         type Val = Val;
 
         const ADDRESS: usize = #address;
+
+        #[inline(always)]
+        unsafe fn new() -> Self {
+          Self { #(#reg_ctor_tokens,)* }
+        }
       }
 
       impl<'a, #t: #rt::RegTag + 'a> #rt::RegRef<'a, #t> for Reg<#t> {
@@ -219,49 +217,49 @@ fn gen_block(
       impl #rt::From<Reg<#rt::Urt>> for Reg<#rt::Srt> {
         #[inline(always)]
         fn from(_reg: Reg<#rt::Urt>) -> Self {
-          unsafe { Self::new() }
+          unsafe { #rt::Reg::new() }
         }
       }
 
       impl #rt::From<Reg<#rt::Urt>> for Reg<#rt::Frt> {
         #[inline(always)]
         fn from(_reg: Reg<#rt::Urt>) -> Self {
-          unsafe { Self::new() }
+          unsafe { #rt::Reg::new() }
         }
       }
 
       impl From<Reg<#rt::Urt>> for Reg<#rt::Crt> {
         #[inline(always)]
         fn from(_reg: Reg<#rt::Urt>) -> Self {
-          unsafe { Self::new() }
+          unsafe { #rt::Reg::new() }
         }
       }
 
       impl From<Reg<#rt::Srt>> for Reg<#rt::Urt> {
         #[inline(always)]
         fn from(_reg: Reg<#rt::Srt>) -> Self {
-          unsafe { Self::new() }
+          unsafe { #rt::Reg::new() }
         }
       }
 
       impl From<Reg<#rt::Srt>> for Reg<#rt::Frt> {
         #[inline(always)]
         fn from(_reg: Reg<#rt::Srt>) -> Self {
-          unsafe { Self::new() }
+          unsafe { #rt::Reg::new() }
         }
       }
 
       impl From<Reg<#rt::Srt>> for Reg<#rt::Crt> {
         #[inline(always)]
         fn from(_reg: Reg<#rt::Srt>) -> Self {
-          unsafe { Self::new() }
+          unsafe { #rt::Reg::new() }
         }
       }
 
       impl From<Reg<#rt::Frt>> for Reg<#rt::Crt> {
         #[inline(always)]
         fn from(_reg: Reg<#rt::Frt>) -> Self {
-          unsafe { Self::new() }
+          unsafe { #rt::Reg::new() }
         }
       }
 
