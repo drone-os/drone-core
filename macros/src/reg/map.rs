@@ -164,7 +164,13 @@ fn gen_block(
       &mut reg_fork_tokens,
       &mut reg_outer_tokens,
     );
+    let imports = if imports.is_empty() {
+      quote!()
+    } else {
+      quote!(use super::super::{#(#imports),*};)
+    };
     reg_outer_tokens.push(quote! {
+      #imports
       mod #rt {
         extern crate core;
         extern crate drone_core;
@@ -174,8 +180,6 @@ fn gen_block(
         pub use self::core::default::Default;
         pub use self::core::marker::PhantomData;
       }
-
-      use super::super::{#(#imports),*};
     });
     for trait_ident in traits {
       reg_outer_tokens.push(quote! {

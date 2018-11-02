@@ -3,7 +3,6 @@
 //! See `drone-core` documentation for details.
 
 #![allow(clippy::precedence)]
-#![doc(html_root_url = "https://docs.rs/drone-core-macros/0.9.0")]
 #![recursion_limit = "512"]
 
 extern crate drone_macros_core;

@@ -4,7 +4,6 @@
 
 #![warn(missing_docs)]
 #![allow(clippy::precedence)]
-#![doc(html_root_url = "https://docs.rs/drone-macros-core/0.9.0")]
 
 #[macro_use]
 extern crate lazy_static;

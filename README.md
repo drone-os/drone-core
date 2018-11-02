@@ -22,28 +22,6 @@ Please also refer the installation notes of a corresponding Drone's
 
 * [STM32 Nucleo L496ZG-P](https://github.com/drone-os/demo-core-nucleo)
 
-## Development
-
-Check:
-
-```sh
-$ RUSTC_WRAPPER=./clippy-wrapper.sh cargo check --all
-```
-
-Test:
-
-```sh
-$ RUSTC_WRAPPER=./rustc-wrapper.sh cargo test --all --exclude drone-core
-$ RUSTC_WRAPPER=./rustc-wrapper.sh cargo test --features="std" -p drone-core
-```
-
-Readme update:
-
-```sh
-$ cargo readme -o README.md
-$ cargo readme -r ctypes -t ../README.tpl -o README.md
-```
-
 [Rust]: https://www.rust-lang.org/
 [cargo-drone]: https://github.com/drone-os/cargo-drone
 [xargo]: https://github.com/japaric/xargo

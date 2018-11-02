@@ -18,28 +18,6 @@
 //!
 //! * [STM32 Nucleo L496ZG-P](https://github.com/drone-os/demo-core-nucleo)
 //!
-//! # Development
-//!
-//! Check:
-//!
-//! ```sh
-//! $ RUSTC_WRAPPER=./clippy-wrapper.sh cargo check --all
-//! ```
-//!
-//! Test:
-//!
-//! ```sh
-//! $ RUSTC_WRAPPER=./rustc-wrapper.sh cargo test --all --exclude drone-core
-//! $ RUSTC_WRAPPER=./rustc-wrapper.sh cargo test --features="std" -p drone-core
-//! ```
-//!
-//! Readme update:
-//!
-//! ```sh
-//! $ cargo readme -o README.md
-//! $ cargo readme -r ctypes -t ../README.tpl -o README.md
-//! ```
-//!
 //! [Rust]: https://www.rust-lang.org/
 //! [cargo-drone]: https://github.com/drone-os/cargo-drone
 //! [xargo]: https://github.com/japaric/xargo
@@ -63,7 +41,6 @@
 #![feature(untagged_unions)]
 #![warn(missing_docs)]
 #![allow(clippy::precedence, clippy::inline_always)]
-#![doc(html_root_url = "https://docs.rs/drone-core/0.9.0")]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;

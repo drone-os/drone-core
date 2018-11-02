@@ -7,7 +7,6 @@
 #![allow(non_camel_case_types)]
 #![allow(clippy::precedence)]
 #![warn(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/drone-ctypes/0.9.0")]
 #![no_std]
 
 pub use core::ffi::c_void;
