@@ -56,21 +56,41 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     None => Driver::default(),
   };
   let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-  let mut res = if_chain! {
+  let fields = if_chain! {
     if let Data::Struct(ref x) = &data;
     if let Fields::Unnamed(ref x) = x.fields;
-    if x.unnamed.len() <= 1;
-    if let Some(Field { ref ty, .. }) = x.unnamed.iter().next();
+    let mut fields = x.unnamed.iter();
+    if let Some(Field { ty: ref res, .. }) = fields.next();
     then {
-      ty
+      if let Some(Field { ty: ref data, .. }) = fields.next() {
+        if fields.next().is_none() &&
+          is_wrapper(data, "PhantomData").is_some() {
+          Some((res, Some(data)))
+        } else {
+          None
+        }
+      } else {
+        Some((res, None))
+      }
     } else {
-      return Error::new(input_span,
-        "Driver can be derived only from a tuple struct with one field",
-      ).to_compile_error().into();
+      None
     }
   };
-  let ref_cell = parse_wrapper("RefCell", &mut res);
-  let option = parse_wrapper("Option", &mut res);
+  let (mut res, data) = if let Some((res, data)) = fields {
+    (res, data)
+  } else {
+    return Error::new(input_span, "Unsupported sequence of fields")
+      .to_compile_error()
+      .into();
+  };
+  let ref_cell = is_wrapper(res, "RefCell");
+  if let Some(ref_cell) = ref_cell {
+    res = ref_cell;
+  }
+  let option = is_wrapper(res, "Option");
+  if let Some(option) = option {
+    res = option;
+  }
 
   let mut res_def = quote!(#res);
   let mut free_def = quote!(self.0);
@@ -79,20 +99,26 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   } else {
     quote!(<#res as #rt::Driver>::new(source))
   };
-  if option {
+  if option.is_some() {
     new_def = quote!(#rt::Some(#new_def));
   }
-  if ref_cell {
+  if ref_cell.is_some() {
     new_def = quote!(#rt::RefCell::new(#new_def));
     free_def = quote!(#free_def.into_inner());
   }
-  if option {
+  if option.is_some() {
     free_def = quote!(#free_def.unwrap());
   }
   if forward {
     res_def = quote!(<#res_def as #rt::Driver>::Resource);
     free_def = quote!(#rt::Driver::free(#free_def));
   }
+
+  let data = if data.is_some() {
+    quote!(PhantomData)
+  } else {
+    quote!()
+  };
 
   let expanded = quote! {
     mod #rt {
@@ -109,7 +135,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
 
       #[inline(always)]
       fn new(source: <Self::Resource as #rt::Resource>::Source) -> Self {
-        #ident(#new_def)
+        #ident(#new_def, #data)
       }
 
       #[inline(always)]
@@ -121,9 +147,9 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
   expanded.into()
 }
 
-fn parse_wrapper(wrapper: &str, res: &mut &Type) -> bool {
+fn is_wrapper<'a>(res: &'a Type, wrapper: &str) -> Option<&'a Type> {
   if_chain! {
-    if let &Type::Path(ref x) = *res;
+    if let &Type::Path(ref x) = res;
     if x.qself.is_none();
     if x.path.leading_colon.is_none();
     if x.path.segments.len() == 1;
@@ -133,10 +159,9 @@ fn parse_wrapper(wrapper: &str, res: &mut &Type) -> bool {
     if x.args.len() == 1;
     if let Some(GenericArgument::Type(x)) = x.args.iter().next();
     then {
-      *res = x;
-      true
+      Some(x)
     } else {
-      false
+      None
     }
   }
 }

@@ -62,7 +62,7 @@ pub trait Adapter: Sized + Send + 'static {
     cmd: Self::Cmd,
   ) -> Box<Future<Item = Self::CmdRes, Error = Self::Error> + 'a> {
     let mut input = In { cmd };
-    Box::new(async(static move || loop {
+    Box::new(async(move || loop {
       input = match self.stack().resume(input) {
         Out::Req(req) => In {
           req_res: await!(self.run_req(req))?,
