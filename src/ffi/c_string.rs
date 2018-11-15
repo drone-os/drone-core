@@ -27,7 +27,7 @@ use ffi::{c_char, strlen, CStr};
 ///
 /// # Extracting a raw pointer to the whole C string
 ///
-/// `CString` implements a [`as_ptr`] method through the `Deref` trait. This
+/// `CString` implements a `as_ptr` method through the `Deref` trait. This
 /// method will give you a `*const c_char` which you can feed directly to extern
 /// functions that expect a nul-terminated string, like C's `strdup()`.
 ///
@@ -52,7 +52,6 @@ use ffi::{c_char, strlen, CStr};
 /// [`new`]: CString::new
 /// [`as_bytes`]: CString::as_bytes
 /// [`as_bytes_with_nul`]: CString::as_bytes_with_nul
-/// [`as_ptr`]: CString::as_ptr
 /// [`CStr`]: CStr
 ///
 /// # Examples

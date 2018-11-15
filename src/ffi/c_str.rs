@@ -71,7 +71,7 @@ use ffi::{c_char, strlen, CString};
 /// ```
 ///
 /// [`CString`]: CString
-/// [`from_ptr`]: CString::from_ptr
+/// [`from_ptr`]: CStr::from_ptr
 #[allow(clippy::derive_hash_xor_eq)]
 #[derive(Hash)]
 pub struct CStr {

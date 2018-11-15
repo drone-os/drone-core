@@ -1,6 +1,6 @@
 //! A single-producer, single-consumer oneshot channel.
 //!
-//! See [`oneshot::channel`](channel) documentation for more.
+//! See [`oneshot::channel`] documentation for more.
 
 mod receiver;
 mod sender;

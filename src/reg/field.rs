@@ -7,11 +7,60 @@ pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
   /// Parent register type.
   type Reg: Reg<T>;
 
+  /// Corresponding unsynchronized register field token.
+  type URegField: RegField<Urt>;
+
+  /// Corresponding synchronized register field token.
+  type SRegField: RegField<Srt>;
+
+  /// Corresponding copyable register field token.
+  type CRegField: RegField<Crt>;
+
   /// Address offset of the field.
   const OFFSET: usize;
 
   /// Bit-width of the field.
   const WIDTH: usize;
+
+  /// Creates a new rigester field token.
+  ///
+  /// # Safety
+  ///
+  /// Must be called only inside an implementation of `Reg`.
+  unsafe fn new() -> Self;
+
+  /// Converts to an unsynchronized register field token.
+  #[inline(always)]
+  fn to_unsync(self) -> Self
+  where
+    Self: RegField<Urt>,
+  {
+    self
+  }
+
+  /// Converts to a synchronized register field token.
+  #[inline(always)]
+  fn to_sync(self) -> Self
+  where
+    Self: RegField<Srt>,
+  {
+    self
+  }
+
+  /// Converts to a copyable register field token.
+  #[inline(always)]
+  fn to_copy(self) -> Self::CRegField {
+    unsafe { Self::CRegField::new() }
+  }
+
+  /// Converts to a synchronized register field token reference.
+  #[inline(always)]
+  fn as_sync(&self) -> &Self::SRegField
+  where
+    T: RegAtomic,
+  {
+    unsafe { &*(self as *const Self as *const Self::SRegField) }
+  }
 }
 
 /// Single-bit register field.

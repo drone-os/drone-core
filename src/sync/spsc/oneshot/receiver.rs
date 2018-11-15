@@ -6,7 +6,7 @@ use failure::{Backtrace, Fail};
 use futures::prelude::*;
 use sync::spsc::SpscInner;
 
-/// The receiving-half of [`oneshot::channel`](channel).
+/// The receiving-half of [`oneshot::channel`](super::channel).
 #[must_use]
 pub struct Receiver<T, E> {
   inner: Arc<Inner<T, E>>,
@@ -15,9 +15,9 @@ pub struct Receiver<T, E> {
 /// Error for `Future` implementation for [`Receiver`](Receiver).
 #[derive(Debug)]
 pub enum RecvError<E> {
-  /// The corresponding [`Sender`](Sender) is dropped.
+  /// The corresponding [`Sender`](super::Sender) is dropped.
   Canceled,
-  /// The corresponding [`Sender`](Sender) completed with an error.
+  /// The corresponding [`Sender`](super::Sender) completed with an error.
   Complete(E),
 }
 

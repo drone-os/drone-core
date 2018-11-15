@@ -71,8 +71,8 @@
 //!
 //! [Unicode scalar value]: http://www.unicode.org/glossary/#unicode_scalar_value
 //! [Unicode code point]: http://www.unicode.org/glossary/#code_point
-//! [`CString`]: CString
-//! [`CStr`]: CStr
+//! [`CString`]: ffi::CString
+//! [`CStr`]: ffi::CStr
 
 mod c_str;
 mod c_string;

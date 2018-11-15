@@ -1,5 +1,5 @@
 /// Returns a result of the future. Should be used inside
-/// [`AsyncFuture`](AsyncFuture) context.
+/// [`async`](fn@async) context.
 #[macro_export]
 macro_rules! await {
   ($future:expr) => {{
@@ -31,7 +31,7 @@ macro_rules! await {
 }
 
 /// Asynchronously iterates over a stream. Should be used inside
-/// [`AsyncFuture`](AsyncFuture) context.
+/// [`async`](fn@async) context.
 #[macro_export]
 macro_rules! await_for {
   ($pat:pat in $expr:expr => $block:block) => {{

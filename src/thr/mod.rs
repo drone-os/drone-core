@@ -62,13 +62,48 @@ where
   /// Thread.
   type Thr: Thread;
 
+  /// Corresponding unrestricted thread token.
+  type UThrToken: ThrToken<Utt>;
+
+  /// Corresponding triggerable thread token.
+  type TThrToken: ThrToken<Ttt>;
+
+  /// Corresponding attachable thread token.
+  type AThrToken: ThrToken<Att>;
+
   /// A thread position within threads array.
   const THR_NUM: usize;
 
+  /// Creates a new thread token.
+  ///
+  /// # Safety
+  ///
+  /// Must be called only inside an implementation of `ThrTokens`.
+  unsafe fn new() -> Self;
+
   /// Returns a reference to the thread.
+  ///
+  /// # Safety
+  ///
+  /// Must be called only by an instance of the thread token.
   #[inline(always)]
-  fn get_thr() -> &'static Self::Thr {
-    unsafe { &*Self::Thr::first().add(Self::THR_NUM) }
+  unsafe fn get_thr() -> &'static Self::Thr {
+    &*Self::Thr::first().add(Self::THR_NUM)
+  }
+
+  /// Converts to a triggerable register token.
+  #[inline(always)]
+  fn to_trigger(self) -> Self::TThrToken
+  where
+    T: ThrTrigger,
+  {
+    unsafe { Self::TThrToken::new() }
+  }
+
+  /// Converts to an attachable register token.
+  #[inline(always)]
+  fn to_attach(self) -> Self::AThrToken {
+    unsafe { Self::AThrToken::new() }
   }
 }
 

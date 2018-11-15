@@ -10,7 +10,6 @@ extern crate futures;
 #[prelude_import]
 #[allow(unused_imports)]
 use drone_core::prelude::*;
-
 use drone_core::sync::spsc::oneshot;
 use futures::prelude::*;
 use std::sync::atomic::AtomicUsize;

@@ -100,60 +100,60 @@ where
 }
 
 // }}}
-// {{{ FRwReg
-/// Forkable read-write register token.
+// {{{ CRwReg
+/// Copyable read-write register token.
 #[marker]
-pub trait FRwReg
+pub trait CRwReg
 where
-  Self: RReg<Frt>,
-  Self: WReg<Frt>,
-  Self: RegFork,
+  Self: RReg<Crt>,
+  Self: WReg<Crt>,
+  Self: Copy,
 {
 }
 
-impl<R> FRwReg for R
+impl<R> CRwReg for R
 where
-  R: RReg<Frt>,
-  R: WReg<Frt>,
-  R: RegFork,
+  R: RReg<Crt>,
+  R: WReg<Crt>,
+  R: Copy,
 {
 }
 
 // }}}
-// {{{ FRoReg
-/// Forkable read-only register token.
+// {{{ CRoReg
+/// Copyable read-only register token.
 #[marker]
-pub trait FRoReg
+pub trait CRoReg
 where
-  Self: RoReg<Frt>,
-  Self: RegFork,
+  Self: RoReg<Crt>,
+  Self: Copy,
 {
 }
 
-impl<R> FRoReg for R
+impl<R> CRoReg for R
 where
-  R: RoReg<Frt>,
-  R: RegFork,
+  R: RoReg<Crt>,
+  R: Copy,
 {
 }
 
 // }}}
-// {{{ FWoReg
-/// Forkable write-only register token.
+// {{{ CWoReg
+/// Copyable write-only register token.
 #[marker]
-pub trait FWoReg
+pub trait CWoReg
 where
-  Self: WoReg<Frt>,
-  Self: for<'a> WRegAtomic<'a, Frt>,
-  Self: RegFork,
+  Self: WoReg<Crt>,
+  Self: for<'a> WRegAtomic<'a, Crt>,
+  Self: Copy,
 {
 }
 
-impl<R> FWoReg for R
+impl<R> CWoReg for R
 where
-  R: WoReg<Frt>,
-  R: for<'a> WRegAtomic<'a, Frt>,
-  R: RegFork,
+  R: WoReg<Crt>,
+  R: for<'a> WRegAtomic<'a, Crt>,
+  R: Copy,
 {
 }
 
@@ -550,218 +550,218 @@ where
 }
 
 // }}}
-// {{{ FRwRwRegFieldBit
-/// Forkable one-bit read-write field of read-write register token.
+// {{{ CRwRwRegFieldBit
+/// Copyable one-bit read-write field of read-write register token.
 #[marker]
-pub trait FRwRwRegFieldBit
+pub trait CRwRwRegFieldBit
 where
-  Self: WWRegFieldBit<Frt>,
-  Self: RRRegFieldBit<Frt>,
-  Self: RegFork,
-  Self::Reg: FRwReg,
+  Self: WWRegFieldBit<Crt>,
+  Self: RRRegFieldBit<Crt>,
+  Self: Copy,
+  Self::Reg: CRwReg,
 {
 }
 
-impl<R> FRwRwRegFieldBit for R
+impl<R> CRwRwRegFieldBit for R
 where
-  R: WWRegFieldBit<Frt>,
-  R: RRRegFieldBit<Frt>,
-  R: RegFork,
-  R::Reg: FRwReg,
+  R: WWRegFieldBit<Crt>,
+  R: RRRegFieldBit<Crt>,
+  R: Copy,
+  R::Reg: CRwReg,
 {
 }
 
 // }}}
-// {{{ FRwRwRegFieldBits
-/// Forkable multi-bit read-write field of read-write register token.
+// {{{ CRwRwRegFieldBits
+/// Copyable multi-bit read-write field of read-write register token.
 #[marker]
-pub trait FRwRwRegFieldBits
+pub trait CRwRwRegFieldBits
 where
-  Self: WWRegFieldBits<Frt>,
-  Self: RRRegFieldBits<Frt>,
-  Self: RegFork,
-  Self::Reg: FRwReg,
+  Self: WWRegFieldBits<Crt>,
+  Self: RRRegFieldBits<Crt>,
+  Self: Copy,
+  Self::Reg: CRwReg,
 {
 }
 
-impl<R> FRwRwRegFieldBits for R
+impl<R> CRwRwRegFieldBits for R
 where
-  R: WWRegFieldBits<Frt>,
-  R: RRRegFieldBits<Frt>,
-  R: RegFork,
-  R::Reg: FRwReg,
+  R: WWRegFieldBits<Crt>,
+  R: RRRegFieldBits<Crt>,
+  R: Copy,
+  R::Reg: CRwReg,
 {
 }
 
 // }}}
-// {{{ FWoRwRegFieldBit
-/// Forkable one-bit write-only field of read-write register token.
+// {{{ CWoRwRegFieldBit
+/// Copyable one-bit write-only field of read-write register token.
 #[marker]
-pub trait FWoRwRegFieldBit
+pub trait CWoRwRegFieldBit
 where
-  Self: WWRegFieldBit<Frt>,
-  Self: WoWRegField<Frt>,
-  Self: RegFork,
-  Self::Reg: FRwReg,
+  Self: WWRegFieldBit<Crt>,
+  Self: WoWRegField<Crt>,
+  Self: Copy,
+  Self::Reg: CRwReg,
 {
 }
 
-impl<R> FWoRwRegFieldBit for R
+impl<R> CWoRwRegFieldBit for R
 where
-  R: WWRegFieldBit<Frt>,
-  R: WoWRegField<Frt>,
-  R: RegFork,
-  R::Reg: FRwReg,
+  R: WWRegFieldBit<Crt>,
+  R: WoWRegField<Crt>,
+  R: Copy,
+  R::Reg: CRwReg,
 {
 }
 
 // }}}
-// {{{ FWoRwRegFieldBits
-/// Forkable multi-bit write-only field of read-write register token.
+// {{{ CWoRwRegFieldBits
+/// Copyable multi-bit write-only field of read-write register token.
 #[marker]
-pub trait FWoRwRegFieldBits
+pub trait CWoRwRegFieldBits
 where
-  Self: WWRegFieldBits<Frt>,
-  Self: WoWRegField<Frt>,
-  Self: RegFork,
-  Self::Reg: FRwReg,
+  Self: WWRegFieldBits<Crt>,
+  Self: WoWRegField<Crt>,
+  Self: Copy,
+  Self::Reg: CRwReg,
 {
 }
 
-impl<R> FWoRwRegFieldBits for R
+impl<R> CWoRwRegFieldBits for R
 where
-  R: WWRegFieldBits<Frt>,
-  R: WoWRegField<Frt>,
-  R: RegFork,
-  R::Reg: FRwReg,
+  R: WWRegFieldBits<Crt>,
+  R: WoWRegField<Crt>,
+  R: Copy,
+  R::Reg: CRwReg,
 {
 }
 
 // }}}
-// {{{ FWoWoRegFieldBit
-/// Forkable one-bit write-only field of write-only register token.
+// {{{ CWoWoRegFieldBit
+/// Copyable one-bit write-only field of write-only register token.
 #[marker]
-pub trait FWoWoRegFieldBit
+pub trait CWoWoRegFieldBit
 where
-  Self: WoWoRegFieldBit<Frt>,
-  Self: RegFork,
-  Self::Reg: FWoReg,
+  Self: WoWoRegFieldBit<Crt>,
+  Self: Copy,
+  Self::Reg: CWoReg,
 {
 }
 
-impl<R> FWoWoRegFieldBit for R
+impl<R> CWoWoRegFieldBit for R
 where
-  R: WoWoRegFieldBit<Frt>,
-  R: RegFork,
-  R::Reg: FWoReg,
+  R: WoWoRegFieldBit<Crt>,
+  R: Copy,
+  R::Reg: CWoReg,
 {
 }
 
 // }}}
-// {{{ FWoWoRegFieldBits
-/// Forkable multi-bit write-only field of write-only register token.
+// {{{ CWoWoRegFieldBits
+/// Copyable multi-bit write-only field of write-only register token.
 #[marker]
-pub trait FWoWoRegFieldBits
+pub trait CWoWoRegFieldBits
 where
-  Self: WoWoRegFieldBits<Frt>,
-  Self: RegFork,
-  Self::Reg: FWoReg,
+  Self: WoWoRegFieldBits<Crt>,
+  Self: Copy,
+  Self::Reg: CWoReg,
 {
 }
 
-impl<R> FWoWoRegFieldBits for R
+impl<R> CWoWoRegFieldBits for R
 where
-  R: WoWoRegFieldBits<Frt>,
-  R: RegFork,
-  R::Reg: FWoReg,
+  R: WoWoRegFieldBits<Crt>,
+  R: Copy,
+  R::Reg: CWoReg,
 {
 }
 
 // }}}
-// {{{ FRoRwRegFieldBit
-/// Forkable one-bit read-only field of read-write register token.
+// {{{ CRoRwRegFieldBit
+/// Copyable one-bit read-only field of read-write register token.
 #[marker]
-pub trait FRoRwRegFieldBit
+pub trait CRoRwRegFieldBit
 where
-  Self: RRRegFieldBit<Frt>,
-  Self: RoRRegField<Frt>,
-  Self: RegFork,
-  Self::Reg: FRwReg,
+  Self: RRRegFieldBit<Crt>,
+  Self: RoRRegField<Crt>,
+  Self: Copy,
+  Self::Reg: CRwReg,
 {
 }
 
-impl<R> FRoRwRegFieldBit for R
+impl<R> CRoRwRegFieldBit for R
 where
-  R: RRRegFieldBit<Frt>,
-  R: RoRRegField<Frt>,
-  R: RegFork,
-  R::Reg: FRwReg,
+  R: RRRegFieldBit<Crt>,
+  R: RoRRegField<Crt>,
+  R: Copy,
+  R::Reg: CRwReg,
 {
 }
 
 // }}}
-// {{{ FRoRwRegFieldBits
-/// Forkable multi-bit read-only field of read-write register token.
+// {{{ CRoRwRegFieldBits
+/// Copyable multi-bit read-only field of read-write register token.
 #[marker]
-pub trait FRoRwRegFieldBits
+pub trait CRoRwRegFieldBits
 where
-  Self: RRRegFieldBits<Frt>,
-  Self: RoRRegField<Frt>,
-  Self: RegFork,
-  Self::Reg: FRwReg,
+  Self: RRRegFieldBits<Crt>,
+  Self: RoRRegField<Crt>,
+  Self: Copy,
+  Self::Reg: CRwReg,
 {
 }
 
-impl<R> FRoRwRegFieldBits for R
+impl<R> CRoRwRegFieldBits for R
 where
-  R: RRRegFieldBits<Frt>,
-  R: RoRRegField<Frt>,
-  R: RegFork,
-  R::Reg: FRwReg,
+  R: RRRegFieldBits<Crt>,
+  R: RoRRegField<Crt>,
+  R: Copy,
+  R::Reg: CRwReg,
 {
 }
 
 // }}}
-// {{{ FRoRoRegFieldBit
-/// Forkable one-bit read-only field of read-only register token.
+// {{{ CRoRoRegFieldBit
+/// Copyable one-bit read-only field of read-only register token.
 #[marker]
-pub trait FRoRoRegFieldBit
+pub trait CRoRoRegFieldBit
 where
-  Self: RRRegFieldBit<Frt>,
-  Self: RoRRegField<Frt>,
-  Self: RegFork,
-  Self::Reg: FRoReg,
+  Self: RRRegFieldBit<Crt>,
+  Self: RoRRegField<Crt>,
+  Self: Copy,
+  Self::Reg: CRoReg,
 {
 }
 
-impl<R> FRoRoRegFieldBit for R
+impl<R> CRoRoRegFieldBit for R
 where
-  R: RRRegFieldBit<Frt>,
-  R: RoRRegField<Frt>,
-  R: RegFork,
-  R::Reg: FRoReg,
+  R: RRRegFieldBit<Crt>,
+  R: RoRRegField<Crt>,
+  R: Copy,
+  R::Reg: CRoReg,
 {
 }
 
 // }}}
-// {{{ FRoRoRegFieldBits
-/// Forkable multi-bit read-only field of read-only register token.
+// {{{ CRoRoRegFieldBits
+/// Copyable multi-bit read-only field of read-only register token.
 #[marker]
-pub trait FRoRoRegFieldBits
+pub trait CRoRoRegFieldBits
 where
-  Self: RRRegFieldBits<Frt>,
-  Self: RoRRegField<Frt>,
-  Self: RegFork,
-  Self::Reg: FRoReg,
+  Self: RRRegFieldBits<Crt>,
+  Self: RoRRegField<Crt>,
+  Self: Copy,
+  Self::Reg: CRoReg,
 {
 }
 
-impl<R> FRoRoRegFieldBits for R
+impl<R> CRoRoRegFieldBits for R
 where
-  R: RRRegFieldBits<Frt>,
-  R: RoRRegField<Frt>,
-  R: RegFork,
-  R::Reg: FRoReg,
+  R: RRRegFieldBits<Crt>,
+  R: RoRRegField<Crt>,
+  R: Copy,
+  R::Reg: CRoReg,
 {
 }
 

@@ -1,6 +1,6 @@
 //! A single-producer, single-consumer channel based on a ring buffer.
 //!
-//! See [`ring::channel`](channel) documentation for more details.
+//! See [`ring::channel`] documentation for more details.
 
 mod receiver;
 mod sender;

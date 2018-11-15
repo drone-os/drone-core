@@ -25,14 +25,6 @@ impl RegTag for Srt {}
 impl RegOwned for Srt {}
 impl RegAtomic for Srt {}
 
-/// Forkable register token tag.
-#[derive(Default)]
-pub struct Frt;
-
-impl RegTag for Frt {}
-impl RegOwned for Frt {}
-impl RegAtomic for Frt {}
-
 /// Copyable register token tag.
 #[derive(Clone, Copy, Default)]
 pub struct Crt;

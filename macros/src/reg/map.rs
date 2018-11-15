@@ -153,7 +153,6 @@ fn gen_block(
     let mut imports = traits.iter().cloned().collect();
     let mut reg_struct_tokens = Vec::new();
     let mut reg_ctor_tokens = Vec::new();
-    let mut reg_fork_tokens = Vec::new();
     let mut reg_outer_tokens = Vec::new();
     gen_reg(
       &val_ty,
@@ -161,7 +160,6 @@ fn gen_block(
       &mut imports,
       &mut reg_struct_tokens,
       &mut reg_ctor_tokens,
-      &mut reg_fork_tokens,
       &mut reg_outer_tokens,
     );
     let imports = if imports.is_empty() {
@@ -176,8 +174,6 @@ fn gen_block(
         extern crate drone_core;
 
         pub use self::drone_core::reg::prelude::*;
-        pub use self::core::convert::From;
-        pub use self::core::default::Default;
         pub use self::core::marker::PhantomData;
       }
     });
@@ -201,6 +197,9 @@ fn gen_block(
 
       impl<#t: #rt::RegTag> #rt::Reg<#t> for Reg<#t> {
         type Val = Val;
+        type UReg = Reg<#rt::Urt>;
+        type SReg = Reg<#rt::Srt>;
+        type CReg = Reg<#rt::Crt>;
 
         const ADDRESS: usize = #address;
 
@@ -212,62 +211,6 @@ fn gen_block(
 
       impl<'a, #t: #rt::RegTag + 'a> #rt::RegRef<'a, #t> for Reg<#t> {
         type Hold = Hold<'a, #t>;
-      }
-
-      impl #rt::From<Reg<#rt::Urt>> for Reg<#rt::Srt> {
-        #[inline(always)]
-        fn from(_reg: Reg<#rt::Urt>) -> Self {
-          unsafe { #rt::Reg::new() }
-        }
-      }
-
-      impl #rt::From<Reg<#rt::Urt>> for Reg<#rt::Frt> {
-        #[inline(always)]
-        fn from(_reg: Reg<#rt::Urt>) -> Self {
-          unsafe { #rt::Reg::new() }
-        }
-      }
-
-      impl From<Reg<#rt::Urt>> for Reg<#rt::Crt> {
-        #[inline(always)]
-        fn from(_reg: Reg<#rt::Urt>) -> Self {
-          unsafe { #rt::Reg::new() }
-        }
-      }
-
-      impl From<Reg<#rt::Srt>> for Reg<#rt::Urt> {
-        #[inline(always)]
-        fn from(_reg: Reg<#rt::Srt>) -> Self {
-          unsafe { #rt::Reg::new() }
-        }
-      }
-
-      impl From<Reg<#rt::Srt>> for Reg<#rt::Frt> {
-        #[inline(always)]
-        fn from(_reg: Reg<#rt::Srt>) -> Self {
-          unsafe { #rt::Reg::new() }
-        }
-      }
-
-      impl From<Reg<#rt::Srt>> for Reg<#rt::Crt> {
-        #[inline(always)]
-        fn from(_reg: Reg<#rt::Srt>) -> Self {
-          unsafe { #rt::Reg::new() }
-        }
-      }
-
-      impl From<Reg<#rt::Frt>> for Reg<#rt::Crt> {
-        #[inline(always)]
-        fn from(_reg: Reg<#rt::Frt>) -> Self {
-          unsafe { #rt::Reg::new() }
-        }
-      }
-
-      impl #rt::RegFork for Reg<#rt::Frt> {
-        #[inline(always)]
-        fn fork(&mut self) -> Self {
-          Self { #(#reg_fork_tokens,)* }
-        }
       }
 
       #(#attrs)*
@@ -314,7 +257,6 @@ fn gen_reg(
   imports: &mut HashSet<Ident>,
   reg_struct_tokens: &mut Vec<TokenStream2>,
   reg_ctor_tokens: &mut Vec<TokenStream2>,
-  reg_fork_tokens: &mut Vec<TokenStream2>,
   reg_outer_tokens: &mut Vec<TokenStream2>,
 ) {
   let (def_site, call_site) = (Span::def_site(), Span::call_site());
@@ -338,10 +280,7 @@ fn gen_reg(
       pub #field: #field_struct<#t>
     });
     reg_ctor_tokens.push(quote! {
-      #field: #field_struct(#t::default())
-    });
-    reg_fork_tokens.push(quote! {
-      #field: self.#field.fork()
+      #field: #rt::RegField::<#t>::new()
     });
     reg_outer_tokens.push(quote! {
       #(#attrs)*
@@ -350,36 +289,16 @@ fn gen_reg(
 
       impl<#t: #rt::RegTag> #rt::RegField<#t> for #field_struct<#t> {
         type Reg = Reg<#t>;
+        type URegField = #field_struct<#rt::Urt>;
+        type SRegField = #field_struct<#rt::Srt>;
+        type CRegField = #field_struct<#rt::Crt>;
 
         const OFFSET: usize = #offset;
         const WIDTH: usize = #width;
-      }
 
-      impl From<#field_struct<#rt::Srt>> for #field_struct<#rt::Frt> {
         #[inline(always)]
-        fn from(_field: #field_struct<#rt::Srt>) -> Self {
-          #field_struct(#rt::Frt::default())
-        }
-      }
-
-      impl From<#field_struct<#rt::Srt>> for #field_struct<#rt::Crt> {
-        #[inline(always)]
-        fn from(_field: #field_struct<#rt::Srt>) -> Self {
-          #field_struct(#rt::Crt::default())
-        }
-      }
-
-      impl From<#field_struct<#rt::Frt>> for #field_struct<#rt::Crt> {
-        #[inline(always)]
-        fn from(_field: #field_struct<#rt::Frt>) -> Self {
-          #field_struct(#rt::Crt::default())
-        }
-      }
-
-      impl #rt::RegFork for #field_struct<#rt::Frt> {
-        #[inline(always)]
-        fn fork(&mut self) -> Self {
-          #field_struct(#rt::Frt::default())
+        unsafe fn new() -> Self {
+          #field_struct(#t::default())
         }
       }
     });
@@ -471,9 +390,6 @@ fn gen_reg(
       _marker: #rt::PhantomData<#t>
     });
     reg_ctor_tokens.push(quote! {
-      _marker: #rt::PhantomData
-    });
-    reg_fork_tokens.push(quote! {
       _marker: #rt::PhantomData
     });
   }

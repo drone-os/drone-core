@@ -18,8 +18,4 @@ fn main() {
   //~^ ERROR `drone_core::reg::Srt: std::marker::Copy` is not satisfied
   assert_clone::<foo::Bar<Srt>>();
   //~^ ERROR `drone_core::reg::Srt: std::clone::Clone` is not satisfied
-  assert_copy::<foo::Bar<Frt>>();
-  //~^ ERROR `drone_core::reg::Frt: std::marker::Copy` is not satisfied
-  assert_clone::<foo::Bar<Frt>>();
-  //~^ ERROR `drone_core::reg::Frt: std::clone::Clone` is not satisfied
 }

@@ -3,7 +3,7 @@ use alloc::sync::Arc;
 use futures::prelude::*;
 use sync::spsc::SpscInner;
 
-/// The sending-half of [`oneshot::channel`](channel).
+/// The sending-half of [`oneshot::channel`](super::channel).
 pub struct Sender<T, E> {
   inner: Arc<Inner<T, E>>,
 }

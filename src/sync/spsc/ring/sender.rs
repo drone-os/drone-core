@@ -7,7 +7,7 @@ use futures::prelude::*;
 use futures::task::Waker;
 use sync::spsc::SpscInner;
 
-/// The sending-half of [`ring::channel`](channel).
+/// The sending-half of [`ring::channel`](super::channel).
 pub struct Sender<T, E> {
   inner: Arc<Inner<T, E>>,
 }
@@ -24,7 +24,7 @@ pub struct SendError<T> {
 /// Kind of [`SendError`](SendError).
 #[derive(Debug, Fail)]
 pub enum SendErrorKind {
-  /// The corresponding [`Receiver`](Receiver) is dropped.
+  /// The corresponding [`Receiver`](super::Receiver) is dropped.
   #[fail(display = "Receiver is dropped.")]
   Canceled,
   /// Buffer overflow.

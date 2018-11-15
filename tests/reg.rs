@@ -32,7 +32,6 @@ fn reg_val_default() {
 fn size_of_reg() {
   assert_eq!(size_of::<TestReg<Urt>>(), 0);
   assert_eq!(size_of::<TestReg<Srt>>(), 0);
-  assert_eq!(size_of::<TestReg<Frt>>(), 0);
   assert_eq!(size_of::<TestReg<Crt>>(), 0);
 }
 

@@ -1,13 +1,8 @@
 #![feature(const_fn)]
 #![feature(generators)]
 #![feature(integer_atomics)]
-#![feature(prelude_import)]
 
 extern crate drone_core;
-
-#[prelude_import]
-#[allow(unused_imports)]
-use drone_core::prelude::*;
 
 use drone_core::sv::Supervisor;
 use drone_core::thr::prelude::*;
@@ -52,21 +47,22 @@ macro_rules! thr_num {
       _tag: PhantomData<T>,
     }
 
-    impl<T: ThrTag> $name<T> {
+    impl<T: ThrTag> ThrToken<T> for $name<T> {
+      type Thr = Thr;
+      type UThrToken = $name<Utt>;
+      type TThrToken = $name<Ttt>;
+      type AThrToken = $name<Att>;
+
+      const THR_NUM: usize = $position;
+
       unsafe fn new() -> Self {
         Self { _tag: PhantomData }
       }
     }
 
-    impl<T: ThrTag> ThrToken<T> for $name<T> {
-      type Thr = Thr;
-
-      const THR_NUM: usize = $position;
-    }
-
     impl<T: ThrTag> AsRef<Thr> for $name<T> {
       fn as_ref(&self) -> &Thr {
-        Self::get_thr()
+        unsafe { Self::get_thr() }
       }
     }
   };

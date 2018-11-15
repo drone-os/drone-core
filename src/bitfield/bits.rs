@@ -2,7 +2,7 @@ use core::fmt::Debug;
 use core::mem::size_of;
 use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr, Sub};
 
-/// Underlying integer for [`Bitfield`](Bitfield).
+/// Underlying integer for [`Bitfield`](super::Bitfield).
 pub trait Bits
 where
   Self: Sized

@@ -6,8 +6,17 @@ use core::ptr::{read_volatile, write_volatile};
 /// zero-sized. This is a zero-cost abstraction for safely working with
 /// memory-mapped registers.
 pub trait Reg<T: RegTag>: Sized + Send + Sync + 'static {
-  /// Type that wraps a raw register value.
+  /// Raw register value.
   type Val: Bitfield;
+
+  /// Corresponding unsynchronized register token.
+  type UReg: Reg<Urt>;
+
+  /// Corresponding synchronized register token.
+  type SReg: Reg<Srt>;
+
+  /// Corresponding copyable register token.
+  type CReg: Reg<Crt>;
 
   /// Memory address of the register.
   const ADDRESS: usize;
@@ -18,6 +27,39 @@ pub trait Reg<T: RegTag>: Sized + Send + Sync + 'static {
   ///
   /// Must be called only inside an implementation of `RegTokens`.
   unsafe fn new() -> Self;
+
+  /// Converts to an unsynchronized register token.
+  #[inline(always)]
+  fn to_unsync(self) -> Self::UReg
+  where
+    T: RegOwned,
+  {
+    unsafe { Self::UReg::new() }
+  }
+
+  /// Converts to a synchronized register token.
+  #[inline(always)]
+  fn to_sync(self) -> Self::SReg
+  where
+    T: RegOwned,
+  {
+    unsafe { Self::SReg::new() }
+  }
+
+  /// Converts to a copyable register token.
+  #[inline(always)]
+  fn to_copy(self) -> Self::CReg {
+    unsafe { Self::CReg::new() }
+  }
+
+  /// Converts to a synchronized register token reference.
+  #[inline(always)]
+  fn as_sync(&self) -> &Self::SReg
+  where
+    T: RegAtomic,
+  {
+    unsafe { &*(self as *const Self as *const Self::SReg) }
+  }
 }
 
 /// Referenceable register.

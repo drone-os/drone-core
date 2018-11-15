@@ -4,7 +4,7 @@ use core::sync::atomic::Ordering::*;
 use futures::prelude::*;
 use sync::spsc::SpscInner;
 
-/// The receiving-half of [`unit::channel`](channel).
+/// The receiving-half of [`unit::channel`](super::channel).
 #[must_use]
 pub struct Receiver<E> {
   inner: Arc<Inner<E>>,

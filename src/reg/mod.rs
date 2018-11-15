@@ -5,8 +5,10 @@
 //! Most register should be already mapped by platform crates.
 //!
 //! ```
+//! # #![feature(prelude_import)]
 //! # use std as core;
 //! # #[macro_use] extern crate drone_core;
+//! # #[prelude_import] use drone_core::prelude::*;
 //! use core::mem::size_of_val;
 //! use drone_core::reg::prelude::*;
 //! use drone_core::reg::{tokens, map};
@@ -63,12 +65,6 @@ pub use self::hold::*;
 pub use self::reg::*;
 pub use self::tag::*;
 pub use drone_core_macros::{reg_map as map, reg_tokens as tokens};
-
-/// Forkable token.
-pub trait RegFork {
-  /// Returns a duplicate of the token.
-  fn fork(&mut self) -> Self;
-}
 
 /// A set of register tokens.
 pub trait RegTokens {

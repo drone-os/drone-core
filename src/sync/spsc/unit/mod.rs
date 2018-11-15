@@ -1,6 +1,6 @@
 //! A single-producer, single-consumer channel for `()`.
 //!
-//! See [`unit::channel`](channel) documentation for more details.
+//! See [`unit::channel`] documentation for more details.
 
 mod receiver;
 mod sender;
