@@ -65,7 +65,7 @@ where
     }
   }
 
-  #[inline(always)]
+  #[inline]
   fn is_canceled(&self) -> bool {
     self.state_load(Relaxed) & Self::COMPLETE != Self::ZERO
   }
@@ -127,7 +127,7 @@ where
       });
   }
 
-  #[inline(always)]
+  #[inline]
   fn close_rx(&self) {
     self.close_half(Self::tx_waker_mut, Self::TX_LOCK, Self::COMPLETE, Acquire);
   }
@@ -170,7 +170,7 @@ where
       });
   }
 
-  #[inline(always)]
+  #[inline]
   fn drop_tx(&self) {
     self.close_half(Self::rx_waker_mut, Self::RX_LOCK, Self::COMPLETE, AcqRel);
   }

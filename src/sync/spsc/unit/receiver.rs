@@ -11,14 +11,14 @@ pub struct Receiver<E> {
 }
 
 impl<E> Receiver<E> {
-  #[inline(always)]
+  #[inline]
   pub(super) fn new(inner: Arc<Inner<E>>) -> Self {
     Self { inner }
   }
 
   /// Gracefully close this `Receiver`, preventing sending any future
   /// messages.
-  #[inline(always)]
+  #[inline]
   pub fn close(&mut self) {
     self.inner.close_rx()
   }
@@ -28,14 +28,14 @@ impl<E> Stream for Receiver<E> {
   type Item = ();
   type Error = E;
 
-  #[inline(always)]
+  #[inline]
   fn poll_next(&mut self, cx: &mut task::Context) -> Poll<Option<()>, E> {
     self.inner.recv(cx)
   }
 }
 
 impl<E> Drop for Receiver<E> {
-  #[inline(always)]
+  #[inline]
   fn drop(&mut self) {
     self.inner.drop_rx();
   }
@@ -86,7 +86,7 @@ impl<E> Inner<E> {
       })
   }
 
-  #[inline(always)]
+  #[inline]
   fn take(state: &mut usize) -> bool {
     let lock = *state & LOCK_MASK;
     *state >>= LOCK_BITS;

@@ -74,6 +74,7 @@ pub fn __current_task() -> &'static TaskCell {
   }
 }
 
+#[inline(always)]
 fn current_task_fn<T: Thread>() -> &'static TaskCell {
   current::<T>().task()
 }

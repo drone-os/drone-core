@@ -61,7 +61,7 @@ unsafe impl<T: Send, E: Send> Send for Inner<T, E> {}
 unsafe impl<T: Send, E: Send> Sync for Inner<T, E> {}
 
 impl<T, E> Inner<T, E> {
-  #[inline(always)]
+  #[inline]
   fn new(capacity: usize) -> Self {
     assert!(capacity <= MAX_CAPACITY);
     Self {
@@ -110,12 +110,12 @@ impl<T, E> SpscInner<AtomicUsize, usize> for Inner<T, E> {
   const TX_LOCK: usize = TX_LOCK;
   const COMPLETE: usize = COMPLETE;
 
-  #[inline(always)]
+  #[inline]
   fn state_load(&self, order: atomic::Ordering) -> usize {
     self.state.load(order)
   }
 
-  #[inline(always)]
+  #[inline]
   fn state_exchange(
     &self,
     current: usize,
@@ -126,12 +126,12 @@ impl<T, E> SpscInner<AtomicUsize, usize> for Inner<T, E> {
     self.state.compare_exchange(current, new, success, failure)
   }
 
-  #[inline(always)]
+  #[inline]
   unsafe fn rx_waker_mut(&self) -> &mut Option<Waker> {
     &mut *self.rx_waker.get()
   }
 
-  #[inline(always)]
+  #[inline]
   unsafe fn tx_waker_mut(&self) -> &mut Option<Waker> {
     &mut *self.tx_waker.get()
   }

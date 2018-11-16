@@ -120,14 +120,14 @@ pub trait Fits: Copy {
 }
 
 impl<'a> Fits for &'a Layout {
-  #[inline(always)]
+  #[inline]
   fn fits(self, pool: &Pool) -> bool {
     self.size() <= pool.size
   }
 }
 
 impl Fits for NonNull<u8> {
-  #[inline(always)]
+  #[inline]
   fn fits(self, pool: &Pool) -> bool {
     (self.as_ptr() as *mut u8) < pool.edge
   }

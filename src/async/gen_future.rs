@@ -29,7 +29,7 @@ where
   type Error = E;
 
   // FIXME Use `Pin` when implemented
-  #[inline(always)]
+  #[inline]
   fn poll(&mut self, cx: &mut task::Context) -> Poll<R, E> {
     __current_task().__set_cx(cx, || match unsafe { self.0.resume() } {
       GeneratorState::Yielded(()) => Ok(Async::Pending),

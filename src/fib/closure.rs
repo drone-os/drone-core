@@ -27,7 +27,7 @@ where
   F: FnOnce(),
   F: Send + 'static,
 {
-  #[inline(always)]
+  #[inline]
   fn advance(&mut self) -> bool {
     match self.resume(()) {
       FiberState::Complete(()) => false,
@@ -36,7 +36,7 @@ where
 }
 
 /// Creates a new closure fiber.
-#[inline(always)]
+#[inline]
 pub fn new_fn<F, R>(f: F) -> FiberFn<F, R>
 where
   F: FnOnce() -> R,

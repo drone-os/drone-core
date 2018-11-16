@@ -22,13 +22,13 @@ pub enum SendError {
 }
 
 impl<E> Sender<E> {
-  #[inline(always)]
+  #[inline]
   pub(super) fn new(inner: Arc<Inner<E>>) -> Self {
     Self { inner }
   }
 
   /// Sends a unit across the channel.
-  #[inline(always)]
+  #[inline]
   pub fn send(&mut self) -> Result<(), SendError> {
     self.inner.send()
   }
@@ -38,7 +38,7 @@ impl<E> Sender<E> {
   /// If the value is successfully enqueued, then `Ok(())` is returned. If the
   /// receiving end was dropped before this function was called, then `Err` is
   /// returned with the value provided.
-  #[inline(always)]
+  #[inline]
   pub fn send_err(self, err: E) -> Result<(), E> {
     self.inner.send_err(err)
   }
@@ -58,7 +58,7 @@ impl<E> Sender<E> {
   /// [`Sender`]: Sender
   /// [`Receiver`]: super::Receiver
   /// [`is_canceled`]: Sender::is_canceled
-  #[inline(always)]
+  #[inline]
   pub fn poll_cancel(&mut self, cx: &mut task::Context) -> Poll<(), ()> {
     self.inner.poll_cancel(cx)
   }
@@ -68,14 +68,14 @@ impl<E> Sender<E> {
   ///
   /// [`Sender`]: Sender
   /// [`Receiver`]: super::Receiver
-  #[inline(always)]
+  #[inline]
   pub fn is_canceled(&self) -> bool {
     self.inner.is_canceled()
   }
 }
 
 impl<E> Drop for Sender<E> {
-  #[inline(always)]
+  #[inline]
   fn drop(&mut self) {
     self.inner.drop_tx();
   }

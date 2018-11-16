@@ -182,13 +182,13 @@ where
 
   /// An alias for [`clear_bit`](WoWoRegFieldBit::clear_bit).
   #[inline(always)]
-  fn store_cleared(&self) {
+  fn store_clear(&self) {
     self.clear_bit();
   }
 
   /// An alias for [`toggle_bit`](WoWoRegFieldBit::toggle_bit).
   #[inline(always)]
-  fn store_toggled(&self) {
+  fn store_toggle(&self) {
     self.toggle_bit();
   }
 }
@@ -234,10 +234,7 @@ where
 
   /// An alias for [`write_bits`](WoWoRegFieldBits::write_bits).
   #[inline(always)]
-  fn store_written(
-    &self,
-    bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits,
-  ) {
+  fn store_bits(&self, bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits) {
     self.write_bits(bits);
   }
 }

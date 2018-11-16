@@ -15,7 +15,7 @@ where
   type Yield = G::Yield;
   type Return = G::Return;
 
-  #[inline(always)]
+  #[inline]
   fn resume(&mut self, _input: ()) -> FiberState<G::Yield, G::Return> {
     // FIXME Use `Pin` when implemented
     unsafe { self.0.resume().into() }
@@ -27,7 +27,7 @@ where
   G: Generator<Yield = (), Return = ()>,
   G: Send + 'static,
 {
-  #[inline(always)]
+  #[inline]
   fn advance(&mut self) -> bool {
     match self.resume(()) {
       FiberState::Yielded(()) => true,
@@ -37,7 +37,7 @@ where
 }
 
 impl<Y, R> From<GeneratorState<Y, R>> for FiberState<Y, R> {
-  #[inline(always)]
+  #[inline]
   fn from(state: GeneratorState<Y, R>) -> Self {
     match state {
       GeneratorState::Yielded(val) => FiberState::Yielded(val),

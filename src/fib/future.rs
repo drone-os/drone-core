@@ -14,7 +14,7 @@ pub struct FiberFuture<R, E> {
 
 impl<R, E> FiberFuture<R, E> {
   /// Gracefully close this future, preventing sending any future messages.
-  #[inline(always)]
+  #[inline]
   pub fn close(&mut self) {
     self.rx.close()
   }

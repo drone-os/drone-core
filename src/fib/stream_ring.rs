@@ -13,7 +13,7 @@ pub struct FiberStreamRing<I, E> {
 
 impl<I, E> FiberStreamRing<I, E> {
   /// Gracefully close this stream, preventing sending any future messages.
-  #[inline(always)]
+  #[inline]
   pub fn close(&mut self) {
     self.rx.close()
   }
@@ -23,7 +23,7 @@ impl<I, E> Stream for FiberStreamRing<I, E> {
   type Item = I;
   type Error = E;
 
-  #[inline(always)]
+  #[inline]
   fn poll_next(&mut self, cx: &mut task::Context) -> Poll<Option<I>, E> {
     self.rx.poll_next(cx)
   }

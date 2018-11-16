@@ -9,7 +9,7 @@ pub struct Sender<T, E> {
 }
 
 impl<T, E> Sender<T, E> {
-  #[inline(always)]
+  #[inline]
   pub(super) fn new(inner: Arc<Inner<T, E>>) -> Self {
     Self { inner }
   }
@@ -19,7 +19,7 @@ impl<T, E> Sender<T, E> {
   /// If the value is successfully enqueued, then `Ok(())` is returned. If the
   /// receiving end was dropped before this function was called, then `Err` is
   /// returned with the value provided.
-  #[inline(always)]
+  #[inline]
   pub fn send(self, data: Result<T, E>) -> Result<(), Result<T, E>> {
     self.inner.send(data)
   }
@@ -39,7 +39,7 @@ impl<T, E> Sender<T, E> {
   /// [`Sender`]: Sender
   /// [`Receiver`]: super::Receiver
   /// [`is_canceled`]: Sender::is_canceled
-  #[inline(always)]
+  #[inline]
   pub fn poll_cancel(&mut self, cx: &mut task::Context) -> Poll<(), ()> {
     self.inner.poll_cancel(cx)
   }
@@ -49,14 +49,14 @@ impl<T, E> Sender<T, E> {
   ///
   /// [`Sender`]: Sender
   /// [`Receiver`]: super::Receiver
-  #[inline(always)]
+  #[inline]
   pub fn is_canceled(&self) -> bool {
     self.inner.is_canceled()
   }
 }
 
 impl<T, E> Drop for Sender<T, E> {
-  #[inline(always)]
+  #[inline]
   fn drop(&mut self) {
     self.inner.drop_tx();
   }

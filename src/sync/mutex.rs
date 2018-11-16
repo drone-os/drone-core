@@ -41,7 +41,7 @@ impl<T> Mutex<T> {
   ///
   /// let mutex = Mutex::new(0);
   /// ```
-  #[inline(always)]
+  #[inline]
   pub const fn new(t: T) -> Self {
     Self {
       lock: AtomicBool::new(false),
@@ -67,7 +67,7 @@ impl<T> Mutex<T> {
   ///   None => unreachable!(),
   /// };
   /// ```
-  #[inline(always)]
+  #[inline]
   pub fn try_lock(&self) -> Option<MutexGuard<T>> {
     if !self.lock.swap(true, Acquire) {
       Some(MutexGuard { lock: self })
@@ -86,7 +86,7 @@ impl<T> Mutex<T> {
   /// let mutex = Mutex::new(0);
   /// assert_eq!(mutex.into_inner(), 0);
   /// ```
-  #[inline(always)]
+  #[inline]
   pub fn into_inner(self) -> T {
     self.data.into_inner()
   }
@@ -105,7 +105,7 @@ impl<T> Mutex<T> {
   /// *mutex.get_mut() = 10;
   /// assert_eq!(*mutex.try_lock().unwrap(), 10);
   /// ```
-  #[inline(always)]
+  #[inline]
   pub fn get_mut(&mut self) -> &mut T {
     unsafe { &mut *self.data.get() }
   }
@@ -113,7 +113,7 @@ impl<T> Mutex<T> {
 
 impl<T: Default> Default for Mutex<T> {
   /// Creates a `Mutex<T>`, with the `Default` value for T.
-  #[inline(always)]
+  #[inline]
   fn default() -> Self {
     Mutex::new(Default::default())
   }
@@ -122,21 +122,21 @@ impl<T: Default> Default for Mutex<T> {
 impl<'a, T> Deref for MutexGuard<'a, T> {
   type Target = T;
 
-  #[inline(always)]
+  #[inline]
   fn deref(&self) -> &T {
     unsafe { &*self.lock.data.get() }
   }
 }
 
 impl<'a, T> DerefMut for MutexGuard<'a, T> {
-  #[inline(always)]
+  #[inline]
   fn deref_mut(&mut self) -> &mut T {
     unsafe { &mut *self.lock.data.get() }
   }
 }
 
 impl<'a, T> Drop for MutexGuard<'a, T> {
-  #[inline(always)]
+  #[inline]
   fn drop(&mut self) {
     self.lock.lock.store(false, Release);
   }

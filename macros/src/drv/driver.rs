@@ -133,12 +133,12 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     impl #impl_generics #rt::Driver for #ident #ty_generics #where_clause {
       type Resource = #res_def;
 
-      #[inline(always)]
+      #[inline]
       fn new(source: <Self::Resource as #rt::Resource>::Source) -> Self {
         #ident(#new_def, #data)
       }
 
-      #[inline(always)]
+      #[inline]
       fn free(self) -> Self::Resource {
         #free_def
       }

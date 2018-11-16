@@ -33,19 +33,19 @@ pub enum SendErrorKind {
 }
 
 impl<T, E> Sender<T, E> {
-  #[inline(always)]
+  #[inline]
   pub(super) fn new(inner: Arc<Inner<T, E>>) -> Self {
     Self { inner }
   }
 
   /// Sends a value across the channel.
-  #[inline(always)]
+  #[inline]
   pub fn send(&mut self, value: T) -> Result<(), SendError<T>> {
     self.inner.send(value)
   }
 
   /// Sends a value across the channel. Overwrites on overflow.
-  #[inline(always)]
+  #[inline]
   pub fn send_overwrite(&mut self, value: T) -> Result<(), T> {
     self.inner.send_overwrite(value)
   }
@@ -55,7 +55,7 @@ impl<T, E> Sender<T, E> {
   /// If the value is successfully enqueued, then `Ok(())` is returned. If the
   /// receiving end was dropped before this function was called, then `Err` is
   /// returned with the value provided.
-  #[inline(always)]
+  #[inline]
   pub fn send_err(self, err: E) -> Result<(), E> {
     self.inner.send_err(err)
   }
@@ -75,7 +75,7 @@ impl<T, E> Sender<T, E> {
   /// [`Sender`]: Sender
   /// [`Receiver`]: super::Receiver
   /// [`is_canceled`]: Sender::is_canceled
-  #[inline(always)]
+  #[inline]
   pub fn poll_cancel(&mut self, cx: &mut task::Context) -> Poll<(), ()> {
     self.inner.poll_cancel(cx)
   }
@@ -85,14 +85,14 @@ impl<T, E> Sender<T, E> {
   ///
   /// [`Sender`]: Sender
   /// [`Receiver`]: super::Receiver
-  #[inline(always)]
+  #[inline]
   pub fn is_canceled(&self) -> bool {
     self.inner.is_canceled()
   }
 }
 
 impl<T, E> Drop for Sender<T, E> {
-  #[inline(always)]
+  #[inline]
   fn drop(&mut self) {
     self.inner.drop_tx();
   }
@@ -146,7 +146,7 @@ impl<T, E> Inner<T, E> {
     }
   }
 
-  #[inline(always)]
+  #[inline]
   fn put_index(state: usize, capacity: usize) -> Option<usize> {
     let count = state & INDEX_MASK;
     if count == capacity {
@@ -158,7 +158,7 @@ impl<T, E> Inner<T, E> {
     }
   }
 
-  #[inline(always)]
+  #[inline]
   fn put<U>(&self, value: T, state: usize, index: usize) -> Result<(), U> {
     unsafe { ptr::write(self.buffer.ptr().add(index), value) };
     self
@@ -186,7 +186,7 @@ impl<T, E> Inner<T, E> {
 }
 
 impl<T> SendError<T> {
-  #[inline(always)]
+  #[inline]
   fn new(value: T, kind: SendErrorKind) -> Self {
     SendError { value, kind }
   }

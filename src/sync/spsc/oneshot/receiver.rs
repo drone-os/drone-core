@@ -22,13 +22,13 @@ pub enum RecvError<E> {
 }
 
 impl<T, E> Receiver<T, E> {
-  #[inline(always)]
+  #[inline]
   pub(super) fn new(inner: Arc<Inner<T, E>>) -> Self {
     Self { inner }
   }
 
   /// Gracefully close this `Receiver`, preventing sending any future messages.
-  #[inline(always)]
+  #[inline]
   pub fn close(&mut self) {
     self.inner.close_rx()
   }
@@ -38,14 +38,14 @@ impl<T, E> Future for Receiver<T, E> {
   type Item = T;
   type Error = RecvError<E>;
 
-  #[inline(always)]
+  #[inline]
   fn poll(&mut self, cx: &mut task::Context) -> Poll<T, RecvError<E>> {
     self.inner.recv(cx)
   }
 }
 
 impl<T, E> Drop for Receiver<T, E> {
-  #[inline(always)]
+  #[inline]
   fn drop(&mut self) {
     self.inner.drop_rx();
   }
