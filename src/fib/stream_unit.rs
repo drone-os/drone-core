@@ -1,4 +1,4 @@
-use fib::{self, Fiber, FiberState};
+use fib::{Fiber, FiberState};
 use futures::prelude::*;
 use sync::spsc::unit::{channel, Receiver, SendError};
 use thr::prelude::*;
@@ -29,66 +29,63 @@ impl<E> Stream for FiberStreamUnit<E> {
   }
 }
 
-/// Adds a new unit stream fiber on the given `thr`.
-pub fn add_stream<T, U, O, F, E>(
-  thr: T,
-  overflow: O,
-  mut fib: F,
-) -> FiberStreamUnit<E>
-where
-  T: AsRef<U>,
-  U: Thread,
-  O: Fn() -> Result<(), E>,
-  F: Fiber<Input = (), Yield = Option<()>, Return = Result<Option<()>, E>>,
-  O: Send + 'static,
-  F: Send + 'static,
-  E: Send + 'static,
-{
-  let (rx, mut tx) = channel();
-  fib::add(thr, move || loop {
-    if tx.is_canceled() {
-      break;
-    }
-    match fib.resume(()) {
-      FiberState::Yielded(None) => {}
-      FiberState::Yielded(Some(())) => match tx.send() {
-        Ok(()) => {}
-        Err(SendError::Canceled) => {
-          break;
-        }
-        Err(SendError::Overflow) => match overflow() {
+/// Unit stream extension to the thread token.
+pub trait ThrStreamUnit<T: ThrAttach>: ThrToken<T> {
+  /// Adds a new unit stream fiber.
+  fn add_stream<O, F, E>(self, overflow: O, mut fib: F) -> FiberStreamUnit<E>
+  where
+    O: Fn() -> Result<(), E>,
+    F: Fiber<Input = (), Yield = Option<()>, Return = Result<Option<()>, E>>,
+    O: Send + 'static,
+    F: Send + 'static,
+    E: Send + 'static,
+  {
+    let (rx, mut tx) = channel();
+    self.add(move || loop {
+      if tx.is_canceled() {
+        break;
+      }
+      match fib.resume(()) {
+        FiberState::Yielded(None) => {}
+        FiberState::Yielded(Some(())) => match tx.send() {
           Ok(()) => {}
-          Err(err) => {
-            tx.send_err(err).ok();
+          Err(SendError::Canceled) => {
             break;
           }
+          Err(SendError::Overflow) => match overflow() {
+            Ok(()) => {}
+            Err(err) => {
+              tx.send_err(err).ok();
+              break;
+            }
+          },
         },
-      },
-      FiberState::Complete(Ok(None)) => {
-        break;
+        FiberState::Complete(Ok(None)) => {
+          break;
+        }
+        FiberState::Complete(Ok(Some(()))) => {
+          tx.send().ok();
+          break;
+        }
+        FiberState::Complete(Err(err)) => {
+          tx.send_err(err).ok();
+          break;
+        }
       }
-      FiberState::Complete(Ok(Some(()))) => {
-        tx.send().ok();
-        break;
-      }
-      FiberState::Complete(Err(err)) => {
-        tx.send_err(err).ok();
-        break;
-      }
-    }
-    yield;
-  });
-  FiberStreamUnit { rx }
+      yield;
+    });
+    FiberStreamUnit { rx }
+  }
+
+  /// Adds a new unit stream fiber. Overflows will be ignored.
+  fn add_stream_skip<F, E>(self, fib: F) -> FiberStreamUnit<E>
+  where
+    F: Fiber<Input = (), Yield = Option<()>, Return = Result<Option<()>, E>>,
+    F: Send + 'static,
+    E: Send + 'static,
+  {
+    self.add_stream(|| Ok(()), fib)
+  }
 }
 
-/// Adds a new unit stream fiber on the given `thr`. Overflows will be ignored.
-pub fn add_stream_skip<T, U, F, E>(thr: T, fib: F) -> FiberStreamUnit<E>
-where
-  T: AsRef<U>,
-  U: Thread,
-  F: Fiber<Input = (), Yield = Option<()>, Return = Result<Option<()>, E>>,
-  F: Send + 'static,
-  E: Send + 'static,
-{
-  add_stream(thr, || Ok(()), fib)
-}
+impl<T: ThrAttach, U: ThrToken<T>> ThrStreamUnit<T> for U {}

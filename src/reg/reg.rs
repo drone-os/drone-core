@@ -133,8 +133,9 @@ pub trait WRegAtomic<'a, T: RegAtomic>: WReg<T> + RegRef<'a, T> {
   /// memory address.
   fn store<F>(&'a self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, T>>::Hold)
-      -> &'b mut <Self as RegRef<'a, T>>::Hold;
+    F: for<'b> FnOnce(
+      &'b mut <Self as RegRef<'a, T>>::Hold,
+    ) -> &'b mut <Self as RegRef<'a, T>>::Hold;
 
   /// Writes `val` into the register.
   fn store_val(&self, val: Self::Val);
@@ -150,8 +151,9 @@ pub trait WRegUnsync<'a>: WReg<Urt> + RegRef<'a, Urt> {
   /// memory address.
   fn store<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Urt>>::Hold)
-      -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
+    F: for<'b> FnOnce(
+      &'b mut <Self as RegRef<'a, Urt>>::Hold,
+    ) -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
 
   /// Writes `val` into the register.
   fn store_val(&mut self, val: Self::Val);
@@ -168,8 +170,9 @@ pub trait RwRegUnsync<'a>:
   /// Atomically updates the register's value.
   fn modify<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <Self as RegRef<'a, Urt>>::Hold)
-      -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
+    F: for<'b> FnOnce(
+      &'b mut <Self as RegRef<'a, Urt>>::Hold,
+    ) -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
 }
 
 impl<'a, T, U> WRegAtomic<'a, T> for U
@@ -182,8 +185,9 @@ where
   #[inline(always)]
   fn store<F>(&'a self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <U as RegRef<'a, T>>::Hold)
-      -> &'b mut <U as RegRef<'a, T>>::Hold,
+    F: for<'b> FnOnce(
+      &'b mut <U as RegRef<'a, T>>::Hold,
+    ) -> &'b mut <U as RegRef<'a, T>>::Hold,
   {
     self.store_val(f(&mut self.default()).val());
   }
@@ -206,8 +210,9 @@ where
   #[inline(always)]
   fn store<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Urt>>::Hold)
-      -> &'b mut <T as RegRef<'a, Urt>>::Hold,
+    F: for<'b> FnOnce(
+      &'b mut <T as RegRef<'a, Urt>>::Hold,
+    ) -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
     unsafe {
       write_volatile(self.to_mut_ptr(), f(&mut self.default()).val().bits());
@@ -232,8 +237,9 @@ where
   #[inline(always)]
   fn modify<F>(&'a mut self, f: F)
   where
-    F: for<'b> FnOnce(&'b mut <T as RegRef<'a, Urt>>::Hold)
-      -> &'b mut <T as RegRef<'a, Urt>>::Hold,
+    F: for<'b> FnOnce(
+      &'b mut <T as RegRef<'a, Urt>>::Hold,
+    ) -> &'b mut <T as RegRef<'a, Urt>>::Hold,
   {
     unsafe {
       write_volatile(self.to_mut_ptr(), f(&mut self.load()).val().bits());

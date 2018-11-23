@@ -26,3 +26,14 @@ pub trait SvService: Sized + Send + 'static {
   /// Must be called only by supervisor.
   unsafe extern "C" fn handler(&mut self);
 }
+
+/// A marker trait for [`SvNone`] or types that implement [`Supervisor`].
+#[marker]
+pub trait SvOpt {}
+
+/// A type that denotes absence of a supervisor.
+pub struct SvNone;
+
+impl<T: Supervisor> SvOpt for T {}
+
+impl SvOpt for SvNone {}

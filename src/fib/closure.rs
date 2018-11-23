@@ -1,7 +1,7 @@
 use fib::{Fiber, FiberRoot, FiberState};
-use thr::Thread;
+use thr::prelude::*;
 
-/// A closure fiber.
+/// Closure fiber.
 pub struct FiberFn<F, R>(Option<F>)
 where
   F: FnOnce() -> R;
@@ -44,13 +44,16 @@ where
   FiberFn(Some(f))
 }
 
-/// Adds a new closure fiber on the given `thr`.
-pub fn add_fn<T, U, F>(thr: T, f: F)
-where
-  T: AsRef<U>,
-  U: Thread,
-  F: FnOnce(),
-  F: Send + 'static,
-{
-  thr.as_ref().fib_chain().add(new_fn(f))
+/// Closure fiber extension to the thread token.
+pub trait ThrFiberFn<T: ThrAttach>: ThrToken<T> {
+  /// Adds a new closure fiber.
+  fn add_fn<F>(self, f: F)
+  where
+    F: FnOnce(),
+    F: Send + 'static,
+  {
+    self.add_fib(new_fn(f))
+  }
 }
+
+impl<T: ThrAttach, U: ThrToken<T>> ThrFiberFn<T> for U {}

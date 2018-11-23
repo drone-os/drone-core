@@ -7,7 +7,7 @@ use syn::{Attribute, Expr, Ident, Type};
 struct Thr {
   thr: NewStruct,
   local: NewStruct,
-  sv: ExternStruct,
+  sv: Option<ExternStruct>,
   array: ExternStatic,
   fields: Vec<Field>,
 }
@@ -44,7 +44,11 @@ impl Parse for Thr {
   fn parse(input: ParseStream) -> Result<Self> {
     let thr = input.parse()?;
     let local = input.parse()?;
-    let sv = input.parse()?;
+    let sv = if input.peek(Token![extern]) && input.peek2(Token![struct]) {
+      Some(input.parse()?)
+    } else {
+      None
+    };
     let array = input.parse()?;
     let mut fields = Vec::new();
     while !input.is_empty() {
@@ -75,7 +79,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         vis: local_vis,
         ident: local_ident,
       },
-    sv: ExternStruct { ident: sv_ident },
+    sv,
     array: ExternStatic { ident: array_ident },
     fields,
   } = parse_macro_input!(input as Thr);
@@ -109,14 +113,21 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
   local_tokens.push(quote!(preempted: #rt::PreemptedCell));
   local_ctor_tokens.push(quote!(task: #rt::TaskCell::new()));
   local_ctor_tokens.push(quote!(preempted: #rt::PreemptedCell::new()));
+  let sv_ty = if let Some(ExternStruct { ident }) = sv {
+    quote!(#ident)
+  } else {
+    quote!(#rt::SvNone)
+  };
 
   let expanded = quote! {
     mod #rt {
       extern crate drone_core;
 
       pub use self::drone_core::fib::Chain;
-      pub use self::drone_core::thr::{PreemptedCell, TaskCell, Thread,
-                                      ThreadLocal};
+      pub use self::drone_core::sv::SvNone;
+      pub use self::drone_core::thr::{
+        PreemptedCell, TaskCell, Thread, ThreadLocal,
+      };
     }
 
     #(#thr_attrs)*
@@ -144,7 +155,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
     impl #rt::Thread for #thr_ident {
       type Local = #local_ident;
-      type Sv = #sv_ident;
+      type Sv = #sv_ty;
 
       #[inline(always)]
       fn first() -> *const Self {

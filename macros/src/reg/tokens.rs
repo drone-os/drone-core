@@ -95,6 +95,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       );
       tokens_tokens.push(quote! {
         #(#attrs)*
+        #[allow(missing_docs)]
         pub #reg_name: #block_ident::#reg_struct<#rt::Srt>
       });
       tokens_ctor_tokens.push(quote! {

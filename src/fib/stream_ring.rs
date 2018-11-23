@@ -1,4 +1,4 @@
-use fib::{self, Fiber, FiberState};
+use fib::{Fiber, FiberState};
 use futures::prelude::*;
 use sync::spsc::ring::{channel, Receiver, SendError, SendErrorKind};
 use thr::prelude::*;
@@ -29,117 +29,116 @@ impl<I, E> Stream for FiberStreamRing<I, E> {
   }
 }
 
-/// Adds a new ring stream fiber on the given `thr`.
-pub fn add_stream_ring<T, U, O, F, I, E>(
-  thr: T,
-  capacity: usize,
-  overflow: O,
-  mut fib: F,
-) -> FiberStreamRing<I, E>
-where
-  T: AsRef<U>,
-  U: Thread,
-  O: Fn(I) -> Result<(), E>,
-  F: Fiber<Input = (), Yield = Option<I>, Return = Result<Option<I>, E>>,
-  O: Send + 'static,
-  F: Send + 'static,
-  I: Send + 'static,
-  E: Send + 'static,
-{
-  let (rx, mut tx) = channel(capacity);
-  fib::add(thr, move || loop {
-    if tx.is_canceled() {
-      break;
-    }
-    match fib.resume(()) {
-      FiberState::Yielded(None) => {}
-      FiberState::Yielded(Some(value)) => match tx.send(value) {
-        Ok(()) => {}
-        Err(SendError { value, kind }) => match kind {
-          SendErrorKind::Canceled => {
-            break;
-          }
-          SendErrorKind::Overflow => match overflow(value) {
-            Ok(()) => {}
-            Err(err) => {
-              tx.send_err(err).ok();
+/// Ring stream extension to the thread token.
+pub trait ThrStreamRing<T: ThrAttach>: ThrToken<T> {
+  /// Adds a new ring stream fiber.
+  fn add_stream_ring<O, F, I, E>(
+    self,
+    capacity: usize,
+    overflow: O,
+    mut fib: F,
+  ) -> FiberStreamRing<I, E>
+  where
+    O: Fn(I) -> Result<(), E>,
+    F: Fiber<Input = (), Yield = Option<I>, Return = Result<Option<I>, E>>,
+    O: Send + 'static,
+    F: Send + 'static,
+    I: Send + 'static,
+    E: Send + 'static,
+  {
+    let (rx, mut tx) = channel(capacity);
+    self.add(move || loop {
+      if tx.is_canceled() {
+        break;
+      }
+      match fib.resume(()) {
+        FiberState::Yielded(None) => {}
+        FiberState::Yielded(Some(value)) => match tx.send(value) {
+          Ok(()) => {}
+          Err(SendError { value, kind }) => match kind {
+            SendErrorKind::Canceled => {
               break;
             }
+            SendErrorKind::Overflow => match overflow(value) {
+              Ok(()) => {}
+              Err(err) => {
+                tx.send_err(err).ok();
+                break;
+              }
+            },
           },
         },
-      },
-      FiberState::Complete(Ok(None)) => {
+        FiberState::Complete(Ok(None)) => {
+          break;
+        }
+        FiberState::Complete(Ok(Some(value))) => {
+          tx.send(value).ok();
+          break;
+        }
+        FiberState::Complete(Err(err)) => {
+          tx.send_err(err).ok();
+          break;
+        }
+      }
+      yield;
+    });
+    FiberStreamRing { rx }
+  }
+
+  /// Adds a new ring stream fiber. Overflows will be ignored.
+  fn add_stream_ring_skip<F, I, E>(
+    self,
+    capacity: usize,
+    fib: F,
+  ) -> FiberStreamRing<I, E>
+  where
+    F: Fiber<Input = (), Yield = Option<I>, Return = Result<Option<I>, E>>,
+    F: Send + 'static,
+    I: Send + 'static,
+    E: Send + 'static,
+  {
+    self.add_stream_ring(capacity, |_| Ok(()), fib)
+  }
+
+  /// Adds a new ring stream fiber. Overflows will overwrite.
+  fn add_stream_ring_overwrite<F, I, E>(
+    self,
+    capacity: usize,
+    mut fib: F,
+  ) -> FiberStreamRing<I, E>
+  where
+    F: Fiber<Input = (), Yield = Option<I>, Return = Result<Option<I>, E>>,
+    F: Send + 'static,
+    I: Send + 'static,
+    E: Send + 'static,
+  {
+    let (rx, mut tx) = channel(capacity);
+    self.add(move || loop {
+      if tx.is_canceled() {
         break;
       }
-      FiberState::Complete(Ok(Some(value))) => {
-        tx.send(value).ok();
-        break;
+      match fib.resume(()) {
+        FiberState::Yielded(None) => {}
+        FiberState::Yielded(Some(value)) => match tx.send_overwrite(value) {
+          Ok(()) => (),
+          Err(_) => break,
+        },
+        FiberState::Complete(Ok(None)) => {
+          break;
+        }
+        FiberState::Complete(Ok(Some(value))) => {
+          tx.send_overwrite(value).ok();
+          break;
+        }
+        FiberState::Complete(Err(err)) => {
+          tx.send_err(err).ok();
+          break;
+        }
       }
-      FiberState::Complete(Err(err)) => {
-        tx.send_err(err).ok();
-        break;
-      }
-    }
-    yield;
-  });
-  FiberStreamRing { rx }
+      yield;
+    });
+    FiberStreamRing { rx }
+  }
 }
 
-/// Adds a new ring stream fiber on the given `thr`. Overflows will be ignored.
-pub fn add_stream_ring_skip<T, U, F, I, E>(
-  thr: T,
-  capacity: usize,
-  fib: F,
-) -> FiberStreamRing<I, E>
-where
-  T: AsRef<U>,
-  U: Thread,
-  F: Fiber<Input = (), Yield = Option<I>, Return = Result<Option<I>, E>>,
-  F: Send + 'static,
-  I: Send + 'static,
-  E: Send + 'static,
-{
-  add_stream_ring(thr, capacity, |_| Ok(()), fib)
-}
-
-/// Adds a new ring stream fiber on the given `thr`. Overflows will overwrite.
-pub fn add_stream_ring_overwrite<T, U, F, I, E>(
-  thr: T,
-  capacity: usize,
-  mut fib: F,
-) -> FiberStreamRing<I, E>
-where
-  T: AsRef<U>,
-  U: Thread,
-  F: Fiber<Input = (), Yield = Option<I>, Return = Result<Option<I>, E>>,
-  F: Send + 'static,
-  I: Send + 'static,
-  E: Send + 'static,
-{
-  let (rx, mut tx) = channel(capacity);
-  fib::add(thr, move || loop {
-    if tx.is_canceled() {
-      break;
-    }
-    match fib.resume(()) {
-      FiberState::Yielded(None) => {}
-      FiberState::Yielded(Some(value)) => match tx.send_overwrite(value) {
-        Ok(()) => (),
-        Err(_) => break,
-      },
-      FiberState::Complete(Ok(None)) => {
-        break;
-      }
-      FiberState::Complete(Ok(Some(value))) => {
-        tx.send_overwrite(value).ok();
-        break;
-      }
-      FiberState::Complete(Err(err)) => {
-        tx.send_err(err).ok();
-        break;
-      }
-    }
-    yield;
-  });
-  FiberStreamRing { rx }
-}
+impl<T: ThrAttach, U: ThrToken<T>> ThrStreamRing<T> for U {}

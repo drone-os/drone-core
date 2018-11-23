@@ -72,6 +72,7 @@ pub trait RegTokens {
   ///
   /// # Safety
   ///
-  /// Must be called no more than once.
+  /// * Must be called no more than once.
+  /// * Register tokens belonging to the set must not overlap.
   unsafe fn new() -> Self;
 }

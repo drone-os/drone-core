@@ -1,5 +1,5 @@
 use core::intrinsics::unreachable;
-use fib::{self, Fiber, FiberState, YieldNone};
+use fib::{Fiber, FiberState, YieldNone};
 use futures::prelude::*;
 use sync::spsc::oneshot::{channel, Receiver, RecvError};
 use thr::prelude::*;
@@ -32,30 +32,33 @@ impl<R, E> Future for FiberFuture<R, E> {
   }
 }
 
-/// Adds a new future fiber on the given `thr`.
-pub fn add_future<T, U, F, Y, R, E>(thr: T, mut fib: F) -> FiberFuture<R, E>
-where
-  T: AsRef<U>,
-  U: Thread,
-  F: Fiber<Input = (), Yield = Y, Return = Result<R, E>>,
-  F: Send + 'static,
-  Y: YieldNone,
-  R: Send + 'static,
-  E: Send + 'static,
-{
-  let (rx, tx) = channel();
-  fib::add(thr, move || loop {
-    if tx.is_canceled() {
-      break;
-    }
-    match fib.resume(()) {
-      FiberState::Yielded(_) => {}
-      FiberState::Complete(complete) => {
-        tx.send(complete).ok();
+/// Future fiber extension to the thread token.
+pub trait ThrFiberFuture<T: ThrAttach>: ThrToken<T> {
+  /// Adds a new future fiber.
+  fn add_future<F, Y, R, E>(self, mut fib: F) -> FiberFuture<R, E>
+  where
+    F: Fiber<Input = (), Yield = Y, Return = Result<R, E>>,
+    F: Send + 'static,
+    Y: YieldNone,
+    R: Send + 'static,
+    E: Send + 'static,
+  {
+    let (rx, tx) = channel();
+    self.add(move || loop {
+      if tx.is_canceled() {
         break;
       }
-    }
-    yield;
-  });
-  FiberFuture { rx }
+      match fib.resume(()) {
+        FiberState::Yielded(_) => {}
+        FiberState::Complete(complete) => {
+          tx.send(complete).ok();
+          break;
+        }
+      }
+      yield;
+    });
+    FiberFuture { rx }
+  }
 }
+
+impl<T: ThrAttach, U: ThrToken<T>> ThrFiberFuture<T> for U {}

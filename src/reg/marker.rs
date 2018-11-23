@@ -2,6 +2,24 @@
 
 use reg::prelude::*;
 
+// {{{ RwReg
+/// Read-write register token.
+#[marker]
+pub trait RwReg<T: RegTag>
+where
+  Self: RReg<T>,
+  Self: WReg<T>,
+{
+}
+
+impl<R, T: RegTag> RwReg<T> for R
+where
+  R: RReg<T>,
+  R: WReg<T>,
+{
+}
+
+// }}}
 // {{{ URwReg
 /// Unsynchronized read-write register token.
 #[marker]
@@ -154,6 +172,166 @@ where
   R: WoReg<Crt>,
   R: for<'a> WRegAtomic<'a, Crt>,
   R: Copy,
+{
+}
+
+// }}}
+// {{{ RwRwRegFieldBit
+/// One-bit read-write field of read-write register token.
+#[marker]
+pub trait RwRwRegFieldBit<T: RegTag>
+where
+  Self: WWRegFieldBit<T>,
+  Self: RRRegFieldBit<T>,
+  Self::Reg: RwReg<T>,
+{
+}
+
+impl<R, T: RegTag> RwRwRegFieldBit<T> for R
+where
+  R: WWRegFieldBit<T>,
+  R: RRRegFieldBit<T>,
+  R::Reg: RwReg<T>,
+{
+}
+
+// }}}
+// {{{ RwRwRegFieldBits
+/// Multi-bit read-write field of read-write register token.
+#[marker]
+pub trait RwRwRegFieldBits<T: RegTag>
+where
+  Self: WWRegFieldBits<T>,
+  Self: RRRegFieldBits<T>,
+  Self::Reg: RwReg<T>,
+{
+}
+
+impl<R, T: RegTag> RwRwRegFieldBits<T> for R
+where
+  R: WWRegFieldBits<T>,
+  R: RRRegFieldBits<T>,
+  R::Reg: RwReg<T>,
+{
+}
+
+// }}}
+// {{{ WoRwRegFieldBit
+/// One-bit write-only field of read-write register token.
+#[marker]
+pub trait WoRwRegFieldBit<T: RegTag>
+where
+  Self: WWRegFieldBit<T>,
+  Self: WoWRegField<T>,
+  Self::Reg: RwReg<T>,
+{
+}
+
+impl<R, T: RegTag> WoRwRegFieldBit<T> for R
+where
+  R: WWRegFieldBit<T>,
+  R: WoWRegField<T>,
+  R::Reg: RwReg<T>,
+{
+}
+
+// }}}
+// {{{ WoRwRegFieldBits
+/// Multi-bit write-only field of read-write register token.
+#[marker]
+pub trait WoRwRegFieldBits<T: RegTag>
+where
+  Self: WWRegFieldBits<T>,
+  Self: WoWRegField<T>,
+  Self::Reg: RwReg<T>,
+{
+}
+
+impl<R, T: RegTag> WoRwRegFieldBits<T> for R
+where
+  R: WWRegFieldBits<T>,
+  R: WoWRegField<T>,
+  R::Reg: RwReg<T>,
+{
+}
+
+// }}}
+// {{{ RoRwRegFieldBit
+/// One-bit read-only field of read-write register token.
+#[marker]
+pub trait RoRwRegFieldBit<T: RegTag>
+where
+  Self: RRRegFieldBit<T>,
+  Self: RoRRegField<T>,
+  Self::Reg: RwReg<T>,
+{
+}
+
+impl<R, T: RegTag> RoRwRegFieldBit<T> for R
+where
+  R: RRRegFieldBit<T>,
+  R: RoRRegField<T>,
+  R::Reg: RwReg<T>,
+{
+}
+
+// }}}
+// {{{ RoRwRegFieldBits
+/// Multi-bit read-only field of read-write register token.
+#[marker]
+pub trait RoRwRegFieldBits<T: RegTag>
+where
+  Self: RRRegFieldBits<T>,
+  Self: RoRRegField<T>,
+  Self::Reg: RwReg<T>,
+{
+}
+
+impl<R, T: RegTag> RoRwRegFieldBits<T> for R
+where
+  R: RRRegFieldBits<T>,
+  R: RoRRegField<T>,
+  R::Reg: RwReg<T>,
+{
+}
+
+// }}}
+// {{{ RoRoRegFieldBit
+/// One-bit read-only field of read-only register token.
+#[marker]
+pub trait RoRoRegFieldBit<T: RegTag>
+where
+  Self: RRRegFieldBit<T>,
+  Self: RoRRegField<T>,
+  Self::Reg: RoReg<T>,
+{
+}
+
+impl<R, T: RegTag> RoRoRegFieldBit<T> for R
+where
+  R: RRRegFieldBit<T>,
+  R: RoRRegField<T>,
+  R::Reg: RoReg<T>,
+{
+}
+
+// }}}
+// {{{ RoRoRegFieldBits
+/// Multi-bit read-only field of read-only register token.
+#[marker]
+pub trait RoRoRegFieldBits<T: RegTag>
+where
+  Self: RRRegFieldBits<T>,
+  Self: RoRRegField<T>,
+  Self::Reg: RoReg<T>,
+{
+}
+
+impl<R, T: RegTag> RoRoRegFieldBits<T> for R
+where
+  R: RRRegFieldBits<T>,
+  R: RoRRegField<T>,
+  R::Reg: RoReg<T>,
 {
 }
 

@@ -5,9 +5,9 @@
 extern crate drone_core;
 
 use drone_core::sv::Supervisor;
+use drone_core::thr;
 use drone_core::thr::prelude::*;
 use drone_core::thr::ThrToken;
-use drone_core::{fib, thr};
 use std::marker::PhantomData;
 use std::ptr;
 use std::sync::atomic::AtomicI8;
@@ -40,6 +40,18 @@ thr! {
   bar: isize = 1 - 2;
 }
 
+mod without_sv {
+  use drone_core::thr;
+
+  static mut THREADS: [Thr; 0] = [];
+
+  thr! {
+    struct Thr;
+    struct ThrLocal;
+    extern static THREADS;
+  }
+}
+
 macro_rules! thr_num {
   ($name:ident, $position:expr) => {
     #[derive(Clone, Copy)]
@@ -49,20 +61,15 @@ macro_rules! thr_num {
 
     impl<T: ThrTag> ThrToken<T> for $name<T> {
       type Thr = Thr;
-      type UThrToken = $name<Utt>;
-      type TThrToken = $name<Ttt>;
       type AThrToken = $name<Att>;
+      type TThrToken = $name<Ttt>;
+      type CThrToken = $name<Ctt>;
+      type RThrToken = $name<Rtt>;
 
       const THR_NUM: usize = $position;
 
       unsafe fn new() -> Self {
         Self { _tag: PhantomData }
-      }
-    }
-
-    impl<T: ThrTag> AsRef<Thr> for $name<T> {
-      fn as_ref(&self) -> &Thr {
-        unsafe { Self::get_thr() }
       }
     }
   };
@@ -85,19 +92,19 @@ fn fiber() {
   let inner = Counter(Arc::clone(&counter));
   unsafe {
     let thr = Thr0::<Att>::new();
-    fib::add(thr, move || {
+    thr.add(move || {
       while inner.0.fetch_add(1, Relaxed) < 2 {
         yield;
       }
     });
     assert_eq!(counter.load(Relaxed), 0);
-    Thr0::<Att>::get_thr().fib_chain().drain();
+    thr.to_thr().fib_chain().drain();
     assert_eq!(counter.load(Relaxed), 1);
-    Thr0::<Att>::get_thr().fib_chain().drain();
+    thr.to_thr().fib_chain().drain();
     assert_eq!(counter.load(Relaxed), 2);
-    Thr0::<Att>::get_thr().fib_chain().drain();
+    thr.to_thr().fib_chain().drain();
     assert_eq!(counter.load(Relaxed), -4);
-    Thr0::<Att>::get_thr().fib_chain().drain();
+    thr.to_thr().fib_chain().drain();
     assert_eq!(counter.load(Relaxed), -4);
   }
 }
@@ -108,13 +115,13 @@ fn fiber_fn() {
   let inner = Counter(Arc::clone(&counter));
   unsafe {
     let thr = Thr1::<Att>::new();
-    fib::add_fn(thr, move || {
+    thr.add_fn(move || {
       inner.0.fetch_add(1, Relaxed);
     });
     assert_eq!(counter.load(Relaxed), 0);
-    Thr1::<Att>::get_thr().fib_chain().drain();
+    thr.to_thr().fib_chain().drain();
     assert_eq!(counter.load(Relaxed), -2);
-    Thr1::<Att>::get_thr().fib_chain().drain();
+    thr.to_thr().fib_chain().drain();
     assert_eq!(counter.load(Relaxed), -2);
   }
 }

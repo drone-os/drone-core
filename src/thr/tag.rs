@@ -5,26 +5,40 @@ pub trait ThrTag:
 {
 }
 
+/// Attachable thread token tag.
+#[marker]
+pub trait ThrAttach: ThrTag {}
+
 /// Triggerable thread token tag.
 #[marker]
 pub trait ThrTrigger: ThrTag {}
 
-/// Unrestricted thread token tag.
+/// Attach-only thread token tag.
 #[derive(Clone, Copy, Default)]
-pub struct Utt;
+pub struct Att;
 
-impl ThrTag for Utt {}
-impl ThrTrigger for Utt {}
+impl ThrTag for Att {}
+impl ThrAttach for Att {}
 
-/// Triggerable thread token tag.
+/// Trigger-only thread token tag.
 #[derive(Clone, Copy, Default)]
 pub struct Ttt;
 
 impl ThrTag for Ttt {}
 impl ThrTrigger for Ttt {}
 
-/// Attachable thread token tag.
+/// Regular thread token tag.
 #[derive(Clone, Copy, Default)]
-pub struct Att;
+pub struct Rtt;
 
-impl ThrTag for Att {}
+impl ThrTag for Rtt {}
+impl ThrAttach for Rtt {}
+impl ThrTrigger for Rtt {}
+
+/// Controllable thread token tag.
+#[derive(Clone, Copy, Default)]
+pub struct Ctt;
+
+impl ThrTag for Ctt {}
+impl ThrAttach for Ctt {}
+impl ThrTrigger for Ctt {}

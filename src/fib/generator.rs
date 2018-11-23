@@ -1,8 +1,8 @@
 use core::ops::{Generator, GeneratorState};
 use fib::{Fiber, FiberRoot, FiberState};
-use thr::Thread;
+use thr::prelude::*;
 
-/// A generator fiber.
+/// Generator fiber.
 pub struct FiberGen<G>(G)
 where
   G: Generator;
@@ -55,13 +55,16 @@ where
   FiberGen(gen)
 }
 
-/// Adds a new generator fiber on the given `thr`.
-pub fn add<T, U, G>(thr: T, gen: G)
-where
-  T: AsRef<U>,
-  U: Thread,
-  G: Generator<Yield = (), Return = ()>,
-  G: Send + 'static,
-{
-  thr.as_ref().fib_chain().add(new(gen))
+/// Generator fiber extension to the thread token.
+pub trait ThrFiberGen<T: ThrAttach>: ThrToken<T> {
+  /// Adds a new generator fiber.
+  fn add<G>(self, gen: G)
+  where
+    G: Generator<Yield = (), Return = ()>,
+    G: Send + 'static,
+  {
+    self.add_fib(new(gen))
+  }
 }
+
+impl<T: ThrAttach, U: ThrToken<T>> ThrFiberGen<T> for U {}

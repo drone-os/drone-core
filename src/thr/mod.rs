@@ -16,16 +16,16 @@ pub use self::preempt::{current, with_preempted, PreemptedCell};
 pub use self::tag::*;
 pub use self::task::{__current_task, init, TaskCell};
 
-use fib::Chain;
-use sv::Supervisor;
+use fib::{Chain, FiberRoot};
+use sv::SvOpt;
 
 /// A thread interface.
 pub trait Thread: Sized + Sync + 'static {
   /// Thread-local storage.
   type Local: ThreadLocal;
 
-  /// Supervisor.
-  type Sv: Supervisor;
+  /// Optional supervisor.
+  type Sv: SvOpt;
 
   /// Returns a pointer to the first thread.
   fn first() -> *const Self;
@@ -56,20 +56,22 @@ pub trait ThrToken<T>
 where
   Self: Sized + Clone + Copy,
   Self: Send + Sync + 'static,
-  Self: AsRef<<Self as ThrToken<T>>::Thr>,
   T: ThrTag,
 {
   /// Thread.
   type Thr: Thread;
 
-  /// Corresponding unrestricted thread token.
-  type UThrToken: ThrToken<Utt>;
+  /// Corresponding attachable thread token.
+  type AThrToken: ThrToken<Att>;
 
   /// Corresponding triggerable thread token.
   type TThrToken: ThrToken<Ttt>;
 
-  /// Corresponding attachable thread token.
-  type AThrToken: ThrToken<Att>;
+  /// Corresponding controllable thread token.
+  type CThrToken: ThrToken<Ctt>;
+
+  /// Corresponding regular thread token.
+  type RThrToken: ThrToken<Rtt>;
 
   /// A thread position within threads array.
   const THR_NUM: usize;
@@ -85,10 +87,19 @@ where
   ///
   /// # Safety
   ///
-  /// Must be called only by an instance of the thread token.
+  /// The method doesn't enforce privileges of the token.
   #[inline(always)]
-  unsafe fn get_thr() -> &'static Self::Thr {
-    &*Self::Thr::first().add(Self::THR_NUM)
+  unsafe fn to_thr(self) -> &'static Self::Thr {
+    get_thr::<Self, T>()
+  }
+
+  /// Converts to an attachable register token.
+  #[inline(always)]
+  fn to_attach(self) -> Self::AThrToken
+  where
+    T: ThrAttach,
+  {
+    unsafe { Self::AThrToken::new() }
   }
 
   /// Converts to a triggerable register token.
@@ -100,10 +111,28 @@ where
     unsafe { Self::TThrToken::new() }
   }
 
-  /// Converts to an attachable register token.
+  /// Converts to a regular register token.
   #[inline(always)]
-  fn to_attach(self) -> Self::AThrToken {
-    unsafe { Self::AThrToken::new() }
+  fn to_regular(self) -> Self::RThrToken
+  where
+    T: ThrAttach + ThrTrigger,
+  {
+    unsafe { Self::RThrToken::new() }
+  }
+
+  /// Adds a new fiber to the thread.
+  #[inline(always)]
+  fn add_fib<F: FiberRoot>(self, fib: F)
+  where
+    T: ThrAttach,
+  {
+    unsafe { self.to_thr() }.fib_chain().add(fib);
+  }
+
+  /// Returns `true` if the fiber chain is empty.
+  #[inline(always)]
+  fn is_empty(self) -> bool {
+    unsafe { self.to_thr() }.fib_chain().is_empty()
   }
 }
 
@@ -123,8 +152,13 @@ pub trait ThrTokens {
 ///
 /// Must not be called concurrently.
 pub unsafe fn thread_resume<T: ThrToken<U>, U: ThrTag>() {
-  let thr = T::get_thr();
+  let thr = get_thr::<T, U>();
   with_preempted(thr.get_local().preempted(), T::THR_NUM, || {
     thr.fib_chain().drain();
   })
+}
+
+#[inline(always)]
+unsafe fn get_thr<T: ThrToken<U>, U: ThrTag>() -> &'static T::Thr {
+  &*T::Thr::first().add(T::THR_NUM)
 }
