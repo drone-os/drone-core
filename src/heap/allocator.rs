@@ -37,10 +37,12 @@ pub trait Allocator {
     I: SliceIndex<[Pool]>;
 
   /// Allocation hook.
-  fn alloc_hook(layout: Layout, pool: &Pool);
+  #[inline(always)]
+  fn alloc_hook(_layout: Layout, _pool: &Pool) {}
 
   /// Deallocation hook.
-  fn dealloc_hook(layout: Layout, pool: &Pool);
+  #[inline(always)]
+  fn dealloc_hook(_layout: Layout, _pool: &Pool) {}
 
   /// Binary searches the pools for a least-sized one which fits `value`.
   fn binary_search<T: Fits>(&self, value: T) -> usize {

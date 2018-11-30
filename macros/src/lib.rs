@@ -17,7 +17,6 @@ extern crate quote;
 extern crate syn;
 
 mod bitfield;
-mod drv;
 mod heap;
 mod reg;
 mod thr;
@@ -27,16 +26,6 @@ use proc_macro::TokenStream;
 #[proc_macro_derive(Bitfield, attributes(bitfield))]
 pub fn derive_bitfield(input: TokenStream) -> TokenStream {
   bitfield::proc_macro_derive(input)
-}
-
-#[proc_macro_derive(Driver, attributes(driver))]
-pub fn derive_driver(input: TokenStream) -> TokenStream {
-  drv::driver::proc_macro_derive(input)
-}
-
-#[proc_macro_derive(Resource)]
-pub fn derive_resource(input: TokenStream) -> TokenStream {
-  drv::resource::proc_macro_derive(input)
 }
 
 #[proc_macro]

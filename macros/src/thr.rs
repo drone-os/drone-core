@@ -80,7 +80,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         ident: local_ident,
       },
     sv,
-    array: ExternStatic { ident: array_ident },
+    array: ExternStatic { path: array_path },
     fields,
   } = parse_macro_input!(input as Thr);
   let rt = Ident::new("__thr_rt", def_site);
@@ -113,8 +113,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
   local_tokens.push(quote!(preempted: #rt::PreemptedCell));
   local_ctor_tokens.push(quote!(task: #rt::TaskCell::new()));
   local_ctor_tokens.push(quote!(preempted: #rt::PreemptedCell::new()));
-  let sv_ty = if let Some(ExternStruct { ident }) = sv {
-    quote!(#ident)
+  let sv_ty = if let Some(ExternStruct { path }) = sv {
+    quote!(#path)
   } else {
     quote!(#rt::SvNone)
   };
@@ -159,7 +159,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
       #[inline(always)]
       fn first() -> *const Self {
-        unsafe { #array_ident.as_ptr() }
+        unsafe { #array_path.as_ptr() }
       }
 
       #[inline(always)]

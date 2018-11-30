@@ -7,8 +7,8 @@ use syn::{Ident, LitInt};
 
 struct Heap {
   heap: NewStruct,
-  alloc_hook: ExternFn,
-  dealloc_hook: ExternFn,
+  alloc_hook: Option<ExternFn>,
+  dealloc_hook: Option<ExternFn>,
   size: LitInt,
   pools: Vec<Pool>,
 }
@@ -21,8 +21,11 @@ struct Pool {
 impl Parse for Heap {
   fn parse(input: ParseStream) -> Result<Self> {
     let heap = input.parse()?;
-    let alloc_hook = input.parse()?;
-    let dealloc_hook = input.parse()?;
+    let (alloc_hook, dealloc_hook) = if input.peek(Token![extern]) {
+      (Some(input.parse()?), Some(input.parse()?))
+    } else {
+      (None, None)
+    };
     let mut size = None;
     let mut pools = Vec::new();
     while !input.is_empty() {
@@ -84,12 +87,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         vis: heap_vis,
         ident: heap_ident,
       },
-    alloc_hook: ExternFn {
-      ident: alloc_hook_ident,
-    },
-    dealloc_hook: ExternFn {
-      ident: dealloc_hook_ident,
-    },
+    alloc_hook,
+    dealloc_hook,
     size,
     mut pools,
   } = parse_macro_input!(input as Heap);
@@ -120,6 +119,23 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     } = pool;
     pools_tokens.push(quote!(#rt::Pool::new(#offset, #size, #capacity)));
     offset += pool.length();
+  }
+  let mut hook_tokens = Vec::new();
+  if let Some(ExternFn { path }) = alloc_hook {
+    hook_tokens.push(quote! {
+      #[inline(always)]
+      fn alloc_hook(layout: #rt::Layout, pool: &#rt::Pool) {
+        #path(layout, pool)
+      }
+    });
+  }
+  if let Some(ExternFn { path }) = dealloc_hook {
+    hook_tokens.push(quote! {
+      #[inline(always)]
+      fn dealloc_hook(layout: #rt::Layout, pool: &#rt::Pool) {
+        #path(layout, pool)
+      }
+    });
   }
 
   let expanded = quote! {
@@ -169,15 +185,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         self.pools.get_unchecked_mut(index)
       }
 
-      #[inline(always)]
-      fn alloc_hook(layout: #rt::Layout, pool: &#rt::Pool) {
-        #alloc_hook_ident(layout, pool)
-      }
-
-      #[inline(always)]
-      fn dealloc_hook(layout: #rt::Layout, pool: &#rt::Pool) {
-        #dealloc_hook_ident(layout, pool)
-      }
+      #(#hook_tokens)*
     }
 
     unsafe impl #rt::Alloc for #heap_ident {

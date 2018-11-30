@@ -56,7 +56,6 @@ extern crate futures;
 #[macro_use]
 pub mod async;
 pub mod bitfield;
-pub mod drv;
 pub mod ffi;
 pub mod fib;
 pub mod fs;
@@ -70,7 +69,9 @@ pub mod sv;
 pub mod sync;
 pub mod thr;
 
-pub use drone_core_macros::{heap, thr, Bitfield, Driver, Resource};
+mod drv;
+
+pub use drone_core_macros::{heap, thr, Bitfield};
 
 #[prelude_import]
 #[allow(unused_imports)]

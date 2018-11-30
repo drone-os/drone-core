@@ -53,6 +53,15 @@ pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
     unsafe { Self::CRegField::new() }
   }
 
+  /// Takes a non-copy and returns a copy register field token.
+  #[inline(always)]
+  fn acquire_copy(self) -> Self::CRegField
+  where
+    T: RegOwned,
+  {
+    unsafe { Self::CRegField::new() }
+  }
+
   /// Converts to a synchronized register field token reference.
   #[inline(always)]
   fn as_sync(&self) -> &Self::SRegField
