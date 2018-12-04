@@ -30,6 +30,37 @@ macro_rules! await {
   }};
 }
 
+/// Returns next item from the stream.  Should be used inside
+/// [`async`](fn@async) context.
+#[macro_export]
+macro_rules! await_item {
+  ($stream:expr) => {
+    loop {
+      let poll = $crate::thr::__current_task().__in_cx(|cx| {
+        #[allow(unused_imports)]
+        use $crate::async::__rt::Stream;
+        $stream.poll_next(cx)
+      });
+      #[allow(unreachable_patterns, unreachable_code)]
+      match poll {
+        $crate::async::__rt::Result::Ok(
+          $crate::async::__rt::Async::Pending,
+        ) => {
+          yield;
+        }
+        $crate::async::__rt::Result::Ok($crate::async::__rt::Async::Ready(
+          ready,
+        )) => {
+          break $crate::async::__rt::Result::Ok(ready);
+        }
+        $crate::async::__rt::Result::Err(err) => {
+          break $crate::async::__rt::Result::Err(err);
+        }
+      }
+    }
+  };
+}
+
 /// Asynchronously iterates over a stream. Should be used inside
 /// [`async`](fn@async) context.
 #[macro_export]
