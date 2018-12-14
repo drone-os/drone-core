@@ -1,7 +1,6 @@
-use inflector::Inflector;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::parse::{Error, Parse, ParseStream, Result};
+use syn::parse::{Parse, ParseStream, Result};
 use syn::{
   Data, DeriveInput, Fields, Ident, IntSuffix, LitInt, LitStr, PathArguments,
   Type,
@@ -116,15 +115,10 @@ impl Mode {
 }
 
 pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
-  let (def_site, call_site) = (Span::def_site(), Span::call_site());
   let input = parse_macro_input!(input as DeriveInput);
   let DeriveInput {
     attrs, ident, data, ..
   } = input;
-  let rt = Ident::new(
-    &format!("__bitfield_rt_{}", ident.to_string().to_snake_case()),
-    def_site,
-  );
   let bitfield = attrs.into_iter().find(|attr| {
     if_chain! {
       if attr.path.leading_colon.is_none();
@@ -141,8 +135,8 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     }
     None => Bitfield::default(),
   };
-  let default =
-    default.unwrap_or_else(|| LitInt::new(0, IntSuffix::None, call_site));
+  let default = default
+    .unwrap_or_else(|| LitInt::new(0, IntSuffix::None, Span::call_site()));
   let bits = if_chain! {
     if let Data::Struct(x) = data;
     if let Fields::Unnamed(mut x) = x.fields;
@@ -152,9 +146,9 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     then {
       x
     } else {
-      return Error::new(call_site,
+      compile_error!(
         "Bitfield can be derived only from a tuple struct with one field",
-      ).to_compile_error().into();
+      );
     }
   };
 
@@ -169,8 +163,8 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         width,
         doc,
       } = field;
-      let width =
-        width.unwrap_or_else(|| LitInt::new(1, IntSuffix::None, call_site));
+      let width = width
+        .unwrap_or_else(|| LitInt::new(1, IntSuffix::None, Span::call_site()));
       let mut attrs = vec![quote!(#[inline(always)])];
       if let Some(doc) = doc {
         attrs.push(quote!(#[doc = #doc]));
@@ -178,48 +172,68 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       let attrs = &attrs;
       if width.value() == 1 {
         if mode.is_read() {
-          let read_bit = Ident::new(&format!("{}", ident), call_site);
+          let read_bit = new_ident!("{}", ident);
           fields.push(quote! {
             #(#attrs)*
             pub fn #read_bit(&self) -> bool {
-              unsafe { #rt::Bitfield::read_bit(self, #offset as #bits) }
+              unsafe {
+                ::drone_core::bitfield::Bitfield::read_bit(
+                  self,
+                  #offset as #bits,
+                )
+              }
             }
           });
         }
         if mode.is_write() {
-          let set_bit = Ident::new(&format!("set_{}", ident), call_site);
-          let clear_bit = Ident::new(&format!("clear_{}", ident), call_site);
-          let toggle_bit = Ident::new(&format!("toggle_{}", ident), call_site);
+          let set_bit = new_ident!("set_{}", ident);
+          let clear_bit = new_ident!("clear_{}", ident);
+          let toggle_bit = new_ident!("toggle_{}", ident);
           fields.push(quote! {
             #(#attrs)*
             pub fn #set_bit(&mut self) -> &mut Self {
-              unsafe { #rt::Bitfield::set_bit(self, #offset as #bits) };
+              unsafe {
+                ::drone_core::bitfield::Bitfield::set_bit(
+                  self,
+                  #offset as #bits,
+                );
+              }
               self
             }
           });
           fields.push(quote! {
             #(#attrs)*
             pub fn #clear_bit(&mut self) -> &mut Self {
-              unsafe { #rt::Bitfield::clear_bit(self, #offset as #bits) };
+              unsafe {
+                ::drone_core::bitfield::Bitfield::clear_bit(
+                  self,
+                  #offset as #bits,
+                );
+              }
               self
             }
           });
           fields.push(quote! {
             #(#attrs)*
             pub fn #toggle_bit(&mut self) -> &mut Self {
-              unsafe { #rt::Bitfield::toggle_bit(self, #offset as #bits) };
+              unsafe {
+                ::drone_core::bitfield::Bitfield::toggle_bit(
+                  self,
+                  #offset as #bits,
+                );
+              }
               self
             }
           });
         }
       } else {
         if mode.is_read() {
-          let read_bits = Ident::new(&format!("{}", ident), call_site);
+          let read_bits = new_ident!("{}", ident);
           fields.push(quote! {
             #(#attrs)*
             pub fn #read_bits(&self) -> #bits {
               unsafe {
-                #rt::Bitfield::read_bits(
+                ::drone_core::bitfield::Bitfield::read_bits(
                   self,
                   #offset as #bits,
                   #width as #bits,
@@ -229,12 +243,12 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
           });
         }
         if mode.is_write() {
-          let write_bits = Ident::new(&format!("write_{}", ident), call_site);
+          let write_bits = new_ident!("write_{}", ident);
           fields.push(quote! {
             #(#attrs)*
             pub fn #write_bits(&mut self, bits: #bits) -> &mut Self {
               unsafe {
-                #rt::Bitfield::write_bits(
+                ::drone_core::bitfield::Bitfield::write_bits(
                   self,
                   #offset as #bits,
                   #width as #bits,
@@ -251,13 +265,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     .collect::<Vec<_>>();
 
   let expanded = quote! {
-    mod #rt {
-      extern crate drone_core;
-
-      pub use self::drone_core::bitfield::Bitfield;
-    }
-
-    impl #rt::Bitfield for #ident {
+    impl ::drone_core::bitfield::Bitfield for #ident {
       type Bits = #bits;
 
       const DEFAULT: #bits = #default;

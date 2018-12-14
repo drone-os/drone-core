@@ -49,7 +49,10 @@ pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
 
   /// Converts to a copyable register field token.
   #[inline(always)]
-  fn to_copy(self) -> Self::CRegField {
+  fn to_copy(self) -> Self::CRegField
+  where
+    T: RegAtomic,
+  {
     unsafe { Self::CRegField::new() }
   }
 
@@ -57,7 +60,7 @@ pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
   #[inline(always)]
   fn acquire_copy(self) -> Self::CRegField
   where
-    T: RegOwned,
+    T: RegOwned + RegAtomic,
   {
     unsafe { Self::CRegField::new() }
   }

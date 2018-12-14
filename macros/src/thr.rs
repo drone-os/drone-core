@@ -1,14 +1,16 @@
-use drone_macros_core::{ExternStatic, ExternStruct, NewStruct};
 use proc_macro::TokenStream;
-use proc_macro2::Span;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{Attribute, Expr, Ident, Type};
+use syn::{Attribute, Expr, ExprPath, Ident, Type, Visibility};
 
 struct Thr {
-  thr: NewStruct,
-  local: NewStruct,
-  sv: Option<ExternStruct>,
-  array: ExternStatic,
+  thr_attrs: Vec<Attribute>,
+  thr_vis: Visibility,
+  thr_ident: Ident,
+  local_attrs: Vec<Attribute>,
+  local_vis: Visibility,
+  local_ident: Ident,
+  sv: Option<ExprPath>,
+  array: ExprPath,
   fields: Vec<Field>,
 }
 
@@ -18,6 +20,49 @@ struct Field {
   ident: Ident,
   ty: Type,
   init: Expr,
+}
+
+impl Parse for Thr {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let thr_attrs = input.call(Attribute::parse_outer)?;
+    let thr_vis = input.parse()?;
+    input.parse::<Token![struct]>()?;
+    let thr_ident = input.parse()?;
+    input.parse::<Token![;]>()?;
+    let local_attrs = input.call(Attribute::parse_outer)?;
+    let local_vis = input.parse()?;
+    input.parse::<Token![struct]>()?;
+    let local_ident = input.parse()?;
+    input.parse::<Token![;]>()?;
+    let sv = if input.peek(Token![extern]) && input.peek2(Token![struct]) {
+      input.parse::<Token![extern]>()?;
+      input.parse::<Token![struct]>()?;
+      let sv = input.parse()?;
+      input.parse::<Token![;]>()?;
+      Some(sv)
+    } else {
+      None
+    };
+    input.parse::<Token![extern]>()?;
+    input.parse::<Token![static]>()?;
+    let array = input.parse()?;
+    input.parse::<Token![;]>()?;
+    let mut fields = Vec::new();
+    while !input.is_empty() {
+      fields.push(input.parse()?);
+    }
+    Ok(Self {
+      thr_attrs,
+      thr_vis,
+      thr_ident,
+      local_attrs,
+      local_vis,
+      local_ident,
+      sv,
+      array,
+      fields,
+    })
+  }
 }
 
 impl Parse for Field {
@@ -40,51 +85,19 @@ impl Parse for Field {
   }
 }
 
-impl Parse for Thr {
-  fn parse(input: ParseStream) -> Result<Self> {
-    let thr = input.parse()?;
-    let local = input.parse()?;
-    let sv = if input.peek(Token![extern]) && input.peek2(Token![struct]) {
-      Some(input.parse()?)
-    } else {
-      None
-    };
-    let array = input.parse()?;
-    let mut fields = Vec::new();
-    while !input.is_empty() {
-      fields.push(input.parse()?);
-    }
-    Ok(Self {
-      thr,
-      local,
-      sv,
-      array,
-      fields,
-    })
-  }
-}
-
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-  let def_site = Span::def_site();
   let Thr {
-    thr:
-      NewStruct {
-        attrs: thr_attrs,
-        vis: thr_vis,
-        ident: thr_ident,
-      },
-    local:
-      NewStruct {
-        attrs: local_attrs,
-        vis: local_vis,
-        ident: local_ident,
-      },
+    thr_attrs,
+    thr_vis,
+    thr_ident,
+    local_attrs,
+    local_vis,
+    local_ident,
     sv,
-    array: ExternStatic { path: array_path },
+    array,
     fields,
   } = parse_macro_input!(input as Thr);
-  let rt = Ident::new("__thr_rt", def_site);
-  let local = Ident::new("Local", def_site);
+  let local = new_def_ident!("Local");
   let mut thr_tokens = Vec::new();
   let mut thr_ctor_tokens = Vec::new();
   let mut local_tokens = Vec::new();
@@ -107,29 +120,31 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       local_ctor_tokens.push(ctor_tokens);
     }
   }
-  thr_tokens.push(quote!(fib_chain: #rt::Chain));
-  thr_ctor_tokens.push(quote!(fib_chain: #rt::Chain::new()));
-  local_tokens.push(quote!(task: #rt::TaskCell));
-  local_tokens.push(quote!(preempted: #rt::PreemptedCell));
-  local_ctor_tokens.push(quote!(task: #rt::TaskCell::new()));
-  local_ctor_tokens.push(quote!(preempted: #rt::PreemptedCell::new()));
-  let sv_ty = if let Some(ExternStruct { path }) = sv {
+  thr_tokens.push(quote! {
+    fib_chain: ::drone_core::fib::Chain
+  });
+  thr_ctor_tokens.push(quote! {
+    fib_chain: ::drone_core::fib::Chain::new()
+  });
+  local_tokens.push(quote! {
+    task: ::drone_core::thr::TaskCell
+  });
+  local_tokens.push(quote! {
+    preempted: ::drone_core::thr::PreemptedCell
+  });
+  local_ctor_tokens.push(quote! {
+    task: ::drone_core::thr::TaskCell::new()
+  });
+  local_ctor_tokens.push(quote! {
+    preempted: ::drone_core::thr::PreemptedCell::new()
+  });
+  let sv_ty = if let Some(path) = sv {
     quote!(#path)
   } else {
-    quote!(#rt::SvNone)
+    quote!(::drone_core::sv::SvNone)
   };
 
   let expanded = quote! {
-    mod #rt {
-      extern crate drone_core;
-
-      pub use self::drone_core::fib::Chain;
-      pub use self::drone_core::sv::SvNone;
-      pub use self::drone_core::thr::{
-        PreemptedCell, TaskCell, Thread, ThreadLocal,
-      };
-    }
-
     #(#thr_attrs)*
     #thr_vis struct #thr_ident {
       local: #local,
@@ -153,17 +168,17 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       }
     }
 
-    impl #rt::Thread for #thr_ident {
+    impl ::drone_core::thr::Thread for #thr_ident {
       type Local = #local_ident;
       type Sv = #sv_ty;
 
       #[inline(always)]
       fn first() -> *const Self {
-        unsafe { #array_path.as_ptr() }
+        unsafe { #array.as_ptr() }
       }
 
       #[inline(always)]
-      fn fib_chain(&self) -> &#rt::Chain {
+      fn fib_chain(&self) -> &::drone_core::fib::Chain {
         &self.fib_chain
       }
 
@@ -179,14 +194,14 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       }
     }
 
-    impl #rt::ThreadLocal for #local_ident {
+    impl ::drone_core::thr::ThreadLocal for #local_ident {
       #[inline(always)]
-      fn task(&self) -> &#rt::TaskCell {
+      fn task(&self) -> &::drone_core::thr::TaskCell {
         &self.task
       }
 
       #[inline(always)]
-      fn preempted(&self) -> &#rt::PreemptedCell {
+      fn preempted(&self) -> &::drone_core::thr::PreemptedCell {
         &self.preempted
       }
     }

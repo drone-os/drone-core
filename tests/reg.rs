@@ -1,24 +1,43 @@
+#![feature(proc_macro_hygiene)]
+
 #[macro_use]
 extern crate drone_core;
 
 use drone_core::bitfield::Bitfield;
-use drone_core::reg::map;
+use drone_core::reg;
 use drone_core::reg::prelude::*;
 use std::mem::size_of;
 use test_block::test_reg::Val;
 use test_block::TestReg;
 
-map! {
-  /// Test block doc attribute
-  #[doc = "test block attribute"]
-  pub mod TEST_BLOCK;
+reg! {
   /// Test reg doc attribute
   #[doc = "test reg attribute"]
-  TEST_REG {
-    0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg;
-    TEST_BIT { 0 1 RRRegField WWRegField }
-    TEST_BITS { 1 3 RRRegField WWRegField }
+  pub mod TEST_BLOCK TEST_REG;
+
+  0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg;
+
+  TEST_BIT { 0 1 RRRegField WWRegField }
+  TEST_BITS { 1 3 RRRegField WWRegField }
+}
+
+reg::index! {
+  /// Test index doc attribute
+  #[doc = "test index attribute"]
+  pub macro reg_idx;
+  super;;
+
+  /// Test block doc attribute
+  #[doc = "test block attribute"]
+  pub mod TEST_BLOCK {
+    TEST_REG;
   }
+}
+
+reg_idx! {
+  /// Test index doc attribute
+  #[doc = "test index attribute"]
+  pub struct RegIdx;
 }
 
 #[test]

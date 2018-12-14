@@ -64,6 +64,7 @@ pub mod io;
 pub mod mem;
 pub mod prelude;
 pub mod reg;
+pub mod res;
 pub mod stack_adapter;
 pub mod sv;
 pub mod sync;
@@ -71,7 +72,7 @@ pub mod thr;
 
 mod drv;
 
-pub use drone_core_macros::{heap, thr, Bitfield};
+pub use drone_core_macros::{heap, reg, res, thr, Bitfield};
 
 #[prelude_import]
 #[allow(unused_imports)]

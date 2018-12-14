@@ -6,41 +6,45 @@
 //!
 //! ```
 //! # #![feature(prelude_import)]
+//! # #![feature(proc_macro_hygiene)]
 //! # use std as core;
 //! # #[macro_use] extern crate drone_core;
 //! # #[prelude_import] use drone_core::prelude::*;
 //! use core::mem::size_of_val;
+//! use drone_core::reg;
 //! use drone_core::reg::prelude::*;
-//! use drone_core::reg::{tokens, map};
 //!
-//! map! {
-//!   /// SysTick timer.
-//!   pub mod STK; // block name
-//!
+//! reg! {
 //!   /// SysTick control and status register.
-//!   CTRL { // register name
-//!     0xE000_E010 // memory address
-//!     0x20 // bit size
-//!     0x0000_0000 // reset value
-//!     RReg WReg; // list of marker traits for the register
+//!   pub mod STK CTRL; // register block and name
 //!
-//!     /// Counter enable.
-//!     ENABLE { // field name
-//!       0 // offset
-//!       1 // width
-//!       RRRegField WWRegField // list of marker traits for the field
-//!     }
+//!   0xE000_E010 // memory address
+//!   0x20 // bit size
+//!   0x0000_0000 // reset value
+//!   RReg WReg; // list of marker traits for the register
+//!
+//!   /// Counter enable.
+//!   ENABLE { // field name
+//!     0 // offset
+//!     1 // width
+//!     RRRegField WWRegField // list of marker traits for the field
 //!   }
 //! }
 //!
-//! tokens! {
-//!   /// Register tokens.
-//!   pub struct RegIdx;
+//! reg::index! {
+//!   /// Define register tokens.
+//!   pub macro reg_idx;
+//!   super;;
 //!
-//!   STK {
-//!     /// SysTick control and status register.
+//!   /// SysTick timer.
+//!   pub mod STK {
 //!     CTRL;
 //!   }
+//! }
+//!
+//! reg_idx! {
+//!   /// Register tokens.
+//!   pub struct RegIdx;
 //! }
 //!
 //! fn main() {
@@ -64,9 +68,9 @@ pub use self::field::*;
 pub use self::hold::*;
 pub use self::reg::*;
 pub use self::tag::*;
-pub use drone_core_macros::{reg_map as map, reg_tokens as tokens};
+pub use drone_core_macros::reg_index as index;
 
-/// A set of register tokens.
+/// An index of register tokens.
 pub trait RegTokens {
   /// Creates a new set of register tokens.
   ///

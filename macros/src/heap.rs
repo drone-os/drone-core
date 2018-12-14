@@ -1,14 +1,14 @@
-use drone_macros_core::{ExternFn, NewStruct};
 use proc_macro::TokenStream;
-use proc_macro2::Span;
-use syn::parse::{Error, Parse, ParseStream, Result};
+use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
-use syn::{Ident, LitInt};
+use syn::{Attribute, ExprPath, Ident, LitInt, Visibility};
 
 struct Heap {
-  heap: NewStruct,
-  alloc_hook: Option<ExternFn>,
-  dealloc_hook: Option<ExternFn>,
+  heap_attrs: Vec<Attribute>,
+  heap_vis: Visibility,
+  heap_ident: Ident,
+  alloc_hook: Option<ExprPath>,
+  dealloc_hook: Option<ExprPath>,
   size: LitInt,
   pools: Vec<Pool>,
 }
@@ -20,9 +20,21 @@ struct Pool {
 
 impl Parse for Heap {
   fn parse(input: ParseStream) -> Result<Self> {
-    let heap = input.parse()?;
+    let heap_attrs = input.call(Attribute::parse_outer)?;
+    let heap_vis = input.parse()?;
+    input.parse::<Token![struct]>()?;
+    let heap_ident = input.parse()?;
+    input.parse::<Token![;]>()?;
     let (alloc_hook, dealloc_hook) = if input.peek(Token![extern]) {
-      (Some(input.parse()?), Some(input.parse()?))
+      input.parse::<Token![extern]>()?;
+      input.parse::<Token![fn]>()?;
+      let alloc_hook = input.parse()?;
+      input.parse::<Token![;]>()?;
+      input.parse::<Token![extern]>()?;
+      input.parse::<Token![fn]>()?;
+      let dealloc_hook = input.parse()?;
+      input.parse::<Token![;]>()?;
+      (Some(alloc_hook), Some(dealloc_hook))
     } else {
       (None, None)
     };
@@ -52,7 +64,9 @@ impl Parse for Heap {
       input.parse::<Token![;]>()?;
     }
     Ok(Self {
-      heap,
+      heap_attrs,
+      heap_vis,
+      heap_ident,
       alloc_hook,
       dealloc_hook,
       size: size.ok_or_else(|| input.error("`size` is not defined"))?,
@@ -79,37 +93,27 @@ impl Pool {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-  let (def_site, call_site) = (Span::def_site(), Span::call_site());
   let Heap {
-    heap:
-      NewStruct {
-        attrs: heap_attrs,
-        vis: heap_vis,
-        ident: heap_ident,
-      },
+    heap_attrs,
+    heap_vis,
+    heap_ident,
     alloc_hook,
     dealloc_hook,
     size,
     mut pools,
   } = parse_macro_input!(input as Heap);
-  let rt = Ident::new("__heap_rt", def_site);
   pools.sort_by_key(|pool| pool.size.value());
   let free = pools
     .iter()
     .map(Pool::length)
     .fold(size.value() as i64, |a, e| a - e as i64);
   if free != 0 {
-    return Error::new(
-      call_site,
-      &format!(
-        "`pools` not matches `size`. Difference is {}. Consider setting \
-         `size` to {}.",
-        -free,
-        size.value() as i64 - free
-      ),
-    )
-    .to_compile_error()
-    .into();
+    compile_error!(
+      "`pools` not matches `size`. Difference is {}. Consider setting `size` \
+       to {}.",
+      -free,
+      size.value() as i64 - free
+    );
   }
   let (mut pools_tokens, mut offset, pools_len) = (Vec::new(), 0, pools.len());
   for pool in &pools {
@@ -117,42 +121,39 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       ref size,
       ref capacity,
     } = pool;
-    pools_tokens.push(quote!(#rt::Pool::new(#offset, #size, #capacity)));
+    pools_tokens.push(quote! {
+      ::drone_core::heap::Pool::new(#offset, #size, #capacity)
+    });
     offset += pool.length();
   }
   let mut hook_tokens = Vec::new();
-  if let Some(ExternFn { path }) = alloc_hook {
+  if let Some(path) = alloc_hook {
     hook_tokens.push(quote! {
       #[inline(always)]
-      fn alloc_hook(layout: #rt::Layout, pool: &#rt::Pool) {
+      fn alloc_hook(
+        layout: ::core::alloc::Layout,
+        pool: &::drone_core::heap::Pool,
+      ) {
         #path(layout, pool)
       }
     });
   }
-  if let Some(ExternFn { path }) = dealloc_hook {
+  if let Some(path) = dealloc_hook {
     hook_tokens.push(quote! {
       #[inline(always)]
-      fn dealloc_hook(layout: #rt::Layout, pool: &#rt::Pool) {
+      fn dealloc_hook(
+        layout: ::core::alloc::Layout,
+        pool: &::drone_core::heap::Pool,
+      ) {
         #path(layout, pool)
       }
     });
   }
 
   let expanded = quote! {
-    mod #rt {
-      extern crate core;
-      extern crate drone_core;
-
-      pub use self::core::alloc::{Alloc, AllocErr, CannotReallocInPlace, Excess,
-                                  GlobalAlloc, Layout};
-      pub use self::core::ptr::{self, NonNull};
-      pub use self::core::slice::SliceIndex;
-      pub use self::drone_core::heap::{Allocator, Pool};
-    }
-
     #(#heap_attrs)*
     #heap_vis struct #heap_ident {
-      pools: [#rt::Pool; #pools_len],
+      pools: [::drone_core::heap::Pool; #pools_len],
     }
 
     impl #heap_ident {
@@ -164,13 +165,13 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       }
     }
 
-    impl #rt::Allocator for #heap_ident {
+    impl ::drone_core::heap::Allocator for #heap_ident {
       const POOL_COUNT: usize = #pools_len;
 
       #[inline(always)]
       unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
       where
-        I: #rt::SliceIndex<[#rt::Pool]>,
+        I: ::core::slice::SliceIndex<[::drone_core::heap::Pool]>,
       {
         self.pools.get_unchecked(index)
       }
@@ -180,7 +181,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         &mut self, index: I
       ) -> &mut I::Output
       where
-        I: #rt::SliceIndex<[#rt::Pool]>,
+        I: ::core::slice::SliceIndex<[::drone_core::heap::Pool]>,
       {
         self.pools.get_unchecked_mut(index)
       }
@@ -188,88 +189,106 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       #(#hook_tokens)*
     }
 
-    unsafe impl #rt::Alloc for #heap_ident {
+    unsafe impl ::core::alloc::Alloc for #heap_ident {
       unsafe fn alloc(
         &mut self,
-        layout: #rt::Layout,
-      ) -> Result<#rt::NonNull<u8>, #rt::AllocErr> {
-        #rt::Allocator::alloc(self, layout)
+        layout: ::core::alloc::Layout,
+      ) -> Result<::core::ptr::NonNull<u8>, ::core::alloc::AllocErr> {
+        ::drone_core::heap::Allocator::alloc(self, layout)
       }
 
-      unsafe fn dealloc(&mut self, ptr: #rt::NonNull<u8>, layout: #rt::Layout) {
-        #rt::Allocator::dealloc(self, ptr, layout)
+      unsafe fn dealloc(
+        &mut self,
+        ptr: ::core::ptr::NonNull<u8>,
+        layout: ::core::alloc::Layout,
+      ) {
+        ::drone_core::heap::Allocator::dealloc(self, ptr, layout)
       }
 
-      fn usable_size(&self, layout: &#rt::Layout) -> (usize, usize) {
-        unsafe { #rt::Allocator::usable_size(self, layout) }
+      fn usable_size(&self, layout: &::core::alloc::Layout) -> (usize, usize) {
+        unsafe { ::drone_core::heap::Allocator::usable_size(self, layout) }
       }
 
       unsafe fn realloc(
         &mut self,
-        ptr: #rt::NonNull<u8>,
-        layout: #rt::Layout,
+        ptr: ::core::ptr::NonNull<u8>,
+        layout: ::core::alloc::Layout,
         new_size: usize,
-      ) -> Result<#rt::NonNull<u8>, #rt::AllocErr> {
-        #rt::Allocator::realloc(self, ptr, layout, new_size)
+      ) -> Result<::core::ptr::NonNull<u8>, ::core::alloc::AllocErr> {
+        ::drone_core::heap::Allocator::realloc(self, ptr, layout, new_size)
       }
 
       unsafe fn alloc_excess(
         &mut self,
-        layout: #rt::Layout,
-      ) -> Result<#rt::Excess, #rt::AllocErr> {
-        #rt::Allocator::alloc(self, layout)
+        layout: ::core::alloc::Layout,
+      ) -> Result<::core::alloc::Excess, ::core::alloc::AllocErr> {
+        ::drone_core::heap::Allocator::alloc(self, layout)
       }
 
       unsafe fn realloc_excess(
         &mut self,
-        ptr: #rt::NonNull<u8>,
-        layout: #rt::Layout,
+        ptr: ::core::ptr::NonNull<u8>,
+        layout: ::core::alloc::Layout,
         new_size: usize,
-      ) -> Result<#rt::Excess, #rt::AllocErr> {
-        #rt::Allocator::realloc(self, ptr, layout, new_size)
+      ) -> Result<::core::alloc::Excess, ::core::alloc::AllocErr> {
+        ::drone_core::heap::Allocator::realloc(self, ptr, layout, new_size)
       }
 
       unsafe fn grow_in_place(
         &mut self,
-        ptr: #rt::NonNull<u8>,
-        layout: #rt::Layout,
+        ptr: ::core::ptr::NonNull<u8>,
+        layout: ::core::alloc::Layout,
         new_size: usize,
-      ) -> Result<(), #rt::CannotReallocInPlace> {
-        #rt::Allocator::grow_in_place(self, ptr, layout, new_size)
+      ) -> Result<(), ::core::alloc::CannotReallocInPlace> {
+        ::drone_core::heap::Allocator::grow_in_place(
+          self,
+          ptr,
+          layout,
+          new_size,
+        )
       }
 
       unsafe fn shrink_in_place(
         &mut self,
-        ptr: #rt::NonNull<u8>,
-        layout: #rt::Layout,
+        ptr: ::core::ptr::NonNull<u8>,
+        layout: ::core::alloc::Layout,
         new_size: usize,
-      ) -> Result<(), #rt::CannotReallocInPlace> {
-        #rt::Allocator::shrink_in_place(self, ptr, layout, new_size)
+      ) -> Result<(), ::core::alloc::CannotReallocInPlace> {
+        ::drone_core::heap::Allocator::shrink_in_place(
+          self,
+          ptr,
+          layout,
+          new_size,
+        )
       }
     }
 
-    unsafe impl #rt::GlobalAlloc for #heap_ident {
-      unsafe fn alloc(&self, layout: #rt::Layout) -> *mut u8 {
-        #rt::Allocator::alloc(self, layout)
-          .map(#rt::NonNull::as_ptr).unwrap_or(#rt::ptr::null_mut())
+    unsafe impl ::core::alloc::GlobalAlloc for #heap_ident {
+      unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
+        ::drone_core::heap::Allocator::alloc(self, layout)
+          .map(::core::ptr::NonNull::as_ptr).unwrap_or(::core::ptr::null_mut())
       }
 
-      unsafe fn dealloc(&self, ptr: *mut u8, layout: #rt::Layout) {
-        #rt::Allocator::dealloc(self, #rt::NonNull::new_unchecked(ptr), layout)
+      unsafe fn dealloc(&self, ptr: *mut u8, layout: ::core::alloc::Layout) {
+        ::drone_core::heap::Allocator::dealloc(
+          self,
+          ::core::ptr::NonNull::new_unchecked(ptr),
+          layout,
+        )
       }
 
       unsafe fn realloc(
         &self,
         ptr: *mut u8,
-        layout: #rt::Layout,
+        layout: ::core::alloc::Layout,
         new_size: usize,
       ) -> *mut u8 {
-        #rt::Allocator::realloc(
+        ::drone_core::heap::Allocator::realloc(
           self,
-          #rt::NonNull::new_unchecked(ptr),
+          ::core::ptr::NonNull::new_unchecked(ptr),
           layout,
           new_size,
-        ).map(#rt::NonNull::as_ptr).unwrap_or(#rt::ptr::null_mut())
+        ).map(::core::ptr::NonNull::as_ptr).unwrap_or(::core::ptr::null_mut())
       }
     }
   };

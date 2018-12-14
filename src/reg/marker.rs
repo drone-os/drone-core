@@ -25,16 +25,14 @@ where
 #[marker]
 pub trait URwReg
 where
-  Self: RReg<Urt>,
-  Self: WReg<Urt>,
+  Self: RwReg<Urt>,
   Self: for<'a> RwRegUnsync<'a>,
 {
 }
 
 impl<R> URwReg for R
 where
-  R: RReg<Urt>,
-  R: WReg<Urt>,
+  R: RwReg<Urt>,
   R: for<'a> RwRegUnsync<'a>,
 {
 }
@@ -75,15 +73,15 @@ where
 #[marker]
 pub trait SRwReg
 where
-  Self: RReg<Srt>,
-  Self: WReg<Srt>,
+  Self: RwReg<Srt>,
+  Self: for<'a> WRegAtomic<'a, Srt>,
 {
 }
 
 impl<R> SRwReg for R
 where
-  R: RReg<Srt>,
-  R: WReg<Srt>,
+  R: RwReg<Srt>,
+  R: for<'a> WRegAtomic<'a, Srt>,
 {
 }
 
@@ -123,16 +121,16 @@ where
 #[marker]
 pub trait CRwReg
 where
-  Self: RReg<Crt>,
-  Self: WReg<Crt>,
+  Self: RwReg<Crt>,
+  Self: for<'a> WRegAtomic<'a, Crt>,
   Self: Copy,
 {
 }
 
 impl<R> CRwReg for R
 where
-  R: RReg<Crt>,
-  R: WReg<Crt>,
+  R: RwReg<Crt>,
+  R: for<'a> WRegAtomic<'a, Crt>,
   R: Copy,
 {
 }
@@ -341,16 +339,14 @@ where
 #[marker]
 pub trait URwRwRegFieldBit
 where
-  Self: WWRegFieldBit<Urt>,
-  Self: RRRegFieldBit<Urt>,
+  Self: RwRwRegFieldBit<Urt>,
   Self::Reg: URwReg,
 {
 }
 
 impl<R> URwRwRegFieldBit for R
 where
-  R: WWRegFieldBit<Urt>,
-  R: RRRegFieldBit<Urt>,
+  R: RwRwRegFieldBit<Urt>,
   R::Reg: URwReg,
 {
 }
@@ -361,16 +357,14 @@ where
 #[marker]
 pub trait URwRwRegFieldBits
 where
-  Self: WWRegFieldBits<Urt>,
-  Self: RRRegFieldBits<Urt>,
+  Self: RwRwRegFieldBits<Urt>,
   Self::Reg: URwReg,
 {
 }
 
 impl<R> URwRwRegFieldBits for R
 where
-  R: WWRegFieldBits<Urt>,
-  R: RRRegFieldBits<Urt>,
+  R: RwRwRegFieldBits<Urt>,
   R::Reg: URwReg,
 {
 }
@@ -381,16 +375,14 @@ where
 #[marker]
 pub trait UWoRwRegFieldBit
 where
-  Self: WWRegFieldBit<Urt>,
-  Self: WoWRegField<Urt>,
+  Self: WoRwRegFieldBit<Urt>,
   Self::Reg: URwReg,
 {
 }
 
 impl<R> UWoRwRegFieldBit for R
 where
-  R: WWRegFieldBit<Urt>,
-  R: WoWRegField<Urt>,
+  R: WoRwRegFieldBit<Urt>,
   R::Reg: URwReg,
 {
 }
@@ -401,16 +393,14 @@ where
 #[marker]
 pub trait UWoRwRegFieldBits
 where
-  Self: WWRegFieldBits<Urt>,
-  Self: WoWRegField<Urt>,
+  Self: WoRwRegFieldBits<Urt>,
   Self::Reg: URwReg,
 {
 }
 
 impl<R> UWoRwRegFieldBits for R
 where
-  R: WWRegFieldBits<Urt>,
-  R: WoWRegField<Urt>,
+  R: WoRwRegFieldBits<Urt>,
   R::Reg: URwReg,
 {
 }
@@ -457,16 +447,14 @@ where
 #[marker]
 pub trait URoRwRegFieldBit
 where
-  Self: RRRegFieldBit<Urt>,
-  Self: RoRRegField<Urt>,
+  Self: RoRwRegFieldBit<Urt>,
   Self::Reg: URwReg,
 {
 }
 
 impl<R> URoRwRegFieldBit for R
 where
-  R: RRRegFieldBit<Urt>,
-  R: RoRRegField<Urt>,
+  R: RoRwRegFieldBit<Urt>,
   R::Reg: URwReg,
 {
 }
@@ -477,16 +465,14 @@ where
 #[marker]
 pub trait URoRwRegFieldBits
 where
-  Self: RRRegFieldBits<Urt>,
-  Self: RoRRegField<Urt>,
+  Self: RoRwRegFieldBits<Urt>,
   Self::Reg: URwReg,
 {
 }
 
 impl<R> URoRwRegFieldBits for R
 where
-  R: RRRegFieldBits<Urt>,
-  R: RoRRegField<Urt>,
+  R: RoRwRegFieldBits<Urt>,
   R::Reg: URwReg,
 {
 }
@@ -497,16 +483,14 @@ where
 #[marker]
 pub trait URoRoRegFieldBit
 where
-  Self: RRRegFieldBit<Urt>,
-  Self: RoRRegField<Urt>,
+  Self: RoRoRegFieldBit<Urt>,
   Self::Reg: URoReg,
 {
 }
 
 impl<R> URoRoRegFieldBit for R
 where
-  R: RRRegFieldBit<Urt>,
-  R: RoRRegField<Urt>,
+  R: RoRoRegFieldBit<Urt>,
   R::Reg: URoReg,
 {
 }
@@ -517,16 +501,14 @@ where
 #[marker]
 pub trait URoRoRegFieldBits
 where
-  Self: RRRegFieldBits<Urt>,
-  Self: RoRRegField<Urt>,
+  Self: RoRoRegFieldBits<Urt>,
   Self::Reg: URoReg,
 {
 }
 
 impl<R> URoRoRegFieldBits for R
 where
-  R: RRRegFieldBits<Urt>,
-  R: RoRRegField<Urt>,
+  R: RoRoRegFieldBits<Urt>,
   R::Reg: URoReg,
 {
 }
@@ -537,16 +519,14 @@ where
 #[marker]
 pub trait SRwRwRegFieldBit
 where
-  Self: WWRegFieldBit<Srt>,
-  Self: RRRegFieldBit<Srt>,
+  Self: RwRwRegFieldBit<Srt>,
   Self::Reg: SRwReg,
 {
 }
 
 impl<R> SRwRwRegFieldBit for R
 where
-  R: WWRegFieldBit<Srt>,
-  R: RRRegFieldBit<Srt>,
+  R: RwRwRegFieldBit<Srt>,
   R::Reg: SRwReg,
 {
 }
@@ -557,16 +537,14 @@ where
 #[marker]
 pub trait SRwRwRegFieldBits
 where
-  Self: WWRegFieldBits<Srt>,
-  Self: RRRegFieldBits<Srt>,
+  Self: RwRwRegFieldBits<Srt>,
   Self::Reg: SRwReg,
 {
 }
 
 impl<R> SRwRwRegFieldBits for R
 where
-  R: WWRegFieldBits<Srt>,
-  R: RRRegFieldBits<Srt>,
+  R: RwRwRegFieldBits<Srt>,
   R::Reg: SRwReg,
 {
 }
@@ -577,16 +555,14 @@ where
 #[marker]
 pub trait SWoRwRegFieldBit
 where
-  Self: WWRegFieldBit<Srt>,
-  Self: WoWRegField<Srt>,
+  Self: WoRwRegFieldBit<Srt>,
   Self::Reg: SRwReg,
 {
 }
 
 impl<R> SWoRwRegFieldBit for R
 where
-  R: WWRegFieldBit<Srt>,
-  R: WoWRegField<Srt>,
+  R: WoRwRegFieldBit<Srt>,
   R::Reg: SRwReg,
 {
 }
@@ -597,16 +573,14 @@ where
 #[marker]
 pub trait SWoRwRegFieldBits
 where
-  Self: WWRegFieldBits<Srt>,
-  Self: WoWRegField<Srt>,
+  Self: WoRwRegFieldBits<Srt>,
   Self::Reg: SRwReg,
 {
 }
 
 impl<R> SWoRwRegFieldBits for R
 where
-  R: WWRegFieldBits<Srt>,
-  R: WoWRegField<Srt>,
+  R: WoRwRegFieldBits<Srt>,
   R::Reg: SRwReg,
 {
 }
@@ -653,16 +627,14 @@ where
 #[marker]
 pub trait SRoRwRegFieldBit
 where
-  Self: RRRegFieldBit<Srt>,
-  Self: RoRRegField<Srt>,
+  Self: RoRwRegFieldBit<Srt>,
   Self::Reg: SRwReg,
 {
 }
 
 impl<R> SRoRwRegFieldBit for R
 where
-  R: RRRegFieldBit<Srt>,
-  R: RoRRegField<Srt>,
+  R: RoRwRegFieldBit<Srt>,
   R::Reg: SRwReg,
 {
 }
@@ -673,16 +645,14 @@ where
 #[marker]
 pub trait SRoRwRegFieldBits
 where
-  Self: RRRegFieldBits<Srt>,
-  Self: RoRRegField<Srt>,
+  Self: RoRwRegFieldBits<Srt>,
   Self::Reg: SRwReg,
 {
 }
 
 impl<R> SRoRwRegFieldBits for R
 where
-  R: RRRegFieldBits<Srt>,
-  R: RoRRegField<Srt>,
+  R: RoRwRegFieldBits<Srt>,
   R::Reg: SRwReg,
 {
 }
@@ -693,16 +663,14 @@ where
 #[marker]
 pub trait SRoRoRegFieldBit
 where
-  Self: RRRegFieldBit<Srt>,
-  Self: RoRRegField<Srt>,
+  Self: RoRoRegFieldBit<Srt>,
   Self::Reg: SRoReg,
 {
 }
 
 impl<R> SRoRoRegFieldBit for R
 where
-  R: RRRegFieldBit<Srt>,
-  R: RoRRegField<Srt>,
+  R: RoRoRegFieldBit<Srt>,
   R::Reg: SRoReg,
 {
 }
@@ -713,16 +681,14 @@ where
 #[marker]
 pub trait SRoRoRegFieldBits
 where
-  Self: RRRegFieldBits<Srt>,
-  Self: RoRRegField<Srt>,
+  Self: RoRoRegFieldBits<Srt>,
   Self::Reg: SRoReg,
 {
 }
 
 impl<R> SRoRoRegFieldBits for R
 where
-  R: RRRegFieldBits<Srt>,
-  R: RoRRegField<Srt>,
+  R: RoRoRegFieldBits<Srt>,
   R::Reg: SRoReg,
 {
 }
@@ -733,8 +699,7 @@ where
 #[marker]
 pub trait CRwRwRegFieldBit
 where
-  Self: WWRegFieldBit<Crt>,
-  Self: RRRegFieldBit<Crt>,
+  Self: RwRwRegFieldBit<Crt>,
   Self: Copy,
   Self::Reg: CRwReg,
 {
@@ -742,8 +707,7 @@ where
 
 impl<R> CRwRwRegFieldBit for R
 where
-  R: WWRegFieldBit<Crt>,
-  R: RRRegFieldBit<Crt>,
+  R: RwRwRegFieldBit<Crt>,
   R: Copy,
   R::Reg: CRwReg,
 {
@@ -755,8 +719,7 @@ where
 #[marker]
 pub trait CRwRwRegFieldBits
 where
-  Self: WWRegFieldBits<Crt>,
-  Self: RRRegFieldBits<Crt>,
+  Self: RwRwRegFieldBits<Crt>,
   Self: Copy,
   Self::Reg: CRwReg,
 {
@@ -764,8 +727,7 @@ where
 
 impl<R> CRwRwRegFieldBits for R
 where
-  R: WWRegFieldBits<Crt>,
-  R: RRRegFieldBits<Crt>,
+  R: RwRwRegFieldBits<Crt>,
   R: Copy,
   R::Reg: CRwReg,
 {
@@ -777,8 +739,7 @@ where
 #[marker]
 pub trait CWoRwRegFieldBit
 where
-  Self: WWRegFieldBit<Crt>,
-  Self: WoWRegField<Crt>,
+  Self: WoRwRegFieldBit<Crt>,
   Self: Copy,
   Self::Reg: CRwReg,
 {
@@ -786,8 +747,7 @@ where
 
 impl<R> CWoRwRegFieldBit for R
 where
-  R: WWRegFieldBit<Crt>,
-  R: WoWRegField<Crt>,
+  R: WoRwRegFieldBit<Crt>,
   R: Copy,
   R::Reg: CRwReg,
 {
@@ -799,8 +759,7 @@ where
 #[marker]
 pub trait CWoRwRegFieldBits
 where
-  Self: WWRegFieldBits<Crt>,
-  Self: WoWRegField<Crt>,
+  Self: WoRwRegFieldBits<Crt>,
   Self: Copy,
   Self::Reg: CRwReg,
 {
@@ -808,8 +767,7 @@ where
 
 impl<R> CWoRwRegFieldBits for R
 where
-  R: WWRegFieldBits<Crt>,
-  R: WoWRegField<Crt>,
+  R: WoRwRegFieldBits<Crt>,
   R: Copy,
   R::Reg: CRwReg,
 {
@@ -861,8 +819,7 @@ where
 #[marker]
 pub trait CRoRwRegFieldBit
 where
-  Self: RRRegFieldBit<Crt>,
-  Self: RoRRegField<Crt>,
+  Self: RoRwRegFieldBit<Crt>,
   Self: Copy,
   Self::Reg: CRwReg,
 {
@@ -870,8 +827,7 @@ where
 
 impl<R> CRoRwRegFieldBit for R
 where
-  R: RRRegFieldBit<Crt>,
-  R: RoRRegField<Crt>,
+  R: RoRwRegFieldBit<Crt>,
   R: Copy,
   R::Reg: CRwReg,
 {
@@ -883,8 +839,7 @@ where
 #[marker]
 pub trait CRoRwRegFieldBits
 where
-  Self: RRRegFieldBits<Crt>,
-  Self: RoRRegField<Crt>,
+  Self: RoRwRegFieldBits<Crt>,
   Self: Copy,
   Self::Reg: CRwReg,
 {
@@ -892,8 +847,7 @@ where
 
 impl<R> CRoRwRegFieldBits for R
 where
-  R: RRRegFieldBits<Crt>,
-  R: RoRRegField<Crt>,
+  R: RoRwRegFieldBits<Crt>,
   R: Copy,
   R::Reg: CRwReg,
 {
@@ -905,8 +859,7 @@ where
 #[marker]
 pub trait CRoRoRegFieldBit
 where
-  Self: RRRegFieldBit<Crt>,
-  Self: RoRRegField<Crt>,
+  Self: RoRoRegFieldBit<Crt>,
   Self: Copy,
   Self::Reg: CRoReg,
 {
@@ -914,8 +867,7 @@ where
 
 impl<R> CRoRoRegFieldBit for R
 where
-  R: RRRegFieldBit<Crt>,
-  R: RoRRegField<Crt>,
+  R: RoRoRegFieldBit<Crt>,
   R: Copy,
   R::Reg: CRoReg,
 {
@@ -927,8 +879,7 @@ where
 #[marker]
 pub trait CRoRoRegFieldBits
 where
-  Self: RRRegFieldBits<Crt>,
-  Self: RoRRegField<Crt>,
+  Self: RoRoRegFieldBits<Crt>,
   Self: Copy,
   Self::Reg: CRoReg,
 {
@@ -936,8 +887,7 @@ where
 
 impl<R> CRoRoRegFieldBits for R
 where
-  R: RRRegFieldBits<Crt>,
-  R: RoRRegField<Crt>,
+  R: RoRoRegFieldBits<Crt>,
   R: Copy,
   R::Reg: CRoReg,
 {
