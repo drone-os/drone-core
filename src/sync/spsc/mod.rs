@@ -1,10 +1,10 @@
 //! Single-producer, single-consumer queues.
 
-use core::ops::{BitAnd, BitOr, BitOrAssign, BitXorAssign};
-use core::sync::atomic::Ordering;
-use core::sync::atomic::Ordering::*;
-use futures::prelude::*;
-use futures::task::Waker;
+use core::{
+  ops::{BitAnd, BitOr, BitOrAssign, BitXorAssign},
+  sync::atomic::Ordering::{self, *},
+};
+use futures::{prelude::*, task::Waker};
 
 pub mod oneshot;
 pub mod ring;
@@ -73,11 +73,11 @@ where
   fn poll_cancel(&self, cx: &mut task::Context) -> Poll<(), ()> {
     self
       .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {
-        if *state & (Self::COMPLETE | Self::TX_LOCK) != Self::ZERO {
-          Err(())
-        } else {
+        if *state & (Self::COMPLETE | Self::TX_LOCK) == Self::ZERO {
           *state |= Self::TX_LOCK;
           Ok(*state)
+        } else {
+          Err(())
         }
       })
       .and_then(|state| {
@@ -88,10 +88,10 @@ where
         })
       })
       .and_then(|state| {
-        if state & Self::COMPLETE != Self::ZERO {
-          Err(())
-        } else {
+        if state & Self::COMPLETE == Self::ZERO {
           Ok(Async::Pending)
+        } else {
+          Err(())
         }
       })
       .or_else(|()| Ok(Async::Ready(())))

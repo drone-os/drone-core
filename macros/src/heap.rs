@@ -1,7 +1,9 @@
 use proc_macro::TokenStream;
-use syn::parse::{Parse, ParseStream, Result};
-use syn::punctuated::Punctuated;
-use syn::{Attribute, ExprPath, Ident, LitInt, Visibility};
+use syn::{
+  parse::{Parse, ParseStream, Result},
+  punctuated::Punctuated,
+  Attribute, ExprPath, Ident, LitInt, Visibility,
+};
 
 struct Heap {
   heap_attrs: Vec<Attribute>,

@@ -1,6 +1,7 @@
-use core::ptr;
-use core::sync::atomic::AtomicPtr;
-use core::sync::atomic::Ordering::*;
+use core::{
+  ptr,
+  sync::atomic::{AtomicPtr, Ordering::*},
+};
 use fib::FiberRoot;
 
 /// A lock-free stack of fibers.

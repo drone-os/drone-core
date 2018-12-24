@@ -1,6 +1,8 @@
 use proc_macro::TokenStream;
-use syn::parse::{Parse, ParseStream, Result};
-use syn::{Attribute, Expr, ExprPath, Ident, Type, Visibility};
+use syn::{
+  parse::{Parse, ParseStream, Result},
+  Attribute, Expr, ExprPath, Ident, Type, Visibility,
+};
 
 struct Thr {
   thr_attrs: Vec<Attribute>,

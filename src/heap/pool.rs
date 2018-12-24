@@ -1,7 +1,8 @@
-use core::alloc::Layout;
-use core::ptr::{self, NonNull};
-use core::sync::atomic::AtomicPtr;
-use core::sync::atomic::Ordering::*;
+use core::{
+  alloc::Layout,
+  ptr::{self, NonNull},
+  sync::atomic::{AtomicPtr, Ordering::*},
+};
 
 /// A lock-free fixed-size blocks allocator.
 ///

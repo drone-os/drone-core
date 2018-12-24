@@ -5,13 +5,17 @@
 mod receiver;
 mod sender;
 
-pub use self::receiver::Receiver;
-pub use self::sender::{SendError, Sender};
+pub use self::{
+  receiver::Receiver,
+  sender::{SendError, Sender},
+};
 
 use alloc::sync::Arc;
-use core::cell::UnsafeCell;
-use core::mem::size_of;
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::{
+  cell::UnsafeCell,
+  mem::size_of,
+  sync::atomic::{AtomicUsize, Ordering},
+};
 use futures::task::Waker;
 use sync::spsc::SpscInner;
 

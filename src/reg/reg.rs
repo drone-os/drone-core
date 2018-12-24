@@ -98,7 +98,6 @@ pub trait RegRef<'a, T: RegTag>: Reg<T> {
 /// Register that can read its value.
 pub trait RReg<T: RegTag>: Reg<T> {
   /// Reads and wraps a register value from its memory address.
-  #[allow(clippy::needless_lifetimes)]
   #[inline(always)]
   fn load<'a>(&'a self) -> <Self as RegRef<'a, T>>::Hold
   where
@@ -195,14 +194,14 @@ where
   fn store<F>(&'a self, f: F)
   where
     F: for<'b> FnOnce(
-      &'b mut <U as RegRef<'a, T>>::Hold,
-    ) -> &'b mut <U as RegRef<'a, T>>::Hold,
+      &'b mut <Self as RegRef<'a, T>>::Hold,
+    ) -> &'b mut <Self as RegRef<'a, T>>::Hold,
   {
     self.store_val(f(&mut self.default()).val());
   }
 
   #[inline(always)]
-  fn store_val(&self, val: U::Val) {
+  fn store_val(&self, val: Self::Val) {
     unsafe { write_volatile(self.to_mut_ptr(), val.bits()) };
   }
 
@@ -220,8 +219,8 @@ where
   fn store<F>(&'a mut self, f: F)
   where
     F: for<'b> FnOnce(
-      &'b mut <T as RegRef<'a, Urt>>::Hold,
-    ) -> &'b mut <T as RegRef<'a, Urt>>::Hold,
+      &'b mut <Self as RegRef<'a, Urt>>::Hold,
+    ) -> &'b mut <Self as RegRef<'a, Urt>>::Hold,
   {
     unsafe {
       write_volatile(self.to_mut_ptr(), f(&mut self.default()).val().bits());
@@ -229,7 +228,7 @@ where
   }
 
   #[inline(always)]
-  fn store_val(&mut self, val: T::Val) {
+  fn store_val(&mut self, val: Self::Val) {
     unsafe { write_volatile(self.to_mut_ptr(), val.bits()) };
   }
 
@@ -247,8 +246,8 @@ where
   fn modify<F>(&'a mut self, f: F)
   where
     F: for<'b> FnOnce(
-      &'b mut <T as RegRef<'a, Urt>>::Hold,
-    ) -> &'b mut <T as RegRef<'a, Urt>>::Hold,
+      &'b mut <Self as RegRef<'a, Urt>>::Hold,
+    ) -> &'b mut <Self as RegRef<'a, Urt>>::Hold,
   {
     unsafe {
       write_volatile(self.to_mut_ptr(), f(&mut self.load()).val().bits());

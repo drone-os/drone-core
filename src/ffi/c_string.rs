@@ -1,7 +1,9 @@
 use alloc::borrow::{Borrow, Cow};
-use core::slice::memchr;
-use core::str::Utf8Error;
-use core::{fmt, mem, ops, ptr, slice};
+use core::{
+  fmt, mem, ops, ptr,
+  slice::{self, memchr},
+  str::Utf8Error,
+};
 use ffi::{c_char, strlen, CStr};
 
 /// A type representing an owned, C-compatible, nul-terminated string with no
@@ -57,7 +59,7 @@ use ffi::{c_char, strlen, CStr};
 /// # Examples
 ///
 /// ```
-/// use drone_core::ffi::{CString, c_char};
+/// use drone_core::ffi::{c_char, CString};
 ///
 /// unsafe fn my_printer(s: *const c_char) {}
 ///
@@ -136,7 +138,7 @@ impl CString {
   /// # Examples
   ///
   /// ```
-  /// use drone_core::ffi::{CString, c_char};
+  /// use drone_core::ffi::{c_char, CString};
   ///
   /// unsafe fn puts(_s: *const c_char) {}
   ///
@@ -149,19 +151,18 @@ impl CString {
   /// # Errors
   ///
   /// This function will return an error if the supplied bytes contain an
-  /// internal 0 byte. The [`NulError`] returned will contain the bytes as well as
-  /// the position of the nul byte.
+  /// internal 0 byte. The [`NulError`] returned will contain the bytes as well
+  /// as the position of the nul byte.
   ///
   /// [`NulError`]: NulError
-  #[allow(clippy::new_ret_no_self)]
-  pub fn new<T: Into<Vec<u8>>>(t: T) -> Result<CString, NulError> {
+  pub fn new<T: Into<Vec<u8>>>(t: T) -> Result<Self, NulError> {
     Self::_new(t.into())
   }
 
-  fn _new(bytes: Vec<u8>) -> Result<CString, NulError> {
+  fn _new(bytes: Vec<u8>) -> Result<Self, NulError> {
     match memchr::memchr(0, &bytes) {
       Some(i) => Err(NulError(i, bytes)),
-      None => Ok(unsafe { CString::from_vec_unchecked(bytes) }),
+      None => Ok(unsafe { Self::from_vec_unchecked(bytes) }),
     }
   }
 
@@ -184,10 +185,10 @@ impl CString {
   ///   let c_string = CString::from_vec_unchecked(raw);
   /// }
   /// ```
-  pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> CString {
+  pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> Self {
     v.reserve_exact(1);
     v.push(0);
-    CString {
+    Self {
       inner: v.into_boxed_slice(),
     }
   }
@@ -219,7 +220,7 @@ impl CString {
   /// pointer), then retake ownership with `from_raw`:
   ///
   /// ```
-  /// use drone_core::ffi::{CString, c_char};
+  /// use drone_core::ffi::{c_char, CString};
   ///
   /// unsafe fn some_extern_function(_s: *mut c_char) {}
   ///
@@ -230,10 +231,10 @@ impl CString {
   ///   let c_string = CString::from_raw(raw);
   /// }
   /// ```
-  pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
+  pub unsafe fn from_raw(ptr: *mut c_char) -> Self {
     let len = strlen(ptr) + 1; // Including the NUL byte
     let slice = slice::from_raw_parts_mut(ptr, len as usize);
-    CString {
+    Self {
       inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]),
     }
   }
@@ -295,7 +296,7 @@ impl CString {
   pub fn into_string(self) -> Result<String, IntoStringError> {
     String::from_utf8(self.into_bytes()).map_err(|e| IntoStringError {
       error: e.utf8_error(),
-      inner: unsafe { CString::from_vec_unchecked(e.into_bytes()) },
+      inner: unsafe { Self::from_vec_unchecked(e.into_bytes()) },
     })
   }
 
@@ -315,8 +316,8 @@ impl CString {
   /// ```
   pub fn into_bytes(self) -> Vec<u8> {
     let mut vec = self.into_inner().into_vec();
-    let _nul = vec.pop();
-    debug_assert_eq!(_nul, Some(0u8));
+    let nul = vec.pop();
+    debug_assert_eq!(nul, Some(0_u8));
     vec
   }
 
@@ -386,7 +387,7 @@ impl CString {
   /// # Examples
   ///
   /// ```
-  /// use drone_core::ffi::{CString, CStr};
+  /// use drone_core::ffi::{CStr, CString};
   ///
   /// let c_string = CString::new(b"foo".to_vec()).unwrap();
   /// let c_str = c_string.as_c_str();
@@ -404,7 +405,7 @@ impl CString {
   /// # Examples
   ///
   /// ```
-  /// use drone_core::ffi::{CString, CStr};
+  /// use drone_core::ffi::{CStr, CString};
   ///
   /// let c_string = CString::new(b"foo".to_vec()).unwrap();
   /// let boxed = c_string.into_boxed_c_str();
@@ -503,14 +504,14 @@ impl fmt::Debug for CString {
 
 impl From<CString> for Vec<u8> {
   #[inline]
-  fn from(s: CString) -> Vec<u8> {
+  fn from(s: CString) -> Self {
     s.into_bytes()
   }
 }
 
 impl Default for CString {
   /// Creates an empty `CString`.
-  fn default() -> CString {
+  fn default() -> Self {
     let a: &CStr = Default::default();
     a.to_owned()
   }
@@ -524,7 +525,7 @@ impl Borrow<CStr> for CString {
 }
 
 impl<'a> From<&'a CStr> for CString {
-  fn from(s: &'a CStr) -> CString {
+  fn from(s: &'a CStr) -> Self {
     s.to_owned()
   }
 }
@@ -538,7 +539,7 @@ impl<'a> From<Cow<'a, CStr>> for CString {
 
 impl From<Box<CStr>> for CString {
   #[inline]
-  fn from(s: Box<CStr>) -> CString {
+  fn from(s: Box<CStr>) -> Self {
     s.into_c_string()
   }
 }

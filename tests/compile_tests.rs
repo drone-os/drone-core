@@ -2,8 +2,7 @@ extern crate compiletest_rs as compiletest;
 extern crate glob;
 
 use glob::glob;
-use std::fs;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 fn run_mode(mode: &'static str) {
   let mut config = compiletest::Config::default().tempdir();

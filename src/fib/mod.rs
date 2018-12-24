@@ -7,12 +7,14 @@ mod generator;
 mod stream_ring;
 mod stream_unit;
 
-pub use self::chain::Chain;
-pub use self::closure::{new_fn, FiberFn, ThrFiberFn};
-pub use self::future::{FiberFuture, ThrFiberFuture};
-pub use self::generator::{new, FiberGen, ThrFiberGen};
-pub use self::stream_ring::{FiberStreamRing, ThrStreamRing};
-pub use self::stream_unit::{FiberStreamUnit, ThrStreamUnit};
+pub use self::{
+  chain::Chain,
+  closure::{new_fn, FiberFn, ThrFiberFn},
+  future::{FiberFuture, ThrFiberFuture},
+  generator::{new, FiberGen, ThrFiberGen},
+  stream_ring::{FiberStreamRing, ThrStreamRing},
+  stream_unit::{FiberStreamUnit, ThrStreamUnit},
+};
 
 /// Lightweight thread of execution.
 pub trait Fiber {

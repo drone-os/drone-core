@@ -18,10 +18,12 @@
 
 pub use core::prelude::v1::*;
 
-pub use alloc::borrow::ToOwned;
-pub use alloc::boxed::Box;
-pub use alloc::slice::SliceConcatExt;
-pub use alloc::string::{String, ToString};
-pub use alloc::vec::Vec;
+pub use alloc::{
+  borrow::ToOwned,
+  boxed::Box,
+  slice::SliceConcatExt,
+  string::{String, ToString},
+  vec::Vec,
+};
 
 pub use async::async;

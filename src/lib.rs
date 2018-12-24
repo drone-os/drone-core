@@ -36,11 +36,23 @@
 #![feature(optin_builtin_traits)]
 #![feature(prelude_import)]
 #![feature(raw_vec_internals)]
+#![feature(result_map_or_else)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
 #![feature(untagged_unions)]
 #![warn(missing_docs)]
-#![allow(clippy::precedence, clippy::inline_always)]
+#![warn(clippy::pedantic)]
+#![allow(
+  clippy::cast_possible_truncation,
+  clippy::cast_possible_wrap,
+  clippy::cast_sign_loss,
+  clippy::enum_glob_use,
+  clippy::inline_always,
+  clippy::module_inception,
+  clippy::precedence,
+  clippy::stutter,
+  clippy::use_self
+)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;

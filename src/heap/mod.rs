@@ -18,10 +18,9 @@
 //! # fn main() {}
 //! # use std as core;
 //! use core::alloc::Layout;
-//! use drone_core::heap;
 //! use drone_core::heap::Pool;
 //!
-//! heap! {
+//! drone_core::heap! {
 //!   /// The allocator struct.
 //!   pub struct Heap;
 //!   extern fn alloc_hook;
@@ -54,10 +53,9 @@
 //! # use std as core;
 //! # pub mod symbols { #[no_mangle] pub static HEAP_START: usize = 0; }
 //! use core::alloc::Layout;
-//! use drone_core::heap;
 //! use drone_core::heap::{Allocator, Pool};
 //!
-//! heap! {
+//! drone_core::heap! {
 //!   pub struct Heap;
 //!   extern fn alloc_hook;
 //!   extern fn dealloc_hook;
@@ -104,5 +102,4 @@
 mod allocator;
 mod pool;
 
-pub use self::allocator::Allocator;
-pub use self::pool::Pool;
+pub use self::{allocator::Allocator, pool::Pool};

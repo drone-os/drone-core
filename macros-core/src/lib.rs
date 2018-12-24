@@ -3,7 +3,8 @@
 //! See `drone-core` documentation for details.
 
 #![warn(missing_docs)]
-#![allow(clippy::precedence)]
+#![warn(clippy::pedantic)]
+#![allow(clippy::stutter)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -19,5 +20,7 @@ mod cfg_features;
 mod macros;
 mod unkeywordize;
 
-pub use self::cfg_features::{CfgFeatures, CfgFeaturesExt};
-pub use self::unkeywordize::unkeywordize;
+pub use self::{
+  cfg_features::{CfgFeatures, CfgFeaturesExt},
+  unkeywordize::unkeywordize,
+};

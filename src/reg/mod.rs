@@ -11,8 +11,7 @@
 //! # #[macro_use] extern crate drone_core;
 //! # #[prelude_import] use drone_core::prelude::*;
 //! use core::mem::size_of_val;
-//! use drone_core::reg;
-//! use drone_core::reg::prelude::*;
+//! use drone_core::reg::{self, prelude::*};
 //!
 //! reg! {
 //!   /// SysTick control and status register.
@@ -60,14 +59,10 @@ pub mod prelude;
 
 mod field;
 mod hold;
-#[allow(clippy::module_inception)]
 mod reg;
 mod tag;
 
-pub use self::field::*;
-pub use self::hold::*;
-pub use self::reg::*;
-pub use self::tag::*;
+pub use self::{field::*, hold::*, reg::*, tag::*};
 pub use drone_core_macros::reg_index as index;
 
 /// An index of register tokens.

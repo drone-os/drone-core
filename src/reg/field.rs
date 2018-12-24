@@ -258,15 +258,16 @@ where
   U::Reg: WoReg<T>,
 {
   #[inline(always)]
-  fn default_val(&self) -> <U::Reg as Reg<T>>::Val {
-    unsafe { <U::Reg as Reg<T>>::Val::default() }
+  fn default_val(&self) -> <Self::Reg as Reg<T>>::Val {
+    unsafe { <Self::Reg as Reg<T>>::Val::default() }
   }
 
   #[inline(always)]
-  fn store_val(&self, val: <U::Reg as Reg<T>>::Val) {
+  fn store_val(&self, val: <Self::Reg as Reg<T>>::Val) {
     unsafe {
       write_volatile(
-        U::Reg::ADDRESS as *mut <<U::Reg as Reg<T>>::Val as Bitfield>::Bits,
+        Self::Reg::ADDRESS
+          as *mut <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits,
         val.bits(),
       );
     }
@@ -275,7 +276,7 @@ where
   #[inline(always)]
   fn store<F>(&self, f: F)
   where
-    F: Fn(&mut <U::Reg as Reg<T>>::Val),
+    F: Fn(&mut <Self::Reg as Reg<T>>::Val),
   {
     let mut val = self.default_val();
     f(&mut val);
@@ -290,10 +291,10 @@ where
   U::Reg: RReg<T>,
 {
   #[inline(always)]
-  fn read(&self, val: &<U::Reg as Reg<T>>::Val) -> bool {
+  fn read(&self, val: &<Self::Reg as Reg<T>>::Val) -> bool {
     unsafe {
-      val.read_bit(<<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
-        U::OFFSET,
+      val.read_bit(<<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
+        Self::OFFSET,
       ))
     }
   }
@@ -311,29 +312,33 @@ where
   U::Reg: WReg<T>,
 {
   #[inline(always)]
-  fn set(&self, val: &mut <U::Reg as Reg<T>>::Val) {
+  fn set(&self, val: &mut <Self::Reg as Reg<T>>::Val) {
     unsafe {
-      val.set_bit(<<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
-        U::OFFSET,
+      val.set_bit(<<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
+        Self::OFFSET,
       ));
     }
   }
 
   #[inline(always)]
-  fn clear(&self, val: &mut <U::Reg as Reg<T>>::Val) {
+  fn clear(&self, val: &mut <Self::Reg as Reg<T>>::Val) {
     unsafe {
-      val.clear_bit(<<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
-        U::OFFSET,
-      ));
+      val.clear_bit(
+        <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
+          Self::OFFSET,
+        ),
+      );
     }
   }
 
   #[inline(always)]
-  fn toggle(&self, val: &mut <U::Reg as Reg<T>>::Val) {
+  fn toggle(&self, val: &mut <Self::Reg as Reg<T>>::Val) {
     unsafe {
-      val.toggle_bit(<<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
-        U::OFFSET,
-      ));
+      val.toggle_bit(
+        <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
+          Self::OFFSET,
+        ),
+      );
     }
   }
 }
@@ -375,18 +380,20 @@ where
   #[inline(always)]
   fn read(
     &self,
-    val: &<U::Reg as Reg<T>>::Val,
-  ) -> <<U::Reg as Reg<T>>::Val as Bitfield>::Bits {
+    val: &<Self::Reg as Reg<T>>::Val,
+  ) -> <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits {
     unsafe {
       val.read_bits(
-        <<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(U::OFFSET),
-        <<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(U::WIDTH),
+        <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
+          Self::OFFSET,
+        ),
+        <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(Self::WIDTH),
       )
     }
   }
 
   #[inline(always)]
-  fn read_bits(&self) -> <<U::Reg as Reg<T>>::Val as Bitfield>::Bits {
+  fn read_bits(&self) -> <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits {
     self.read(&self.load_val())
   }
 }
@@ -400,13 +407,15 @@ where
   #[inline(always)]
   fn write(
     &self,
-    val: &mut <U::Reg as Reg<T>>::Val,
-    bits: <<U::Reg as Reg<T>>::Val as Bitfield>::Bits,
+    val: &mut <Self::Reg as Reg<T>>::Val,
+    bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits,
   ) {
     unsafe {
       val.write_bits(
-        <<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(U::OFFSET),
-        <<U::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(U::WIDTH),
+        <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
+          Self::OFFSET,
+        ),
+        <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(Self::WIDTH),
         bits,
       );
     }
@@ -420,7 +429,7 @@ where
   U::Reg: WoReg<T>,
 {
   #[inline(always)]
-  fn write_bits(&self, bits: <<U::Reg as Reg<T>>::Val as Bitfield>::Bits) {
+  fn write_bits(&self, bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits) {
     self.store(|val| {
       self.write(val, bits);
     });

@@ -4,6 +4,8 @@ mod read;
 mod seek;
 mod write;
 
-pub use self::read::Read;
-pub use self::seek::{Seek, SeekFrom};
-pub use self::write::Write;
+pub use self::{
+  read::Read,
+  seek::{Seek, SeekFrom},
+  write::Write,
+};

@@ -164,8 +164,7 @@ mod macros;
 
 #[doc(hidden)]
 pub mod __rt {
-  pub use core::option::Option;
-  pub use core::result::Result;
+  pub use core::{option::Option, result::Result};
   pub use futures::{Async, Future, Stream};
 }
 

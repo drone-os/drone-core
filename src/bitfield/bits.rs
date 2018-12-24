@@ -1,6 +1,8 @@
-use core::fmt::Debug;
-use core::mem::size_of;
-use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr, Sub};
+use core::{
+  fmt::Debug,
+  mem::size_of,
+  ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr, Sub},
+};
 
 /// Underlying integer for [`Bitfield`](super::Bitfield).
 pub trait Bits

@@ -1,7 +1,6 @@
 use super::{Inner, COMPLETE, RX_LOCK};
 use alloc::sync::Arc;
-use core::fmt;
-use core::sync::atomic::Ordering::*;
+use core::{fmt, sync::atomic::Ordering::*};
 use failure::{Backtrace, Fail};
 use futures::prelude::*;
 use sync::spsc::SpscInner;
@@ -55,11 +54,11 @@ impl<T, E> Inner<T, E> {
   fn recv(&self, cx: &mut task::Context) -> Poll<T, RecvError<E>> {
     self
       .update(self.state_load(Acquire), Acquire, Acquire, |state| {
-        if *state & (COMPLETE | RX_LOCK) != 0 {
-          Err(())
-        } else {
+        if *state & (COMPLETE | RX_LOCK) == 0 {
           *state |= RX_LOCK;
           Ok(*state)
+        } else {
+          Err(())
         }
       })
       .and_then(|state| {

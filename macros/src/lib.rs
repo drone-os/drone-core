@@ -2,8 +2,13 @@
 //!
 //! See `drone-core` documentation for details.
 
-#![allow(clippy::precedence)]
 #![recursion_limit = "512"]
+#![warn(clippy::pedantic)]
+#![allow(
+  clippy::cast_possible_truncation,
+  clippy::cast_possible_wrap,
+  clippy::similar_names
+)]
 
 #[macro_use]
 extern crate drone_macros_core;

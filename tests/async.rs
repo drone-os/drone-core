@@ -12,9 +12,10 @@ extern crate futures;
 use drone_core::prelude::*;
 use drone_core::sync::spsc::oneshot;
 use futures::prelude::*;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering::*;
-use std::sync::Arc;
+use std::sync::{
+  atomic::{AtomicUsize, Ordering::*},
+  Arc,
+};
 
 static mut THREADS: [Thr; 1] = [Thr::new(0)];
 

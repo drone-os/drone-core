@@ -1,10 +1,10 @@
-use core::cell::Cell;
-use core::sync::atomic::AtomicUsize;
-use core::sync::atomic::Ordering::*;
-use core::{mem, ptr};
+use core::{
+  cell::Cell,
+  mem, ptr,
+  sync::atomic::{AtomicUsize, Ordering::*},
+};
 use futures::task;
-use thr::prelude::*;
-use thr::{current, ThreadLocal};
+use thr::{current, prelude::*, ThreadLocal};
 
 static CURRENT: AtomicUsize = AtomicUsize::new(0);
 

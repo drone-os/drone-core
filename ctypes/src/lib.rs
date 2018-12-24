@@ -5,8 +5,8 @@
 //! [Drone]: https://github.com/drone-os/drone-core
 
 #![allow(non_camel_case_types)]
-#![allow(clippy::precedence)]
 #![warn(missing_docs)]
+#![warn(clippy::pedantic)]
 #![no_std]
 
 pub use core::ffi::c_void;

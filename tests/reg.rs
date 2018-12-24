@@ -3,12 +3,12 @@
 #[macro_use]
 extern crate drone_core;
 
-use drone_core::bitfield::Bitfield;
-use drone_core::reg;
-use drone_core::reg::prelude::*;
+use drone_core::{
+  bitfield::Bitfield,
+  reg::{self, prelude::*},
+};
 use std::mem::size_of;
-use test_block::test_reg::Val;
-use test_block::TestReg;
+use test_block::{test_reg::Val, TestReg};
 
 reg! {
   /// Test reg doc attribute

@@ -1,8 +1,10 @@
 use drone_macros_core::{unkeywordize, CfgFeatures, CfgFeaturesExt};
 use inflector::Inflector;
 use proc_macro::TokenStream;
-use syn::parse::{Parse, ParseStream, Result};
-use syn::{Attribute, Ident, ImplItem, Path};
+use syn::{
+  parse::{Parse, ParseStream, Result},
+  Attribute, Ident, ImplItem, Path,
+};
 
 struct ResMap {
   attrs: Vec<Attribute>,
@@ -361,12 +363,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
               }
             });
           }
-          macro_tokens.push((
-            features,
-            quote! {
-              #block_reg_field_snk: $reg.#block_reg_path_snk.#field_path_ident
-            },
-          ));
+          macro_tokens.push((features, quote! {
+            #block_reg_field_snk: $reg.#block_reg_path_snk.#field_path_ident
+          }));
         } else {
           if field_option {
             tokens.push(quote! {

@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::parse::{Parse, ParseStream, Result};
 use syn::{
+  parse::{Parse, ParseStream, Result},
   Data, DeriveInput, Fields, Ident, IntSuffix, LitInt, LitStr, PathArguments,
   Type,
 };

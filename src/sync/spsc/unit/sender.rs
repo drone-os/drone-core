@@ -1,8 +1,7 @@
 use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK, RX_LOCK};
 use alloc::sync::Arc;
 use core::sync::atomic::Ordering::*;
-use futures::prelude::*;
-use futures::task::Waker;
+use futures::{prelude::*, task::Waker};
 use sync::spsc::SpscInner;
 
 /// The sending-half of [`unit::channel`](super::channel).

@@ -7,9 +7,11 @@
 //! use drone_core::bitfield::Bitfield;
 //!
 //! #[derive(Bitfield, Copy, Clone)]
-//! #[bitfield(foo(rw, 0, 1, "Test read-write bit."),
-//!            bar(r, 1, 2, "Test read-only bits."),
-//!            baz(w, 3, 3, "Test write-only bits."))]
+//! #[bitfield(
+//!   foo(rw, 0, 1, "Test read-write bit."),
+//!   bar(r, 1, 2, "Test read-only bits."),
+//!   baz(w, 3, 3, "Test write-only bits.")
+//! )]
 //! struct Packed(u8);
 //!
 //! # fn main() {

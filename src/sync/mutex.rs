@@ -1,7 +1,8 @@
-use core::cell::UnsafeCell;
-use core::ops::{Deref, DerefMut};
-use core::sync::atomic::AtomicBool;
-use core::sync::atomic::Ordering::*;
+use core::{
+  cell::UnsafeCell,
+  ops::{Deref, DerefMut},
+  sync::atomic::{AtomicBool, Ordering::*},
+};
 
 /// A mutual exclusion primitive useful for protecting shared data.
 ///
@@ -69,10 +70,10 @@ impl<T> Mutex<T> {
   /// ```
   #[inline]
   pub fn try_lock(&self) -> Option<MutexGuard<T>> {
-    if !self.lock.swap(true, Acquire) {
-      Some(MutexGuard { lock: self })
-    } else {
+    if self.lock.swap(true, Acquire) {
       None
+    } else {
+      Some(MutexGuard { lock: self })
     }
   }
 
@@ -115,7 +116,7 @@ impl<T: Default> Default for Mutex<T> {
   /// Creates a `Mutex<T>`, with the `Default` value for T.
   #[inline]
   fn default() -> Self {
-    Mutex::new(Default::default())
+    Self::new(Default::default())
   }
 }
 

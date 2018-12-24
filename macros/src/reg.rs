@@ -2,8 +2,10 @@ use drone_macros_core::unkeywordize;
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use std::collections::HashSet;
-use syn::parse::{Parse, ParseStream, Result};
-use syn::{Attribute, Ident, LitInt, Visibility};
+use syn::{
+  parse::{Parse, ParseStream, Result},
+  Attribute, Ident, LitInt, Visibility,
+};
 
 struct Reg {
   attrs: Vec<Attribute>,

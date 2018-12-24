@@ -1,11 +1,11 @@
-use alloc::borrow::Cow;
-use alloc::rc::Rc;
-use alloc::sync::Arc;
-use core::cmp::Ordering;
-use core::fmt::Write;
-use core::slice::memchr;
-use core::str::Utf8Error;
-use core::{ascii, fmt, slice, str};
+use alloc::{borrow::Cow, rc::Rc, sync::Arc};
+use core::{
+  ascii,
+  cmp::Ordering,
+  fmt::{self, Write},
+  slice::{self, memchr},
+  str::{self, Utf8Error},
+};
 use ffi::{c_char, strlen, CString};
 
 /// Representation of a borrowed C string.
@@ -28,9 +28,11 @@ use ffi::{c_char, strlen, CString};
 /// Inspecting a foreign C string:
 ///
 /// ```
-/// use drone_core::ffi::{CStr, c_char};
+/// use drone_core::ffi::{c_char, CStr};
 ///
-/// unsafe fn my_string() -> *const c_char { "foo".as_ptr() }
+/// unsafe fn my_string() -> *const c_char {
+///   "foo".as_ptr()
+/// }
 ///
 /// unsafe {
 ///   let slice = CStr::from_ptr(my_string());
@@ -44,7 +46,7 @@ use ffi::{c_char, strlen, CString};
 /// Passing a Rust-originating C string:
 ///
 /// ```
-/// use drone_core::ffi::{CString, CStr, c_char};
+/// use drone_core::ffi::{c_char, CStr, CString};
 ///
 /// fn work(data: &CStr) {
 ///   unsafe fn work_with(_data: *const c_char) {}
@@ -59,9 +61,11 @@ use ffi::{c_char, strlen, CString};
 /// Converting a foreign C string into a Rust `String`:
 ///
 /// ```
-/// use drone_core::ffi::{CStr, c_char};
+/// use drone_core::ffi::{c_char, CStr};
 ///
-/// unsafe fn my_string() -> *const c_char { "foo".as_ptr() }
+/// unsafe fn my_string() -> *const c_char {
+///   "foo".as_ptr()
+/// }
 ///
 /// fn my_string_safe() -> String {
 ///   unsafe { CStr::from_ptr(my_string()).to_string_lossy().into_owned() }
@@ -137,19 +141,21 @@ impl CStr {
   /// # Examples
   ///
   /// ```
-  /// use drone_core::ffi::{CStr, c_char};
+  /// use drone_core::ffi::{c_char, CStr};
   ///
-  /// unsafe fn my_string() -> *const c_char { "foo\0".as_ptr() }
+  /// unsafe fn my_string() -> *const c_char {
+  ///   "foo\0".as_ptr()
+  /// }
   ///
   /// unsafe {
   ///   let slice = CStr::from_ptr(my_string());
   ///   println!("string returned: {}", slice.to_str().unwrap());
   /// }
   /// ```
-  pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
+  pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a Self {
     let len = strlen(ptr);
     let ptr = ptr as *const u8;
-    CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(
+    Self::from_bytes_with_nul_unchecked(slice::from_raw_parts(
       ptr,
       len as usize + 1,
     ))
@@ -189,13 +195,13 @@ impl CStr {
   /// ```
   pub fn from_bytes_with_nul(
     bytes: &[u8],
-  ) -> Result<&CStr, FromBytesWithNulError> {
+  ) -> Result<&Self, FromBytesWithNulError> {
     let nul_pos = memchr::memchr(0, bytes);
     if let Some(nul_pos) = nul_pos {
       if nul_pos + 1 != bytes.len() {
         return Err(FromBytesWithNulError::interior_nul(nul_pos));
       }
-      Ok(unsafe { CStr::from_bytes_with_nul_unchecked(bytes) })
+      Ok(unsafe { Self::from_bytes_with_nul_unchecked(bytes) })
     } else {
       Err(FromBytesWithNulError::not_nul_terminated())
     }
@@ -214,14 +220,13 @@ impl CStr {
   ///
   /// unsafe {
   ///   let cstring = CString::new("hello").unwrap();
-  ///   let cstr = CStr::from_bytes_with_nul_unchecked(
-  ///     cstring.to_bytes_with_nul());
+  ///   let cstr = CStr::from_bytes_with_nul_unchecked(cstring.to_bytes_with_nul());
   ///   assert_eq!(cstr, &*cstring);
   /// }
   /// ```
   #[inline]
-  pub unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
-    &*(bytes as *const [u8] as *const CStr)
+  pub unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &Self {
+    &*(bytes as *const [u8] as *const Self)
   }
 
   /// Returns the inner pointer to this C string.
@@ -238,7 +243,7 @@ impl CStr {
   ///
   /// ```no_run
   /// # #![allow(unused_must_use)]
-  /// use drone_core::ffi::{CString};
+  /// use drone_core::ffi::CString;
   ///
   /// let ptr = CString::new("Hello").unwrap().as_ptr();
   /// unsafe {
@@ -254,7 +259,7 @@ impl CStr {
   ///
   /// ```no_run
   /// # #![allow(unused_must_use)]
-  /// use drone_core::ffi::{CString};
+  /// use drone_core::ffi::CString;
   ///
   /// let hello = CString::new("Hello").unwrap();
   /// let ptr = hello.as_ptr();
@@ -383,9 +388,7 @@ impl CStr {
   /// use alloc::borrow::Cow;
   /// use drone_core::ffi::CStr;
   ///
-  /// let c_str = CStr::from_bytes_with_nul(
-  ///   b"Hello \xF0\x90\x80World\0"
-  /// ).unwrap();
+  /// let c_str = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0").unwrap();
   /// assert_eq!(
   ///   c_str.to_string_lossy(),
   ///   Cow::Owned(String::from("Hello �World")) as Cow<str>
@@ -409,7 +412,7 @@ impl CStr {
   /// assert_eq!(boxed.into_c_string(), CString::new("foo").unwrap());
   /// ```
   #[allow(clippy::wrong_self_convention)]
-  pub fn into_c_string(self: Box<CStr>) -> CString {
+  pub fn into_c_string(self: Box<Self>) -> CString {
     let raw = Box::into_raw(self) as *mut [u8];
     CString {
       inner: unsafe { Box::from_raw(raw) },
@@ -418,14 +421,14 @@ impl CStr {
 }
 
 impl FromBytesWithNulError {
-  fn interior_nul(pos: usize) -> FromBytesWithNulError {
-    FromBytesWithNulError {
+  fn interior_nul(pos: usize) -> Self {
+    Self {
       kind: FromBytesWithNulErrorKind::InteriorNul(pos),
     }
   }
 
-  fn not_nul_terminated() -> FromBytesWithNulError {
-    FromBytesWithNulError {
+  fn not_nul_terminated() -> Self {
+    Self {
       kind: FromBytesWithNulErrorKind::NotNulTerminated,
     }
   }
@@ -453,7 +456,7 @@ impl<'a> Default for &'a CStr {
 }
 
 impl PartialEq for CStr {
-  fn eq(&self, other: &CStr) -> bool {
+  fn eq(&self, other: &Self) -> bool {
     self.to_bytes().eq(other.to_bytes())
   }
 }
@@ -461,13 +464,13 @@ impl PartialEq for CStr {
 impl Eq for CStr {}
 
 impl PartialOrd for CStr {
-  fn partial_cmp(&self, other: &CStr) -> Option<Ordering> {
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
     self.to_bytes().partial_cmp(other.to_bytes())
   }
 }
 
 impl Ord for CStr {
-  fn cmp(&self, other: &CStr) -> Ordering {
+  fn cmp(&self, other: &Self) -> Ordering {
     self.to_bytes().cmp(other.to_bytes())
   }
 }
@@ -484,13 +487,13 @@ impl ToOwned for CStr {
 
 impl AsRef<CStr> for CStr {
   #[inline]
-  fn as_ref(&self) -> &CStr {
+  fn as_ref(&self) -> &Self {
     self
   }
 }
 
 impl<'a> From<&'a CStr> for Box<CStr> {
-  fn from(s: &'a CStr) -> Box<CStr> {
+  fn from(s: &'a CStr) -> Self {
     let boxed: Box<[u8]> = Box::from(s.to_bytes_with_nul());
     unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
   }
@@ -498,14 +501,14 @@ impl<'a> From<&'a CStr> for Box<CStr> {
 
 impl From<CString> for Box<CStr> {
   #[inline]
-  fn from(s: CString) -> Box<CStr> {
+  fn from(s: CString) -> Self {
     s.into_boxed_c_str()
   }
 }
 
 impl From<CString> for Arc<CStr> {
   #[inline]
-  fn from(s: CString) -> Arc<CStr> {
+  fn from(s: CString) -> Self {
     let arc: Arc<[u8]> = Arc::from(s.into_inner());
     unsafe { Arc::from_raw(Arc::into_raw(arc) as *const CStr) }
   }
@@ -513,7 +516,7 @@ impl From<CString> for Arc<CStr> {
 
 impl<'a> From<&'a CStr> for Arc<CStr> {
   #[inline]
-  fn from(s: &CStr) -> Arc<CStr> {
+  fn from(s: &CStr) -> Self {
     let arc: Arc<[u8]> = Arc::from(s.to_bytes_with_nul());
     unsafe { Arc::from_raw(Arc::into_raw(arc) as *const CStr) }
   }
@@ -521,7 +524,7 @@ impl<'a> From<&'a CStr> for Arc<CStr> {
 
 impl From<CString> for Rc<CStr> {
   #[inline]
-  fn from(s: CString) -> Rc<CStr> {
+  fn from(s: CString) -> Self {
     let rc: Rc<[u8]> = Rc::from(s.into_inner());
     unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
   }
@@ -529,7 +532,7 @@ impl From<CString> for Rc<CStr> {
 
 impl<'a> From<&'a CStr> for Rc<CStr> {
   #[inline]
-  fn from(s: &CStr) -> Rc<CStr> {
+  fn from(s: &CStr) -> Self {
     let rc: Rc<[u8]> = Rc::from(s.to_bytes_with_nul());
     unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
   }
@@ -557,7 +560,7 @@ impl<'a> From<&'a CString> for Cow<'a, CStr> {
 }
 
 impl Default for Box<CStr> {
-  fn default() -> Box<CStr> {
+  fn default() -> Self {
     let boxed: Box<[u8]> = Box::from([0]);
     unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
   }

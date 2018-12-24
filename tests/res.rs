@@ -3,10 +3,10 @@
 #[macro_use]
 extern crate drone_core;
 
-use drone_core::reg;
-use drone_core::reg::marker::*;
-use drone_core::reg::prelude::*;
-use drone_core::res;
+use drone_core::{
+  reg::{self, marker::*, prelude::*},
+  res,
+};
 
 reg! {
   pub mod RCC AHB2ENR;

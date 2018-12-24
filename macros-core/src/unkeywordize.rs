@@ -19,7 +19,7 @@ lazy_static! {
 /// reserved keyword.
 pub fn unkeywordize(mut ident: Cow<str>) -> Cow<str> {
   if KEYWORDS.is_match(&ident) {
-    ident.to_mut().insert(0, '_');
+    ident.to_mut().push('_');
   }
   ident
 }

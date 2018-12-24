@@ -1,7 +1,8 @@
-use core::cell::UnsafeCell;
-use core::ops::{Deref, DerefMut};
-use core::sync::atomic::AtomicUsize;
-use core::sync::atomic::Ordering::*;
+use core::{
+  cell::UnsafeCell,
+  ops::{Deref, DerefMut},
+  sync::atomic::{AtomicUsize, Ordering::*},
+};
 
 const WRITE_LOCK: usize = usize::max_value();
 const NO_LOCK: usize = usize::min_value();
@@ -168,8 +169,8 @@ impl<T> RwLock<T> {
 impl<T: Default> Default for RwLock<T> {
   /// Creates a new `RwLock<T>`, with the `Default` value for T.
   #[inline]
-  fn default() -> RwLock<T> {
-    RwLock::new(Default::default())
+  fn default() -> Self {
+    Self::new(Default::default())
   }
 }
 

@@ -1,7 +1,9 @@
 use proc_macro2::TokenStream;
 use std::collections::HashMap;
-use syn::parse::{Parse, ParseStream, Result};
-use syn::{Ident, LitStr};
+use syn::{
+  parse::{Parse, ParseStream, Result},
+  Ident, LitStr,
+};
 
 /// List of features for conditional compilation.
 #[derive(Default, Clone, Debug)]
@@ -25,16 +27,7 @@ impl Parse for CfgFeatures {
       let input3;
       parenthesized!(input3 in input2);
       let ident = input3.parse::<Ident>()?;
-      if ident != "any" {
-        if ident != "feature" {
-          return Err(input3.error("Unsupported attribute"));
-        }
-        input3.parse::<Token![=]>()?;
-        features.push(input3.parse()?);
-        if !input3.is_empty() {
-          return Err(input3.error("Unsupported attribute"));
-        }
-      } else {
+      if ident == "any" {
         let input4;
         parenthesized!(input4 in input3);
         let mut last_comma = true;
@@ -47,13 +40,22 @@ impl Parse for CfgFeatures {
           features.push(input4.parse()?);
           last_comma = input4.parse::<Option<Token![,]>>()?.is_some();
         }
+      } else {
+        if ident != "feature" {
+          return Err(input3.error("Unsupported attribute"));
+        }
+        input3.parse::<Token![=]>()?;
+        features.push(input3.parse()?);
+        if !input3.is_empty() {
+          return Err(input3.error("Unsupported attribute"));
+        }
       }
     }
     Ok(Self {
-      features: if !features.is_empty() {
-        vec![features]
-      } else {
+      features: if features.is_empty() {
         vec![]
+      } else {
+        vec![features]
       },
       inverse: false,
     })
@@ -78,21 +80,21 @@ impl CfgFeatures {
     let Self { features, inverse } = self;
     if features.is_empty() {
       None
-    } else if !inverse {
-      Some(quote! {
-        #(
-          #[cfg(any(
-            #(feature = #features),*
-          ))]
-        )*
-      })
-    } else {
+    } else if *inverse {
       Some(quote! {
         #[cfg(not(any(
           #(
             all(#(feature = #features),*)
           ),*
         )))]
+      })
+    } else {
+      Some(quote! {
+        #(
+          #[cfg(any(
+            #(feature = #features),*
+          ))]
+        )*
       })
     }
   }
@@ -136,12 +138,12 @@ impl<T: Clone> CfgFeaturesExt<T> for &[(CfgFeatures, T)] {
     let mut default = Vec::new();
     for (features, item) in self {
       let features = features.to_dnf();
-      if !features.is_empty() {
+      if features.is_empty() {
+        default.push(item.clone());
+      } else {
         for feature in features {
           map.entry(feature).or_default().push(item.clone());
         }
-      } else {
-        default.push(item.clone());
       }
     }
     let mut result = Vec::new();

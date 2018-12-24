@@ -1,7 +1,6 @@
 use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
 use alloc::sync::Arc;
-use core::ptr;
-use core::sync::atomic::Ordering::*;
+use core::{ptr, sync::atomic::Ordering::*};
 use futures::prelude::*;
 use sync::spsc::SpscInner;
 

@@ -1,10 +1,8 @@
 use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
 use alloc::sync::Arc;
-use core::sync::atomic::Ordering::*;
-use core::{fmt, ptr};
+use core::{fmt, ptr, sync::atomic::Ordering::*};
 use failure::{Backtrace, Fail};
-use futures::prelude::*;
-use futures::task::Waker;
+use futures::{prelude::*, task::Waker};
 use sync::spsc::SpscInner;
 
 /// The sending-half of [`ring::channel`](super::channel).
@@ -116,23 +114,24 @@ impl<T, E> Inner<T, E> {
       if state & COMPLETE != 0 {
         break Err(value);
       }
-      match Self::put_index(state, self.buffer.cap()) {
-        Some(index) => break self.put(value, state, index),
-        None => {
-          state = self
-            .update(state, Relaxed, Relaxed, |state| {
-              if let Some(index) = Self::take_index(state, self.buffer.cap()) {
-                Ok((*state, index))
-              } else {
-                Err(*state)
-              }
-            })
-            .map(|(state, index)| {
+      if let Some(index) = Self::put_index(state, self.buffer.cap()) {
+        break self.put(value, state, index);
+      } else {
+        state = self
+          .update(state, Relaxed, Relaxed, |state| {
+            if let Some(index) = Self::take_index(state, self.buffer.cap()) {
+              Ok((*state, index))
+            } else {
+              Err(*state)
+            }
+          })
+          .map_or_else(
+            |state| state,
+            |(state, index)| {
               unsafe { ptr::drop_in_place(self.buffer.ptr().add(index)) };
               state
-            })
-            .unwrap_or_else(|state| state);
-        }
+            },
+          );
       }
     }
   }
@@ -188,7 +187,7 @@ impl<T, E> Inner<T, E> {
 impl<T> SendError<T> {
   #[inline]
   fn new(value: T, kind: SendErrorKind) -> Self {
-    SendError { value, kind }
+    Self { value, kind }
   }
 }
 

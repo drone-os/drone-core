@@ -12,9 +12,11 @@ mod preempt;
 mod tag;
 mod task;
 
-pub use self::preempt::{current, with_preempted, PreemptedCell};
-pub use self::tag::*;
-pub use self::task::{__current_task, init, TaskCell};
+pub use self::{
+  preempt::{current, with_preempted, PreemptedCell},
+  tag::*,
+  task::{__current_task, init, TaskCell},
+};
 
 use fib::{Chain, FiberRoot};
 use sv::SvOpt;

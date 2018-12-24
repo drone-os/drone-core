@@ -4,15 +4,20 @@
 
 extern crate drone_core;
 
-use drone_core::sv::Supervisor;
+use drone_core::{
+  sv::Supervisor,
+  thr::{prelude::*, ThrToken},
+};
+use std::{
+  marker::PhantomData,
+  ptr,
+  sync::{
+    atomic::{AtomicI8, Ordering::*},
+    Arc,
+  },
+};
+
 use drone_core::thr;
-use drone_core::thr::prelude::*;
-use drone_core::thr::ThrToken;
-use std::marker::PhantomData;
-use std::ptr;
-use std::sync::atomic::AtomicI8;
-use std::sync::atomic::Ordering::*;
-use std::sync::Arc;
 
 static mut THREADS: [Thr; 2] = [Thr::new(0), Thr::new(1)];
 

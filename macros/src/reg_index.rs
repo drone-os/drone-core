@@ -1,8 +1,10 @@
 use drone_macros_core::unkeywordize;
 use inflector::Inflector;
 use proc_macro::TokenStream;
-use syn::parse::{Parse, ParseStream, Result};
-use syn::{Attribute, Ident, Path, Visibility};
+use syn::{
+  parse::{Parse, ParseStream, Result},
+  Attribute, Ident, Path, Visibility,
+};
 
 struct RegIndex {
   prev_macro: Option<Ident>,

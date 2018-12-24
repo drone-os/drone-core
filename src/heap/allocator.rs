@@ -1,8 +1,10 @@
 use super::pool::{Fits, Pool};
-use core::alloc::{AllocErr, CannotReallocInPlace, Excess, Layout};
-use core::ptr::NonNull;
-use core::slice::SliceIndex;
-use core::{cmp, ptr};
+use core::{
+  alloc::{AllocErr, CannotReallocInPlace, Excess, Layout},
+  cmp,
+  ptr::{self, NonNull},
+  slice::SliceIndex,
+};
 
 /// A lock-free allocator that composes multiple memory pools.
 ///
