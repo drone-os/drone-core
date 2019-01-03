@@ -49,8 +49,8 @@
   clippy::enum_glob_use,
   clippy::inline_always,
   clippy::module_inception,
+  clippy::module_name_repetitions,
   clippy::precedence,
-  clippy::stutter,
   clippy::use_self
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -81,6 +81,7 @@ pub mod stack_adapter;
 pub mod sv;
 pub mod sync;
 pub mod thr;
+pub mod token;
 
 mod drv;
 

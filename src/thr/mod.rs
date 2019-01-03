@@ -78,12 +78,12 @@ where
   /// A thread position within threads array.
   const THR_NUM: usize;
 
-  /// Creates a new thread token.
+  /// Creates an instance of the thread token.
   ///
   /// # Safety
   ///
-  /// Must be called only inside an implementation of `ThrTokens`.
-  unsafe fn new() -> Self;
+  /// Caller must take care for synchronizing instances.
+  unsafe fn take() -> Self;
 
   /// Returns a reference to the thread.
   ///
@@ -101,7 +101,7 @@ where
   where
     T: ThrAttach,
   {
-    unsafe { Self::AThrToken::new() }
+    unsafe { Self::AThrToken::take() }
   }
 
   /// Converts to a triggerable register token.
@@ -110,7 +110,7 @@ where
   where
     T: ThrTrigger,
   {
-    unsafe { Self::TThrToken::new() }
+    unsafe { Self::TThrToken::take() }
   }
 
   /// Converts to a regular register token.
@@ -119,7 +119,7 @@ where
   where
     T: ThrAttach + ThrTrigger,
   {
-    unsafe { Self::RThrToken::new() }
+    unsafe { Self::RThrToken::take() }
   }
 
   /// Adds a new fiber to the thread.
@@ -136,16 +136,6 @@ where
   fn is_empty(self) -> bool {
     unsafe { self.to_thr() }.fib_chain().is_empty()
   }
-}
-
-/// A set of thread tokens.
-pub trait ThrTokens {
-  /// Creates a new set of thread tokens.
-  ///
-  /// # Safety
-  ///
-  /// Must be called no more than once.
-  unsafe fn new() -> Self;
 }
 
 /// A thread handler function.

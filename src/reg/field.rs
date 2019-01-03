@@ -22,12 +22,12 @@ pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
   /// Bit-width of the field.
   const WIDTH: usize;
 
-  /// Creates a new rigester field token.
+  /// Creates an instance of the register field token.
   ///
   /// # Safety
   ///
-  /// Must be called only inside an implementation of `Reg`.
-  unsafe fn new() -> Self;
+  /// Caller must take care for synchronizing instances.
+  unsafe fn take() -> Self;
 
   /// Converts to an unsynchronized register field token.
   #[inline(always)]
@@ -53,7 +53,7 @@ pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
   where
     T: RegAtomic,
   {
-    unsafe { Self::CRegField::new() }
+    unsafe { Self::CRegField::take() }
   }
 
   /// Takes a non-copy and returns a copy register field token.
@@ -62,7 +62,7 @@ pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
   where
     T: RegOwned + RegAtomic,
   {
-    unsafe { Self::CRegField::new() }
+    unsafe { Self::CRegField::take() }
   }
 
   /// Converts to a synchronized register field token reference.

@@ -21,12 +21,12 @@ pub trait Reg<T: RegTag>: Sized + Send + Sync + 'static {
   /// Memory address of the register.
   const ADDRESS: usize;
 
-  /// Creates a new rigester token.
+  /// Creates an instance of the register token.
   ///
   /// # Safety
   ///
-  /// Must be called only inside an implementation of `RegTokens`.
-  unsafe fn new() -> Self;
+  /// Caller must take care for synchronizing instances.
+  unsafe fn take() -> Self;
 
   /// Converts to an unsynchronized register token.
   #[inline(always)]
@@ -34,7 +34,7 @@ pub trait Reg<T: RegTag>: Sized + Send + Sync + 'static {
   where
     T: RegOwned,
   {
-    unsafe { Self::UReg::new() }
+    unsafe { Self::UReg::take() }
   }
 
   /// Converts to a synchronized register token.
@@ -43,13 +43,13 @@ pub trait Reg<T: RegTag>: Sized + Send + Sync + 'static {
   where
     T: RegOwned,
   {
-    unsafe { Self::SReg::new() }
+    unsafe { Self::SReg::take() }
   }
 
   /// Converts to a copyable register token.
   #[inline(always)]
   fn to_copy(self) -> Self::CReg {
-    unsafe { Self::CReg::new() }
+    unsafe { Self::CReg::take() }
   }
 
   /// Takes a non-copy and returns a copy register token.
@@ -58,7 +58,7 @@ pub trait Reg<T: RegTag>: Sized + Send + Sync + 'static {
   where
     T: RegOwned,
   {
-    unsafe { Self::CReg::new() }
+    unsafe { Self::CReg::take() }
   }
 
   /// Converts to a synchronized register token reference.

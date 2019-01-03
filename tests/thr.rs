@@ -73,7 +73,7 @@ macro_rules! thr_num {
 
       const THR_NUM: usize = $position;
 
-      unsafe fn new() -> Self {
+      unsafe fn take() -> Self {
         Self { _tag: PhantomData }
       }
     }
@@ -96,7 +96,7 @@ fn fiber() {
   let counter = Arc::new(AtomicI8::new(0));
   let inner = Counter(Arc::clone(&counter));
   unsafe {
-    let thr = Thr0::<Att>::new();
+    let thr = Thr0::<Att>::take();
     thr.add(move || {
       while inner.0.fetch_add(1, Relaxed) < 2 {
         yield;
@@ -119,7 +119,7 @@ fn fiber_fn() {
   let counter = Arc::new(AtomicI8::new(0));
   let inner = Counter(Arc::clone(&counter));
   unsafe {
-    let thr = Thr1::<Att>::new();
+    let thr = Thr1::<Att>::take();
     thr.add_fn(move || {
       inner.0.fetch_add(1, Relaxed);
     });

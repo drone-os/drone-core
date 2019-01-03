@@ -4,7 +4,7 @@
 
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
-#![allow(clippy::stutter)]
+#![allow(clippy::module_name_repetitions)]
 
 #[macro_use]
 extern crate lazy_static;

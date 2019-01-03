@@ -121,7 +121,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       pub #field_ident: #field_psc<#t>
     });
     ctor_tokens.push(quote! {
-      #field_ident: ::drone_core::reg::RegField::<#t>::new()
+      #field_ident: ::drone_core::reg::RegField::<#t>::take()
     });
     tokens.push(quote! {
       #(#attrs)*
@@ -141,7 +141,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         const WIDTH: usize = #width;
 
         #[inline(always)]
-        unsafe fn new() -> Self {
+        unsafe fn take() -> Self {
           #field_psc(#t::default())
         }
       }
@@ -298,7 +298,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         const ADDRESS: usize = #address;
 
         #[inline(always)]
-        unsafe fn new() -> Self {
+        unsafe fn take() -> Self {
           Self { #(#ctor_tokens,)* }
         }
       }

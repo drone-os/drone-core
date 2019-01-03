@@ -153,7 +153,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         #reg_long: <
           $crate#(::#macro_root_path)*::#block_ident::#reg_psc<_> as
             ::drone_core::reg::Reg<_>
-        >::new(),
+        >::take(),
       });
     }
     tokens.push(quote! {
@@ -180,8 +180,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       $(#[$attr])* $vis struct $ty {
         #(#def_tokens)* $($def)*
       }
-      impl ::drone_core::reg::RegTokens for $ty {
-        unsafe fn new() -> Self {
+      unsafe impl ::drone_core::token::Tokens for $ty {
+        unsafe fn take() -> Self {
           Self { #(#ctor_tokens)* $($ctor)* }
         }
       }

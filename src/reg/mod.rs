@@ -11,7 +11,10 @@
 //! # #[macro_use] extern crate drone_core;
 //! # #[prelude_import] use drone_core::prelude::*;
 //! use core::mem::size_of_val;
-//! use drone_core::reg::{self, prelude::*};
+//! use drone_core::{
+//!   reg::{self, prelude::*},
+//!   token::Tokens,
+//! };
 //!
 //! reg! {
 //!   /// SysTick control and status register.
@@ -30,9 +33,13 @@
 //!   }
 //! }
 //!
-//! reg::index! {
-//!   /// Define register tokens.
-//!   pub macro reg_idx;
+//! reg::unsafe_tokens! {
+//!   /// Defines an index of register tokens.
+//!   ///
+//!   /// # Safety
+//!   ///
+//!   /// See [`::drone_core::reg::unsafe_tokens!`].
+//!   pub macro unsafe_reg_tokens;
 //!   super;;
 //!
 //!   /// SysTick timer.
@@ -41,13 +48,13 @@
 //!   }
 //! }
 //!
-//! reg_idx! {
+//! unsafe_reg_tokens! {
 //!   /// Register tokens.
-//!   pub struct RegIdx;
+//!   pub struct Regs;
 //! }
 //!
 //! fn main() {
-//!   let reg = unsafe { RegIdx::new() };
+//!   let reg = unsafe { Regs::take() };
 //!   assert_eq!(size_of_val(&reg.stk_ctrl.enable), 0);
 //!   assert_eq!(size_of_val(&reg.stk_ctrl), 0);
 //!   assert_eq!(size_of_val(&reg), 0);
@@ -63,15 +70,4 @@ mod reg;
 mod tag;
 
 pub use self::{field::*, hold::*, reg::*, tag::*};
-pub use drone_core_macros::reg_index as index;
-
-/// An index of register tokens.
-pub trait RegTokens {
-  /// Creates a new set of register tokens.
-  ///
-  /// # Safety
-  ///
-  /// * Must be called no more than once.
-  /// * Register tokens belonging to the set must not overlap.
-  unsafe fn new() -> Self;
-}
+pub use drone_core_macros::unsafe_reg_tokens as unsafe_tokens;

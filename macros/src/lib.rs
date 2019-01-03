@@ -25,10 +25,11 @@ extern crate syn;
 mod bitfield;
 mod heap;
 mod reg;
-mod reg_index;
+mod reg_tokens;
 mod res;
 mod res_map;
 mod res_one;
+mod static_tokens;
 mod thr;
 
 use proc_macro::TokenStream;
@@ -64,8 +65,13 @@ pub fn reg(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn reg_index(input: TokenStream) -> TokenStream {
-  reg_index::proc_macro(input)
+pub fn unsafe_reg_tokens(input: TokenStream) -> TokenStream {
+  reg_tokens::proc_macro(input)
+}
+
+#[proc_macro]
+pub fn unsafe_static_tokens(input: TokenStream) -> TokenStream {
+  static_tokens::proc_macro(input)
 }
 
 #[proc_macro]

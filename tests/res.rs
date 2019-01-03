@@ -6,6 +6,7 @@ extern crate drone_core;
 use drone_core::{
   reg::{self, marker::*, prelude::*},
   res,
+  token::Tokens,
 };
 
 reg! {
@@ -51,8 +52,8 @@ reg! {
   ODR0 { 0 1 RRRegField WWRegField }
 }
 
-reg::index! {
-  pub macro reg_idx;
+reg::unsafe_tokens! {
+  pub macro unsafe_reg_tokens;
   super;;
 
   pub mod RCC { AHB2ENR; }
@@ -61,8 +62,8 @@ reg::index! {
   pub mod GPIOC { ODR; }
 }
 
-reg_idx! {
-  pub struct RegIdx;
+unsafe_reg_tokens! {
+  pub struct Regs;
 }
 
 res! {
@@ -179,7 +180,7 @@ res::map! {
 #[test]
 fn res_macros() {
   #![allow(unused_variables)]
-  let reg = unsafe { RegIdx::new() };
+  let reg = unsafe { Regs::take() };
   let gpioa = res_gpio_a!(reg);
   let gpiob = res_gpio_b!(reg);
   let gpioc = res_gpio_c!(reg);
@@ -187,7 +188,7 @@ fn res_macros() {
 
 #[test]
 fn concrete() {
-  let reg = unsafe { RegIdx::new() };
+  let reg = unsafe { Regs::take() };
   let gpio_c = res_gpio_c!(reg);
   let GpioRes {
     rcc_ahb2enr_gpioen,
@@ -235,7 +236,7 @@ fn generic_without_holes() {
       rcc_ahb2enr_gpioen.read_bit();
     }
   }
-  let reg = unsafe { RegIdx::new() };
+  let reg = unsafe { Regs::take() };
   let gpio_a = res_gpio_a!(reg);
   f(gpio_a);
 }
@@ -262,7 +263,7 @@ fn generic_with_holes() {
       rcc_ahb2enr_gpioen.read_bit();
     }
   }
-  let reg = unsafe { RegIdx::new() };
+  let reg = unsafe { Regs::take() };
   let gpio_c = res_gpio_c!(reg);
   f(gpio_c);
 }

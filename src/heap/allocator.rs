@@ -10,6 +10,7 @@ use core::{
 ///
 /// An `Allocator` maintains a sort-order of its pools, so they can be
 /// effectively accessed with [`binary_search`](Allocator::binary_search).
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub trait Allocator {
   /// Number of memory pools.
   const POOL_COUNT: usize;

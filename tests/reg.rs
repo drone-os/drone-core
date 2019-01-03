@@ -21,10 +21,10 @@ reg! {
   TEST_BITS { 1 3 RRRegField WWRegField }
 }
 
-reg::index! {
+reg::unsafe_tokens! {
   /// Test index doc attribute
   #[doc = "test index attribute"]
-  pub macro reg_idx;
+  pub macro unsafe_reg_tokens;
   super;;
 
   /// Test block doc attribute
@@ -34,10 +34,10 @@ reg::index! {
   }
 }
 
-reg_idx! {
+unsafe_reg_tokens! {
   /// Test index doc attribute
   #[doc = "test index attribute"]
-  pub struct RegIdx;
+  pub struct Regs;
 }
 
 #[test]
