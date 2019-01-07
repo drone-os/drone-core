@@ -1,7 +1,7 @@
 //! Token - is a ZST, instance of which allows one to manipulate the associated
 //! static resource.
 
-pub use drone_core_macros::unsafe_static_tokens;
+pub use drone_core_macros::{unsafe_init_tokens, unsafe_static_tokens};
 
 /// A set of tokens, which represents ownership of static resources.
 ///
@@ -14,7 +14,21 @@ pub unsafe trait Tokens: Sized + Send + 'static {
   ///
   /// # Safety
   ///
-  /// Must be called no more than once in the program lifetime.
+  /// Calling the method more than once in the program lifetime is not safe.
+  unsafe fn take() -> Self;
+}
+
+/// Token for a one-time action, e.g. an initializer.
+///
+/// # Safety
+///
+/// Construction must be possible only via this trait's `take` method.
+pub unsafe trait InitToken: Sized + Send + 'static {
+  /// Creates an instance of the init token.
+  ///
+  /// # Safety
+  ///
+  /// Calling the method more than once in the program lifetime is not safe.
   unsafe fn take() -> Self;
 }
 
@@ -33,7 +47,7 @@ pub unsafe trait StaticToken: Sized + Send + 'static {
   ///
   /// # Safety
   ///
-  /// Caller must take care for synchronizing instances.
+  /// Calling the method more than once in the program lifetime is not safe.
   unsafe fn take() -> Self;
 
   /// Borrows a mutable reference.
@@ -41,4 +55,18 @@ pub unsafe trait StaticToken: Sized + Send + 'static {
 
   /// Converts the token into a mutable reference with `'static` lifetime.
   fn into_static(self) -> &'static mut Self::Target;
+}
+
+#[macro_export]
+macro_rules! init_token {
+  ($(#[$attr:meta])* $vis:vis struct $ident:ident $(;)*) => {
+    $(#[$attr])* $vis struct $ident(());
+
+    unsafe impl $crate::token::InitToken for $ident {
+      #[inline(always)]
+      unsafe fn take() -> Self {
+        $ident(())
+      }
+    }
+  };
 }

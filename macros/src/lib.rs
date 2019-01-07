@@ -24,6 +24,7 @@ extern crate syn;
 
 mod bitfield;
 mod heap;
+mod init_tokens;
 mod reg;
 mod reg_tokens;
 mod res;
@@ -67,6 +68,11 @@ pub fn reg(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn unsafe_reg_tokens(input: TokenStream) -> TokenStream {
   reg_tokens::proc_macro(input)
+}
+
+#[proc_macro]
+pub fn unsafe_init_tokens(input: TokenStream) -> TokenStream {
+  init_tokens::proc_macro(input)
 }
 
 #[proc_macro]
