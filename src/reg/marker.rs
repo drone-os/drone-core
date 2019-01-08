@@ -1,6 +1,6 @@
 //! Marker traits for memory-mapped registers.
 
-use reg::prelude::*;
+use crate::reg::prelude::*;
 
 // {{{ RwReg
 /// Read-write register token.

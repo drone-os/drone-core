@@ -5,8 +5,6 @@
 //! # #![feature(generators)]
 //! # #![feature(never_type)]
 //! # #![feature(prelude_import)]
-//! # #[macro_use] extern crate drone_core;
-//! # extern crate futures;
 //! # #[prelude_import] use drone_core::prelude::*;
 //! # static mut THREADS: [Thr; 1] = [Thr::new(0)];
 //! # struct Sv;
@@ -16,23 +14,23 @@
 //! #   unsafe fn drop_raw(&self) {}
 //! #   unsafe fn wake(&self) {}
 //! # }
-//! # impl ::drone_core::sv::Supervisor for Sv {
-//! #   fn first() -> *const Self { ::std::ptr::null() }
+//! # impl drone_core::sv::Supervisor for Sv {
+//! #   fn first() -> *const Self { std::ptr::null() }
 //! # }
-//! # ::drone_core::thr! {
+//! # drone_core::thr! {
 //! #   struct Thr;
 //! #   struct ThrLocal;
 //! #   extern struct Sv;
 //! #   extern static THREADS;
 //! # }
-//! use drone_core::sync::spsc::oneshot;
+//! use drone_core::{awt, sync::spsc::oneshot};
 //! use futures::prelude::*;
 //!
 //! fn plus_one(
 //!   rx: oneshot::Receiver<usize, !>,
 //! ) -> impl Future<Item = usize, Error = oneshot::RecvError<!>> {
-//!   async(|| {
-//!     let number = await!(rx)?;
+//!   asnc(|| {
+//!     let number = awt!(rx)?;
 //!     Ok(number + 1)
 //!   })
 //! }
@@ -54,8 +52,6 @@
 //! # #![feature(generators)]
 //! # #![feature(never_type)]
 //! # #![feature(prelude_import)]
-//! # #[macro_use] extern crate drone_core;
-//! # extern crate futures;
 //! # #[prelude_import] use drone_core::prelude::*;
 //! # static mut THREADS: [Thr; 1] = [Thr::new(0)];
 //! # struct Sv;
@@ -65,25 +61,25 @@
 //! #   unsafe fn drop_raw(&self) {}
 //! #   unsafe fn wake(&self) {}
 //! # }
-//! # impl ::drone_core::sv::Supervisor for Sv {
-//! #   fn first() -> *const Self { ::std::ptr::null() }
+//! # impl drone_core::sv::Supervisor for Sv {
+//! #   fn first() -> *const Self { std::ptr::null() }
 //! # }
-//! # ::drone_core::thr! {
+//! # drone_core::thr! {
 //! #   struct Thr;
 //! #   struct ThrLocal;
 //! #   extern struct Sv;
 //! #   extern static THREADS;
 //! # }
-//! use drone_core::sync::spsc::ring;
+//! use drone_core::{awt_item, sync::spsc::ring};
 //! use futures::prelude::*;
 //!
 //! fn sum_first_two_items(
 //!   mut rx: ring::Receiver<usize, !>,
 //! ) -> impl Future<Item = usize, Error = !> {
-//!   async(move || {
+//!   asnc(move || {
 //!     if false { yield; }
-//!     let a = await_item!(rx)?.unwrap_or(0);
-//!     let b = await_item!(rx)?.unwrap_or(0);
+//!     let a = awt_item!(rx)?.unwrap_or(0);
+//!     let b = awt_item!(rx)?.unwrap_or(0);
 //!     Ok(a + b)
 //!   })
 //! }
@@ -108,8 +104,6 @@
 //! # #![feature(generators)]
 //! # #![feature(never_type)]
 //! # #![feature(prelude_import)]
-//! # #[macro_use] extern crate drone_core;
-//! # extern crate futures;
 //! # #[prelude_import] use drone_core::prelude::*;
 //! # static mut THREADS: [Thr; 1] = [Thr::new(0)];
 //! # struct Sv;
@@ -119,24 +113,24 @@
 //! #   unsafe fn drop_raw(&self) {}
 //! #   unsafe fn wake(&self) {}
 //! # }
-//! # impl ::drone_core::sv::Supervisor for Sv {
-//! #   fn first() -> *const Self { ::std::ptr::null() }
+//! # impl drone_core::sv::Supervisor for Sv {
+//! #   fn first() -> *const Self { std::ptr::null() }
 //! # }
-//! # ::drone_core::thr! {
+//! # drone_core::thr! {
 //! #   struct Thr;
 //! #   struct ThrLocal;
 //! #   extern struct Sv;
 //! #   extern static THREADS;
 //! # }
-//! use drone_core::sync::spsc::ring;
+//! use drone_core::{awt_for, sync::spsc::ring};
 //! use futures::prelude::*;
 //!
 //! fn sum(
 //!   rx: ring::Receiver<usize, !>,
 //! ) -> impl Future<Item = usize, Error = !> {
-//!   async(|| {
+//!   asnc(|| {
 //!     let mut sum = 0;
-//!     await_for!(number in rx => {
+//!     awt_for!(number in rx => {
 //!       sum += number;
 //!     });
 //!     Ok(sum)
@@ -168,4 +162,4 @@ pub mod __rt {
   pub use futures::{Async, Future, Stream};
 }
 
-pub use self::gen_future::async;
+pub use self::gen_future::asnc;

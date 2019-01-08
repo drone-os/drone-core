@@ -1,6 +1,6 @@
+use crate::thr::__current_task;
 use core::ops::{Generator, GeneratorState};
 use futures::prelude::*;
-use thr::__current_task;
 
 #[must_use]
 pub struct GenFuture<R, E, G>(G)
@@ -14,7 +14,7 @@ impl<R, E, G> GenFuture<R, E, G> where
 
 /// Creates a new generator-based future.
 #[inline(always)]
-pub fn async<R, E, G>(gen: G) -> GenFuture<R, E, G>
+pub fn asnc<R, E, G>(gen: G) -> GenFuture<R, E, G>
 where
   G: Generator<Yield = (), Return = Result<R, E>>,
 {

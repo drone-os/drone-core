@@ -1,5 +1,7 @@
-use fib::{Fiber, FiberRoot, FiberState};
-use thr::prelude::*;
+use crate::{
+  fib::{Fiber, FiberRoot, FiberState},
+  thr::prelude::*,
+};
 
 /// Closure fiber.
 pub struct FiberFn<F, R>(Option<F>)

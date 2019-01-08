@@ -1,5 +1,5 @@
 use super::*;
-use bitfield::{Bitfield, Bits};
+use crate::bitfield::{Bitfield, Bits};
 use core::ptr::{read_volatile, write_volatile};
 
 /// Register field token.

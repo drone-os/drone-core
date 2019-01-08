@@ -1,7 +1,9 @@
+use drone_macros_core::new_def_ident;
 use proc_macro::TokenStream;
+use quote::quote;
 use syn::{
   parse::{Parse, ParseStream, Result},
-  Attribute, Expr, ExprPath, Ident, Type, Visibility,
+  parse_macro_input, Attribute, Expr, ExprPath, Ident, Token, Type, Visibility,
 };
 
 struct Thr {

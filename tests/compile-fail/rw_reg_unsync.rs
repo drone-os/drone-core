@@ -1,8 +1,6 @@
-#[macro_use]
-extern crate drone_core;
+use drone_core::reg::prelude::*;
 
 use drone_core::reg;
-use drone_core::reg::prelude::*;
 
 reg! {
   pub mod TST TST_RW_REG;
@@ -26,11 +24,11 @@ fn assert_rw_reg_unsync<'a, T: RwRegUnsync<'a>>() {}
 
 fn main() {
   assert_rw_reg_unsync::<tst_tst_rw_reg::Reg<Srt>>();
-  //~^ ERROR drone_core::reg::WReg<drone_core::reg::Urt>` is not satisfied
-  //~| ERROR drone_core::reg::RReg<drone_core::reg::Urt>` is not satisfied
-  //~| ERROR drone_core::reg::RegRef<'_, drone_core::reg::Urt>` is not satisfied
+  //~^ ERROR drone_core::reg::reg::WReg<drone_core::reg::tag::Urt>` is not
+  //~| ERROR drone_core::reg::reg::RReg<drone_core::reg::tag::Urt>` is not
+  //~| ERROR drone_core::reg::reg::RegRef<'_, drone_core::reg::tag::Urt>` is not
   assert_rw_reg_unsync::<tst_tst_ro_reg::Reg<Urt>>();
-  //~^ ERROR drone_core::reg::WReg<drone_core::reg::Urt>` is not satisfied
+  //~^ ERROR drone_core::reg::reg::WReg<drone_core::reg::tag::Urt>` is not
   assert_rw_reg_unsync::<tst_tst_wo_reg::Reg<Urt>>();
-  //~^ ERROR drone_core::reg::RReg<drone_core::reg::Urt>` is not satisfied
+  //~^ ERROR drone_core::reg::reg::RReg<drone_core::reg::tag::Urt>` is not
 }

@@ -1,8 +1,10 @@
+use crate::{
+  fib::{Fiber, FiberState, YieldNone},
+  sync::spsc::oneshot::{channel, Receiver, RecvError},
+  thr::prelude::*,
+};
 use core::intrinsics::unreachable;
-use fib::{Fiber, FiberState, YieldNone};
 use futures::prelude::*;
-use sync::spsc::oneshot::{channel, Receiver, RecvError};
-use thr::prelude::*;
 
 /// A future for result from another thread.
 ///

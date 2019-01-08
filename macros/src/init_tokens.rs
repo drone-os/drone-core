@@ -1,9 +1,13 @@
+use drone_macros_core::new_ident;
 use inflector::Inflector;
 use proc_macro::TokenStream;
+use quote::quote;
 use syn::{
+  braced,
   parse::{Parse, ParseStream, Result},
+  parse_macro_input,
   punctuated::Punctuated,
-  Attribute, Ident, Visibility,
+  Attribute, Ident, Token, Visibility,
 };
 
 struct InitTokens {

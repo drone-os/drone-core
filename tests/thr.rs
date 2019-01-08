@@ -2,8 +2,6 @@
 #![feature(generators)]
 #![feature(integer_atomics)]
 
-extern crate drone_core;
-
 use drone_core::{
   sv::Supervisor,
   thr::{prelude::*, ThrToken},

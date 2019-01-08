@@ -5,6 +5,7 @@ members = ["ctypes", "macros", "macros-core"]
 name = "drone-core"
 version = "0.9.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
+edition = "2018"
 description = "Drone is a Hard Real-Time Operating System Framework."
 readme = "README.md"
 license = "MIT/Apache-2.0"
@@ -29,10 +30,7 @@ default-features = false
 [dependencies.failure]
 version = "0.1"
 default-features = false
-
-[dependencies.failure_derive]
-version = "0.1"
-default-features = false
+features = ["derive"]
 
 [dev-dependencies]
 glob = "0.2"

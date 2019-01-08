@@ -14,9 +14,7 @@
 //! ```
 //! # #![feature(allocator_api)]
 //! # #![feature(const_fn)]
-//! # extern crate drone_core;
 //! # fn main() {}
-//! # use std as core;
 //! use core::alloc::Layout;
 //! use drone_core::heap::Pool;
 //!
@@ -49,8 +47,6 @@
 //! ```
 //! # #![feature(allocator_api)]
 //! # #![feature(const_fn)]
-//! # extern crate drone_core;
-//! # use std as core;
 //! # pub mod symbols { #[no_mangle] pub static HEAP_START: usize = 0; }
 //! use core::alloc::Layout;
 //! use drone_core::heap::{Allocator, Pool};

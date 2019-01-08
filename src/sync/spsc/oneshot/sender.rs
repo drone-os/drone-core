@@ -1,7 +1,7 @@
 use super::Inner;
+use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
 use futures::prelude::*;
-use sync::spsc::SpscInner;
 
 /// The sending-half of [`oneshot::channel`](super::channel).
 pub struct Sender<T, E> {

@@ -1,3 +1,4 @@
+use crate::ffi::{c_char, strlen, CString};
 use alloc::{borrow::Cow, rc::Rc, sync::Arc};
 use core::{
   ascii,
@@ -6,7 +7,7 @@ use core::{
   slice::{self, memchr},
   str::{self, Utf8Error},
 };
-use ffi::{c_char, strlen, CString};
+use failure::Fail;
 
 /// Representation of a borrowed C string.
 ///
@@ -371,7 +372,6 @@ impl CStr {
   /// ```
   /// # #![feature(alloc)]
   /// # extern crate alloc;
-  /// # extern crate drone_core;
   /// use alloc::borrow::Cow;
   /// use drone_core::ffi::CStr;
   ///
@@ -384,7 +384,6 @@ impl CStr {
   /// ```
   /// # #![feature(alloc)]
   /// # extern crate alloc;
-  /// # extern crate drone_core;
   /// use alloc::borrow::Cow;
   /// use drone_core::ffi::CStr;
   ///

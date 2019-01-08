@@ -205,7 +205,7 @@ impl<'a> WithPool<'a, &'a Pool> for Excess {
   where
     F: FnOnce() -> &'a Pool,
   {
-    Excess(ptr, pool().size())
+    Self(ptr, pool().size())
   }
 
   #[inline(always)]

@@ -4,6 +4,7 @@
 //!
 //! [Drone]: https://github.com/drone-os/drone-core
 
+#![feature(uniform_paths)]
 #![allow(non_camel_case_types)]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]

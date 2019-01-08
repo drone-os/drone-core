@@ -1,8 +1,8 @@
+use crate::fib::FiberRoot;
 use core::{
   ptr,
   sync::atomic::{AtomicPtr, Ordering::*},
 };
-use fib::FiberRoot;
 
 /// A lock-free stack of fibers.
 pub struct Chain {

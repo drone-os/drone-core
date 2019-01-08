@@ -1,7 +1,9 @@
-use fib::{Fiber, FiberState};
+use crate::{
+  fib::{Fiber, FiberState},
+  sync::spsc::unit::{channel, Receiver, SendError},
+  thr::prelude::*,
+};
 use futures::prelude::*;
-use sync::spsc::unit::{channel, Receiver, SendError};
-use thr::prelude::*;
 
 /// A stream of results from another thread.
 ///

@@ -37,16 +37,16 @@ macro_rules! bits {
     impl Bits for $type {
       #[inline(always)]
       fn from_usize(bits: usize) -> Self {
-        bits as $type
+        bits as Self
       }
 
       #[inline(always)]
-      fn width() -> $type {
-        size_of::<$type>() as $type * 8
+      fn width() -> Self {
+        size_of::<Self>() as Self * 8
       }
 
       #[inline(always)]
-      fn one() -> $type {
+      fn one() -> Self {
         1
       }
 

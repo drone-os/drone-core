@@ -1,5 +1,5 @@
+use crate::thr::Thread;
 use core::cell::Cell;
-use thr::Thread;
 
 static mut CURRENT: usize = 0;
 
@@ -9,7 +9,7 @@ pub struct PreemptedCell(Cell<usize>);
 impl PreemptedCell {
   /// Creates a new `PreemptedCell`.
   pub const fn new() -> Self {
-    PreemptedCell(Cell::new(0))
+    Self(Cell::new(0))
   }
 }
 

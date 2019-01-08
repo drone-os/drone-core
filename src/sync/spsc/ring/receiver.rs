@@ -1,8 +1,8 @@
 use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
+use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
 use core::{ptr, sync::atomic::Ordering::*};
 use futures::prelude::*;
-use sync::spsc::SpscInner;
 
 /// The receiving-half of [`ring::channel`](super::channel).
 #[must_use]

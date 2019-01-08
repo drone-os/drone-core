@@ -1,10 +1,11 @@
+use crate::ffi::{c_char, strlen, CStr};
 use alloc::borrow::{Borrow, Cow};
 use core::{
   fmt, mem, ops, ptr,
   slice::{self, memchr},
   str::Utf8Error,
 };
-use ffi::{c_char, strlen, CStr};
+use failure::Fail;
 
 /// A type representing an owned, C-compatible, nul-terminated string with no
 /// nul bytes in the middle.

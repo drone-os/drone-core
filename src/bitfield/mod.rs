@@ -3,7 +3,6 @@
 //! Example:
 //!
 //! ```
-//! # #[macro_use] extern crate drone_core;
 //! use drone_core::bitfield::Bitfield;
 //!
 //! #[derive(Bitfield, Copy, Clone)]
@@ -31,6 +30,7 @@
 mod bits;
 
 pub use self::bits::Bits;
+pub use drone_core_macros::Bitfield;
 
 /// A packed struct of bits, which fits within a single integer.
 ///

@@ -10,6 +10,7 @@ pub use self::{
   sender::{SendError, Sender},
 };
 
+use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
 use core::{
   cell::UnsafeCell,
@@ -17,7 +18,6 @@ use core::{
   sync::atomic::{AtomicUsize, Ordering},
 };
 use futures::task::Waker;
-use sync::spsc::SpscInner;
 
 /// Maximum capacity of the channel.
 pub const MAX_CAPACITY: usize = 1 << size_of::<usize>() * 8 - LOCK_BITS;

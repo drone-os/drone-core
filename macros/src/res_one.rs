@@ -1,9 +1,11 @@
-use drone_macros_core::{unkeywordize, CfgFeatures, CfgFeaturesExt};
+use drone_macros_core::{new_ident, unkeywordize, CfgFeatures, CfgFeaturesExt};
 use inflector::Inflector;
 use proc_macro::TokenStream;
+use quote::quote;
 use syn::{
+  braced,
   parse::{Parse, ParseStream, Result},
-  Attribute, Ident, Path, Visibility,
+  parse_macro_input, Attribute, Ident, Path, Token, Visibility,
 };
 
 struct ResOne {

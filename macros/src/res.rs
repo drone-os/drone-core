@@ -1,9 +1,13 @@
-use drone_macros_core::{unkeywordize, CfgFeatures, CfgFeaturesExt};
+use drone_macros_core::{
+  compile_error, new_ident, unkeywordize, CfgFeatures, CfgFeaturesExt,
+};
 use inflector::Inflector;
 use proc_macro::TokenStream;
+use quote::quote;
 use syn::{
+  braced,
   parse::{Parse, ParseStream, Result},
-  Attribute, Ident, LitInt, TraitItem,
+  parse_macro_input, Attribute, Ident, LitInt, Token, TraitItem,
 };
 
 struct Res {

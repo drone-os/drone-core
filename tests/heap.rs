@@ -1,9 +1,7 @@
 #![feature(allocator_api)]
 #![feature(const_fn)]
 
-extern crate drone_core;
-
-use core::mem::size_of;
+use crate::core::mem::size_of;
 use drone_core::heap;
 use std as core;
 

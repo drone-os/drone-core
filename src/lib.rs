@@ -39,6 +39,7 @@
 #![feature(result_map_or_else)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
+#![feature(uniform_paths)]
 #![feature(untagged_unions)]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
@@ -56,17 +57,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
-#[cfg(feature = "std")]
-extern crate core;
-extern crate drone_core_macros;
-extern crate drone_ctypes;
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-extern crate futures;
 
 #[macro_use]
-pub mod async;
+pub mod asnc;
 pub mod bitfield;
 pub mod ffi;
 pub mod fib;
@@ -85,8 +78,8 @@ pub mod token;
 
 mod drv;
 
-pub use drone_core_macros::{heap, reg, res, thr, Bitfield};
+pub use drone_core_macros::{heap, reg, res, thr};
 
 #[prelude_import]
 #[allow(unused_imports)]
-use prelude::*;
+use crate::prelude::*;

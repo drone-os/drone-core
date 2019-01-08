@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate drone_core;
-
 use drone_core::bitfield::Bitfield;
 
 #[derive(Bitfield, Copy, Clone)]

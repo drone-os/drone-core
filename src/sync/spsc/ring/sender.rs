@@ -1,9 +1,9 @@
 use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
+use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
 use core::{fmt, ptr, sync::atomic::Ordering::*};
 use failure::{Backtrace, Fail};
 use futures::{prelude::*, task::Waker};
-use sync::spsc::SpscInner;
 
 /// The sending-half of [`ring::channel`](super::channel).
 pub struct Sender<T, E> {

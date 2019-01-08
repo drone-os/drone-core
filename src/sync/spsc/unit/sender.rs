@@ -1,8 +1,9 @@
 use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK, RX_LOCK};
+use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
 use core::sync::atomic::Ordering::*;
+use failure::Fail;
 use futures::{prelude::*, task::Waker};
-use sync::spsc::SpscInner;
 
 /// The sending-half of [`unit::channel`](super::channel).
 pub struct Sender<E> {

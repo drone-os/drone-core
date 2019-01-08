@@ -1,6 +1,4 @@
-extern crate compiletest_rs as compiletest;
-extern crate glob;
-
+use compiletest_rs as compiletest;
 use glob::glob;
 use std::{fs, path::PathBuf};
 
@@ -8,7 +6,11 @@ fn run_mode(mode: &'static str) {
   let mut config = compiletest::Config::default().tempdir();
   config.mode = mode.parse().expect("Invalid mode");
   config.src_base = PathBuf::from(format!("tests/{}", mode));
-  config.target_rustcflags = Some("-L target/debug/deps".to_string());
+  config.target_rustcflags = Some(
+    "-L target/debug/deps -Z unstable-options --edition 2018 --extern \
+     drone_core"
+      .to_string(),
+  );
   compiletest::run_tests(&config);
 }
 

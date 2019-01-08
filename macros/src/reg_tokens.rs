@@ -1,13 +1,15 @@
-use drone_macros_core::unkeywordize;
+use drone_macros_core::{new_ident, unkeywordize};
 use inflector::Inflector;
 use proc_macro::TokenStream;
+use quote::quote;
 use syn::{
+  braced,
   parse::{Parse, ParseStream, Result},
-  Attribute, Ident, Path, Visibility,
+  parse_macro_input, Attribute, Ident, Path, Token, Visibility,
 };
 
 struct RegIndex {
-  prev_macro: Option<Ident>,
+  prev_macro: Option<Path>,
   next_macro_attrs: Vec<Attribute>,
   next_macro_vis: Visibility,
   next_macro: Ident,
@@ -75,7 +77,7 @@ impl Parse for Blocks {
     while !input.is_empty() {
       blocks.push(input.parse()?);
     }
-    Ok(Blocks(blocks))
+    Ok(Self(blocks))
   }
 }
 

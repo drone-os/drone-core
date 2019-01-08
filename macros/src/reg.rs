@@ -1,10 +1,12 @@
-use drone_macros_core::unkeywordize;
+use drone_macros_core::{new_def_ident, new_ident, unkeywordize};
 use inflector::Inflector;
 use proc_macro::TokenStream;
+use quote::quote;
 use std::collections::HashSet;
 use syn::{
+  braced,
   parse::{Parse, ParseStream, Result},
-  Attribute, Ident, LitInt, Visibility,
+  parse_macro_input, Attribute, Ident, LitInt, Token, Visibility,
 };
 
 struct Reg {
@@ -276,6 +278,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     #(#attrs)*
     #vis mod #reg_full {
       #imports
+      use ::drone_core::bitfield::Bitfield;
 
       #(#attrs)*
       #[derive(Bitfield, Clone, Copy)]

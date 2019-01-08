@@ -2,6 +2,7 @@
 //!
 //! See `drone-core` documentation for details.
 
+#![feature(uniform_paths)]
 #![recursion_limit = "512"]
 #![warn(clippy::pedantic)]
 #![allow(
@@ -10,17 +11,7 @@
   clippy::similar_names
 )]
 
-#[macro_use]
-extern crate drone_macros_core;
-#[macro_use]
-extern crate if_chain;
-extern crate inflector;
 extern crate proc_macro;
-extern crate proc_macro2;
-#[macro_use]
-extern crate quote;
-#[macro_use]
-extern crate syn;
 
 mod bitfield;
 mod heap;

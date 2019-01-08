@@ -1,14 +1,10 @@
 #![feature(proc_macro_hygiene)]
 
-#[macro_use]
-extern crate drone_core;
-
-use drone_core::{
-  bitfield::Bitfield,
-  reg::{self, prelude::*},
-};
+use crate::test_block::{test_reg::Val, TestReg};
+use drone_core::{bitfield::Bitfield, reg::prelude::*};
 use std::mem::size_of;
-use test_block::{test_reg::Val, TestReg};
+
+use drone_core::reg;
 
 reg! {
   /// Test reg doc attribute

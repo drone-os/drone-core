@@ -3,14 +3,10 @@
 #![feature(never_type)]
 #![feature(prelude_import)]
 
-#[macro_use]
-extern crate drone_core;
-extern crate futures;
-
 #[prelude_import]
 #[allow(unused_imports)]
 use drone_core::prelude::*;
-use drone_core::sync::spsc::oneshot;
+use drone_core::{awt, sync::spsc::oneshot};
 use futures::prelude::*;
 use std::sync::{
   atomic::{AtomicUsize, Ordering::*},
@@ -50,9 +46,9 @@ impl ::drone_core::sv::Supervisor for Sv {
 fn nested() {
   unsafe { drone_core::thr::init::<Thr>() };
   let (rx, tx) = oneshot::channel::<usize, !>();
-  let mut fut = async(|| {
-    await!(Box::new(async(|| await!(async(|| {
-      let number = await!(rx)?;
+  let mut fut = asnc(|| {
+    awt!(Box::new(asnc(|| awt!(asnc(|| {
+      let number = awt!(rx)?;
       Ok::<usize, oneshot::RecvError<!>>(number + 1)
     })))))
   });

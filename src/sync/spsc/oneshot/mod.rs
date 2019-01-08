@@ -10,13 +10,13 @@ pub use self::{
   sender::Sender,
 };
 
+use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
 use core::{
   cell::UnsafeCell,
   sync::atomic::{AtomicU8, Ordering},
 };
 use futures::task::Waker;
-use sync::spsc::SpscInner;
 
 const COMPLETE: u8 = 1 << 2;
 const RX_LOCK: u8 = 1 << 1;

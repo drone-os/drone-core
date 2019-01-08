@@ -7,16 +7,11 @@
 //! ```
 //! # #![feature(prelude_import)]
 //! # #![feature(proc_macro_hygiene)]
-//! # use std as core;
-//! # #[macro_use] extern crate drone_core;
 //! # #[prelude_import] use drone_core::prelude::*;
 //! use core::mem::size_of_val;
-//! use drone_core::{
-//!   reg::{self, prelude::*},
-//!   token::Tokens,
-//! };
+//! use drone_core::{reg::prelude::*, token::Tokens};
 //!
-//! reg! {
+//! drone_core::reg! {
 //!   /// SysTick control and status register.
 //!   pub mod STK CTRL; // register block and name
 //!
@@ -33,7 +28,7 @@
 //!   }
 //! }
 //!
-//! reg::unsafe_tokens! {
+//! drone_core::reg::unsafe_tokens! {
 //!   /// Defines an index of register tokens.
 //!   ///
 //!   /// # Safety

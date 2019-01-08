@@ -1,13 +1,12 @@
 #![feature(proc_macro_hygiene)]
 
-#[macro_use]
-extern crate drone_core;
-
 use drone_core::{
-  reg::{self, marker::*, prelude::*},
+  reg::{marker::*, prelude::*},
   res,
   token::Tokens,
 };
+
+use drone_core::reg;
 
 reg! {
   pub mod RCC AHB2ENR;

@@ -1,8 +1,10 @@
 use proc_macro2::TokenStream;
+use quote::quote;
 use std::collections::HashMap;
 use syn::{
+  bracketed, parenthesized,
   parse::{Parse, ParseStream, Result},
-  Ident, LitStr,
+  Ident, LitStr, Token,
 };
 
 /// List of features for conditional compilation.

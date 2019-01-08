@@ -1,6 +1,8 @@
+use crate::{
+  fib::{Fiber, FiberRoot, FiberState},
+  thr::prelude::*,
+};
 use core::ops::{Generator, GeneratorState};
-use fib::{Fiber, FiberRoot, FiberState};
-use thr::prelude::*;
 
 /// Generator fiber.
 pub struct FiberGen<G>(G)

@@ -1,5 +1,5 @@
 use super::*;
-use bitfield::Bitfield;
+use crate::bitfield::Bitfield;
 use core::ptr::{read_volatile, write_volatile};
 
 /// Memory-mapped register token. Types which implement this trait should be

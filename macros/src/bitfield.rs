@@ -1,9 +1,13 @@
+use drone_macros_core::{compile_error, new_ident};
+use if_chain::if_chain;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
+use quote::quote;
 use syn::{
+  parenthesized,
   parse::{Parse, ParseStream, Result},
-  Data, DeriveInput, Fields, Ident, IntSuffix, LitInt, LitStr, PathArguments,
-  Type,
+  parse_macro_input, Data, DeriveInput, Fields, Ident, IntSuffix, LitInt,
+  LitStr, PathArguments, Token, Type,
 };
 
 #[derive(Default)]
@@ -139,7 +143,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     .unwrap_or_else(|| LitInt::new(0, IntSuffix::None, Span::call_site()));
   let bits = if_chain! {
     if let Data::Struct(x) = data;
-    if let Fields::Unnamed(mut x) = x.fields;
+    if let Fields::Unnamed(x) = x.fields;
     if x.unnamed.len() <= 1;
     if let Some(x) = x.unnamed.into_iter().next();
     if let Type::Path(x) = x.ty;

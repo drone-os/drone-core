@@ -18,8 +18,10 @@ pub use self::{
   task::{__current_task, init, TaskCell},
 };
 
-use fib::{Chain, FiberRoot};
-use sv::SvOpt;
+use crate::{
+  fib::{Chain, FiberRoot},
+  sv::SvOpt,
+};
 
 /// A thread interface.
 pub trait Thread: Sized + Sync + 'static {

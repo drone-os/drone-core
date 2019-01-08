@@ -26,4 +26,4 @@ pub use alloc::{
   vec::Vec,
 };
 
-pub use async::async;
+pub use crate::asnc::asnc;

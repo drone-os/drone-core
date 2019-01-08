@@ -1,10 +1,10 @@
+use crate::thr::{current, prelude::*, ThreadLocal};
 use core::{
   cell::Cell,
   mem, ptr,
   sync::atomic::{AtomicUsize, Ordering::*},
 };
 use futures::task;
-use thr::{current, prelude::*, ThreadLocal};
 
 static CURRENT: AtomicUsize = AtomicUsize::new(0);
 
@@ -18,7 +18,7 @@ struct Reset<'a>(StaticContext, &'a Cell<StaticContext>);
 impl TaskCell {
   /// Creates a new `TaskCell`.
   pub const fn new() -> Self {
-    TaskCell(Cell::new(ptr::null_mut()))
+    Self(Cell::new(ptr::null_mut()))
   }
 
   #[allow(clippy::useless_transmute)]
