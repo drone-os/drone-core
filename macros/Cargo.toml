@@ -15,10 +15,7 @@ if_chain = "0.1"
 Inflector = "0.11"
 proc-macro2 = { version = "0.4", features = ["nightly"] }
 quote = "0.6"
-
-[dependencies.syn]
-version = "0.15"
-features = ["full"]
+syn = { version = "0.15", features = ["full"] }
 
 [dependencies.drone-macros-core]
 version = "=0.9.0"

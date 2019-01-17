@@ -23,18 +23,10 @@ path = "ctypes"
 version = "=0.9.0"
 path = "macros"
 
-[dependencies.futures-preview]
-version = "0.2"
-default-features = false
-
-[dependencies.failure]
-version = "0.1"
-default-features = false
-features = ["derive"]
+[dependencies]
+futures-preview = { version = "0.3.0-alpha", default-features = false }
+failure = { version = "0.1", default-features = false, features = ["derive"] }
 
 [dev-dependencies]
 glob = "0.2"
-
-[dev-dependencies.compiletest_rs]
-version = "0.3"
-features = ["tmp"]
+compiletest_rs = { version = "0.3", features = ["tmp"] }

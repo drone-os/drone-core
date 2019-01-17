@@ -4,10 +4,10 @@
 //!
 //! [Drone]: https://github.com/drone-os/drone-core
 
-#![feature(uniform_paths)]
-#![allow(non_camel_case_types)]
+#![deny(bare_trait_objects)]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
+#![allow(non_camel_case_types)]
 #![no_std]
 
 pub use core::ffi::c_void;

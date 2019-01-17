@@ -2,7 +2,7 @@
 //!
 //! See `drone-core` documentation for details.
 
-#![feature(uniform_paths)]
+#![deny(bare_trait_objects)]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]

@@ -1,9 +1,14 @@
 use super::{Inner, COMPLETE, RX_LOCK};
 use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
-use core::{fmt, sync::atomic::Ordering::*};
+use core::{
+  fmt,
+  future::Future,
+  pin::Pin,
+  sync::atomic::Ordering::*,
+  task::{LocalWaker, Poll},
+};
 use failure::{Backtrace, Fail};
-use futures::prelude::*;
 
 /// The receiving-half of [`oneshot::channel`](super::channel).
 #[must_use]
@@ -12,7 +17,7 @@ pub struct Receiver<T, E> {
 }
 
 /// Error for `Future` implementation for [`Receiver`](Receiver).
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum RecvError<E> {
   /// The corresponding [`Sender`](super::Sender) is dropped.
   Canceled,
@@ -34,12 +39,11 @@ impl<T, E> Receiver<T, E> {
 }
 
 impl<T, E> Future for Receiver<T, E> {
-  type Item = T;
-  type Error = RecvError<E>;
+  type Output = Result<T, RecvError<E>>;
 
   #[inline]
-  fn poll(&mut self, cx: &mut task::Context) -> Poll<T, RecvError<E>> {
-    self.inner.recv(cx)
+  fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
+    self.inner.recv(lw)
   }
 }
 
@@ -51,7 +55,7 @@ impl<T, E> Drop for Receiver<T, E> {
 }
 
 impl<T, E> Inner<T, E> {
-  fn recv(&self, cx: &mut task::Context) -> Poll<T, RecvError<E>> {
+  fn recv(&self, lw: &LocalWaker) -> Poll<Result<T, RecvError<E>>> {
     self
       .update(self.state_load(Acquire), Acquire, Acquire, |state| {
         if *state & (COMPLETE | RX_LOCK) == 0 {
@@ -62,7 +66,7 @@ impl<T, E> Inner<T, E> {
         }
       })
       .and_then(|state| {
-        unsafe { *self.rx_waker.get() = Some(cx.waker().clone()) };
+        unsafe { *self.rx_waker.get() = Some(lw.clone().into_waker()) };
         self.update(state, AcqRel, Relaxed, |state| {
           *state ^= RX_LOCK;
           Ok(*state)
@@ -70,17 +74,16 @@ impl<T, E> Inner<T, E> {
       })
       .and_then(|state| {
         if state & COMPLETE == 0 {
-          Ok(Async::Pending)
+          Ok(Poll::Pending)
         } else {
           Err(())
         }
       })
-      .or_else(|()| {
-        let data = unsafe { &mut *self.data.get() };
-        data
-          .take()
-          .ok_or(RecvError::Canceled)
-          .and_then(|x| x.map(Async::Ready).map_err(RecvError::Complete))
+      .unwrap_or_else(|()| {
+        Poll::Ready(unsafe { &mut *self.data.get() }.take().map_or_else(
+          || Err(RecvError::Canceled),
+          |x| x.map_err(RecvError::Complete),
+        ))
       })
   }
 }
@@ -89,7 +92,7 @@ impl<E> Fail for RecvError<E>
 where
   E: fmt::Display + fmt::Debug + Send + Sync + 'static,
 {
-  fn cause(&self) -> Option<&Fail> {
+  fn cause(&self) -> Option<&dyn Fail> {
     None
   }
 

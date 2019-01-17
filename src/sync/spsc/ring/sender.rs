@@ -1,9 +1,14 @@
 use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
 use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
-use core::{fmt, ptr, sync::atomic::Ordering::*};
+use core::{
+  fmt,
+  pin::Pin,
+  ptr,
+  sync::atomic::Ordering::*,
+  task::{LocalWaker, Poll, Waker},
+};
 use failure::{Backtrace, Fail};
-use futures::{prelude::*, task::Waker};
 
 /// The sending-half of [`ring::channel`](super::channel).
 pub struct Sender<T, E> {
@@ -74,8 +79,8 @@ impl<T, E> Sender<T, E> {
   /// [`Receiver`]: super::Receiver
   /// [`is_canceled`]: Sender::is_canceled
   #[inline]
-  pub fn poll_cancel(&mut self, cx: &mut task::Context) -> Poll<(), ()> {
-    self.inner.poll_cancel(cx)
+  pub fn poll_cancel(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<()> {
+    self.inner.poll_cancel(lw)
   }
 
   /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has gone
@@ -195,7 +200,7 @@ impl<T> Fail for SendError<T>
 where
   T: fmt::Display + fmt::Debug + Send + Sync + 'static,
 {
-  fn cause(&self) -> Option<&Fail> {
+  fn cause(&self) -> Option<&dyn Fail> {
     Some(&self.kind)
   }
 

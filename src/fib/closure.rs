@@ -2,22 +2,25 @@ use crate::{
   fib::{Fiber, FiberRoot, FiberState},
   thr::prelude::*,
 };
+use core::{marker::Unpin, pin::Pin};
 
 /// Closure fiber.
 pub struct FiberFn<F, R>(Option<F>)
 where
-  F: FnOnce() -> R;
+  F: FnOnce() -> R,
+  F: Unpin;
 
 impl<F, R> Fiber for FiberFn<F, R>
 where
   F: FnOnce() -> R,
+  F: Unpin,
 {
   type Input = ();
   type Yield = !;
   type Return = R;
 
-  fn resume(&mut self, _input: ()) -> FiberState<!, R> {
-    FiberState::Complete(match self.0.take() {
+  fn resume(self: Pin<&mut Self>, _input: ()) -> FiberState<!, R> {
+    FiberState::Complete(match self.get_mut().0.take() {
       Some(f) => f(),
       None => panic!("closure fiber resumed after completion"),
     })
@@ -27,10 +30,10 @@ where
 impl<F> FiberRoot for FiberFn<F, ()>
 where
   F: FnOnce(),
-  F: Send + 'static,
+  F: Unpin + Send + 'static,
 {
   #[inline]
-  fn advance(&mut self) -> bool {
+  fn advance(self: Pin<&mut Self>) -> bool {
     match self.resume(()) {
       FiberState::Complete(()) => false,
     }
@@ -42,6 +45,7 @@ where
 pub fn new_fn<F, R>(f: F) -> FiberFn<F, R>
 where
   F: FnOnce() -> R,
+  F: Unpin,
 {
   FiberFn(Some(f))
 }
@@ -52,7 +56,7 @@ pub trait ThrFiberFn<T: ThrAttach>: ThrToken<T> {
   fn add_fn<F>(self, f: F)
   where
     F: FnOnce(),
-    F: Send + 'static,
+    F: Unpin + Send + 'static,
   {
     self.add_fib(new_fn(f))
   }

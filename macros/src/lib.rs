@@ -2,8 +2,8 @@
 //!
 //! See `drone-core` documentation for details.
 
-#![feature(uniform_paths)]
 #![recursion_limit = "512"]
+#![deny(bare_trait_objects)]
 #![warn(clippy::pedantic)]
 #![allow(
   clippy::cast_possible_truncation,

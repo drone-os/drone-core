@@ -1,3 +1,5 @@
+/// Creates call site [`Ident`](::syn::Ident) using interpolation of runtime
+/// expressions.
 #[macro_export]
 macro_rules! new_ident {
   ($fmt:expr, $($args:tt)*) => {
@@ -11,6 +13,8 @@ macro_rules! new_ident {
   };
 }
 
+/// Creates def site [`Ident`](::syn::Ident) using interpolation of runtime
+/// expressions.
 #[macro_export]
 macro_rules! new_def_ident {
   ($fmt:expr, $($args:tt)*) => {
@@ -24,6 +28,7 @@ macro_rules! new_def_ident {
   };
 }
 
+/// Unconditionally causes parsing to fail with the given error message.
 #[macro_export]
 macro_rules! compile_error {
   ($fmt:expr, $($args:tt)*) => {

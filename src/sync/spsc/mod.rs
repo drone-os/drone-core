@@ -3,8 +3,8 @@
 use core::{
   ops::{BitAnd, BitOr, BitOrAssign, BitXorAssign},
   sync::atomic::Ordering::{self, *},
+  task::{LocalWaker, Poll, Waker},
 };
-use futures::{prelude::*, task::Waker};
 
 pub mod oneshot;
 pub mod ring;
@@ -70,7 +70,7 @@ where
     self.state_load(Relaxed) & Self::COMPLETE != Self::ZERO
   }
 
-  fn poll_cancel(&self, cx: &mut task::Context) -> Poll<(), ()> {
+  fn poll_cancel(&self, lw: &LocalWaker) -> Poll<()> {
     self
       .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {
         if *state & (Self::COMPLETE | Self::TX_LOCK) == Self::ZERO {
@@ -81,7 +81,7 @@ where
         }
       })
       .and_then(|state| {
-        unsafe { *self.tx_waker_mut() = Some(cx.waker().clone()) };
+        unsafe { *self.tx_waker_mut() = Some(lw.clone().into_waker()) };
         self.update(state, Release, Relaxed, |state| {
           *state ^= Self::TX_LOCK;
           Ok(*state)
@@ -89,12 +89,12 @@ where
       })
       .and_then(|state| {
         if state & Self::COMPLETE == Self::ZERO {
-          Ok(Async::Pending)
+          Ok(Poll::Pending)
         } else {
           Err(())
         }
       })
-      .or_else(|()| Ok(Async::Ready(())))
+      .unwrap_or_else(|()| Poll::Ready(()))
   }
 
   fn close_half(

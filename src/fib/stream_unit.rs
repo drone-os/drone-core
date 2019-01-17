@@ -3,17 +3,26 @@ use crate::{
   sync::spsc::unit::{channel, Receiver, SendError},
   thr::prelude::*,
 };
-use futures::prelude::*;
+use core::{
+  convert::identity,
+  pin::Pin,
+  task::{LocalWaker, Poll},
+};
+use futures::Stream;
+
+/// A stream of values from another thread.
+#[must_use]
+pub struct FiberStreamUnit {
+  rx: Receiver<!>,
+}
 
 /// A stream of results from another thread.
-///
-/// This stream can be created by the instance of [`Thread`](::thr::Thread).
 #[must_use]
-pub struct FiberStreamUnit<E> {
+pub struct TryFiberStreamUnit<E> {
   rx: Receiver<E>,
 }
 
-impl<E> FiberStreamUnit<E> {
+impl FiberStreamUnit {
   /// Gracefully close this stream, preventing sending any future messages.
   #[inline]
   pub fn close(&mut self) {
@@ -21,20 +30,59 @@ impl<E> FiberStreamUnit<E> {
   }
 }
 
-impl<E> Stream for FiberStreamUnit<E> {
+impl<E> TryFiberStreamUnit<E> {
+  /// Gracefully close this stream, preventing sending any future messages.
+  #[inline]
+  pub fn close(&mut self) {
+    self.rx.close()
+  }
+}
+
+impl Stream for FiberStreamUnit {
   type Item = ();
-  type Error = E;
 
   #[inline]
-  fn poll_next(&mut self, cx: &mut task::Context) -> Poll<Option<()>, E> {
-    self.rx.poll_next(cx)
+  fn poll_next(
+    self: Pin<&mut Self>,
+    lw: &LocalWaker,
+  ) -> Poll<Option<Self::Item>> {
+    let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
+    rx.poll_next(lw).map(|value| {
+      value.map(|value| match value {
+        Ok(value) => value,
+      })
+    })
+  }
+}
+
+impl<E> Stream for TryFiberStreamUnit<E> {
+  type Item = Result<(), E>;
+
+  #[inline]
+  fn poll_next(
+    self: Pin<&mut Self>,
+    lw: &LocalWaker,
+  ) -> Poll<Option<Self::Item>> {
+    let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
+    rx.poll_next(lw)
   }
 }
 
 /// Unit stream extension to the thread token.
 pub trait ThrStreamUnit<T: ThrAttach>: ThrToken<T> {
-  /// Adds a new unit stream fiber.
-  fn add_stream<O, F, E>(self, overflow: O, mut fib: F) -> FiberStreamUnit<E>
+  /// Adds a new unit stream fiber. Overflows will be ignored.
+  fn add_stream_skip<F>(self, fib: F) -> FiberStreamUnit
+  where
+    F: Fiber<Input = (), Yield = Option<()>, Return = Option<()>>,
+    F: Send + 'static,
+  {
+    FiberStreamUnit {
+      rx: add_rx(self, || Ok(()), fib, Ok),
+    }
+  }
+
+  /// Adds a new fallible unit stream fiber.
+  fn add_stream<O, F, E>(self, overflow: O, fib: F) -> TryFiberStreamUnit<E>
   where
     O: Fn() -> Result<(), E>,
     F: Fiber<Input = (), Yield = Option<()>, Return = Result<Option<()>, E>>,
@@ -42,52 +90,66 @@ pub trait ThrStreamUnit<T: ThrAttach>: ThrToken<T> {
     F: Send + 'static,
     E: Send + 'static,
   {
-    let (rx, mut tx) = channel();
-    self.add(move || loop {
-      if tx.is_canceled() {
-        break;
-      }
-      match fib.resume(()) {
-        FiberState::Yielded(None) => {}
-        FiberState::Yielded(Some(())) => match tx.send() {
+    TryFiberStreamUnit {
+      rx: add_rx(self, overflow, fib, identity),
+    }
+  }
+}
+
+#[inline]
+fn add_rx<T, U, O, F, E, C>(
+  thr: T,
+  overflow: O,
+  mut fib: F,
+  convert: C,
+) -> Receiver<E>
+where
+  T: ThrToken<U>,
+  U: ThrAttach,
+  O: Fn() -> Result<(), E>,
+  F: Fiber<Input = (), Yield = Option<()>>,
+  C: FnOnce(F::Return) -> Result<Option<()>, E>,
+  O: Send + 'static,
+  F: Send + 'static,
+  E: Send + 'static,
+  C: Send + 'static,
+{
+  let (rx, mut tx) = channel();
+  thr.add(move || loop {
+    if tx.is_canceled() {
+      break;
+    }
+    match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+      FiberState::Yielded(None) => {}
+      FiberState::Yielded(Some(())) => match tx.send() {
+        Ok(()) => {}
+        Err(SendError::Canceled) => {
+          break;
+        }
+        Err(SendError::Overflow) => match overflow() {
           Ok(()) => {}
-          Err(SendError::Canceled) => {
+          Err(err) => {
+            tx.send_err(err).ok();
             break;
           }
-          Err(SendError::Overflow) => match overflow() {
-            Ok(()) => {}
-            Err(err) => {
-              tx.send_err(err).ok();
-              break;
-            }
-          },
         },
-        FiberState::Complete(Ok(None)) => {
-          break;
+      },
+      FiberState::Complete(value) => {
+        match convert(value) {
+          Ok(None) => {}
+          Ok(Some(())) => {
+            tx.send().ok();
+          }
+          Err(err) => {
+            tx.send_err(err).ok();
+          }
         }
-        FiberState::Complete(Ok(Some(()))) => {
-          tx.send().ok();
-          break;
-        }
-        FiberState::Complete(Err(err)) => {
-          tx.send_err(err).ok();
-          break;
-        }
+        break;
       }
-      yield;
-    });
-    FiberStreamUnit { rx }
-  }
-
-  /// Adds a new unit stream fiber. Overflows will be ignored.
-  fn add_stream_skip<F, E>(self, fib: F) -> FiberStreamUnit<E>
-  where
-    F: Fiber<Input = (), Yield = Option<()>, Return = Result<Option<()>, E>>,
-    F: Send + 'static,
-    E: Send + 'static,
-  {
-    self.add_stream(|| Ok(()), fib)
-  }
+    }
+    yield;
+  });
+  rx
 }
 
 impl<T: ThrAttach, U: ThrToken<T>> ThrStreamUnit<T> for U {}

@@ -10,11 +10,13 @@ mod stream_unit;
 pub use self::{
   chain::Chain,
   closure::{new_fn, FiberFn, ThrFiberFn},
-  future::{FiberFuture, ThrFiberFuture},
+  future::{FiberFuture, ThrFiberFuture, TryFiberFuture},
   generator::{new, FiberGen, ThrFiberGen},
-  stream_ring::{FiberStreamRing, ThrStreamRing},
-  stream_unit::{FiberStreamUnit, ThrStreamUnit},
+  stream_ring::{FiberStreamRing, ThrStreamRing, TryFiberStreamRing},
+  stream_unit::{FiberStreamUnit, ThrStreamUnit, TryFiberStreamUnit},
 };
+
+use core::pin::Pin;
 
 /// Lightweight thread of execution.
 pub trait Fiber {
@@ -29,7 +31,7 @@ pub trait Fiber {
 
   /// Resumes the execution of this fiber.
   fn resume(
-    &mut self,
+    self: Pin<&mut Self>,
     input: Self::Input,
   ) -> FiberState<Self::Yield, Self::Return>;
 }
@@ -37,7 +39,7 @@ pub trait Fiber {
 /// A fiber suitable for [`Chain`](Chain).
 pub trait FiberRoot: Send + 'static {
   /// Resumes the execution of this fiber. Returns `true` if it's still alive.
-  fn advance(&mut self) -> bool;
+  fn advance(self: Pin<&mut Self>) -> bool;
 }
 
 /// The result of a fiber resumption.

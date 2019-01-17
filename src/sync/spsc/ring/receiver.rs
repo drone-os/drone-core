@@ -1,8 +1,13 @@
 use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
 use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
-use core::{ptr, sync::atomic::Ordering::*};
-use futures::prelude::*;
+use core::{
+  pin::Pin,
+  ptr,
+  sync::atomic::Ordering::*,
+  task::{LocalWaker, Poll},
+};
+use futures::stream::Stream;
 
 /// The receiving-half of [`ring::channel`](super::channel).
 #[must_use]
@@ -25,12 +30,14 @@ impl<T, E> Receiver<T, E> {
 }
 
 impl<T, E> Stream for Receiver<T, E> {
-  type Item = T;
-  type Error = E;
+  type Item = Result<T, E>;
 
   #[inline]
-  fn poll_next(&mut self, cx: &mut task::Context) -> Poll<Option<T>, E> {
-    self.inner.recv(cx)
+  fn poll_next(
+    self: Pin<&mut Self>,
+    lw: &LocalWaker,
+  ) -> Poll<Option<Self::Item>> {
+    self.inner.recv(lw)
   }
 }
 
@@ -42,11 +49,9 @@ impl<T, E> Drop for Receiver<T, E> {
 }
 
 impl<T, E> Inner<T, E> {
-  fn recv(&self, cx: &mut task::Context) -> Poll<Option<T>, E> {
-    let some_value = || {
-      |index| unsafe {
-        Async::Ready(Some(ptr::read(self.buffer.ptr().add(index))))
-      }
+  fn recv(&self, lw: &LocalWaker) -> Poll<Option<Result<T, E>>> {
+    let some_value = |index| unsafe {
+      Poll::Ready(Some(Ok(ptr::read(self.buffer.ptr().add(index)))))
     };
     self
       .update(self.state_load(Acquire), Acquire, Acquire, |state| {
@@ -60,9 +65,10 @@ impl<T, E> Inner<T, E> {
         }
       })
       .and_then(|state| {
-        state.map(some_value()).or_else(|state| {
+        state.map(some_value).or_else(|state| {
           unsafe {
-            (*self.rx_waker.get()).get_or_insert_with(|| cx.waker().clone());
+            (*self.rx_waker.get())
+              .get_or_insert_with(|| lw.clone().into_waker());
           }
           self
             .update(state, AcqRel, Relaxed, |state| {
@@ -74,9 +80,9 @@ impl<T, E> Inner<T, E> {
               }
             })
             .and_then(|state| {
-              state.map(some_value()).or_else(|state| {
+              state.map(some_value).or_else(|state| {
                 if state & COMPLETE == 0 {
-                  Ok(Async::Pending)
+                  Ok(Poll::Pending)
                 } else {
                   Err(())
                 }
@@ -84,9 +90,8 @@ impl<T, E> Inner<T, E> {
             })
         })
       })
-      .or_else(|()| {
-        let err = unsafe { &mut *self.err.get() };
-        err.take().map_or_else(|| Ok(Async::Ready(None)), Err)
+      .unwrap_or_else(|()| {
+        Poll::Ready(unsafe { &mut *self.err.get() }.take().map(Err))
       })
   }
 

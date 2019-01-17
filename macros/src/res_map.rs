@@ -566,8 +566,13 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
   let res_struct = new_ident!("{}Res", res_trait);
   for (features, macro_tokens) in macro_tokens.as_slice().transpose() {
     let attrs = &features.attrs();
+    let doc = format!(
+      "Acquire an instance of [`{}`] from the given `$reg` tokens",
+      res_struct
+    );
     tokens.push(quote! {
       #(#attrs)*
+      #[doc = #doc]
       #[macro_export]
       macro_rules! #res_macro {
         ($reg:ident) => {

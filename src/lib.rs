@@ -28,6 +28,7 @@
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(exhaustive_patterns)]
+#![feature(futures_api)]
 #![feature(generators)]
 #![feature(generator_trait)]
 #![feature(integer_atomics)]
@@ -39,8 +40,8 @@
 #![feature(result_map_or_else)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
-#![feature(uniform_paths)]
 #![feature(untagged_unions)]
+#![deny(bare_trait_objects)]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(

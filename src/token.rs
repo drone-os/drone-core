@@ -57,6 +57,7 @@ pub unsafe trait StaticToken: Sized + Send + 'static {
   fn into_static(self) -> &'static mut Self::Target;
 }
 
+/// Defines a new [`InitToken`].
 #[macro_export]
 macro_rules! init_token {
   ($(#[$attr:meta])* $vis:vis struct $ident:ident $(;)*) => {

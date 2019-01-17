@@ -15,7 +15,7 @@ mod task;
 pub use self::{
   preempt::{current, with_preempted, PreemptedCell},
   tag::*,
-  task::{__current_task, init, TaskCell},
+  task::{current_task, init, TaskCell},
 };
 
 use crate::{

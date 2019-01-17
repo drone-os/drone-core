@@ -3,17 +3,26 @@ use crate::{
   sync::spsc::ring::{channel, Receiver, SendError, SendErrorKind},
   thr::prelude::*,
 };
-use futures::prelude::*;
+use core::{
+  convert::identity,
+  pin::Pin,
+  task::{LocalWaker, Poll},
+};
+use futures::Stream;
+
+/// A stream of values from another thread.
+#[must_use]
+pub struct FiberStreamRing<I> {
+  rx: Receiver<I, !>,
+}
 
 /// A stream of results from another thread.
-///
-/// This stream can be created by the instance of [`Thread`](::thr::Thread).
 #[must_use]
-pub struct FiberStreamRing<I, E> {
+pub struct TryFiberStreamRing<I, E> {
   rx: Receiver<I, E>,
 }
 
-impl<I, E> FiberStreamRing<I, E> {
+impl<I> FiberStreamRing<I> {
   /// Gracefully close this stream, preventing sending any future messages.
   #[inline]
   pub fn close(&mut self) {
@@ -21,25 +30,85 @@ impl<I, E> FiberStreamRing<I, E> {
   }
 }
 
-impl<I, E> Stream for FiberStreamRing<I, E> {
+impl<I, E> TryFiberStreamRing<I, E> {
+  /// Gracefully close this stream, preventing sending any future messages.
+  #[inline]
+  pub fn close(&mut self) {
+    self.rx.close()
+  }
+}
+
+impl<I> Stream for FiberStreamRing<I> {
   type Item = I;
-  type Error = E;
 
   #[inline]
-  fn poll_next(&mut self, cx: &mut task::Context) -> Poll<Option<I>, E> {
-    self.rx.poll_next(cx)
+  fn poll_next(
+    self: Pin<&mut Self>,
+    lw: &LocalWaker,
+  ) -> Poll<Option<Self::Item>> {
+    let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
+    rx.poll_next(lw).map(|value| {
+      value.map(|value| match value {
+        Ok(value) => value,
+      })
+    })
+  }
+}
+
+impl<I, E> Stream for TryFiberStreamRing<I, E> {
+  type Item = Result<I, E>;
+
+  #[inline]
+  fn poll_next(
+    self: Pin<&mut Self>,
+    lw: &LocalWaker,
+  ) -> Poll<Option<Self::Item>> {
+    let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
+    rx.poll_next(lw)
   }
 }
 
 /// Ring stream extension to the thread token.
 pub trait ThrStreamRing<T: ThrAttach>: ThrToken<T> {
-  /// Adds a new ring stream fiber.
+  /// Adds a new ring stream fiber. Overflows will be ignored.
+  fn add_stream_ring_skip<F, I>(
+    self,
+    capacity: usize,
+    fib: F,
+  ) -> FiberStreamRing<I>
+  where
+    F: Fiber<Input = (), Yield = Option<I>, Return = Option<I>>,
+    F: Send + 'static,
+    I: Send + 'static,
+  {
+    FiberStreamRing {
+      rx: add_rx(self, capacity, |_| Ok(()), fib, Ok),
+    }
+  }
+
+  /// Adds a new ring stream fiber. Overflows will overwrite.
+  fn add_stream_ring_overwrite<F, I>(
+    self,
+    capacity: usize,
+    fib: F,
+  ) -> FiberStreamRing<I>
+  where
+    F: Fiber<Input = (), Yield = Option<I>, Return = Option<I>>,
+    F: Send + 'static,
+    I: Send + 'static,
+  {
+    FiberStreamRing {
+      rx: add_rx_overwrite(self, capacity, fib, Ok),
+    }
+  }
+
+  /// Adds a new fallible ring stream fiber.
   fn add_stream_ring<O, F, I, E>(
     self,
     capacity: usize,
     overflow: O,
-    mut fib: F,
-  ) -> FiberStreamRing<I, E>
+    fib: F,
+  ) -> TryFiberStreamRing<I, E>
   where
     O: Fn(I) -> Result<(), E>,
     F: Fiber<Input = (), Yield = Option<I>, Return = Result<Option<I>, E>>,
@@ -48,99 +117,133 @@ pub trait ThrStreamRing<T: ThrAttach>: ThrToken<T> {
     I: Send + 'static,
     E: Send + 'static,
   {
-    let (rx, mut tx) = channel(capacity);
-    self.add(move || loop {
-      if tx.is_canceled() {
-        break;
-      }
-      match fib.resume(()) {
-        FiberState::Yielded(None) => {}
-        FiberState::Yielded(Some(value)) => match tx.send(value) {
-          Ok(()) => {}
-          Err(SendError { value, kind }) => match kind {
-            SendErrorKind::Canceled => {
-              break;
-            }
-            SendErrorKind::Overflow => match overflow(value) {
-              Ok(()) => {}
-              Err(err) => {
-                tx.send_err(err).ok();
-                break;
-              }
-            },
-          },
-        },
-        FiberState::Complete(Ok(None)) => {
-          break;
-        }
-        FiberState::Complete(Ok(Some(value))) => {
-          tx.send(value).ok();
-          break;
-        }
-        FiberState::Complete(Err(err)) => {
-          tx.send_err(err).ok();
-          break;
-        }
-      }
-      yield;
-    });
-    FiberStreamRing { rx }
+    TryFiberStreamRing {
+      rx: add_rx(self, capacity, overflow, fib, identity),
+    }
   }
 
-  /// Adds a new ring stream fiber. Overflows will be ignored.
-  fn add_stream_ring_skip<F, I, E>(
+  /// Adds a new fallible ring stream fiber. Overflows will overwrite.
+  fn add_try_stream_ring_overwrite<F, I, E>(
     self,
     capacity: usize,
     fib: F,
-  ) -> FiberStreamRing<I, E>
+  ) -> TryFiberStreamRing<I, E>
   where
     F: Fiber<Input = (), Yield = Option<I>, Return = Result<Option<I>, E>>,
     F: Send + 'static,
     I: Send + 'static,
     E: Send + 'static,
   {
-    self.add_stream_ring(capacity, |_| Ok(()), fib)
+    TryFiberStreamRing {
+      rx: add_rx_overwrite(self, capacity, fib, identity),
+    }
   }
+}
 
-  /// Adds a new ring stream fiber. Overflows will overwrite.
-  fn add_stream_ring_overwrite<F, I, E>(
-    self,
-    capacity: usize,
-    mut fib: F,
-  ) -> FiberStreamRing<I, E>
-  where
-    F: Fiber<Input = (), Yield = Option<I>, Return = Result<Option<I>, E>>,
-    F: Send + 'static,
-    I: Send + 'static,
-    E: Send + 'static,
-  {
-    let (rx, mut tx) = channel(capacity);
-    self.add(move || loop {
-      if tx.is_canceled() {
+#[inline]
+fn add_rx<T, U, O, F, I, E, C>(
+  thr: T,
+  capacity: usize,
+  overflow: O,
+  mut fib: F,
+  convert: C,
+) -> Receiver<I, E>
+where
+  T: ThrToken<U>,
+  U: ThrAttach,
+  O: Fn(I) -> Result<(), E>,
+  F: Fiber<Input = (), Yield = Option<I>>,
+  C: FnOnce(F::Return) -> Result<Option<I>, E>,
+  O: Send + 'static,
+  F: Send + 'static,
+  I: Send + 'static,
+  E: Send + 'static,
+  C: Send + 'static,
+{
+  let (rx, mut tx) = channel(capacity);
+  thr.add(move || loop {
+    if tx.is_canceled() {
+      break;
+    }
+    match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+      FiberState::Yielded(None) => {}
+      FiberState::Yielded(Some(value)) => match tx.send(value) {
+        Ok(()) => {}
+        Err(SendError { value, kind }) => match kind {
+          SendErrorKind::Canceled => {
+            break;
+          }
+          SendErrorKind::Overflow => match overflow(value) {
+            Ok(()) => {}
+            Err(err) => {
+              tx.send_err(err).ok();
+              break;
+            }
+          },
+        },
+      },
+      FiberState::Complete(value) => {
+        match convert(value) {
+          Ok(None) => {}
+          Ok(Some(value)) => {
+            tx.send(value).ok();
+          }
+          Err(err) => {
+            tx.send_err(err).ok();
+          }
+        }
         break;
       }
-      match fib.resume(()) {
-        FiberState::Yielded(None) => {}
-        FiberState::Yielded(Some(value)) => match tx.send_overwrite(value) {
-          Ok(()) => (),
-          Err(_) => break,
-        },
-        FiberState::Complete(Ok(None)) => {
-          break;
+    }
+    yield;
+  });
+  rx
+}
+
+#[inline]
+fn add_rx_overwrite<T, U, F, I, E, C>(
+  thr: T,
+  capacity: usize,
+  mut fib: F,
+  convert: C,
+) -> Receiver<I, E>
+where
+  T: ThrToken<U>,
+  U: ThrAttach,
+  F: Fiber<Input = (), Yield = Option<I>>,
+  C: FnOnce(F::Return) -> Result<Option<I>, E>,
+  F: Send + 'static,
+  I: Send + 'static,
+  E: Send + 'static,
+  C: Send + 'static,
+{
+  let (rx, mut tx) = channel(capacity);
+  thr.add(move || loop {
+    if tx.is_canceled() {
+      break;
+    }
+    match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+      FiberState::Yielded(None) => {}
+      FiberState::Yielded(Some(value)) => match tx.send_overwrite(value) {
+        Ok(()) => (),
+        Err(_) => break,
+      },
+      FiberState::Complete(value) => {
+        match convert(value) {
+          Ok(None) => {}
+          Ok(Some(value)) => {
+            tx.send_overwrite(value).ok();
+          }
+          Err(err) => {
+            tx.send_err(err).ok();
+          }
         }
-        FiberState::Complete(Ok(Some(value))) => {
-          tx.send_overwrite(value).ok();
-          break;
-        }
-        FiberState::Complete(Err(err)) => {
-          tx.send_err(err).ok();
-          break;
-        }
+        break;
       }
-      yield;
-    });
-    FiberStreamRing { rx }
-  }
+    }
+    yield;
+  });
+  rx
 }
 
 impl<T: ThrAttach, U: ThrToken<T>> ThrStreamRing<T> for U {}

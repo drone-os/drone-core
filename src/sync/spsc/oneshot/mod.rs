@@ -15,8 +15,8 @@ use alloc::sync::Arc;
 use core::{
   cell::UnsafeCell,
   sync::atomic::{AtomicU8, Ordering},
+  task::Waker,
 };
-use futures::task::Waker;
 
 const COMPLETE: u8 = 1 << 2;
 const RX_LOCK: u8 = 1 << 1;
@@ -95,9 +95,11 @@ impl<T, E> SpscInner<AtomicU8, u8> for Inner<T, E> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use alloc::sync::Arc;
-  use core::sync::atomic::{AtomicUsize, Ordering};
-  use futures::prelude::*;
+  use alloc::{
+    sync::Arc,
+    task::{local_waker_from_nonlocal, Wake},
+  };
+  use core::{future::Future, pin::Pin, sync::atomic::AtomicUsize, task::Poll};
 
   thread_local! {
     static COUNTER: Arc<Counter> = Arc::new(Counter(AtomicUsize::new(0)));
@@ -105,7 +107,7 @@ mod tests {
 
   struct Counter(AtomicUsize);
 
-  impl task::Wake for Counter {
+  impl Wake for Counter {
     fn wake(arc_self: &Arc<Self>) {
       arc_self.0.fetch_add(1, Ordering::Relaxed);
     }
@@ -116,11 +118,9 @@ mod tests {
     let (mut rx, tx) = channel::<usize, ()>();
     assert_eq!(tx.send(Ok(314)), Ok(()));
     COUNTER.with(|counter| {
-      let waker = task::Waker::from(Arc::clone(counter));
-      let mut map = task::LocalMap::new();
-      let mut cx = task::Context::without_spawn(&mut map, &waker);
+      let lw = local_waker_from_nonlocal(Arc::clone(counter));
       counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(rx.poll(&mut cx).unwrap(), Async::Ready(314));
+      assert_eq!(Pin::new(&mut rx).poll(&lw), Poll::Ready(Ok(314)));
       assert_eq!(counter.0.load(Ordering::Relaxed), 0);
     });
   }
@@ -129,13 +129,11 @@ mod tests {
   fn send_async() {
     let (mut rx, tx) = channel::<usize, ()>();
     COUNTER.with(|counter| {
-      let waker = task::Waker::from(Arc::clone(counter));
-      let mut map = task::LocalMap::new();
-      let mut cx = task::Context::without_spawn(&mut map, &waker);
+      let lw = local_waker_from_nonlocal(Arc::clone(counter));
       counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(rx.poll(&mut cx).unwrap(), Async::Pending);
+      assert_eq!(Pin::new(&mut rx).poll(&lw), Poll::Pending);
       assert_eq!(tx.send(Ok(314)), Ok(()));
-      assert_eq!(rx.poll(&mut cx).unwrap(), Async::Ready(314));
+      assert_eq!(Pin::new(&mut rx).poll(&lw), Poll::Ready(Ok(314)));
       assert_eq!(counter.0.load(Ordering::Relaxed), 1);
     });
   }

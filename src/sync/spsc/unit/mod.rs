@@ -16,8 +16,8 @@ use core::{
   cell::UnsafeCell,
   mem::size_of,
   sync::atomic::{AtomicUsize, Ordering},
+  task::Waker,
 };
-use futures::task::Waker;
 
 /// Maximum capacity of the channel.
 pub const MAX_CAPACITY: usize = 1 << size_of::<usize>() * 8 - LOCK_BITS;
@@ -104,9 +104,12 @@ impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use alloc::sync::Arc;
-  use core::sync::atomic::{AtomicUsize, Ordering};
-  use futures::prelude::*;
+  use alloc::{
+    sync::Arc,
+    task::{local_waker_from_nonlocal, Wake},
+  };
+  use core::{pin::Pin, task::Poll};
+  use futures::stream::Stream;
 
   thread_local! {
     static COUNTER: Arc<Counter> = Arc::new(Counter(AtomicUsize::new(0)));
@@ -114,7 +117,7 @@ mod tests {
 
   struct Counter(AtomicUsize);
 
-  impl task::Wake for Counter {
+  impl Wake for Counter {
     fn wake(arc_self: &Arc<Self>) {
       arc_self.0.fetch_add(1, Ordering::Relaxed);
     }
@@ -126,12 +129,10 @@ mod tests {
     assert_eq!(tx.send().unwrap(), ());
     drop(tx);
     COUNTER.with(|counter| {
-      let waker = task::Waker::from(Arc::clone(counter));
-      let mut map = task::LocalMap::new();
-      let mut cx = task::Context::without_spawn(&mut map, &waker);
+      let lw = local_waker_from_nonlocal(Arc::clone(counter));
       counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(Some(()))));
-      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(None)));
+      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Ready(Some(Ok(()))));
+      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Ready(None));
       assert_eq!(counter.0.load(Ordering::Relaxed), 0);
     });
   }
@@ -140,17 +141,28 @@ mod tests {
   fn send_async() {
     let (mut rx, mut tx) = channel::<()>();
     COUNTER.with(|counter| {
-      let waker = task::Waker::from(Arc::clone(counter));
-      let mut map = task::LocalMap::new();
-      let mut cx = task::Context::without_spawn(&mut map, &waker);
+      let lw = local_waker_from_nonlocal(Arc::clone(counter));
       counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Pending));
+      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Pending);
       assert_eq!(tx.send().unwrap(), ());
-      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(Some(()))));
-      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Pending));
+      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Ready(Some(Ok(()))));
+      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Pending);
       drop(tx);
-      assert_eq!(rx.poll_next(&mut cx), Ok(Async::Ready(None)));
+      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Ready(None));
       assert_eq!(counter.0.load(Ordering::Relaxed), 2);
+    });
+  }
+
+  #[test]
+  fn send_err() {
+    let (mut rx, tx) = channel::<()>();
+    assert_eq!(tx.send_err(()).unwrap(), ());
+    COUNTER.with(|counter| {
+      let lw = local_waker_from_nonlocal(Arc::clone(counter));
+      counter.0.store(0, Ordering::Relaxed);
+      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Ready(Some(Err(()))));
+      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Ready(None));
+      assert_eq!(counter.0.load(Ordering::Relaxed), 0);
     });
   }
 }

@@ -1,8 +1,12 @@
 use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK, RX_LOCK};
 use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
-use core::sync::atomic::Ordering::*;
-use futures::prelude::*;
+use core::{
+  pin::Pin,
+  sync::atomic::Ordering::*,
+  task::{LocalWaker, Poll},
+};
+use futures::stream::Stream;
 
 /// The receiving-half of [`unit::channel`](super::channel).
 #[must_use]
@@ -25,12 +29,14 @@ impl<E> Receiver<E> {
 }
 
 impl<E> Stream for Receiver<E> {
-  type Item = ();
-  type Error = E;
+  type Item = Result<(), E>;
 
   #[inline]
-  fn poll_next(&mut self, cx: &mut task::Context) -> Poll<Option<()>, E> {
-    self.inner.recv(cx)
+  fn poll_next(
+    self: Pin<&mut Self>,
+    lw: &LocalWaker,
+  ) -> Poll<Option<Self::Item>> {
+    self.inner.recv(lw)
   }
 }
 
@@ -42,8 +48,8 @@ impl<E> Drop for Receiver<E> {
 }
 
 impl<E> Inner<E> {
-  fn recv(&self, cx: &mut task::Context) -> Poll<Option<()>, E> {
-    let some_unit = || || Ok(Async::Ready(Some(())));
+  fn recv(&self, lw: &LocalWaker) -> Poll<Option<Result<(), E>>> {
+    let some_unit = || Ok(Poll::Ready(Some(Ok(()))));
     self
       .update(self.state_load(Acquire), Acquire, Acquire, |state| {
         if Self::take(state) {
@@ -56,9 +62,10 @@ impl<E> Inner<E> {
         }
       })
       .and_then(|state| {
-        state.map_or_else(some_unit(), |state| {
+        state.map_or_else(some_unit, |state| {
           unsafe {
-            (*self.rx_waker.get()).get_or_insert_with(|| cx.waker().clone());
+            (*self.rx_waker.get())
+              .get_or_insert_with(|| lw.clone().into_waker());
           }
           self
             .update(state, AcqRel, Relaxed, |state| {
@@ -70,9 +77,9 @@ impl<E> Inner<E> {
               }
             })
             .and_then(|state| {
-              state.map_or_else(some_unit(), |state| {
+              state.map_or_else(some_unit, |state| {
                 if state & COMPLETE == 0 {
-                  Ok(Async::Pending)
+                  Ok(Poll::Pending)
                 } else {
                   Err(())
                 }
@@ -80,9 +87,8 @@ impl<E> Inner<E> {
             })
         })
       })
-      .or_else(|()| {
-        let err = unsafe { &mut *self.err.get() };
-        err.take().map_or_else(|| Ok(Async::Ready(None)), Err)
+      .unwrap_or_else(|()| {
+        Poll::Ready(unsafe { &mut *self.err.get() }.take().map(Err))
       })
   }
 

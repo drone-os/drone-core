@@ -1,39 +1,34 @@
-use crate::thr::__current_task;
-use core::ops::{Generator, GeneratorState};
-use futures::prelude::*;
+use crate::thr::current_task;
+use core::{
+  future::Future,
+  marker::Unpin,
+  ops::{Generator, GeneratorState},
+  pin::Pin,
+  task::{LocalWaker, Poll},
+};
+
+/// Wrap a future in a generator.
+#[inline(always)]
+pub fn asnc<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
+  GenFuture(x)
+}
 
 #[must_use]
-pub struct GenFuture<R, E, G>(G)
-where
-  G: Generator<Yield = (), Return = Result<R, E>>;
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+struct GenFuture<T: Generator<Yield = ()>>(T);
 
-impl<R, E, G> GenFuture<R, E, G> where
-  G: Generator<Yield = (), Return = Result<R, E>>
-{
-}
+impl<T: Generator<Yield = ()>> !Unpin for GenFuture<T> {}
 
-/// Creates a new generator-based future.
-#[inline(always)]
-pub fn asnc<R, E, G>(gen: G) -> GenFuture<R, E, G>
-where
-  G: Generator<Yield = (), Return = Result<R, E>>,
-{
-  GenFuture(gen)
-}
+impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
+  type Output = T::Return;
 
-impl<R, E, G> Future for GenFuture<R, E, G>
-where
-  G: Generator<Yield = (), Return = Result<R, E>>,
-{
-  type Item = R;
-  type Error = E;
-
-  // FIXME Use `Pin` when implemented
   #[inline]
-  fn poll(&mut self, cx: &mut task::Context) -> Poll<R, E> {
-    __current_task().__set_cx(cx, || match unsafe { self.0.resume() } {
-      GeneratorState::Yielded(()) => Ok(Async::Pending),
-      GeneratorState::Complete(complete) => complete.map(Async::Ready),
+  fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
+    current_task().set_waker(lw, || {
+      match unsafe { self.get_unchecked_mut().0.resume() } {
+        GeneratorState::Yielded(()) => Poll::Pending,
+        GeneratorState::Complete(x) => Poll::Ready(x),
+      }
     })
   }
 }

@@ -1,8 +1,7 @@
 //! Adapter pattern for transforming stackful synchronous subroutines into
 //! fibers.
 
-use core::sync::atomic::AtomicBool;
-use futures::prelude::*;
+use core::{future::Future, marker::Unpin, pin::Pin, sync::atomic::AtomicBool};
 
 /// Interface for running synchronous code asynchronously.
 pub trait Adapter: Sized + Send + 'static {
@@ -37,10 +36,11 @@ pub trait Adapter: Sized + Send + 'static {
   fn run_cmd(cmd: Self::Cmd, context: Self::Context) -> Self::CmdRes;
 
   /// Runs a request `req` asynchronously.
+  #[allow(clippy::type_complexity)]
   fn run_req<'a>(
     &'a mut self,
     req: Self::Req,
-  ) -> Box<Future<Item = Self::ReqRes, Error = Self::Error> + 'a>;
+  ) -> Pin<Box<dyn Future<Output = Result<Self::ReqRes, Self::Error>> + 'a>>;
 
   /// Controls whether single instance of the code should be enforced.
   ///
@@ -57,12 +57,13 @@ pub trait Adapter: Sized + Send + 'static {
   fn deinit() {}
 
   /// Returns a future that runs a command `cmd`, and returns its result.
+  #[allow(clippy::type_complexity)]
   fn cmd<'a>(
     &'a mut self,
     cmd: Self::Cmd,
-  ) -> Box<Future<Item = Self::CmdRes, Error = Self::Error> + 'a> {
+  ) -> Pin<Box<dyn Future<Output = Result<Self::CmdRes, Self::Error>> + 'a>> {
     let mut input = In { cmd };
-    Box::new(asnc(move || loop {
+    Box::pin(asnc(move || loop {
       input = match self.stack().resume(input) {
         Out::Req(req) => In {
           req_res: awt!(self.run_req(req))?,
@@ -83,7 +84,7 @@ pub trait Adapter: Sized + Send + 'static {
 /// * [`Adapter::init`](Adapter::init)
 /// * [`Adapter::deinit`](Adapter::deinit)
 pub unsafe trait Stack<Cmd, CmdRes, Req, ReqRes>:
-  Sized + 'static
+  Unpin + Sized + 'static
 {
   /// Resumes the execution of this fiber.
   fn resume(&mut self, input: In<Cmd, ReqRes>) -> Out<Req, CmdRes>;

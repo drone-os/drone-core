@@ -3,17 +3,17 @@ use core::{
   cell::Cell,
   mem, ptr,
   sync::atomic::{AtomicUsize, Ordering::*},
+  task::LocalWaker,
 };
-use futures::task;
 
 static CURRENT: AtomicUsize = AtomicUsize::new(0);
 
-type StaticContext = *mut task::Context<'static>;
-
 /// A thread-local storage of the task pointer.
-pub struct TaskCell(Cell<StaticContext>);
+pub struct TaskCell(Cell<TaskWaker>);
 
-struct Reset<'a>(StaticContext, &'a Cell<StaticContext>);
+type TaskWaker = *const LocalWaker;
+
+struct ResetWaker<'a>(TaskWaker, &'a Cell<TaskWaker>);
 
 impl TaskCell {
   /// Creates a new `TaskCell`.
@@ -21,34 +21,30 @@ impl TaskCell {
     Self(Cell::new(ptr::null_mut()))
   }
 
-  #[allow(clippy::useless_transmute)]
-  pub(crate) fn __set_cx<F, T>(&self, cx: &mut task::Context, f: F) -> T
+  pub(crate) fn set_waker<F, R>(&self, lw: &LocalWaker, f: F) -> R
   where
-    F: FnOnce() -> T,
+    F: FnOnce() -> R,
   {
-    let prev_cx = self.0.replace(unsafe {
-      mem::transmute::<*mut task::Context<'_>, *mut task::Context<'static>>(cx)
-    });
-    let _r = Reset(prev_cx, &self.0);
+    let prev_lw = self.0.replace(lw);
+    let _reset_lw = ResetWaker(prev_lw, &self.0);
     f()
   }
 
-  #[doc(hidden)]
-  pub fn __in_cx<F, T>(&self, f: F) -> T
+  pub(crate) fn get_waker<F, R>(&self, f: F) -> R
   where
-    F: FnOnce(&mut task::Context) -> T,
+    F: FnOnce(&LocalWaker) -> R,
   {
-    let cx = self.0.replace(ptr::null_mut());
-    if cx.is_null() {
+    let lw = self.0.replace(ptr::null_mut());
+    if lw.is_null() {
       panic!("not an async context")
     } else {
-      let _r = Reset(cx, &self.0);
-      f(unsafe { &mut *cx })
+      let _reset_lw = ResetWaker(lw, &self.0);
+      f(unsafe { &*lw })
     }
   }
 }
 
-impl<'a> Drop for Reset<'a> {
+impl<'a> Drop for ResetWaker<'a> {
   fn drop(&mut self) {
     self.1.set(self.0);
   }
@@ -65,7 +61,7 @@ pub unsafe fn init<T: Thread>() {
 }
 
 #[doc(hidden)]
-pub fn __current_task() -> &'static TaskCell {
+pub fn current_task() -> &'static TaskCell {
   let ptr = CURRENT.load(Relaxed);
   if ptr == 0 {
     panic!("not initialized");

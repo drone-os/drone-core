@@ -1,4 +1,4 @@
-use futures::prelude::*;
+use core::{future::Future, pin::Pin};
 
 /// Enumeration of possible methods to seek within an I/O object.
 ///
@@ -40,5 +40,5 @@ pub trait Seek<'sess> {
   fn seek(
     &'sess mut self,
     pos: SeekFrom,
-  ) -> Box<Future<Item = u64, Error = Self::Error> + 'sess>;
+  ) -> Pin<Box<dyn Future<Output = Result<u64, Self::Error>> + 'sess>>;
 }

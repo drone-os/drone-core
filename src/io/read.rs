@@ -1,4 +1,4 @@
-use futures::prelude::*;
+use core::{future::Future, pin::Pin};
 
 /// The `Read` trait allows for reading bytes from a source.
 pub trait Read<'sess> {
@@ -10,5 +10,5 @@ pub trait Read<'sess> {
   fn read(
     &'sess mut self,
     buf: &'sess mut [u8],
-  ) -> Box<Future<Item = usize, Error = Self::Error> + 'sess>;
+  ) -> Pin<Box<dyn Future<Output = Result<usize, Self::Error>> + 'sess>>;
 }

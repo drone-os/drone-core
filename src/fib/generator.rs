@@ -2,7 +2,10 @@ use crate::{
   fib::{Fiber, FiberRoot, FiberState},
   thr::prelude::*,
 };
-use core::ops::{Generator, GeneratorState};
+use core::{
+  ops::{Generator, GeneratorState},
+  pin::Pin,
+};
 
 /// Generator fiber.
 pub struct FiberGen<G>(G)
@@ -18,9 +21,11 @@ where
   type Return = G::Return;
 
   #[inline]
-  fn resume(&mut self, _input: ()) -> FiberState<G::Yield, G::Return> {
-    // FIXME Use `Pin` when implemented
-    unsafe { self.0.resume().into() }
+  fn resume(
+    self: Pin<&mut Self>,
+    _input: (),
+  ) -> FiberState<G::Yield, G::Return> {
+    unsafe { self.get_unchecked_mut().0.resume().into() }
   }
 }
 
@@ -30,7 +35,7 @@ where
   G: Send + 'static,
 {
   #[inline]
-  fn advance(&mut self) -> bool {
+  fn advance(self: Pin<&mut Self>) -> bool {
     match self.resume(()) {
       FiberState::Yielded(()) => true,
       FiberState::Complete(()) => false,

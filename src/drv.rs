@@ -1,3 +1,4 @@
+#[doc(hidden)]
 #[macro_export]
 macro_rules! res_decl {
   ($(#[$attr:meta])* $ty:ident, $get:ident) => {
@@ -11,6 +12,7 @@ macro_rules! res_decl {
   };
 }
 
+#[doc(hidden)]
 #[macro_export]
 macro_rules! res_impl {
   ($(#[$attr:meta])* $ty:ident, $get:ident, $($field:tt).*) => {
