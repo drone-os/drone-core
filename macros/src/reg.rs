@@ -30,7 +30,7 @@ struct Field {
 }
 
 impl Parse for Reg {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let attrs = input.call(Attribute::parse_outer)?;
     let vis = input.parse()?;
     input.parse::<Token![mod]>()?;
@@ -64,7 +64,7 @@ impl Parse for Reg {
 }
 
 impl Parse for Field {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let attrs = input.call(Attribute::parse_outer)?;
     let ident = input.parse()?;
     let content;

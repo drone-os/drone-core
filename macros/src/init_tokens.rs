@@ -10,6 +10,8 @@ use syn::{
   Attribute, Ident, Token, Visibility,
 };
 
+const TOKEN_SUFFIX: &str = "Token";
+
 struct InitTokens {
   attrs: Vec<Attribute>,
   vis: Visibility,
@@ -22,7 +24,7 @@ struct Token {
 }
 
 impl Parse for InitTokens {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let attrs = input.call(Attribute::parse_outer)?;
     let vis = input.parse()?;
     input.parse::<Token![struct]>()?;
@@ -43,14 +45,15 @@ impl Parse for InitTokens {
 }
 
 impl Parse for Token {
-  fn parse(input: ParseStream) -> Result<Self> {
-    const SUFFIX: &str = "Token";
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let mut name = input.parse::<Ident>()?.to_string();
-    if name.ends_with(SUFFIX) {
-      let new_len = name.len() - SUFFIX.len();
-      name.truncate(new_len);
+    if name.ends_with(TOKEN_SUFFIX) {
+      name.truncate(name.len() - TOKEN_SUFFIX.len());
     } else {
-      return Err(input.error("Expected an ident which ends with `Token`"));
+      return Err(input.error(format!(
+        "Expected an ident which ends with `{}`",
+        TOKEN_SUFFIX
+      )));
     }
     Ok(Self { name })
   }

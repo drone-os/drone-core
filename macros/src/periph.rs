@@ -10,7 +10,9 @@ use syn::{
   parse_macro_input, Attribute, Ident, LitInt, Token, TraitItem,
 };
 
-struct Res {
+const TRAIT_SUFFIX: &str = "Map";
+
+struct Periph {
   attrs: Vec<Attribute>,
   ident: Ident,
   items: Vec<TraitItem>,
@@ -36,12 +38,18 @@ struct Field {
   traits: Vec<Ident>,
 }
 
-impl Parse for Res {
-  fn parse(input: ParseStream) -> Result<Self> {
+impl Parse for Periph {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let attrs = input.call(Attribute::parse_outer)?;
     input.parse::<Token![pub]>()?;
     input.parse::<Token![trait]>()?;
-    let ident = input.parse()?;
+    let ident = input.parse::<Ident>()?;
+    if !ident.to_string().ends_with(TRAIT_SUFFIX) {
+      return Err(input.error(format!(
+        "Expected an ident which ends with `{}`",
+        TRAIT_SUFFIX
+      )));
+    }
     let content;
     braced!(content in input);
     let mut items = Vec::new();
@@ -62,7 +70,7 @@ impl Parse for Res {
 }
 
 impl Parse for Block {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let ident = input.parse()?;
     let content;
     braced!(content in input);
@@ -75,7 +83,7 @@ impl Parse for Block {
 }
 
 impl Parse for Reg {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let features = input.parse()?;
     let ident = input.parse()?;
     let content;
@@ -101,7 +109,7 @@ impl Parse for Reg {
 }
 
 impl Parse for Field {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let features = input.parse()?;
     let ident = input.parse()?;
     let content;
@@ -120,16 +128,17 @@ impl Parse for Field {
 
 #[allow(clippy::cyclomatic_complexity)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-  let Res {
-    attrs: res_attrs,
-    ident: res_trait,
-    items: res_items,
+  let Periph {
+    attrs: periph_attrs,
+    ident: periph_trait,
+    items: periph_items,
     blocks,
-  } = &parse_macro_input!(input as Res);
+  } = &parse_macro_input!(input as Periph);
 
   let mut tokens = Vec::new();
-  let mut res_bounds = Vec::new();
-  let mut res_fields = Vec::new();
+  let mut periph_bounds = Vec::new();
+  let mut periph_fields = Vec::new();
+  let mut traits_export = Vec::new();
   for Block {
     ident: block_ident,
     regs,
@@ -255,10 +264,13 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             CRegField = Self::#c_field,
           > #(+ #c_traits)*;
         };
+        traits_export.push((field_attrs.clone(), field_trait.clone()));
         if field_option {
+          traits_export.push((field_attrs.clone(), field_trait_opt.clone()));
+          traits_export.push((field_attrs.clone(), field_trait_ext.clone()));
           if reg_shared {
             reg_bounds.push((features, quote!(Self: #field_trait_opt)));
-            res_fields.push(quote! {
+            periph_fields.push(quote! {
               #(#field_attrs)*
               pub #block_reg_field_snk: T::#s_field_opt,
             });
@@ -283,7 +295,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
               #[allow(missing_docs)]
               pub trait #field_trait
               where
-                Self: #res_trait,
+                Self: #periph_trait,
                 Self: #reg_trait,
                 Self: #field_trait_ext,
                 Self: #field_trait_opt<
@@ -334,7 +346,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
               tokens.push(quote! {
                 #(#field_attrs)*
                 #[allow(missing_docs)]
-                pub trait #field_trait_opt<T: #res_trait>: #reg_trait<T> {
+                pub trait #field_trait_opt<T: #periph_trait>: #reg_trait<T> {
                   type #u_field_opt;
                   type #s_field_opt;
                   type #c_field_opt;
@@ -343,7 +355,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
               tokens.push(quote! {
                 #(#field_attrs)*
                 #[allow(missing_docs)]
-                pub trait #field_trait_ext<T: #res_trait>: #reg_trait<T> {
+                pub trait #field_trait_ext<T: #periph_trait>: #reg_trait<T> {
                   #(#field_trait_items)*
                 }
               });
@@ -352,7 +364,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 #[allow(missing_docs)]
                 pub trait #field_trait
                 where
-                  Self: #res_trait,
+                  Self: #periph_trait,
                   Self: #reg_trait<Self>,
                   Self: #field_trait_ext<Self>,
                   Self: #field_trait_opt<
@@ -392,7 +404,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           }
         } else if reg_shared {
           reg_bounds.push((features, quote!(Self: #field_trait)));
-          res_fields.push(quote! {
+          periph_fields.push(quote! {
             #(#field_attrs)*
             pub #block_reg_field_snk: T::#s_field,
           });
@@ -418,7 +430,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             tokens.push(quote! {
               #(#field_attrs)*
               #[allow(missing_docs)]
-              pub trait #field_trait<T: #res_trait>: #reg_trait<T> {
+              pub trait #field_trait<T: #periph_trait>: #reg_trait<T> {
                 #(#field_trait_items)*
               }
             });
@@ -452,9 +464,16 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       let u_traits = &u_traits;
       let s_traits = &s_traits;
       let c_traits = &c_traits;
+      traits_export.push((reg_attrs.clone(), reg_trait.clone()));
       if reg_option {
-        res_bounds.push((reg_features.clone(), quote!(Self: #reg_trait_opt)));
-        res_fields.push(quote! {
+        traits_export.push((reg_attrs.clone(), reg_trait_opt.clone()));
+        traits_export.push((reg_attrs.clone(), reg_trait_ext.clone()));
+        traits_export.push((reg_attrs.clone(), u_reg.clone()));
+        traits_export.push((reg_attrs.clone(), s_reg.clone()));
+        traits_export.push((reg_attrs.clone(), c_reg.clone()));
+        periph_bounds
+          .push((reg_features.clone(), quote!(Self: #reg_trait_opt)));
+        periph_fields.push(quote! {
           #(#reg_attrs)*
           pub #block_reg_snk: T::#s_reg_opt,
         });
@@ -549,7 +568,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             #(#reg_attrs)*
             #(#attrs)*
             #[allow(missing_docs)]
-            pub trait #reg_trait: #res_trait
+            pub trait #reg_trait: #periph_trait
             where
               Self: #reg_trait_ext<Self>,
               Self: #reg_trait_opt<
@@ -563,7 +582,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           });
         }
       } else if reg_shared {
-        res_bounds.append(&mut reg_bounds);
+        periph_bounds.append(&mut reg_bounds);
         tokens.push(quote! {
           #(#reg_attrs)*
           #[allow(missing_docs)]
@@ -593,16 +612,20 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           }
         });
       } else {
-        res_bounds.push((reg_features.clone(), quote!(Self: #reg_trait<Self>)));
-        res_bounds.append(&mut reg_bounds);
-        res_fields.push(quote! {
+        traits_export.push((reg_attrs.clone(), u_reg.clone()));
+        traits_export.push((reg_attrs.clone(), s_reg.clone()));
+        traits_export.push((reg_attrs.clone(), c_reg.clone()));
+        periph_bounds
+          .push((reg_features.clone(), quote!(Self: #reg_trait<Self>)));
+        periph_bounds.append(&mut reg_bounds);
+        periph_fields.push(quote! {
           #(#reg_attrs)*
           pub #block_reg_snk: T::#s_reg,
         });
         tokens.push(quote! {
           #(#reg_attrs)*
           #[allow(missing_docs)]
-          pub trait #reg_trait<T: #res_trait> {
+          pub trait #reg_trait<T: #periph_trait> {
             type #val: ::drone_core::bitfield::Bitfield<Bits = #val_ty>;
             type #u_reg: #u_reg<
               T,
@@ -630,7 +653,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         tokens.push(quote! {
           #(#reg_attrs)*
           #[allow(missing_docs)]
-          pub trait #u_reg<T: #res_trait>: #(#u_traits)+* {
+          pub trait #u_reg<T: #periph_trait>: #(#u_traits)+* {
             fn from_fields(map: #u_fields<T>) -> Self;
             fn into_fields(self) -> #u_fields<T>;
             #(#u_methods)*
@@ -639,7 +662,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         tokens.push(quote! {
           #(#reg_attrs)*
           #[allow(missing_docs)]
-          pub trait #s_reg<T: #res_trait>: #(#s_traits)+* {
+          pub trait #s_reg<T: #periph_trait>: #(#s_traits)+* {
             fn from_fields(map: #s_fields<T>) -> Self;
             fn into_fields(self) -> #s_fields<T>;
             #(#s_methods)*
@@ -648,7 +671,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         tokens.push(quote! {
           #(#reg_attrs)*
           #[allow(missing_docs)]
-          pub trait #c_reg<T: #res_trait>: #(#c_traits)+* {
+          pub trait #c_reg<T: #periph_trait>: #(#c_traits)+* {
             fn from_fields(map: #c_fields<T>) -> Self;
             fn into_fields(self) -> #c_fields<T>;
             #(#c_methods)*
@@ -657,51 +680,66 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         tokens.push(quote! {
           #(#reg_attrs)*
           #[allow(missing_docs)]
-          pub struct #u_fields<T: #res_trait> {
+          pub struct #u_fields<T: #periph_trait> {
             #(#u_fields_tokens)*
           }
         });
         tokens.push(quote! {
           #(#reg_attrs)*
           #[allow(missing_docs)]
-          pub struct #s_fields<T: #res_trait> {
+          pub struct #s_fields<T: #periph_trait> {
             #(#s_fields_tokens)*
           }
         });
         tokens.push(quote! {
           #(#reg_attrs)*
           #[allow(missing_docs)]
-          pub struct #c_fields<T: #res_trait> {
+          pub struct #c_fields<T: #periph_trait> {
             #(#c_fields_tokens)*
           }
         });
       }
     }
   }
-  for (features, bounds) in res_bounds.as_slice().transpose() {
+  for (features, bounds) in periph_bounds.as_slice().transpose() {
     let attrs = &features.attrs();
     tokens.push(quote! {
-      #(#res_attrs)*
+      #(#periph_attrs)*
       #(#attrs)*
-      pub trait #res_trait
+      pub trait #periph_trait
       where
-        Self: Sized,
+        Self: Sized + Send + Sync + 'static,
         #(#bounds,)*
       {
-        #(#res_items)*
+        #(#periph_items)*
       }
     });
   }
-  let res_struct = new_ident!("{}Res", res_trait);
-  tokens.push(quote! {
-    #[allow(missing_docs)]
-    pub struct #res_struct<T: #res_trait> {
-      #(#res_fields)*
-    }
-  });
+  let mut periph_name_psc = periph_trait.to_string();
+  periph_name_psc.truncate(periph_name_psc.len() - TRAIT_SUFFIX.len());
+  let periph_struct = new_ident!("{}Periph", periph_name_psc);
+  let traits_export = traits_export
+    .into_iter()
+    .map(|(attrs, ident)| {
+      quote! {
+        #(#attrs)*
+        pub use super::#ident as _;
+      }
+    })
+    .collect::<Vec<_>>();
 
   let expanded = quote! {
     #(#tokens)*
+
+    #[allow(missing_docs)]
+    pub struct #periph_struct<T: #periph_trait> {
+      #(#periph_fields)*
+    }
+
+    #[allow(missing_docs)]
+    pub mod traits {
+      #(#traits_export)*
+    }
   };
   expanded.into()
 }

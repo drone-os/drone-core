@@ -4,6 +4,7 @@
 
 #![recursion_limit = "512"]
 #![deny(bare_trait_objects)]
+#![deny(elided_lifetimes_in_paths)]
 #![warn(clippy::pedantic)]
 #![allow(
   clippy::cast_possible_truncation,
@@ -16,11 +17,11 @@ extern crate proc_macro;
 mod bitfield;
 mod heap;
 mod init_tokens;
+mod periph;
+mod periph_map;
+mod periph_one;
 mod reg;
 mod reg_tokens;
-mod res;
-mod res_map;
-mod res_one;
 mod static_tokens;
 mod thr;
 
@@ -37,18 +38,18 @@ pub fn heap(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn res(input: TokenStream) -> TokenStream {
-  res::proc_macro(input)
+pub fn periph(input: TokenStream) -> TokenStream {
+  periph::proc_macro(input)
 }
 
 #[proc_macro]
-pub fn res_map(input: TokenStream) -> TokenStream {
-  res_map::proc_macro(input)
+pub fn periph_map(input: TokenStream) -> TokenStream {
+  periph_map::proc_macro(input)
 }
 
 #[proc_macro]
-pub fn res_one(input: TokenStream) -> TokenStream {
-  res_one::proc_macro(input)
+pub fn periph_one(input: TokenStream) -> TokenStream {
+  periph_one::proc_macro(input)
 }
 
 #[proc_macro]

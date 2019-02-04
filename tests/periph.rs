@@ -1,8 +1,8 @@
 #![feature(proc_macro_hygiene)]
 
 use drone_core::{
+  periph,
   reg::{marker::*, prelude::*},
-  res,
   token::Tokens,
 };
 
@@ -65,8 +65,8 @@ unsafe_reg_tokens! {
   pub struct Regs;
 }
 
-res! {
-  pub trait Gpio {}
+periph! {
+  pub trait GpioMap {}
 
   RCC {
     AHB2ENR {
@@ -90,11 +90,10 @@ res! {
   }
 }
 
-res::map! {
+periph::map! {
+  pub macro periph_gpio_a;
   pub struct GpioA;
-
-  impl Gpio for GpioA {}
-
+  impl GpioMap for GpioA {}
   self;;
 
   RCC {
@@ -120,11 +119,10 @@ res::map! {
   }
 }
 
-res::map! {
+periph::map! {
+  pub macro periph_gpio_b;
   pub struct GpioB;
-
-  impl Gpio for GpioB {}
-
+  impl GpioMap for GpioB {}
   self;;
 
   RCC {
@@ -150,11 +148,10 @@ res::map! {
   }
 }
 
-res::map! {
+periph::map! {
+  pub macro periph_gpio_c;
   pub struct GpioC;
-
-  impl Gpio for GpioC {}
-
+  impl GpioMap for GpioC {}
   self;;
 
   RCC {
@@ -177,19 +174,19 @@ res::map! {
 }
 
 #[test]
-fn res_macros() {
+fn periph_macros() {
   #![allow(unused_variables)]
   let reg = unsafe { Regs::take() };
-  let gpioa = res_gpio_a!(reg);
-  let gpiob = res_gpio_b!(reg);
-  let gpioc = res_gpio_c!(reg);
+  let gpioa = periph_gpio_a!(reg);
+  let gpiob = periph_gpio_b!(reg);
+  let gpioc = periph_gpio_c!(reg);
 }
 
 #[test]
 fn concrete() {
   let reg = unsafe { Regs::take() };
-  let gpio_c = res_gpio_c!(reg);
-  let GpioRes {
+  let gpio_c = periph_gpio_c!(reg);
+  let GpioPeriph {
     rcc_ahb2enr_gpioen,
     rcc_ahb2enr_gpiorst: (),
     gpio_odr,
@@ -213,8 +210,8 @@ fn concrete() {
 
 #[test]
 fn generic_without_holes() {
-  fn f<T: Gpio + GpioOdrOdr1 + GpioIdr + GpioIdrIdr1>(gpio: GpioRes<T>) {
-    let GpioRes {
+  fn f<T: GpioMap + GpioOdrOdr1 + GpioIdr + GpioIdrIdr1>(gpio: GpioPeriph<T>) {
+    let GpioPeriph {
       rcc_ahb2enr_gpioen,
       rcc_ahb2enr_gpiorst: _,
       gpio_odr,
@@ -236,14 +233,14 @@ fn generic_without_holes() {
     }
   }
   let reg = unsafe { Regs::take() };
-  let gpio_a = res_gpio_a!(reg);
+  let gpio_a = periph_gpio_a!(reg);
   f(gpio_a);
 }
 
 #[test]
 fn generic_with_holes() {
-  fn f<T: Gpio>(gpio: GpioRes<T>) {
-    let GpioRes {
+  fn f<T: GpioMap>(gpio: GpioPeriph<T>) {
+    let GpioPeriph {
       rcc_ahb2enr_gpioen,
       rcc_ahb2enr_gpiorst: _,
       gpio_odr,
@@ -263,6 +260,6 @@ fn generic_with_holes() {
     }
   }
   let reg = unsafe { Regs::take() };
-  let gpio_c = res_gpio_c!(reg);
+  let gpio_c = periph_gpio_c!(reg);
   f(gpio_c);
 }

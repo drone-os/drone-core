@@ -9,5 +9,5 @@ pub trait Write<'sess> {
   fn write(
     &'sess mut self,
     buf: &'sess [u8],
-  ) -> Pin<Box<dyn Future<Output = Result<usize, Self::Error>> + 'sess>>;
+  ) -> Pin<Box<dyn Future<Output = Result<usize, Self::Error>> + Send + 'sess>>;
 }

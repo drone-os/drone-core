@@ -393,7 +393,7 @@ impl CStr {
   ///   Cow::Owned(String::from("Hello �World")) as Cow<str>
   /// );
   /// ```
-  pub fn to_string_lossy(&self) -> Cow<str> {
+  pub fn to_string_lossy(&self) -> Cow<'_, str> {
     String::from_utf8_lossy(self.to_bytes())
   }
 
@@ -434,7 +434,7 @@ impl FromBytesWithNulError {
 }
 
 impl fmt::Debug for CStr {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "\"")?;
     for byte in self
       .to_bytes()

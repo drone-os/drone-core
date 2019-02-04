@@ -40,5 +40,5 @@ pub trait Seek<'sess> {
   fn seek(
     &'sess mut self,
     pos: SeekFrom,
-  ) -> Pin<Box<dyn Future<Output = Result<u64, Self::Error>> + 'sess>>;
+  ) -> Pin<Box<dyn Future<Output = Result<u64, Self::Error>> + Send + 'sess>>;
 }

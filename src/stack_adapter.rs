@@ -24,7 +24,7 @@ pub trait Adapter: Sized + Send + 'static {
   type ReqRes: Send + 'static;
 
   /// Session error.
-  type Error;
+  type Error: Send;
 
   /// Stack size.
   const STACK_SIZE: usize;
@@ -40,7 +40,9 @@ pub trait Adapter: Sized + Send + 'static {
   fn run_req<'a>(
     &'a mut self,
     req: Self::Req,
-  ) -> Pin<Box<dyn Future<Output = Result<Self::ReqRes, Self::Error>> + 'a>>;
+  ) -> Pin<
+    Box<dyn Future<Output = Result<Self::ReqRes, Self::Error>> + Send + 'a>,
+  >;
 
   /// Controls whether single instance of the code should be enforced.
   ///
@@ -61,7 +63,9 @@ pub trait Adapter: Sized + Send + 'static {
   fn cmd<'a>(
     &'a mut self,
     cmd: Self::Cmd,
-  ) -> Pin<Box<dyn Future<Output = Result<Self::CmdRes, Self::Error>> + 'a>> {
+  ) -> Pin<
+    Box<dyn Future<Output = Result<Self::CmdRes, Self::Error>> + Send + 'a>,
+  > {
     let mut input = In { cmd };
     Box::pin(asnc(move || loop {
       input = match self.stack().resume(input) {
@@ -84,7 +88,7 @@ pub trait Adapter: Sized + Send + 'static {
 /// * [`Adapter::init`](Adapter::init)
 /// * [`Adapter::deinit`](Adapter::deinit)
 pub unsafe trait Stack<Cmd, CmdRes, Req, ReqRes>:
-  Unpin + Sized + 'static
+  Unpin + Sized + Send + 'static
 {
   /// Resumes the execution of this fiber.
   fn resume(&mut self, input: In<Cmd, ReqRes>) -> Out<Req, CmdRes>;

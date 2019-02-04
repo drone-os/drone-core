@@ -24,7 +24,7 @@ struct Token {
 }
 
 impl Parse for StaticTokens {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let attrs = input.call(Attribute::parse_outer)?;
     let vis = input.parse()?;
     input.parse::<Token![struct]>()?;
@@ -45,7 +45,7 @@ impl Parse for StaticTokens {
 }
 
 impl Parse for Token {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let attrs = input.call(Attribute::parse_outer)?;
     let ident = input.parse()?;
     input.parse::<Token![:]>()?;

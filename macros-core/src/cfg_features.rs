@@ -16,7 +16,7 @@ pub struct CfgFeatures {
 }
 
 impl Parse for CfgFeatures {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let mut features = Vec::new();
     if input.peek(Token![#]) {
       input.parse::<Token![#]>()?;

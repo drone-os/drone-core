@@ -102,7 +102,7 @@ where
 }
 
 impl<E: fmt::Display> fmt::Display for RecvError<E> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
       RecvError::Canceled => write!(f, "Sender is dropped."),
       RecvError::Complete(err) => write!(f, "Received an error: {}", err),

@@ -27,7 +27,7 @@ struct Field {
 }
 
 impl Parse for Thr {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let thr_attrs = input.call(Attribute::parse_outer)?;
     let thr_vis = input.parse()?;
     input.parse::<Token![struct]>()?;
@@ -70,7 +70,7 @@ impl Parse for Thr {
 }
 
 impl Parse for Field {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let attrs = input.call(Attribute::parse_outer)?;
     let shared = input.parse::<Option<Token![pub]>>()?.is_some();
     let ident = input.parse()?;

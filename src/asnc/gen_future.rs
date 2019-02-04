@@ -24,11 +24,10 @@ impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
 
   #[inline]
   fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
-    current_task().set_waker(lw, || {
-      match unsafe { self.get_unchecked_mut().0.resume() } {
-        GeneratorState::Yielded(()) => Poll::Pending,
-        GeneratorState::Complete(x) => Poll::Ready(x),
-      }
+    let gen = unsafe { self.map_unchecked_mut(|x| &mut x.0) };
+    current_task().set_waker(lw, || match gen.resume() {
+      GeneratorState::Yielded(()) => Poll::Pending,
+      GeneratorState::Complete(x) => Poll::Ready(x),
     })
   }
 }

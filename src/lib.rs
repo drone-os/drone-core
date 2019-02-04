@@ -31,7 +31,6 @@
 #![feature(futures_api)]
 #![feature(generators)]
 #![feature(generator_trait)]
-#![feature(integer_atomics)]
 #![feature(marker_trait_attr)]
 #![feature(never_type)]
 #![feature(optin_builtin_traits)]
@@ -42,6 +41,7 @@
 #![feature(slice_internals)]
 #![feature(untagged_unions)]
 #![deny(bare_trait_objects)]
+#![deny(elided_lifetimes_in_paths)]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(
@@ -68,18 +68,17 @@ pub mod fs;
 pub mod heap;
 pub mod io;
 pub mod mem;
+pub mod periph;
 pub mod prelude;
 pub mod reg;
-pub mod res;
+pub mod shared_guard;
 pub mod stack_adapter;
 pub mod sv;
 pub mod sync;
 pub mod thr;
 pub mod token;
 
-mod drv;
-
-pub use drone_core_macros::{heap, reg, res, thr};
+pub use drone_core_macros::{heap, periph, reg, thr};
 
 #[prelude_import]
 #[allow(unused_imports)]

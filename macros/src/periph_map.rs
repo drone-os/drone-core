@@ -10,8 +10,13 @@ use syn::{
   parse_macro_input, Attribute, Ident, ImplItem, Path, Token,
 };
 
-struct ResMap {
-  attrs: Vec<Attribute>,
+const MACRO_PREFIX: &str = "periph_";
+const TRAIT_SUFFIX: &str = "Map";
+
+struct PeriphMap {
+  macro_attrs: Vec<Attribute>,
+  macro_ident: Ident,
+  struct_attrs: Vec<Attribute>,
   struct_ident: Ident,
   trait_ident: Ident,
   items: Vec<ImplItem>,
@@ -41,9 +46,20 @@ struct Field {
   traits: Vec<Ident>,
 }
 
-impl Parse for ResMap {
-  fn parse(input: ParseStream) -> Result<Self> {
-    let attrs = input.call(Attribute::parse_outer)?;
+impl Parse for PeriphMap {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
+    let macro_attrs = input.call(Attribute::parse_outer)?;
+    input.parse::<Token![pub]>()?;
+    input.parse::<Token![macro]>()?;
+    let macro_ident = input.parse::<Ident>()?;
+    if !macro_ident.to_string().starts_with(MACRO_PREFIX) {
+      return Err(input.error(format!(
+        "Expected an ident which starts with `{}`",
+        MACRO_PREFIX
+      )));
+    }
+    input.parse::<Token![;]>()?;
+    let struct_attrs = input.call(Attribute::parse_outer)?;
     input.parse::<Token![pub]>()?;
     input.parse::<Token![struct]>()?;
     let struct_ident = input.parse()?;
@@ -76,7 +92,9 @@ impl Parse for ResMap {
       blocks.push(input.parse()?);
     }
     Ok(Self {
-      attrs,
+      macro_attrs,
+      macro_ident,
+      struct_attrs,
       struct_ident,
       trait_ident,
       items,
@@ -88,7 +106,7 @@ impl Parse for ResMap {
 }
 
 impl Parse for Block {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let ident = input.parse()?;
     let content;
     braced!(content in input);
@@ -108,7 +126,7 @@ impl Parse for Block {
 }
 
 impl Parse for Reg {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let features = input.parse()?;
     let ident = input.parse()?;
     let content;
@@ -139,7 +157,7 @@ impl Parse for Reg {
 }
 
 impl Parse for Field {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let features = input.parse()?;
     let ident = input.parse()?;
     let content;
@@ -165,15 +183,17 @@ impl Parse for Field {
 
 #[allow(clippy::cyclomatic_complexity)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-  let ResMap {
-    attrs: res_attrs,
-    struct_ident: res_ty,
-    trait_ident: res_trait,
-    items: res_items,
+  let PeriphMap {
+    macro_attrs: periph_macro_attrs,
+    macro_ident: periph_macro,
+    struct_attrs: periph_ty_attrs,
+    struct_ident: periph_ty,
+    trait_ident: periph_trait,
+    items: periph_items,
     root_path,
     macro_root_path,
     blocks,
-  } = &parse_macro_input!(input as ResMap);
+  } = &parse_macro_input!(input as PeriphMap);
   let core_urt = quote!(::drone_core::reg::Urt);
   let core_srt = quote!(::drone_core::reg::Srt);
   let core_crt = quote!(::drone_core::reg::Crt);
@@ -299,7 +319,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           if reg_shared {
             tokens.push(quote! {
               #(#field_attrs)*
-              impl #field_trait_opt for #res_ty {
+              impl #field_trait_opt for #periph_ty {
                 type #u_field_opt = ();
                 type #s_field_opt = ();
                 type #c_field_opt = ();
@@ -309,7 +329,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           } else {
             tokens.push(quote! {
               #(#field_attrs)*
-              impl #field_trait_opt<#res_ty> for #res_ty {
+              impl #field_trait_opt<#periph_ty> for #periph_ty {
                 type #u_field_opt = ();
                 type #s_field_opt = ();
                 type #c_field_opt = ();
@@ -339,7 +359,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           if field_option {
             tokens.push(quote! {
               #(#field_attrs)*
-              impl #field_trait_opt for #res_ty {
+              impl #field_trait_opt for #periph_ty {
                 type #u_field_opt = #reg_root::#field_path_psc<#core_urt>;
                 type #s_field_opt = #reg_root::#field_path_psc<#core_srt>;
                 type #c_field_opt = #reg_root::#field_path_psc<#core_crt>;
@@ -347,7 +367,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             });
             tokens.push(quote! {
               #(#field_attrs)*
-              impl #field_trait_ext for #res_ty {
+              impl #field_trait_ext for #periph_ty {
                 type #u_field = #reg_root::#field_path_psc<#core_urt>;
                 type #s_field = #reg_root::#field_path_psc<#core_srt>;
                 type #c_field = #reg_root::#field_path_psc<#core_crt>;
@@ -355,12 +375,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             });
             tokens.push(quote! {
               #(#field_attrs)*
-              impl #field_trait for #res_ty {}
+              impl #field_trait for #periph_ty {}
             });
           } else {
             tokens.push(quote! {
               #(#field_attrs)*
-              impl #field_trait for #res_ty {
+              impl #field_trait for #periph_ty {
                 type #u_field = #reg_root::#field_path_psc<#core_urt>;
                 type #s_field = #reg_root::#field_path_psc<#core_srt>;
                 type #c_field = #reg_root::#field_path_psc<#core_crt>;
@@ -374,7 +394,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           if field_option {
             tokens.push(quote! {
               #(#field_attrs)*
-              impl #field_trait_opt<#res_ty> for #res_ty {
+              impl #field_trait_opt<#periph_ty> for #periph_ty {
                 type #u_field_opt = #reg_root::#field_path_psc<#core_urt>;
                 type #s_field_opt = #reg_root::#field_path_psc<#core_srt>;
                 type #c_field_opt = #reg_root::#field_path_psc<#core_crt>;
@@ -382,7 +402,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             });
             tokens.push(quote! {
               #(#field_attrs)*
-              impl #field_trait_ext<#res_ty> for #res_ty {
+              impl #field_trait_ext<#periph_ty> for #periph_ty {
                 type #u_field = #reg_root::#field_path_psc<#core_urt>;
                 type #s_field = #reg_root::#field_path_psc<#core_srt>;
                 type #c_field = #reg_root::#field_path_psc<#core_crt>;
@@ -390,12 +410,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             });
             tokens.push(quote! {
               #(#field_attrs)*
-              impl #field_trait for #res_ty {}
+              impl #field_trait for #periph_ty {}
             });
           } else {
             tokens.push(quote! {
               #(#field_attrs)*
-              impl #field_trait<#res_ty> for #res_ty {
+              impl #field_trait<#periph_ty> for #periph_ty {
                 type #u_field = #reg_root::#field_path_psc<#core_urt>;
                 type #s_field = #reg_root::#field_path_psc<#core_srt>;
                 type #c_field = #reg_root::#field_path_psc<#core_crt>;
@@ -434,7 +454,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       if reg_path.is_none() {
         tokens.push(quote! {
           #(#reg_attrs)*
-          impl #reg_trait_opt for #res_ty {
+          impl #reg_trait_opt for #periph_ty {
             type #u_reg_opt = ();
             type #s_reg_opt = ();
             type #c_reg_opt = ();
@@ -447,7 +467,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         if fields.iter().any(|field| field.path.is_some()) {
           tokens.push(quote! {
             #(#reg_attrs)*
-            impl #reg_trait for #res_ty {
+            impl #reg_trait for #periph_ty {
               type #val = #reg_root::Val;
               type #u_reg = #reg_root::Reg<#core_urt>;
               type #s_reg = #reg_root::Reg<#core_srt>;
@@ -459,7 +479,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         if reg_option {
           tokens.push(quote! {
             #(#reg_attrs)*
-            impl #reg_trait_opt for #res_ty {
+            impl #reg_trait_opt for #periph_ty {
               type #u_reg_opt = #reg_root::Reg<#core_urt>;
               type #s_reg_opt = #reg_root::Reg<#core_srt>;
               type #c_reg_opt = #reg_root::Reg<#core_crt>;
@@ -467,7 +487,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           });
           tokens.push(quote! {
             #(#reg_attrs)*
-            impl #reg_trait_ext<#res_ty> for #res_ty {
+            impl #reg_trait_ext<#periph_ty> for #periph_ty {
               type #val = #reg_root::Val;
               type #u_reg = #reg_root::Reg<#core_urt>;
               type #s_reg = #reg_root::Reg<#core_srt>;
@@ -476,12 +496,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           });
           tokens.push(quote! {
             #(#reg_attrs)*
-            impl #reg_trait for #res_ty {}
+            impl #reg_trait for #periph_ty {}
           });
         } else {
           tokens.push(quote! {
             #(#reg_attrs)*
-            impl #reg_trait<#res_ty> for #res_ty {
+            impl #reg_trait<#periph_ty> for #periph_ty {
               type #val = #reg_root::Val;
               type #u_reg = #reg_root::Reg<#core_urt>;
               type #s_reg = #reg_root::Reg<#core_srt>;
@@ -491,9 +511,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         }
         tokens.push(quote! {
           #(#reg_attrs)*
-          impl #u_reg<#res_ty> for #reg_root::Reg<#core_urt> {
+          impl #u_reg<#periph_ty> for #reg_root::Reg<#core_urt> {
             #[inline(always)]
-            fn from_fields(map: #u_fields<#res_ty>) -> Self {
+            fn from_fields(map: #u_fields<#periph_ty>) -> Self {
               let #u_fields {
                 #(#reg_fields_tokens,)*
                 #(#fields_tokens,)*
@@ -501,7 +521,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
               Self { #(#reg_fields_tokens),* }
             }
             #[inline(always)]
-            fn into_fields(self) -> #u_fields<#res_ty> {
+            fn into_fields(self) -> #u_fields<#periph_ty> {
               let Self { #(#reg_fields_tokens),* } = self;
               #u_fields {
                 #(#reg_fields_tokens,)*
@@ -513,9 +533,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         });
         tokens.push(quote! {
           #(#reg_attrs)*
-          impl #s_reg<#res_ty> for #reg_root::Reg<#core_srt> {
+          impl #s_reg<#periph_ty> for #reg_root::Reg<#core_srt> {
             #[inline(always)]
-            fn from_fields(map: #s_fields<#res_ty>) -> Self {
+            fn from_fields(map: #s_fields<#periph_ty>) -> Self {
               let #s_fields {
                 #(#reg_fields_tokens,)*
                 #(#fields_tokens,)*
@@ -523,7 +543,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
               Self { #(#reg_fields_tokens),* }
             }
             #[inline(always)]
-            fn into_fields(self) -> #s_fields<#res_ty> {
+            fn into_fields(self) -> #s_fields<#periph_ty> {
               let Self { #(#reg_fields_tokens),* } = self;
               #s_fields {
                 #(#reg_fields_tokens,)*
@@ -535,9 +555,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         });
         tokens.push(quote! {
           #(#reg_attrs)*
-          impl #c_reg<#res_ty> for #reg_root::Reg<#core_crt> {
+          impl #c_reg<#periph_ty> for #reg_root::Reg<#core_crt> {
             #[inline(always)]
-            fn from_fields(map: #c_fields<#res_ty>) -> Self {
+            fn from_fields(map: #c_fields<#periph_ty>) -> Self {
               let #c_fields {
                 #(#reg_fields_tokens,)*
                 #(#fields_tokens,)*
@@ -545,7 +565,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
               Self { #(#reg_fields_tokens),* }
             }
             #[inline(always)]
-            fn into_fields(self) -> #c_fields<#res_ty> {
+            fn into_fields(self) -> #c_fields<#periph_ty> {
               let Self { #(#reg_fields_tokens),* } = self;
               #c_fields {
                 #(#reg_fields_tokens,)*
@@ -562,22 +582,19 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       }
     }
   }
-  let res_macro = new_ident!("res_{}", res_ty.to_string().to_snake_case());
-  let res_struct = new_ident!("{}Res", res_trait);
+  let mut periph_name_psc = periph_trait.to_string();
+  periph_name_psc.truncate(periph_name_psc.len() - TRAIT_SUFFIX.len());
+  let periph_struct = new_ident!("{}Periph", periph_name_psc);
   for (features, macro_tokens) in macro_tokens.as_slice().transpose() {
     let attrs = &features.attrs();
-    let doc = format!(
-      "Acquire an instance of [`{}`] from the given `$reg` tokens",
-      res_struct
-    );
     tokens.push(quote! {
       #(#attrs)*
-      #[doc = #doc]
+      #(#periph_macro_attrs)*
       #[macro_export]
-      macro_rules! #res_macro {
+      macro_rules! #periph_macro {
         ($reg:ident) => {
-          $crate#(::#macro_root_path)*::#res_struct::<
-            $crate#(::#macro_root_path)*::#res_ty,
+          $crate#(::#macro_root_path)*::#periph_struct::<
+            $crate#(::#macro_root_path)*::#periph_ty,
           > {
             #(#macro_tokens,)*
           }
@@ -587,11 +604,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
   }
 
   let expanded = quote! {
-    #(#res_attrs)*
-    pub struct #res_ty(());
+    #(#periph_ty_attrs)*
+    pub struct #periph_ty(());
 
-    impl #res_trait for #res_ty {
-      #(#res_items)*
+    impl #periph_trait for #periph_ty {
+      #(#periph_items)*
     }
 
     #(#tokens)*

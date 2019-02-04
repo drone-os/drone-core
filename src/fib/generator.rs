@@ -25,7 +25,8 @@ where
     self: Pin<&mut Self>,
     _input: (),
   ) -> FiberState<G::Yield, G::Return> {
-    unsafe { self.get_unchecked_mut().0.resume().into() }
+    let gen = unsafe { self.map_unchecked_mut(|x| &mut x.0) };
+    gen.resume().into()
   }
 }
 

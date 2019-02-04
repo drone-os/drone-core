@@ -18,7 +18,7 @@ lazy_static! {
 
 /// Inserts an underscore at the beginning of the string if the string is a
 /// reserved keyword.
-pub fn unkeywordize(mut ident: Cow<str>) -> Cow<str> {
+pub fn unkeywordize(mut ident: Cow<'_, str>) -> Cow<'_, str> {
   if KEYWORDS.is_match(&ident) {
     ident.to_mut().push('_');
   }

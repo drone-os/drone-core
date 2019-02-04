@@ -10,5 +10,5 @@ pub trait Read<'sess> {
   fn read(
     &'sess mut self,
     buf: &'sess mut [u8],
-  ) -> Pin<Box<dyn Future<Output = Result<usize, Self::Error>> + 'sess>>;
+  ) -> Pin<Box<dyn Future<Output = Result<usize, Self::Error>> + Send + 'sess>>;
 }

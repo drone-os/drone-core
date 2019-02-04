@@ -22,7 +22,7 @@ pub struct RwLock<T> {
 /// This structure is created by the [`try_read`](RwLock::try_read) method on
 /// [`RwLock`](RwLock).
 #[must_use]
-pub struct RwLockReadGuard<'a, T: 'a> {
+pub struct RwLockReadGuard<'a, T> {
   lock: &'a RwLock<T>,
 }
 
@@ -32,7 +32,7 @@ pub struct RwLockReadGuard<'a, T: 'a> {
 /// This structure is created by the [`try_write`](RwLock::try_write) method on
 /// [`RwLock`](RwLock).
 #[must_use]
-pub struct RwLockWriteGuard<'a, T: 'a> {
+pub struct RwLockWriteGuard<'a, T> {
   lock: &'a RwLock<T>,
 }
 
@@ -85,7 +85,7 @@ impl<T> RwLock<T> {
   /// };
   /// ```
   #[inline]
-  pub fn try_read(&self) -> Option<RwLockReadGuard<T>> {
+  pub fn try_read(&self) -> Option<RwLockReadGuard<'_, T>> {
     loop {
       let current = self.lock.load(Relaxed);
       if current >= WRITE_LOCK - 1 {
@@ -119,7 +119,7 @@ impl<T> RwLock<T> {
   /// assert!(lock.try_write().is_none());
   /// ```
   #[inline]
-  pub fn try_write(&self) -> Option<RwLockWriteGuard<T>> {
+  pub fn try_write(&self) -> Option<RwLockWriteGuard<'_, T>> {
     if self.lock.compare_and_swap(NO_LOCK, WRITE_LOCK, Acquire) == NO_LOCK {
       Some(RwLockWriteGuard { lock: self })
     } else {

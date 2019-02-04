@@ -31,7 +31,7 @@ enum Mode {
 }
 
 impl Parse for Bitfield {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let content;
     parenthesized!(content in input);
     let mut fields = Vec::new();
@@ -58,7 +58,7 @@ impl Parse for Bitfield {
 }
 
 impl Parse for Field {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let ident = input.parse()?;
     let content;
     parenthesized!(content in input);
@@ -88,7 +88,7 @@ impl Parse for Field {
 }
 
 impl Parse for Mode {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let ident = input.parse::<Ident>()?;
     if ident == "r" {
       Ok(Mode::Read)

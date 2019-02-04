@@ -33,7 +33,7 @@ struct Reg {
 }
 
 impl Parse for RegIndex {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let next_macro_attrs = input.call(Attribute::parse_outer)?;
     let next_macro_vis = input.parse()?;
     input.parse::<Token![macro]>()?;
@@ -72,7 +72,7 @@ impl Parse for RegIndex {
 }
 
 impl Parse for Blocks {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let mut blocks = Vec::new();
     while !input.is_empty() {
       blocks.push(input.parse()?);
@@ -82,7 +82,7 @@ impl Parse for Blocks {
 }
 
 impl Parse for Block {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let attrs = input.call(Attribute::parse_outer)?;
     let vis = input.parse()?;
     input.parse::<Token![mod]>()?;
@@ -103,7 +103,7 @@ impl Parse for Block {
 }
 
 impl Parse for Reg {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let attrs = input.call(Attribute::parse_outer)?;
     let ident = input.parse()?;
     input.parse::<Token![;]>()?;

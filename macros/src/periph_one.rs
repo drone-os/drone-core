@@ -5,13 +5,17 @@ use quote::quote;
 use syn::{
   braced,
   parse::{Parse, ParseStream, Result},
-  parse_macro_input, Attribute, Ident, Path, Token, Visibility,
+  parse_macro_input, Attribute, Ident, Path, Token,
 };
 
-struct ResOne {
-  attrs: Vec<Attribute>,
-  vis: Visibility,
-  ident: Ident,
+const MACRO_PREFIX: &str = "periph_";
+const STRUCT_SUFFIX: &str = "Periph";
+
+struct PeriphOne {
+  macro_attrs: Vec<Attribute>,
+  macro_ident: Ident,
+  struct_attrs: Vec<Attribute>,
+  struct_ident: Ident,
   root_path: Path,
   macro_root_path: Option<Path>,
   blocks: Vec<Block>,
@@ -33,12 +37,29 @@ struct Field {
   ident: Ident,
 }
 
-impl Parse for ResOne {
-  fn parse(input: ParseStream) -> Result<Self> {
-    let attrs = input.call(Attribute::parse_outer)?;
-    let vis = input.parse()?;
+impl Parse for PeriphOne {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
+    let macro_attrs = input.call(Attribute::parse_outer)?;
+    input.parse::<Token![pub]>()?;
+    input.parse::<Token![macro]>()?;
+    let macro_ident = input.parse::<Ident>()?;
+    if !macro_ident.to_string().starts_with(MACRO_PREFIX) {
+      return Err(input.error(format!(
+        "Expected an ident which starts with `{}`",
+        MACRO_PREFIX
+      )));
+    }
+    input.parse::<Token![;]>()?;
+    let struct_attrs = input.call(Attribute::parse_outer)?;
+    input.parse::<Token![pub]>()?;
     input.parse::<Token![struct]>()?;
-    let ident = input.parse()?;
+    let struct_ident = input.parse::<Ident>()?;
+    if !struct_ident.to_string().ends_with(STRUCT_SUFFIX) {
+      return Err(input.error(format!(
+        "Expected an ident which ends with `{}`",
+        STRUCT_SUFFIX
+      )));
+    }
     input.parse::<Token![;]>()?;
     let root_path = input.parse()?;
     input.parse::<Token![;]>()?;
@@ -55,9 +76,10 @@ impl Parse for ResOne {
       blocks.push(input.parse()?);
     }
     Ok(Self {
-      attrs,
-      vis,
-      ident,
+      macro_attrs,
+      macro_ident,
+      struct_attrs,
+      struct_ident,
       root_path,
       macro_root_path,
       blocks,
@@ -66,7 +88,7 @@ impl Parse for ResOne {
 }
 
 impl Parse for Block {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let ident = input.parse()?;
     let content;
     braced!(content in input);
@@ -79,7 +101,7 @@ impl Parse for Block {
 }
 
 impl Parse for Reg {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let features = input.parse()?;
     let ident = input.parse()?;
     let mut fields = Vec::new();
@@ -101,7 +123,7 @@ impl Parse for Reg {
 }
 
 impl Parse for Field {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let features = input.parse()?;
     let ident = input.parse()?;
     input.parse::<Token![;]>()?;
@@ -110,16 +132,17 @@ impl Parse for Field {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-  let ResOne {
-    attrs,
-    vis,
-    ident,
+  let PeriphOne {
+    macro_attrs,
+    macro_ident,
+    struct_attrs,
+    struct_ident,
     root_path,
     macro_root_path,
     blocks,
-  } = &parse_macro_input!(input as ResOne);
+  } = &parse_macro_input!(input as PeriphOne);
   let mut tokens = Vec::new();
-  let mut res_tokens = Vec::new();
+  let mut periph_tokens = Vec::new();
   let mut macro_tokens = Vec::new();
   for Block {
     ident: block_ident,
@@ -141,7 +164,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       let block_reg_snk = new_ident!("{}_{}", block_snk, reg_snk);
       let reg_attrs = &reg_features.attrs();
       if fields.is_empty() {
-        res_tokens.push(quote! {
+        periph_tokens.push(quote! {
           #(#reg_attrs)*
           pub #block_reg_snk: #root_path::#block_ident::#reg_ident::Reg<
             ::drone_core::reg::Srt,
@@ -168,7 +191,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           features.add_clause(&reg_features);
           features.add_clause(&field_features);
           let field_attrs = &features.attrs();
-          res_tokens.push(quote! {
+          periph_tokens.push(quote! {
             #(#field_attrs)*
             pub #block_reg_field_snk:
               #root_path::#block_ident::#reg_ident::#field_psc<
@@ -183,21 +206,15 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       }
     }
   }
-  let res_macro = new_ident!("res_{}", ident.to_string().to_snake_case());
-  let res_struct = new_ident!("{}Res", ident);
   for (features, macro_tokens) in macro_tokens.as_slice().transpose() {
     let attrs = &features.attrs();
-    let doc = format!(
-      "Acquire an instance of [`{}`] from the given `$reg` tokens",
-      res_struct
-    );
     tokens.push(quote! {
       #(#attrs)*
-      #[doc = #doc]
+      #(#macro_attrs)*
       #[macro_export]
-      macro_rules! #res_macro {
+      macro_rules! #macro_ident {
         ($reg:ident) => {
-          $crate#(::#macro_root_path)*::#res_struct {
+          $crate#(::#macro_root_path)*::#struct_ident {
             #(#macro_tokens,)*
           }
         };
@@ -205,10 +222,10 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     });
   }
   let expanded = quote! {
-    #(#attrs)*
+    #(#struct_attrs)*
     #[allow(missing_docs)]
-    #vis struct #res_struct {
-      #(#res_tokens,)*
+    pub struct #struct_ident {
+      #(#periph_tokens,)*
     }
 
     #(#tokens)*

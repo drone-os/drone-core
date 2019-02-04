@@ -22,7 +22,7 @@ pub struct Mutex<T> {
 /// This structure is created by the [`try_lock`](Mutex::try_lock) method on
 /// [`Mutex`](Mutex).
 #[must_use]
-pub struct MutexGuard<'a, T: 'a> {
+pub struct MutexGuard<'a, T> {
   lock: &'a Mutex<T>,
 }
 
@@ -69,7 +69,7 @@ impl<T> Mutex<T> {
   /// };
   /// ```
   #[inline]
-  pub fn try_lock(&self) -> Option<MutexGuard<T>> {
+  pub fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
     if self.lock.swap(true, Acquire) {
       None
     } else {

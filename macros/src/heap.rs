@@ -25,7 +25,7 @@ struct Pool {
 }
 
 impl Parse for Heap {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let heap_attrs = input.call(Attribute::parse_outer)?;
     let heap_vis = input.parse()?;
     input.parse::<Token![struct]>()?;
@@ -82,7 +82,7 @@ impl Parse for Heap {
 }
 
 impl Parse for Pool {
-  fn parse(input: ParseStream) -> Result<Self> {
+  fn parse(input: ParseStream<'_>) -> Result<Self> {
     let content;
     bracketed!(content in input);
     let size = content.parse()?;
