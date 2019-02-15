@@ -28,41 +28,32 @@ pub trait Reg<T: RegTag>: Sized + Send + Sync + 'static {
   /// Caller must take care for synchronizing instances.
   unsafe fn take() -> Self;
 
-  /// Converts to an unsynchronized register token.
-  #[inline(always)]
-  fn to_unsync(self) -> Self::UReg
+  /// Converts to unsynchronized register token.
+  #[inline]
+  fn into_unsync(self) -> Self::UReg
   where
     T: RegOwned,
   {
     unsafe { Self::UReg::take() }
   }
 
-  /// Converts to a synchronized register token.
-  #[inline(always)]
-  fn to_sync(self) -> Self::SReg
+  /// Converts to synchronized register token.
+  #[inline]
+  fn into_sync(self) -> Self::SReg
   where
     T: RegOwned,
   {
     unsafe { Self::SReg::take() }
   }
 
-  /// Converts to a copyable register token.
-  #[inline(always)]
-  fn to_copy(self) -> Self::CReg {
+  /// Converts to copyable register token.
+  #[inline]
+  fn into_copy(self) -> Self::CReg {
     unsafe { Self::CReg::take() }
   }
 
-  /// Takes a non-copy and returns a copy register token.
-  #[inline(always)]
-  fn acquire_copy(self) -> Self::CReg
-  where
-    T: RegOwned,
-  {
-    unsafe { Self::CReg::take() }
-  }
-
-  /// Converts to a synchronized register token reference.
-  #[inline(always)]
+  /// Converts to synchronized register token reference.
+  #[inline]
   fn as_sync(&self) -> &Self::SReg
   where
     T: RegAtomic,
@@ -77,19 +68,19 @@ pub trait RegRef<'a, T: RegTag>: Reg<T> {
   type Hold: RegHold<'a, T, Self>;
 
   /// Creates a new `Hold` for `val`.
-  #[inline(always)]
+  #[inline]
   fn hold(&'a self, val: Self::Val) -> Self::Hold {
     unsafe { Self::Hold::new(self, val) }
   }
 
   /// Creates a new `Hold` with reset value.
-  #[inline(always)]
+  #[inline]
   fn default(&'a self) -> Self::Hold {
     self.hold(self.default_val())
   }
 
   /// Returns a default value.
-  #[inline(always)]
+  #[inline]
   fn default_val(&self) -> Self::Val {
     unsafe { Self::Val::default() }
   }
@@ -98,7 +89,7 @@ pub trait RegRef<'a, T: RegTag>: Reg<T> {
 /// Register that can read its value.
 pub trait RReg<T: RegTag>: Reg<T> {
   /// Reads and wraps a register value from its memory address.
-  #[inline(always)]
+  #[inline]
   fn load<'a>(&'a self) -> <Self as RegRef<'a, T>>::Hold
   where
     Self: RegRef<'a, T>,
@@ -107,13 +98,13 @@ pub trait RReg<T: RegTag>: Reg<T> {
   }
 
   /// Reads a register value from its memory address.
-  #[inline(always)]
+  #[inline]
   fn load_val(&self) -> Self::Val {
     unsafe { Self::Val::from_bits(read_volatile(self.to_ptr())) }
   }
 
   /// Returns an unsafe constant pointer to the register's memory address.
-  #[inline(always)]
+  #[inline]
   fn to_ptr(&self) -> *const <Self::Val as Bitfield>::Bits {
     Self::ADDRESS as *const <Self::Val as Bitfield>::Bits
   }
@@ -122,7 +113,7 @@ pub trait RReg<T: RegTag>: Reg<T> {
 /// Register that can write its value.
 pub trait WReg<T: RegTag>: Reg<T> {
   /// Returns an unsafe mutable pointer to the register's memory address.
-  #[inline(always)]
+  #[inline]
   fn to_mut_ptr(&self) -> *mut <Self::Val as Bitfield>::Bits {
     Self::ADDRESS as *mut <Self::Val as Bitfield>::Bits
   }
@@ -190,7 +181,7 @@ where
   // Extra bound to make the dot operator checking `WRegUnsync` first.
   U::Val: Bitfield,
 {
-  #[inline(always)]
+  #[inline]
   fn store<F>(&'a self, f: F)
   where
     F: for<'b> FnOnce(
@@ -200,12 +191,12 @@ where
     self.store_val(f(&mut self.default()).val());
   }
 
-  #[inline(always)]
+  #[inline]
   fn store_val(&self, val: Self::Val) {
     unsafe { write_volatile(self.to_mut_ptr(), val.bits()) };
   }
 
-  #[inline(always)]
+  #[inline]
   fn reset(&'a self) {
     self.store_val(self.default_val());
   }
@@ -215,7 +206,7 @@ impl<'a, T> WRegUnsync<'a> for T
 where
   T: WReg<Urt> + RegRef<'a, Urt>,
 {
-  #[inline(always)]
+  #[inline]
   fn store<F>(&'a mut self, f: F)
   where
     F: for<'b> FnOnce(
@@ -227,12 +218,12 @@ where
     }
   }
 
-  #[inline(always)]
+  #[inline]
   fn store_val(&mut self, val: Self::Val) {
     unsafe { write_volatile(self.to_mut_ptr(), val.bits()) };
   }
 
-  #[inline(always)]
+  #[inline]
   fn reset(&'a mut self) {
     unsafe { write_volatile(self.to_mut_ptr(), self.default_val().bits()) };
   }
@@ -242,7 +233,7 @@ impl<'a, T> RwRegUnsync<'a> for T
 where
   T: RReg<Urt> + WRegUnsync<'a> + RegRef<'a, Urt>,
 {
-  #[inline(always)]
+  #[inline]
   fn modify<F>(&'a mut self, f: F)
   where
     F: for<'b> FnOnce(

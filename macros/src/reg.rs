@@ -142,7 +142,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         const OFFSET: usize = #offset;
         const WIDTH: usize = #width;
 
-        #[inline(always)]
+        #[inline]
         unsafe fn take() -> Self {
           #field_psc(#t::default())
         }
@@ -165,7 +165,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         tokens.push(quote! {
           impl<'a, #t: ::drone_core::reg::RegTag> Hold<'a, #t> {
             #(#attrs)*
-            #[inline(always)]
+            #[inline]
             pub fn #field_ident(&self) -> bool {
               ::drone_core::reg::RRRegFieldBit::read(
                 &self.reg.#field_ident,
@@ -182,7 +182,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         tokens.push(quote! {
           impl<'a, #t: ::drone_core::reg::RegTag> Hold<'a, #t> {
             #(#attrs)*
-            #[inline(always)]
+            #[inline]
             pub fn #set_field(&mut self) -> &mut Self {
               ::drone_core::reg::WWRegFieldBit::set(
                 &self.reg.#field_ident,
@@ -192,7 +192,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
 
             #(#attrs)*
-            #[inline(always)]
+            #[inline]
             pub fn #clear_field(&mut self) -> &mut Self {
               ::drone_core::reg::WWRegFieldBit::clear(
                 &self.reg.#field_ident,
@@ -202,7 +202,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
 
             #(#attrs)*
-            #[inline(always)]
+            #[inline]
             pub fn #toggle_field(&mut self) -> &mut Self {
               ::drone_core::reg::WWRegFieldBit::toggle(
                 &self.reg.#field_ident,
@@ -225,7 +225,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         tokens.push(quote! {
           impl<'a, #t: ::drone_core::reg::RegTag> Hold<'a, #t> {
             #(#attrs)*
-            #[inline(always)]
+            #[inline]
             pub fn #field_ident(&self) -> #val_ty {
               ::drone_core::reg::RRRegFieldBits::read(
                 &self.reg.#field_ident,
@@ -240,7 +240,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         tokens.push(quote! {
           impl<'a, #t: ::drone_core::reg::RegTag> Hold<'a, #t> {
             #(#attrs)*
-            #[inline(always)]
+            #[inline]
             pub fn #write_field(&mut self, bits: #val_ty) -> &mut Self {
               ::drone_core::reg::WWRegFieldBits::write(
                 &self.reg.#field_ident,
@@ -300,7 +300,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
         const ADDRESS: usize = #address;
 
-        #[inline(always)]
+        #[inline]
         unsafe fn take() -> Self {
           Self { #(#ctor_tokens,)* }
         }
@@ -323,17 +323,17 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       where
         #t: ::drone_core::reg::RegTag,
       {
-        #[inline(always)]
+        #[inline]
         unsafe fn new(reg: &'a Reg<#t>, val: Val) -> Self {
           Self { reg, val }
         }
 
-        #[inline(always)]
+        #[inline]
         fn val(&self) -> Val {
           self.val
         }
 
-        #[inline(always)]
+        #[inline]
         fn set_val(&mut self, val: Val) {
           self.val = val;
         }

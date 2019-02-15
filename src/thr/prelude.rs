@@ -1,8 +1,8 @@
 //! Threads prelude.
 
-pub use super::{
-  Att, Ctt, Rtt, ThrAttach, ThrTag, ThrToken, ThrTrigger, Thread, Ttt,
-};
+pub use super::{Att, Ptt, ThrAttach, ThrTag, ThrToken, Thread, Ttt};
+
 pub use crate::fib::{
-  ThrFiberFn, ThrFiberFuture, ThrFiberGen, ThrStreamRing, ThrStreamUnit,
+  ThrFiberFn as _, ThrFiberFuture as _, ThrFiberGen as _, ThrStreamRing as _,
+  ThrStreamUnit as _,
 };

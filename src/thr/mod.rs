@@ -65,17 +65,14 @@ where
   /// Thread.
   type Thr: Thread;
 
-  /// Corresponding attachable thread token.
-  type AThrToken: ThrToken<Att>;
-
-  /// Corresponding triggerable thread token.
+  /// Corresponding trigger-only thread token.
   type TThrToken: ThrToken<Ttt>;
 
-  /// Corresponding controllable thread token.
-  type CThrToken: ThrToken<Ctt>;
+  /// Corresponding attach and trigger thread token.
+  type AThrToken: ThrToken<Att>;
 
-  /// Corresponding regular thread token.
-  type RThrToken: ThrToken<Rtt>;
+  /// Corresponding privileged thread token.
+  type PThrToken: ThrToken<Ptt>;
 
   /// A thread position within threads array.
   const THR_NUM: usize;
@@ -92,13 +89,19 @@ where
   /// # Safety
   ///
   /// The method doesn't enforce privileges of the token.
-  #[inline(always)]
+  #[inline]
   unsafe fn to_thr(self) -> &'static Self::Thr {
     get_thr::<Self, T>()
   }
 
-  /// Converts to an attachable register token.
-  #[inline(always)]
+  /// Converts to trigger-only register token.
+  #[inline]
+  fn to_trigger(self) -> Self::TThrToken {
+    unsafe { Self::TThrToken::take() }
+  }
+
+  /// Converts to attach and trigger register token.
+  #[inline]
   fn to_attach(self) -> Self::AThrToken
   where
     T: ThrAttach,
@@ -106,26 +109,8 @@ where
     unsafe { Self::AThrToken::take() }
   }
 
-  /// Converts to a triggerable register token.
-  #[inline(always)]
-  fn to_trigger(self) -> Self::TThrToken
-  where
-    T: ThrTrigger,
-  {
-    unsafe { Self::TThrToken::take() }
-  }
-
-  /// Converts to a regular register token.
-  #[inline(always)]
-  fn to_regular(self) -> Self::RThrToken
-  where
-    T: ThrAttach + ThrTrigger,
-  {
-    unsafe { Self::RThrToken::take() }
-  }
-
   /// Adds a new fiber to the thread.
-  #[inline(always)]
+  #[inline]
   fn add_fib<F: FiberRoot>(self, fib: F)
   where
     T: ThrAttach,
@@ -134,7 +119,7 @@ where
   }
 
   /// Returns `true` if the fiber chain is empty.
-  #[inline(always)]
+  #[inline]
   fn is_empty(self) -> bool {
     unsafe { self.to_thr() }.fib_chain().is_empty()
   }
@@ -152,7 +137,6 @@ pub unsafe fn thread_resume<T: ThrToken<U>, U: ThrTag>() {
   })
 }
 
-#[inline(always)]
 unsafe fn get_thr<T: ThrToken<U>, U: ThrTag>() -> &'static T::Thr {
   &*T::Thr::first().add(T::THR_NUM)
 }

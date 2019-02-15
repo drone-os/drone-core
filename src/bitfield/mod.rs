@@ -52,7 +52,7 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   fn bits_mut(&mut self) -> &mut Self::Bits;
 
   /// Creates a new `Bitfield` from the default value.
-  #[inline(always)]
+  #[inline]
   unsafe fn default() -> Self {
     Self::from_bits(Self::DEFAULT)
   }
@@ -64,7 +64,7 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   /// * `offset` must be less than the size of [`Bits`] in bits.
   ///
   /// [`Bits`]: Bitfield::Bits
-  #[inline(always)]
+  #[inline]
   unsafe fn read_bit(&self, offset: Self::Bits) -> bool {
     !(self.bits() & bit_at(offset)).is_zero()
   }
@@ -76,7 +76,7 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   /// * `offset` must be less than the size of [`Bits`] in bits.
   ///
   /// [`Bits`]: Bitfield::Bits
-  #[inline(always)]
+  #[inline]
   unsafe fn set_bit(&mut self, offset: Self::Bits) {
     *self.bits_mut() = self.bits() | bit_at(offset);
   }
@@ -88,7 +88,7 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   /// * `offset` must be less than the size of [`Bits`] in bits.
   ///
   /// [`Bits`]: Bitfield::Bits
-  #[inline(always)]
+  #[inline]
   unsafe fn clear_bit(&mut self, offset: Self::Bits) {
     *self.bits_mut() = self.bits() & !bit_at(offset);
   }
@@ -100,7 +100,7 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   /// * `offset` must be less than the size of [`Bits`] in bits.
   ///
   /// [`Bits`]: Bitfield::Bits
-  #[inline(always)]
+  #[inline]
   unsafe fn toggle_bit(&mut self, offset: Self::Bits) {
     *self.bits_mut() = self.bits() ^ bit_at(offset);
   }
@@ -114,7 +114,7 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   /// bits.
   ///
   /// [`Bits`]: Bitfield::Bits
-  #[inline(always)]
+  #[inline]
   unsafe fn read_bits(
     &self,
     offset: Self::Bits,
@@ -137,7 +137,7 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   /// bits.
   ///
   /// [`Bits`]: Bitfield::Bits
-  #[inline(always)]
+  #[inline]
   unsafe fn write_bits(
     &mut self,
     offset: Self::Bits,
@@ -153,12 +153,10 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
   }
 }
 
-#[inline(always)]
 fn bit_at<T: Bits>(offset: T) -> T {
   T::one() << offset
 }
 
-#[inline(always)]
 fn bit_mask<T: Bits>(width: T) -> T {
   bit_at(width) - T::one()
 }

@@ -83,7 +83,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
 
     unsafe impl ::drone_core::token::Tokens for #ident {
-      #[inline(always)]
+      #[inline]
       unsafe fn take() -> Self {
         Self {
           #(#ctor_tokens),*

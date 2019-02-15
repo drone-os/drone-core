@@ -29,44 +29,35 @@ pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
   /// Caller must take care for synchronizing instances.
   unsafe fn take() -> Self;
 
-  /// Converts to an unsynchronized register field token.
-  #[inline(always)]
-  fn to_unsync(self) -> Self
+  /// Converts to unsynchronized register field token.
+  #[inline]
+  fn into_unsync(self) -> Self
   where
     Self: RegField<Urt>,
   {
     self
   }
 
-  /// Converts to a synchronized register field token.
-  #[inline(always)]
-  fn to_sync(self) -> Self
+  /// Converts to synchronized register field token.
+  #[inline]
+  fn into_sync(self) -> Self
   where
     Self: RegField<Srt>,
   {
     self
   }
 
-  /// Converts to a copyable register field token.
-  #[inline(always)]
-  fn to_copy(self) -> Self::CRegField
+  /// Converts to copyable register field token.
+  #[inline]
+  fn into_copy(self) -> Self::CRegField
   where
     T: RegAtomic,
   {
     unsafe { Self::CRegField::take() }
   }
 
-  /// Takes a non-copy and returns a copy register field token.
-  #[inline(always)]
-  fn acquire_copy(self) -> Self::CRegField
-  where
-    T: RegOwned + RegAtomic,
-  {
-    unsafe { Self::CRegField::take() }
-  }
-
-  /// Converts to a synchronized register field token reference.
-  #[inline(always)]
+  /// Converts to synchronized register field token reference.
+  #[inline]
   fn as_sync(&self) -> &Self::SRegField
   where
     T: RegAtomic,
@@ -88,7 +79,7 @@ where
   Self::Reg: RReg<T>,
 {
   /// Reads a register value from its memory address.
-  #[inline(always)]
+  #[inline]
   fn load_val(&self) -> <Self::Reg as Reg<T>>::Val {
     unsafe {
       <Self::Reg as Reg<T>>::Val::from_bits(read_volatile(
@@ -187,19 +178,19 @@ where
   fn toggle_bit(&self);
 
   /// An alias for [`set_bit`](WoWoRegFieldBit::set_bit).
-  #[inline(always)]
+  #[inline]
   fn store_set(&self) {
     self.set_bit();
   }
 
   /// An alias for [`clear_bit`](WoWoRegFieldBit::clear_bit).
-  #[inline(always)]
+  #[inline]
   fn store_clear(&self) {
     self.clear_bit();
   }
 
   /// An alias for [`toggle_bit`](WoWoRegFieldBit::toggle_bit).
-  #[inline(always)]
+  #[inline]
   fn store_toggle(&self) {
     self.toggle_bit();
   }
@@ -245,7 +236,7 @@ where
   fn write_bits(&self, bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits);
 
   /// An alias for [`write_bits`](WoWoRegFieldBits::write_bits).
-  #[inline(always)]
+  #[inline]
   fn store_bits(&self, bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits) {
     self.write_bits(bits);
   }
@@ -257,12 +248,12 @@ where
   U: WoWRegField<T>,
   U::Reg: WoReg<T>,
 {
-  #[inline(always)]
+  #[inline]
   fn default_val(&self) -> <Self::Reg as Reg<T>>::Val {
     unsafe { <Self::Reg as Reg<T>>::Val::default() }
   }
 
-  #[inline(always)]
+  #[inline]
   fn store_val(&self, val: <Self::Reg as Reg<T>>::Val) {
     unsafe {
       write_volatile(
@@ -273,7 +264,7 @@ where
     }
   }
 
-  #[inline(always)]
+  #[inline]
   fn store<F>(&self, f: F)
   where
     F: Fn(&mut <Self::Reg as Reg<T>>::Val),
@@ -290,7 +281,7 @@ where
   U: RegFieldBit<T> + RRRegField<T>,
   U::Reg: RReg<T>,
 {
-  #[inline(always)]
+  #[inline]
   fn read(&self, val: &<Self::Reg as Reg<T>>::Val) -> bool {
     unsafe {
       val.read_bit(<<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
@@ -299,7 +290,7 @@ where
     }
   }
 
-  #[inline(always)]
+  #[inline]
   fn read_bit(&self) -> bool {
     self.read(&self.load_val())
   }
@@ -311,7 +302,7 @@ where
   U: RegFieldBit<T> + WWRegField<T>,
   U::Reg: WReg<T>,
 {
-  #[inline(always)]
+  #[inline]
   fn set(&self, val: &mut <Self::Reg as Reg<T>>::Val) {
     unsafe {
       val.set_bit(<<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
@@ -320,7 +311,7 @@ where
     }
   }
 
-  #[inline(always)]
+  #[inline]
   fn clear(&self, val: &mut <Self::Reg as Reg<T>>::Val) {
     unsafe {
       val.clear_bit(
@@ -331,7 +322,7 @@ where
     }
   }
 
-  #[inline(always)]
+  #[inline]
   fn toggle(&self, val: &mut <Self::Reg as Reg<T>>::Val) {
     unsafe {
       val.toggle_bit(
@@ -349,21 +340,21 @@ where
   U: RegFieldBit<T> + WoWRegField<T>,
   U::Reg: WoReg<T>,
 {
-  #[inline(always)]
+  #[inline]
   fn set_bit(&self) {
     self.store(|val| {
       self.set(val);
     });
   }
 
-  #[inline(always)]
+  #[inline]
   fn clear_bit(&self) {
     self.store(|val| {
       self.clear(val);
     });
   }
 
-  #[inline(always)]
+  #[inline]
   fn toggle_bit(&self) {
     self.store(|val| {
       self.toggle(val);
@@ -377,7 +368,7 @@ where
   U: RegFieldBits<T> + RRRegField<T>,
   U::Reg: RReg<T>,
 {
-  #[inline(always)]
+  #[inline]
   fn read(
     &self,
     val: &<Self::Reg as Reg<T>>::Val,
@@ -392,7 +383,7 @@ where
     }
   }
 
-  #[inline(always)]
+  #[inline]
   fn read_bits(&self) -> <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits {
     self.read(&self.load_val())
   }
@@ -404,7 +395,7 @@ where
   U: RegFieldBits<T> + WWRegField<T>,
   U::Reg: WReg<T>,
 {
-  #[inline(always)]
+  #[inline]
   fn write(
     &self,
     val: &mut <Self::Reg as Reg<T>>::Val,
@@ -428,7 +419,7 @@ where
   U: RegFieldBits<T> + WoWRegField<T>,
   U::Reg: WoReg<T>,
 {
-  #[inline(always)]
+  #[inline]
   fn write_bits(&self, bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits) {
     self.store(|val| {
       self.write(val, bits);

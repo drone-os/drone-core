@@ -64,7 +64,7 @@ macro_rules! init_token {
     $(#[$attr])* $vis struct $ident(());
 
     unsafe impl $crate::token::InitToken for $ident {
-      #[inline(always)]
+      #[inline]
       unsafe fn take() -> Self {
         $ident(())
       }

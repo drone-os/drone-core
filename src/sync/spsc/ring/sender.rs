@@ -2,6 +2,7 @@ use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
 use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
 use core::{
+  convert::identity,
   fmt,
   pin::Pin,
   ptr,
@@ -130,13 +131,10 @@ impl<T, E> Inner<T, E> {
               Err(*state)
             }
           })
-          .map_or_else(
-            |state| state,
-            |(state, index)| {
-              unsafe { ptr::drop_in_place(self.buffer.ptr().add(index)) };
-              state
-            },
-          );
+          .map_or_else(identity, |(state, index)| {
+            unsafe { ptr::drop_in_place(self.buffer.ptr().add(index)) };
+            state
+          });
       }
     }
   }

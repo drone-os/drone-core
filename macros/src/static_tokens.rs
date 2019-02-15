@@ -75,17 +75,17 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       unsafe impl ::drone_core::token::StaticToken for #struct_ident {
         type Target = #ty;
 
-        #[inline(always)]
+        #[inline]
         unsafe fn take() -> Self {
           #struct_ident(())
         }
 
-        #[inline(always)]
+        #[inline]
         fn get(&mut self) -> &mut Self::Target {
           unsafe { &mut #ident }
         }
 
-        #[inline(always)]
+        #[inline]
         fn into_static(self) -> &'static mut Self::Target {
           unsafe { &mut #ident }
         }
@@ -103,7 +103,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
 
     unsafe impl ::drone_core::token::Tokens for #ident {
-      #[inline(always)]
+      #[inline]
       unsafe fn take() -> Self {
         Self {
           #(#ctor_tokens),*

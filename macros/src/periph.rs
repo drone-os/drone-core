@@ -278,9 +278,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
               #(#field_attrs)*
               #[allow(missing_docs)]
               pub trait #field_trait_opt {
-                type #u_field_opt;
-                type #s_field_opt;
-                type #c_field_opt;
+                type #u_field_opt: Sized + Send + Sync + 'static;
+                type #s_field_opt: Sized + Send + Sync + 'static;
+                type #c_field_opt: Sized + Send + Sync + 'static;
               }
             });
             tokens.push(quote! {
@@ -313,9 +313,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 #(#field_attrs)*
                 #[allow(missing_docs)]
                 pub trait #field_trait_opt<T: #reg_trait>: #reg_trait_ext<T> {
-                  type #u_field_opt;
-                  type #s_field_opt;
-                  type #c_field_opt;
+                  type #u_field_opt: Sized + Send + Sync + 'static;
+                  type #s_field_opt: Sized + Send + Sync + 'static;
+                  type #c_field_opt: Sized + Send + Sync + 'static;
                 }
               });
               tokens.push(quote! {
@@ -347,9 +347,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 #(#field_attrs)*
                 #[allow(missing_docs)]
                 pub trait #field_trait_opt<T: #periph_trait>: #reg_trait<T> {
-                  type #u_field_opt;
-                  type #s_field_opt;
-                  type #c_field_opt;
+                  type #u_field_opt: Sized + Send + Sync + 'static;
+                  type #s_field_opt: Sized + Send + Sync + 'static;
+                  type #c_field_opt: Sized + Send + Sync + 'static;
                 }
               });
               tokens.push(quote! {
@@ -481,9 +481,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           #(#reg_attrs)*
           #[allow(missing_docs)]
           pub trait #reg_trait_opt {
-            type #u_reg_opt;
-            type #s_reg_opt;
-            type #c_reg_opt;
+            type #u_reg_opt: Sized + Send + Sync + 'static;
+            type #s_reg_opt: Sized + Send + Sync + 'static;
+            type #c_reg_opt: Sized + Send + Sync + 'static;
           }
         });
         tokens.push(quote! {

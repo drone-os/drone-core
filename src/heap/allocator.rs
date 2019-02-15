@@ -40,11 +40,11 @@ pub trait Allocator {
     I: SliceIndex<[Pool]>;
 
   /// Allocation hook.
-  #[inline(always)]
+  #[inline]
   fn alloc_hook(_layout: Layout, _pool: &Pool) {}
 
   /// Deallocation hook.
-  #[inline(always)]
+  #[inline]
   fn dealloc_hook(_layout: Layout, _pool: &Pool) {}
 
   /// Binary searches the pools for a least-sized one which fits `value`.
@@ -150,12 +150,12 @@ pub trait MaybePool<'a> {
 }
 
 impl<'a> MaybePool<'a> for () {
-  #[inline(always)]
+  #[inline]
   fn from(_pool: &'a Pool) {}
 }
 
 impl<'a> MaybePool<'a> for &'a Pool {
-  #[inline(always)]
+  #[inline]
   fn from(pool: Self) -> Self {
     pool
   }
@@ -170,7 +170,7 @@ pub trait WithPool<'a, T: MaybePool<'a>> {
 }
 
 impl<'a> WithPool<'a, ()> for NonNull<u8> {
-  #[inline(always)]
+  #[inline]
   fn from<F>(ptr: NonNull<u8>, _pool: F) -> Self
   where
     F: FnOnce(),
@@ -178,14 +178,14 @@ impl<'a> WithPool<'a, ()> for NonNull<u8> {
     ptr
   }
 
-  #[inline(always)]
+  #[inline]
   fn as_ptr(&self) -> *mut u8 {
     NonNull::as_ptr(*self)
   }
 }
 
 impl<'a> WithPool<'a, &'a Pool> for (NonNull<u8>, &'a Pool) {
-  #[inline(always)]
+  #[inline]
   fn from<F>(ptr: NonNull<u8>, pool: F) -> Self
   where
     F: FnOnce() -> &'a Pool,
@@ -193,14 +193,14 @@ impl<'a> WithPool<'a, &'a Pool> for (NonNull<u8>, &'a Pool) {
     (ptr, pool())
   }
 
-  #[inline(always)]
+  #[inline]
   fn as_ptr(&self) -> *mut u8 {
     NonNull::as_ptr(self.0)
   }
 }
 
 impl<'a> WithPool<'a, &'a Pool> for Excess {
-  #[inline(always)]
+  #[inline]
   fn from<F>(ptr: NonNull<u8>, pool: F) -> Self
   where
     F: FnOnce() -> &'a Pool,
@@ -208,7 +208,7 @@ impl<'a> WithPool<'a, &'a Pool> for Excess {
     Self(ptr, pool().size())
   }
 
-  #[inline(always)]
+  #[inline]
   fn as_ptr(&self) -> *mut u8 {
     NonNull::as_ptr(self.0)
   }

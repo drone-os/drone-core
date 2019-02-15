@@ -49,7 +49,6 @@
   clippy::cast_possible_wrap,
   clippy::cast_sign_loss,
   clippy::enum_glob_use,
-  clippy::inline_always,
   clippy::module_inception,
   clippy::module_name_repetitions,
   clippy::precedence,
@@ -62,6 +61,7 @@ extern crate alloc;
 #[macro_use]
 pub mod asnc;
 pub mod bitfield;
+pub mod drv;
 pub mod ffi;
 pub mod fib;
 pub mod fs;
@@ -72,7 +72,7 @@ pub mod periph;
 pub mod prelude;
 pub mod reg;
 pub mod shared_guard;
-pub mod stack_adapter;
+pub mod stack_loop;
 pub mod sv;
 pub mod sync;
 pub mod thr;

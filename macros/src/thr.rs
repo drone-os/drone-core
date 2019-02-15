@@ -176,17 +176,17 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       type Local = #local_ident;
       type Sv = #sv_ty;
 
-      #[inline(always)]
+      #[inline]
       fn first() -> *const Self {
         unsafe { #array.as_ptr() }
       }
 
-      #[inline(always)]
+      #[inline]
       fn fib_chain(&self) -> &::drone_core::fib::Chain {
         &self.fib_chain
       }
 
-      #[inline(always)]
+      #[inline]
       unsafe fn get_local(&self) -> &#local_ident {
         &self.local.0
       }
@@ -199,12 +199,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
 
     impl ::drone_core::thr::ThreadLocal for #local_ident {
-      #[inline(always)]
+      #[inline]
       fn task(&self) -> &::drone_core::thr::TaskCell {
         &self.task
       }
 
-      #[inline(always)]
+      #[inline]
       fn preempted(&self) -> &::drone_core::thr::PreemptedCell {
         &self.preempted
       }

@@ -55,7 +55,7 @@ impl<Y, R> From<GeneratorState<Y, R>> for FiberState<Y, R> {
 }
 
 /// Creates a new generator fiber.
-#[inline(always)]
+#[inline]
 pub fn new<G>(gen: G) -> FiberGen<G>
 where
   G: Generator,

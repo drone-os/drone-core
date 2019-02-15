@@ -9,7 +9,6 @@ use core::ptr;
 /// * Must be called no more than once.
 /// * Must be called before accessing `static`s.
 #[allow(clippy::trivially_copy_pass_by_ref)]
-#[inline(always)]
 pub unsafe fn bss_init(start: &mut usize, end: &usize) {
   let start = start as *mut _;
   let end = end as *const _;
@@ -24,7 +23,6 @@ pub unsafe fn bss_init(start: &mut usize, end: &usize) {
 /// * Must be called no more than once.
 /// * Must be called before accessing `static`s.
 #[allow(clippy::trivially_copy_pass_by_ref)]
-#[inline(always)]
 pub unsafe fn data_init(start: &mut usize, end: &usize, data: &usize) {
   let start = start as *mut _;
   let end = end as *const _;

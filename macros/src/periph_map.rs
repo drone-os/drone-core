@@ -262,6 +262,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
       }
       let reg_root = &quote!(#root_path::#block_path_ident::#reg_path_ident);
       let mut reg_fields_tokens = Vec::new();
+      let mut fields_reg_tokens = Vec::new();
       let mut fields_tokens = Vec::new();
       let mut u_methods = Vec::new();
       let mut s_methods = Vec::new();
@@ -338,17 +339,17 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           }
           u_methods.push(quote! {
             #(#struct_attrs)*
-            #[inline(always)]
+            #[inline]
             fn #field_ident(&self) -> &() { &() }
           });
           s_methods.push(quote! {
             #(#struct_attrs)*
-            #[inline(always)]
+            #[inline]
             fn #field_ident(&self) -> &() { &() }
           });
           c_methods.push(quote! {
             #(#struct_attrs)*
-            #[inline(always)]
+            #[inline]
             fn #field_ident(&self) -> &() { &() }
           });
           fields_tokens.push(quote! {
@@ -424,32 +425,37 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
           }
           u_methods.push(quote! {
             #(#struct_attrs)*
-            #[inline(always)]
+            #[inline]
             fn #field_ident(&self) -> &#reg_root::#field_path_psc<#core_urt> {
-              &self.#field_ident
+              &self.#field_path_ident
             }
           });
           s_methods.push(quote! {
             #(#struct_attrs)*
-            #[inline(always)]
+            #[inline]
             fn #field_ident(&self) -> &#reg_root::#field_path_psc<#core_srt> {
-              &self.#field_ident
+              &self.#field_path_ident
             }
           });
           c_methods.push(quote! {
             #(#struct_attrs)*
-            #[inline(always)]
+            #[inline]
             fn #field_ident(&self) -> &#reg_root::#field_path_psc<#core_crt> {
-              &self.#field_ident
+              &self.#field_path_ident
             }
+          });
+          fields_reg_tokens.push(quote! {
+            #(#struct_attrs)*
+            #field_ident: #field_path_ident
           });
           reg_fields_tokens.push(quote! {
             #(#struct_attrs)*
-            #field_ident
+            #field_path_ident
           });
         }
       }
       let reg_fields_tokens = &reg_fields_tokens;
+      let fields_reg_tokens = &fields_reg_tokens;
       let fields_tokens = &fields_tokens;
       if reg_path.is_none() {
         tokens.push(quote! {
@@ -512,19 +518,19 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         tokens.push(quote! {
           #(#reg_attrs)*
           impl #u_reg<#periph_ty> for #reg_root::Reg<#core_urt> {
-            #[inline(always)]
+            #[inline]
             fn from_fields(map: #u_fields<#periph_ty>) -> Self {
               let #u_fields {
-                #(#reg_fields_tokens,)*
+                #(#fields_reg_tokens,)*
                 #(#fields_tokens,)*
               } = map;
               Self { #(#reg_fields_tokens),* }
             }
-            #[inline(always)]
+            #[inline]
             fn into_fields(self) -> #u_fields<#periph_ty> {
               let Self { #(#reg_fields_tokens),* } = self;
               #u_fields {
-                #(#reg_fields_tokens,)*
+                #(#fields_reg_tokens,)*
                 #(#fields_tokens,)*
               }
             }
@@ -534,19 +540,19 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         tokens.push(quote! {
           #(#reg_attrs)*
           impl #s_reg<#periph_ty> for #reg_root::Reg<#core_srt> {
-            #[inline(always)]
+            #[inline]
             fn from_fields(map: #s_fields<#periph_ty>) -> Self {
               let #s_fields {
-                #(#reg_fields_tokens,)*
+                #(#fields_reg_tokens,)*
                 #(#fields_tokens,)*
               } = map;
               Self { #(#reg_fields_tokens),* }
             }
-            #[inline(always)]
+            #[inline]
             fn into_fields(self) -> #s_fields<#periph_ty> {
               let Self { #(#reg_fields_tokens),* } = self;
               #s_fields {
-                #(#reg_fields_tokens,)*
+                #(#fields_reg_tokens,)*
                 #(#fields_tokens,)*
               }
             }
@@ -556,19 +562,19 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         tokens.push(quote! {
           #(#reg_attrs)*
           impl #c_reg<#periph_ty> for #reg_root::Reg<#core_crt> {
-            #[inline(always)]
+            #[inline]
             fn from_fields(map: #c_fields<#periph_ty>) -> Self {
               let #c_fields {
-                #(#reg_fields_tokens,)*
+                #(#fields_reg_tokens,)*
                 #(#fields_tokens,)*
               } = map;
               Self { #(#reg_fields_tokens),* }
             }
-            #[inline(always)]
+            #[inline]
             fn into_fields(self) -> #c_fields<#periph_ty> {
               let Self { #(#reg_fields_tokens),* } = self;
               #c_fields {
-                #(#reg_fields_tokens,)*
+                #(#fields_reg_tokens,)*
                 #(#fields_tokens,)*
               }
             }

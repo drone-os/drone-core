@@ -169,7 +169,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
       } = field;
       let width = width
         .unwrap_or_else(|| LitInt::new(1, IntSuffix::None, Span::call_site()));
-      let mut attrs = vec![quote!(#[inline(always)])];
+      let mut attrs = vec![quote!(#[inline])];
       if let Some(doc) = doc {
         attrs.push(quote!(#[doc = #doc]));
       }
@@ -274,17 +274,17 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
 
       const DEFAULT: #bits = #default;
 
-      #[inline(always)]
+      #[inline]
       unsafe fn from_bits(bits: #bits) -> Self {
         #ident(bits)
       }
 
-      #[inline(always)]
+      #[inline]
       fn bits(&self) -> #bits {
         self.0
       }
 
-      #[inline(always)]
+      #[inline]
       fn bits_mut(&mut self) -> &mut #bits {
         &mut self.0
       }

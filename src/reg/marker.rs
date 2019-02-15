@@ -1,6 +1,12 @@
 //! Marker traits for memory-mapped registers.
 
-use crate::reg::prelude::*;
+pub use super::{RoReg, WoReg, WoWoRegFieldBit, WoWoRegFieldBits};
+
+use crate::reg::{
+  Crt, RRRegFieldBit, RRRegFieldBits, RReg, RegTag, RoRRegField, RwRegUnsync,
+  Srt, Urt, WReg, WRegAtomic, WRegUnsync, WWRegFieldBit, WWRegFieldBits,
+  WoWRegField,
+};
 
 // {{{ RwReg
 /// Read-write register token.

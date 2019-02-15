@@ -131,8 +131,7 @@ macro_rules! shared_guard {
     $share:ident,
     $merge:ident,
     $counter:ident,
-    $number:expr,
-    $($data:expr),*
+    $($token:ident),*
   ) => {
     impl<'a, T, H: GuardHandler<T> + 'a> Guard<'a, T, H> {
       /// Converts [`Guard`] into [`SharedGuard`] and an array of
@@ -140,7 +139,7 @@ macro_rules! shared_guard {
       #[inline]
       pub fn $share(
         self
-      ) -> (SharedGuard<'a, T, H, $counter>, [GuardToken<H>; $number]) {
+      ) -> (SharedGuard<'a, T, H, $counter>, $(GuardToken<$token>),*) {
         let data = unsafe { ptr::read(&self.data) };
         let handler = unsafe { ptr::read(&self.handler) };
         forget(self);
@@ -149,7 +148,8 @@ macro_rules! shared_guard {
           handler,
           _counter: PhantomData,
         };
-        (guard, [$(GuardToken($data)),*])
+        macro_rules! H { () => { PhantomData }; }
+        (guard, $(GuardToken($token!())),*)
       }
     }
 
@@ -157,7 +157,10 @@ macro_rules! shared_guard {
       /// Converts [`SharedGuard`] and the array of [`GuardToken`] into
       /// [`Guard`].
       #[inline]
-      pub fn $merge(self, tokens: [GuardToken<H>; $number]) -> Guard<'a, T, H> {
+      pub fn $merge(
+        self,
+        tokens: ($(GuardToken<$token>),*),
+      ) -> Guard<'a, T, H> {
         let data = unsafe { ptr::read(&self.data) };
         let handler = unsafe { ptr::read(&self.handler) };
         forget(self);
@@ -187,224 +190,27 @@ shared_counters! {
   Share16,
 }
 
-shared_guard!(share1, merge1, Share1, 1, PhantomData);
-shared_guard!(share2, merge2, Share2, 2, PhantomData, PhantomData);
+shared_guard!(share1, merge1, Share1, H);
+shared_guard!(share2, merge2, Share2, H, H);
+shared_guard!(share3, merge3, Share3, H, H, H);
+shared_guard!(share4, merge4, Share4, H, H, H, H);
+shared_guard!(share5, merge5, Share5, H, H, H, H, H);
+shared_guard!(share6, merge6, Share6, H, H, H, H, H, H);
+shared_guard!(share7, merge7, Share7, H, H, H, H, H, H, H);
+shared_guard!(share8, merge8, Share8, H, H, H, H, H, H, H, H);
+shared_guard!(share9, merge9, Share9, H, H, H, H, H, H, H, H, H);
+shared_guard!(share10, merge10, Share10, H, H, H, H, H, H, H, H, H, H);
+shared_guard!(share11, merge11, Share11, H, H, H, H, H, H, H, H, H, H, H);
+shared_guard!(share12, merge12, Share12, H, H, H, H, H, H, H, H, H, H, H, H);
+shared_guard!(share13, merge13, Share13, H, H, H, H, H, H, H, H, H, H, H, H, H);
 shared_guard!(
-  share3,
-  merge3,
-  Share3,
-  3,
-  PhantomData,
-  PhantomData,
-  PhantomData
+  share14, merge14, Share14, H, H, H, H, H, H, H, H, H, H, H, H, H, H
 );
 shared_guard!(
-  share4,
-  merge4,
-  Share4,
-  4,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
+  share15, merge15, Share15, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H
 );
 shared_guard!(
-  share5,
-  merge5,
-  Share5,
-  5,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
-);
-shared_guard!(
-  share6,
-  merge6,
-  Share6,
-  6,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
-);
-shared_guard!(
-  share7,
-  merge7,
-  Share7,
-  7,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
-);
-shared_guard!(
-  share8,
-  merge8,
-  Share8,
-  8,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
-);
-shared_guard!(
-  share9,
-  merge9,
-  Share9,
-  9,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
-);
-shared_guard!(
-  share10,
-  merge10,
-  Share10,
-  10,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
-);
-shared_guard!(
-  share11,
-  merge11,
-  Share11,
-  11,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
-);
-shared_guard!(
-  share12,
-  merge12,
-  Share12,
-  12,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
-);
-shared_guard!(
-  share13,
-  merge13,
-  Share13,
-  13,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
-);
-shared_guard!(
-  share14,
-  merge14,
-  Share14,
-  14,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
-);
-shared_guard!(
-  share15,
-  merge15,
-  Share15,
-  15,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
-);
-shared_guard!(
-  share16,
-  merge16,
-  Share16,
-  16,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData,
-  PhantomData
+  share16, merge16, Share16, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H
 );
 
 #[cfg(test)]
@@ -449,9 +255,9 @@ mod tests {
     let mut data = Data(Rc::clone(&counter));
     let guard = data.guard(true);
     assert!(counter.load(Relaxed));
-    let (guard, [token]) = guard.share1();
+    let (guard, token) = guard.share1();
     assert!(counter.load(Relaxed));
-    let guard = guard.merge1([token]);
+    let guard = guard.merge1(token);
     assert!(counter.load(Relaxed));
     drop(guard);
     assert!(!counter.load(Relaxed));
@@ -462,7 +268,7 @@ mod tests {
   fn shared_drop() {
     let mut data = Data(Rc::new(AtomicBool::new(false)));
     let guard = data.guard(true);
-    let (_guard, [_token]) = guard.share1();
+    let (_guard, _token) = guard.share1();
   }
 
   #[test]
@@ -470,13 +276,13 @@ mod tests {
     let counter = Rc::new(AtomicBool::new(false));
     let mut data = Data(Rc::clone(&counter));
     let guard = data.guard(true);
-    let (guard, [token1]) = guard.share1();
+    let (guard, token1) = guard.share1();
     forget(guard);
     assert!(counter.load(Relaxed));
     // In a proper implementation this should fail.
     let guard = data.guard(false);
-    let (guard, [token2]) = guard.share1();
-    let guard = guard.merge1([token1]);
+    let (guard, token2) = guard.share1();
+    let guard = guard.merge1(token1);
     drop(guard);
     assert!(!counter.load(Relaxed));
     // Guard is dropped but something can still rely on the existance of token2.
@@ -489,7 +295,7 @@ mod tests {
     let counter = Rc::new(AtomicBool::new(false));
     let mut data = Data(Rc::clone(&counter));
     let guard = data.guard(true);
-    let (guard, [_token]) = guard.share1();
+    let (guard, _token) = guard.share1();
     forget(guard);
     assert!(counter.load(Relaxed));
     let _ = data.guard(true);

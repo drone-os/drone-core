@@ -55,7 +55,6 @@ impl<'a> Drop for ResetWaker<'a> {
 /// # Safety
 ///
 /// Must be called before using `futures`.
-#[inline(always)]
 pub unsafe fn init<T: Thread>() {
   CURRENT.store(current_task_fn::<T> as usize, Relaxed);
 }
@@ -70,7 +69,6 @@ pub fn current_task() -> &'static TaskCell {
   }
 }
 
-#[inline(always)]
 fn current_task_fn<T: Thread>() -> &'static TaskCell {
   current::<T>().task()
 }

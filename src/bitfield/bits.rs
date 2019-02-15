@@ -35,22 +35,22 @@ where
 macro_rules! bits {
   ($type:ty) => {
     impl Bits for $type {
-      #[inline(always)]
+      #[inline]
       fn from_usize(bits: usize) -> Self {
         bits as Self
       }
 
-      #[inline(always)]
+      #[inline]
       fn width() -> Self {
         size_of::<Self>() as Self * 8
       }
 
-      #[inline(always)]
+      #[inline]
       fn one() -> Self {
         1
       }
 
-      #[inline(always)]
+      #[inline]
       fn is_zero(self) -> bool {
         self == 0
       }

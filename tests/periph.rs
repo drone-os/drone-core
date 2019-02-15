@@ -192,15 +192,15 @@ fn concrete() {
     gpio_odr,
     gpio_idr: (),
   } = gpio_c;
-  let gpio_odr = gpio_odr.to_unsync();
-  let gpio_odr = gpio_odr.to_sync();
+  let gpio_odr = gpio_odr.into_unsync();
+  let gpio_odr = gpio_odr.into_sync();
   let SGpioOdrFields { odr0, odr1: () } = gpio_odr.into_fields();
-  let odr0 = odr0.to_copy();
+  let odr0 = odr0.into_copy();
   let gpio_odr =
     CGpioOdr::from_fields(CGpioOdrFields::<GpioC> { odr0, odr1: () });
   let gpioc::Odr { odr0 } = gpio_odr;
   let gpio_odr = gpioc::Odr { odr0 };
-  let rcc_ahb2enr_gpioen = rcc_ahb2enr_gpioen.to_copy();
+  let rcc_ahb2enr_gpioen = rcc_ahb2enr_gpioen.into_copy();
   if false {
     gpio_odr.store(|r| r.set_odr0());
     gpio_odr.odr0.read_bit();
@@ -217,13 +217,13 @@ fn generic_without_holes() {
       gpio_odr,
       gpio_idr: _,
     } = gpio;
-    let gpio_odr = gpio_odr.to_unsync();
-    let gpio_odr = gpio_odr.to_sync();
+    let gpio_odr = gpio_odr.into_unsync();
+    let gpio_odr = gpio_odr.into_sync();
     let SGpioOdrFields { odr0, odr1 } = gpio_odr.into_fields();
-    let odr0 = odr0.to_copy();
-    let odr1 = odr1.to_copy();
+    let odr0 = odr0.into_copy();
+    let odr1 = odr1.into_copy();
     let gpio_odr = T::CGpioOdr::from_fields(CGpioOdrFields { odr0, odr1 });
-    let rcc_ahb2enr_gpioen = rcc_ahb2enr_gpioen.to_copy();
+    let rcc_ahb2enr_gpioen = rcc_ahb2enr_gpioen.into_copy();
     if false {
       let mut val = gpio_odr.load().val();
       gpio_odr.odr0().set(&mut val);
@@ -246,12 +246,12 @@ fn generic_with_holes() {
       gpio_odr,
       gpio_idr: _,
     } = gpio;
-    let gpio_odr = gpio_odr.to_unsync();
-    let gpio_odr = gpio_odr.to_sync();
+    let gpio_odr = gpio_odr.into_unsync();
+    let gpio_odr = gpio_odr.into_sync();
     let SGpioOdrFields { odr0, odr1 } = gpio_odr.into_fields();
-    let odr0 = odr0.to_sync();
+    let odr0 = odr0.into_sync();
     let gpio_odr = T::SGpioOdr::from_fields(SGpioOdrFields { odr0, odr1 });
-    let rcc_ahb2enr_gpioen = rcc_ahb2enr_gpioen.to_copy();
+    let rcc_ahb2enr_gpioen = rcc_ahb2enr_gpioen.into_copy();
     if false {
       let mut val = gpio_odr.load().val();
       gpio_odr.odr0().set(&mut val);

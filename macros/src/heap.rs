@@ -135,7 +135,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
   let mut hook_tokens = Vec::new();
   if let Some(path) = alloc_hook {
     hook_tokens.push(quote! {
-      #[inline(always)]
+      #[inline]
       fn alloc_hook(
         layout: ::core::alloc::Layout,
         pool: &::drone_core::heap::Pool,
@@ -146,7 +146,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
   }
   if let Some(path) = dealloc_hook {
     hook_tokens.push(quote! {
-      #[inline(always)]
+      #[inline]
       fn dealloc_hook(
         layout: ::core::alloc::Layout,
         pool: &::drone_core::heap::Pool,
@@ -174,7 +174,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     impl ::drone_core::heap::Allocator for #heap_ident {
       const POOL_COUNT: usize = #pools_len;
 
-      #[inline(always)]
+      #[inline]
       unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
       where
         I: ::core::slice::SliceIndex<[::drone_core::heap::Pool]>,
@@ -182,7 +182,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         self.pools.get_unchecked(index)
       }
 
-      #[inline(always)]
+      #[inline]
       unsafe fn get_pool_unchecked_mut<I>(
         &mut self, index: I
       ) -> &mut I::Output

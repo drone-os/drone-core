@@ -1,6 +1,7 @@
 //! Single-producer, single-consumer queues.
 
 use core::{
+  convert::identity,
   ops::{BitAnd, BitOr, BitOrAssign, BitXorAssign},
   sync::atomic::Ordering::{self, *},
   task::{LocalWaker, Poll, Waker},
@@ -117,7 +118,7 @@ where
         }
       })
       .ok()
-      .and_then(|state| state)
+      .and_then(identity)
       .map(|state| {
         unsafe { waker_mut(self).take().as_ref().map(Waker::wake) };
         self.update(state, Release, Relaxed, |state| {
@@ -153,7 +154,7 @@ where
         }
       })
       .ok()
-      .and_then(|x| x)
+      .and_then(identity)
       .map(|(state, mask)| {
         if mask & Self::RX_LOCK != Self::ZERO {
           unsafe { self.rx_waker_mut().take() };

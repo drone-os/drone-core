@@ -8,7 +8,7 @@ use core::{
 };
 
 /// Wrap a future in a generator.
-#[inline(always)]
+#[inline]
 pub fn asnc<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
   GenFuture(x)
 }

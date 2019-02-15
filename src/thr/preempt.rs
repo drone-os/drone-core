@@ -14,7 +14,7 @@ impl PreemptedCell {
 }
 
 /// Returns a static reference to the current thread.
-#[inline(always)]
+#[inline]
 pub fn current<T: Thread>() -> &'static T::Local {
   unsafe { (*T::first().add(CURRENT)).get_local() }
 }
@@ -24,7 +24,6 @@ pub fn current<T: Thread>() -> &'static T::Local {
 /// # Safety
 ///
 /// Must be called once at the beginning of the thread handler.
-#[inline(always)]
 pub unsafe fn with_preempted(
   preempted: &PreemptedCell,
   thr_num: usize,

@@ -55,7 +55,7 @@ impl Pool {
   }
 
   /// Returns the pool size.
-  #[inline(always)]
+  #[inline]
   pub fn size(&self) -> usize {
     self.size
   }

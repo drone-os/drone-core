@@ -64,10 +64,9 @@ macro_rules! thr_num {
 
     impl<T: ThrTag> ThrToken<T> for $name<T> {
       type Thr = Thr;
-      type AThrToken = $name<Att>;
       type TThrToken = $name<Ttt>;
-      type CThrToken = $name<Ctt>;
-      type RThrToken = $name<Rtt>;
+      type AThrToken = $name<Att>;
+      type PThrToken = $name<Ptt>;
 
       const THR_NUM: usize = $position;
 

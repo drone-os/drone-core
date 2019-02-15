@@ -1,4 +1,4 @@
-use drone_core::reg::prelude::*;
+use drone_core::reg::{prelude::*, RwRegUnsync};
 
 use drone_core::reg;
 

@@ -21,7 +21,7 @@ pub use core::prelude::v1::*;
 pub use alloc::{
   borrow::ToOwned,
   boxed::Box,
-  slice::SliceConcatExt,
+  slice::SliceConcatExt as _,
   string::{String, ToString},
   vec::Vec,
 };
