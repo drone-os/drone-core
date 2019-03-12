@@ -3,7 +3,7 @@ use core::{
   cell::Cell,
   mem, ptr,
   sync::atomic::{AtomicUsize, Ordering::*},
-  task::LocalWaker,
+  task::Waker,
 };
 
 static CURRENT: AtomicUsize = AtomicUsize::new(0);
@@ -11,7 +11,7 @@ static CURRENT: AtomicUsize = AtomicUsize::new(0);
 /// A thread-local storage of the task pointer.
 pub struct TaskCell(Cell<TaskWaker>);
 
-type TaskWaker = *const LocalWaker;
+type TaskWaker = *const Waker;
 
 struct ResetWaker<'a>(TaskWaker, &'a Cell<TaskWaker>);
 
@@ -21,25 +21,25 @@ impl TaskCell {
     Self(Cell::new(ptr::null_mut()))
   }
 
-  pub(crate) fn set_waker<F, R>(&self, lw: &LocalWaker, f: F) -> R
+  pub(crate) fn set_waker<F, R>(&self, waker: &Waker, f: F) -> R
   where
     F: FnOnce() -> R,
   {
-    let prev_lw = self.0.replace(lw);
+    let prev_lw = self.0.replace(waker);
     let _reset_lw = ResetWaker(prev_lw, &self.0);
     f()
   }
 
   pub(crate) fn get_waker<F, R>(&self, f: F) -> R
   where
-    F: FnOnce(&LocalWaker) -> R,
+    F: FnOnce(&Waker) -> R,
   {
-    let lw = self.0.replace(ptr::null_mut());
-    if lw.is_null() {
+    let waker = self.0.replace(ptr::null_mut());
+    if waker.is_null() {
       panic!("not an async context")
     } else {
-      let _reset_lw = ResetWaker(lw, &self.0);
-      f(unsafe { &*lw })
+      let _reset_lw = ResetWaker(waker, &self.0);
+      f(unsafe { &*waker })
     }
   }
 }

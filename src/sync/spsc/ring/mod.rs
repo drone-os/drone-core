@@ -143,52 +143,64 @@ impl<T, E> SpscInner<AtomicUsize, usize> for Inner<T, E> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use alloc::{
-    sync::Arc,
-    task::{local_waker_from_nonlocal, Wake},
+  use core::{
+    pin::Pin,
+    sync::atomic::{AtomicUsize, Ordering::*},
+    task::{Poll, RawWaker, RawWakerVTable, Waker},
   };
-  use core::{pin::Pin, task::Poll};
   use futures::stream::Stream;
-
-  thread_local! {
-    static COUNTER: Arc<Counter> = Arc::new(Counter(AtomicUsize::new(0)));
-  }
 
   struct Counter(AtomicUsize);
 
-  impl Wake for Counter {
-    fn wake(arc_self: &Arc<Self>) {
-      arc_self.0.fetch_add(1, Ordering::Relaxed);
+  impl Counter {
+    fn to_waker(&'static self) -> Waker {
+      unsafe fn clone(counter: *const ()) -> RawWaker {
+        RawWaker::new(counter, &VTABLE)
+      }
+      unsafe fn wake(counter: *const ()) {
+        (*(counter as *const Counter)).0.fetch_add(1, Relaxed);
+      }
+      static VTABLE: RawWakerVTable = RawWakerVTable { clone, wake, drop };
+      unsafe {
+        Waker::new_unchecked(RawWaker::new(
+          self as *const _ as *const (),
+          &VTABLE,
+        ))
+      }
     }
   }
 
   #[test]
   fn send_sync() {
+    static COUNTER: Counter = Counter(AtomicUsize::new(0));
     let (mut rx, mut tx) = channel::<usize, ()>(10);
     assert_eq!(tx.send(314).unwrap(), ());
     drop(tx);
-    COUNTER.with(|counter| {
-      let lw = local_waker_from_nonlocal(Arc::clone(counter));
-      counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Ready(Some(Ok(314))));
-      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Ready(None));
-      assert_eq!(counter.0.load(Ordering::Relaxed), 0);
-    });
+    let waker = COUNTER.to_waker();
+    COUNTER.0.store(0, Ordering::Relaxed);
+    assert_eq!(
+      Pin::new(&mut rx).poll_next(&waker),
+      Poll::Ready(Some(Ok(314)))
+    );
+    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Ready(None));
+    assert_eq!(COUNTER.0.load(Ordering::Relaxed), 0);
   }
 
   #[test]
   fn send_async() {
+    static COUNTER: Counter = Counter(AtomicUsize::new(0));
     let (mut rx, mut tx) = channel::<usize, ()>(10);
-    COUNTER.with(|counter| {
-      let lw = local_waker_from_nonlocal(Arc::clone(counter));
-      counter.0.store(0, Ordering::Relaxed);
-      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Pending);
-      assert_eq!(tx.send(314).unwrap(), ());
-      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Ready(Some(Ok(314))));
-      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Pending);
-      drop(tx);
-      assert_eq!(Pin::new(&mut rx).poll_next(&lw), Poll::Ready(None));
-      assert_eq!(counter.0.load(Ordering::Relaxed), 2);
-    });
+    let waker = COUNTER.to_waker();
+    COUNTER.0.store(0, Ordering::Relaxed);
+    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Pending);
+    assert_eq!(tx.send(314).unwrap(), ());
+    assert_eq!(
+      Pin::new(&mut rx).poll_next(&waker),
+      Poll::Ready(Some(Ok(314)))
+    );
+    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Pending);
+    drop(tx);
+    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Ready(None));
+    assert_eq!(COUNTER.0.load(Ordering::Relaxed), 2);
   }
 }

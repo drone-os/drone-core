@@ -8,7 +8,7 @@ use core::{
   future::Future,
   intrinsics::unreachable,
   pin::Pin,
-  task::{LocalWaker, Poll},
+  task::{Poll, Waker},
 };
 
 /// A future for a single value from another thread.
@@ -42,9 +42,9 @@ impl<R, E> TryFiberFuture<R, E> {
 impl<R> Future for FiberFuture<R> {
   type Output = R;
 
-  fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<R> {
+  fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<R> {
     let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
-    rx.poll(lw).map(|value| match value {
+    rx.poll(waker).map(|value| match value {
       Ok(value) => value,
       Err(RecvError::Canceled) => unsafe { unreachable() },
     })
@@ -54,9 +54,9 @@ impl<R> Future for FiberFuture<R> {
 impl<R, E> Future for TryFiberFuture<R, E> {
   type Output = Result<R, E>;
 
-  fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Result<R, E>> {
+  fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Result<R, E>> {
     let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
-    rx.poll(lw).map_err(|err| match err {
+    rx.poll(waker).map_err(|err| match err {
       RecvError::Complete(err) => err,
       RecvError::Canceled => unsafe { unreachable() },
     })

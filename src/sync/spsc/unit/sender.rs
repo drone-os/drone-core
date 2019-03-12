@@ -4,7 +4,7 @@ use alloc::sync::Arc;
 use core::{
   pin::Pin,
   sync::atomic::Ordering::*,
-  task::{LocalWaker, Poll, Waker},
+  task::{Poll, Waker},
 };
 use failure::Fail;
 
@@ -62,8 +62,8 @@ impl<E> Sender<E> {
   /// [`Receiver`]: super::Receiver
   /// [`is_canceled`]: Sender::is_canceled
   #[inline]
-  pub fn poll_cancel(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<()> {
-    self.inner.poll_cancel(lw)
+  pub fn poll_cancel(self: Pin<&mut Self>, waker: &Waker) -> Poll<()> {
+    self.inner.poll_cancel(waker)
   }
 
   /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has gone

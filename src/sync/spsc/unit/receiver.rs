@@ -4,7 +4,7 @@ use alloc::sync::Arc;
 use core::{
   pin::Pin,
   sync::atomic::Ordering::*,
-  task::{LocalWaker, Poll},
+  task::{Poll, Waker},
 };
 use futures::stream::Stream;
 
@@ -34,9 +34,9 @@ impl<E> Stream for Receiver<E> {
   #[inline]
   fn poll_next(
     self: Pin<&mut Self>,
-    lw: &LocalWaker,
+    waker: &Waker,
   ) -> Poll<Option<Self::Item>> {
-    self.inner.recv(lw)
+    self.inner.recv(waker)
   }
 }
 
@@ -48,7 +48,7 @@ impl<E> Drop for Receiver<E> {
 }
 
 impl<E> Inner<E> {
-  fn recv(&self, lw: &LocalWaker) -> Poll<Option<Result<(), E>>> {
+  fn recv(&self, waker: &Waker) -> Poll<Option<Result<(), E>>> {
     let some_unit = || Ok(Poll::Ready(Some(Ok(()))));
     self
       .update(self.state_load(Acquire), Acquire, Acquire, |state| {
@@ -64,8 +64,7 @@ impl<E> Inner<E> {
       .and_then(|state| {
         state.map_or_else(some_unit, |state| {
           unsafe {
-            (*self.rx_waker.get())
-              .get_or_insert_with(|| lw.clone().into_waker());
+            (*self.rx_waker.get()).get_or_insert_with(|| waker.clone());
           }
           self
             .update(state, AcqRel, Relaxed, |state| {

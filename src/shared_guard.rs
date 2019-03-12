@@ -201,8 +201,12 @@ shared_guard!(share8, merge8, Share8, H, H, H, H, H, H, H, H);
 shared_guard!(share9, merge9, Share9, H, H, H, H, H, H, H, H, H);
 shared_guard!(share10, merge10, Share10, H, H, H, H, H, H, H, H, H, H);
 shared_guard!(share11, merge11, Share11, H, H, H, H, H, H, H, H, H, H, H);
-shared_guard!(share12, merge12, Share12, H, H, H, H, H, H, H, H, H, H, H, H);
-shared_guard!(share13, merge13, Share13, H, H, H, H, H, H, H, H, H, H, H, H, H);
+shared_guard!(
+  share12, merge12, Share12, H, H, H, H, H, H, H, H, H, H, H, H
+);
+shared_guard!(
+  share13, merge13, Share13, H, H, H, H, H, H, H, H, H, H, H, H, H
+);
 shared_guard!(
   share14, merge14, Share14, H, H, H, H, H, H, H, H, H, H, H, H, H, H
 );

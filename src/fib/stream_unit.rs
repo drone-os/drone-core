@@ -6,7 +6,7 @@ use crate::{
 use core::{
   convert::identity,
   pin::Pin,
-  task::{LocalWaker, Poll},
+  task::{Poll, Waker},
 };
 use futures::Stream;
 
@@ -44,10 +44,10 @@ impl Stream for FiberStreamUnit {
   #[inline]
   fn poll_next(
     self: Pin<&mut Self>,
-    lw: &LocalWaker,
+    waker: &Waker,
   ) -> Poll<Option<Self::Item>> {
     let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
-    rx.poll_next(lw).map(|value| {
+    rx.poll_next(waker).map(|value| {
       value.map(|value| match value {
         Ok(value) => value,
       })
@@ -61,10 +61,10 @@ impl<E> Stream for TryFiberStreamUnit<E> {
   #[inline]
   fn poll_next(
     self: Pin<&mut Self>,
-    lw: &LocalWaker,
+    waker: &Waker,
   ) -> Poll<Option<Self::Item>> {
     let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
-    rx.poll_next(lw)
+    rx.poll_next(waker)
   }
 }
 

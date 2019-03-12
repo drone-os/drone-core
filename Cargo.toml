@@ -28,5 +28,5 @@ futures-preview = { version = "0.3.0-alpha", default-features = false }
 failure = { version = "0.1", default-features = false, features = ["derive"] }
 
 [dev-dependencies]
-glob = "0.2"
+glob = "0.3"
 compiletest_rs = { version = "0.3", features = ["tmp"] }

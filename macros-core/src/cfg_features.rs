@@ -107,7 +107,7 @@ impl CfgFeatures {
     match self
       .features
       .iter()
-      .map(|x| x.as_slice())
+      .map(Vec::as_slice)
       .collect::<Vec<_>>()
       .as_slice()
     {

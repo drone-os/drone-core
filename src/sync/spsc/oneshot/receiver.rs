@@ -6,7 +6,7 @@ use core::{
   future::Future,
   pin::Pin,
   sync::atomic::Ordering::*,
-  task::{LocalWaker, Poll},
+  task::{Poll, Waker},
 };
 use failure::{Backtrace, Fail};
 
@@ -42,8 +42,8 @@ impl<T, E> Future for Receiver<T, E> {
   type Output = Result<T, RecvError<E>>;
 
   #[inline]
-  fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
-    self.inner.recv(lw)
+  fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
+    self.inner.recv(waker)
   }
 }
 
@@ -55,7 +55,7 @@ impl<T, E> Drop for Receiver<T, E> {
 }
 
 impl<T, E> Inner<T, E> {
-  fn recv(&self, lw: &LocalWaker) -> Poll<Result<T, RecvError<E>>> {
+  fn recv(&self, waker: &Waker) -> Poll<Result<T, RecvError<E>>> {
     self
       .update(self.state_load(Acquire), Acquire, Acquire, |state| {
         if *state & (COMPLETE | RX_LOCK) == 0 {
@@ -66,7 +66,7 @@ impl<T, E> Inner<T, E> {
         }
       })
       .and_then(|state| {
-        unsafe { *self.rx_waker.get() = Some(lw.clone().into_waker()) };
+        unsafe { *self.rx_waker.get() = Some(waker.clone()) };
         self.update(state, AcqRel, Relaxed, |state| {
           *state ^= RX_LOCK;
           Ok(*state)

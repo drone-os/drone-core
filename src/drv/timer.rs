@@ -3,7 +3,7 @@
 use core::{
   future::Future,
   pin::Pin,
-  task::{LocalWaker, Poll},
+  task::{Poll, Waker},
 };
 use failure::Fail;
 use futures::stream::Stream;
@@ -68,8 +68,8 @@ impl<'a, T: TimerStop> Future for TimerSleep<'a, T> {
   type Output = ();
 
   #[inline]
-  fn poll(mut self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<()> {
-    self.future.as_mut().poll(lw)
+  fn poll(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<()> {
+    self.future.as_mut().poll(waker)
   }
 }
 
@@ -100,8 +100,8 @@ impl<'a, T: TimerStop, I> Stream for TimerInterval<'a, T, I> {
   type Item = I;
 
   #[inline]
-  fn poll_next(mut self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Option<I>> {
-    self.stream.as_mut().poll_next(lw)
+  fn poll_next(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Option<I>> {
+    self.stream.as_mut().poll_next(waker)
   }
 }
 

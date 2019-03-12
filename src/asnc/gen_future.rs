@@ -4,7 +4,7 @@ use core::{
   marker::Unpin,
   ops::{Generator, GeneratorState},
   pin::Pin,
-  task::{LocalWaker, Poll},
+  task::{Poll, Waker},
 };
 
 /// Wrap a future in a generator.
@@ -23,9 +23,9 @@ impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
   type Output = T::Return;
 
   #[inline]
-  fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
+  fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
     let gen = unsafe { self.map_unchecked_mut(|x| &mut x.0) };
-    current_task().set_waker(lw, || match gen.resume() {
+    current_task().set_waker(waker, || match gen.resume() {
       GeneratorState::Yielded(()) => Poll::Pending,
       GeneratorState::Complete(x) => Poll::Ready(x),
     })

@@ -4,7 +4,7 @@ use core::{
   convert::identity,
   ops::{BitAnd, BitOr, BitOrAssign, BitXorAssign},
   sync::atomic::Ordering::{self, *},
-  task::{LocalWaker, Poll, Waker},
+  task::{Poll, Waker},
 };
 
 pub mod oneshot;
@@ -71,7 +71,7 @@ where
     self.state_load(Relaxed) & Self::COMPLETE != Self::ZERO
   }
 
-  fn poll_cancel(&self, lw: &LocalWaker) -> Poll<()> {
+  fn poll_cancel(&self, waker: &Waker) -> Poll<()> {
     self
       .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {
         if *state & (Self::COMPLETE | Self::TX_LOCK) == Self::ZERO {
@@ -82,7 +82,7 @@ where
         }
       })
       .and_then(|state| {
-        unsafe { *self.tx_waker_mut() = Some(lw.clone().into_waker()) };
+        unsafe { *self.tx_waker_mut() = Some(waker.clone()) };
         self.update(state, Release, Relaxed, |state| {
           *state ^= Self::TX_LOCK;
           Ok(*state)
