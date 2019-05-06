@@ -7,7 +7,7 @@ use core::{
   pin::Pin,
   ptr,
   sync::atomic::Ordering::*,
-  task::{Poll, Waker},
+  task::{Context, Poll, Waker},
 };
 use failure::{Backtrace, Fail};
 
@@ -80,8 +80,8 @@ impl<T, E> Sender<T, E> {
   /// [`Receiver`]: super::Receiver
   /// [`is_canceled`]: Sender::is_canceled
   #[inline]
-  pub fn poll_cancel(self: Pin<&mut Self>, waker: &Waker) -> Poll<()> {
-    self.inner.poll_cancel(waker)
+  pub fn poll_cancel(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+    self.inner.poll_cancel(cx)
   }
 
   /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has gone
@@ -175,12 +175,10 @@ impl<T, E> Inner<T, E> {
       })
       .map(|state| {
         state.map(|state| {
-          unsafe {
-            (*self.rx_waker.get()).as_ref().map(Waker::wake);
-          }
+          unsafe { (&*self.rx_waker.get()).as_ref().map(Waker::wake_by_ref) };
           self.update(state, Release, Relaxed, |state| {
             *state ^= RX_LOCK;
-            Ok::<(), ()>(())
+            Ok::<(), !>(())
           })
         });
       })

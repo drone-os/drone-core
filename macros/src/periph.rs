@@ -126,7 +126,7 @@ impl Parse for Field {
   }
 }
 
-#[allow(clippy::cyclomatic_complexity)]
+#[allow(clippy::cognitive_complexity)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
   let Periph {
     attrs: periph_attrs,

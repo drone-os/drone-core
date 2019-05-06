@@ -6,7 +6,7 @@ use crate::{
 use core::{
   convert::identity,
   pin::Pin,
-  task::{Poll, Waker},
+  task::{Context, Poll},
 };
 use futures::Stream;
 
@@ -44,10 +44,10 @@ impl<I> Stream for FiberStreamRing<I> {
   #[inline]
   fn poll_next(
     self: Pin<&mut Self>,
-    waker: &Waker,
+    cx: &mut Context<'_>,
   ) -> Poll<Option<Self::Item>> {
     let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
-    rx.poll_next(waker).map(|value| {
+    rx.poll_next(cx).map(|value| {
       value.map(|value| match value {
         Ok(value) => value,
       })
@@ -61,10 +61,10 @@ impl<I, E> Stream for TryFiberStreamRing<I, E> {
   #[inline]
   fn poll_next(
     self: Pin<&mut Self>,
-    waker: &Waker,
+    cx: &mut Context<'_>,
   ) -> Poll<Option<Self::Item>> {
     let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
-    rx.poll_next(waker)
+    rx.poll_next(cx)
   }
 }
 
@@ -161,41 +161,43 @@ where
   C: Send + 'static,
 {
   let (rx, mut tx) = channel(capacity);
-  thr.add(move || loop {
-    if tx.is_canceled() {
-      break;
-    }
-    match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-      FiberState::Yielded(None) => {}
-      FiberState::Yielded(Some(value)) => match tx.send(value) {
-        Ok(()) => {}
-        Err(SendError { value, kind }) => match kind {
-          SendErrorKind::Canceled => {
-            break;
-          }
-          SendErrorKind::Overflow => match overflow(value) {
-            Ok(()) => {}
-            Err(err) => {
-              tx.send_err(err).ok();
-              break;
-            }
-          },
-        },
-      },
-      FiberState::Complete(value) => {
-        match convert(value) {
-          Ok(None) => {}
-          Ok(Some(value)) => {
-            tx.send(value).ok();
-          }
-          Err(err) => {
-            tx.send_err(err).ok();
-          }
-        }
+  thr.add(move || {
+    loop {
+      if tx.is_canceled() {
         break;
       }
+      match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+        FiberState::Yielded(None) => {}
+        FiberState::Yielded(Some(value)) => match tx.send(value) {
+          Ok(()) => {}
+          Err(SendError { value, kind }) => match kind {
+            SendErrorKind::Canceled => {
+              break;
+            }
+            SendErrorKind::Overflow => match overflow(value) {
+              Ok(()) => {}
+              Err(err) => {
+                tx.send_err(err).ok();
+                break;
+              }
+            },
+          },
+        },
+        FiberState::Complete(value) => {
+          match convert(value) {
+            Ok(None) => {}
+            Ok(Some(value)) => {
+              tx.send(value).ok();
+            }
+            Err(err) => {
+              tx.send_err(err).ok();
+            }
+          }
+          break;
+        }
+      }
+      yield;
     }
-    yield;
   });
   rx
 }
@@ -218,30 +220,32 @@ where
   C: Send + 'static,
 {
   let (rx, mut tx) = channel(capacity);
-  thr.add(move || loop {
-    if tx.is_canceled() {
-      break;
-    }
-    match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-      FiberState::Yielded(None) => {}
-      FiberState::Yielded(Some(value)) => match tx.send_overwrite(value) {
-        Ok(()) => (),
-        Err(_) => break,
-      },
-      FiberState::Complete(value) => {
-        match convert(value) {
-          Ok(None) => {}
-          Ok(Some(value)) => {
-            tx.send_overwrite(value).ok();
-          }
-          Err(err) => {
-            tx.send_err(err).ok();
-          }
-        }
+  thr.add(move || {
+    loop {
+      if tx.is_canceled() {
         break;
       }
+      match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+        FiberState::Yielded(None) => {}
+        FiberState::Yielded(Some(value)) => match tx.send_overwrite(value) {
+          Ok(()) => (),
+          Err(_) => break,
+        },
+        FiberState::Complete(value) => {
+          match convert(value) {
+            Ok(None) => {}
+            Ok(Some(value)) => {
+              tx.send_overwrite(value).ok();
+            }
+            Err(err) => {
+              tx.send_err(err).ok();
+            }
+          }
+          break;
+        }
+      }
+      yield;
     }
-    yield;
   });
   rx
 }

@@ -64,7 +64,7 @@ impl Parse for PeriphMap {
     input.parse::<Token![struct]>()?;
     let struct_ident = input.parse()?;
     input.parse::<Token![;]>()?;
-    input.parse::<Token![impl ]>()?;
+    input.parse::<Token![impl]>()?;
     let trait_ident = input.parse()?;
     input.parse::<Token![for]>()?;
     let ident = input.parse::<Ident>()?;
@@ -181,7 +181,7 @@ impl Parse for Field {
   }
 }
 
-#[allow(clippy::cyclomatic_complexity)]
+#[allow(clippy::cognitive_complexity)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
   let PeriphMap {
     macro_attrs: periph_macro_attrs,

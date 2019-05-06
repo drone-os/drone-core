@@ -2,9 +2,10 @@ use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK, RX_LOCK};
 use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
 use core::{
+  num::NonZeroUsize,
   pin::Pin,
   sync::atomic::Ordering::*,
-  task::{Poll, Waker},
+  task::{Context, Poll},
 };
 use futures::stream::Stream;
 
@@ -26,6 +27,14 @@ impl<E> Receiver<E> {
   pub fn close(&mut self) {
     self.inner.close_rx()
   }
+
+  /// Polls this [`Receiver`] half for all values at once.
+  pub fn poll_all(
+    self: Pin<&mut Self>,
+    cx: &mut Context<'_>,
+  ) -> Poll<Option<Result<NonZeroUsize, E>>> {
+    self.inner.recv(cx, Inner::<E>::take_all)
+  }
 }
 
 impl<E> Stream for Receiver<E> {
@@ -34,9 +43,9 @@ impl<E> Stream for Receiver<E> {
   #[inline]
   fn poll_next(
     self: Pin<&mut Self>,
-    waker: &Waker,
+    cx: &mut Context<'_>,
   ) -> Poll<Option<Self::Item>> {
-    self.inner.recv(waker)
+    self.inner.recv(cx, Inner::<E>::take)
   }
 }
 
@@ -48,43 +57,49 @@ impl<E> Drop for Receiver<E> {
 }
 
 impl<E> Inner<E> {
-  fn recv(&self, waker: &Waker) -> Poll<Option<Result<(), E>>> {
-    let some_unit = || Ok(Poll::Ready(Some(Ok(()))));
+  fn recv<T>(
+    &self,
+    cx: &mut Context<'_>,
+    take: impl Fn(&mut usize) -> Option<T>,
+  ) -> Poll<Option<Result<T, E>>> {
+    let some_value = |value| Ok(Poll::Ready(Some(Ok(value))));
     self
       .update(self.state_load(Acquire), Acquire, Acquire, |state| {
-        if Self::take(state) {
-          Ok(None)
+        if let Some(value) = take(state) {
+          Ok(Ok(value))
         } else if *state & COMPLETE == 0 {
           *state |= RX_LOCK;
-          Ok(Some(*state))
+          Ok(Err(*state))
         } else {
           Err(())
         }
       })
       .and_then(|state| {
-        state.map_or_else(some_unit, |state| {
+        let no_value = |state| {
           unsafe {
-            (*self.rx_waker.get()).get_or_insert_with(|| waker.clone());
+            (*self.rx_waker.get()).get_or_insert_with(|| cx.waker().clone());
           }
           self
             .update(state, AcqRel, Relaxed, |state| {
               *state ^= RX_LOCK;
-              if Self::take(state) {
-                Ok(None)
+              if let Some(value) = take(state) {
+                Ok(Ok(value))
               } else {
-                Ok(Some(*state))
+                Ok(Err(*state))
               }
             })
             .and_then(|state| {
-              state.map_or_else(some_unit, |state| {
+              let no_value = |state| {
                 if state & COMPLETE == 0 {
                   Ok(Poll::Pending)
                 } else {
                   Err(())
                 }
-              })
+              };
+              state.map_or_else(no_value, some_value)
             })
-        })
+        };
+        state.map_or_else(no_value, some_value)
       })
       .unwrap_or_else(|()| {
         Poll::Ready(unsafe { &mut *self.err.get() }.take().map(Err))
@@ -92,17 +107,24 @@ impl<E> Inner<E> {
   }
 
   #[inline]
-  fn take(state: &mut usize) -> bool {
+  fn take(state: &mut usize) -> Option<()> {
     let lock = *state & LOCK_MASK;
     *state >>= LOCK_BITS;
     let took = if *state == 0 {
-      false
+      None
     } else {
       *state = state.wrapping_sub(1);
-      true
+      Some(())
     };
     *state <<= LOCK_BITS;
     *state |= lock;
     took
+  }
+
+  #[inline]
+  fn take_all(state: &mut usize) -> Option<NonZeroUsize> {
+    let value = *state >> LOCK_BITS;
+    *state &= LOCK_MASK;
+    NonZeroUsize::new(value)
   }
 }

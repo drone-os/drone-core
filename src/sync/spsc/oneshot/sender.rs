@@ -3,7 +3,7 @@ use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
 use core::{
   pin::Pin,
-  task::{Poll, Waker},
+  task::{Context, Poll},
 };
 
 /// The sending-half of [`oneshot::channel`](super::channel).
@@ -43,8 +43,8 @@ impl<T, E> Sender<T, E> {
   /// [`Receiver`]: super::Receiver
   /// [`is_canceled`]: Sender::is_canceled
   #[inline]
-  pub fn poll_cancel(self: Pin<&mut Self>, waker: &Waker) -> Poll<()> {
-    self.inner.poll_cancel(waker)
+  pub fn poll_cancel(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+    self.inner.poll_cancel(cx)
   }
 
   /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has gone

@@ -4,7 +4,7 @@ macro_rules! awt {
   ($expr:expr) => {{
     let mut pinned = $expr;
     loop {
-      match $crate::asnc::poll_with_task_waker(unsafe {
+      match $crate::asnc::poll_with_context(unsafe {
         $crate::asnc::__rt::Pin::new_unchecked(&mut pinned)
       }) {
         $crate::asnc::__rt::Poll::Ready(x) => break x,
@@ -19,9 +19,9 @@ macro_rules! awt {
 macro_rules! awt_next {
   ($expr:expr) => {
     loop {
-      match $crate::asnc::poll_next_with_task_waker(
-        $crate::asnc::__rt::Pin::new(&mut $expr),
-      ) {
+      match $crate::asnc::poll_next_with_context($crate::asnc::__rt::Pin::new(
+        &mut $expr,
+      )) {
         $crate::asnc::__rt::Poll::Ready(x) => break x,
         $crate::asnc::__rt::Poll::Pending => yield,
       }
@@ -36,7 +36,7 @@ macro_rules! awt_for {
     let mut pinned = $expr;
     loop {
       let $pat = {
-        match $crate::asnc::poll_next_with_task_waker(unsafe {
+        match $crate::asnc::poll_next_with_context(unsafe {
           $crate::asnc::__rt::Pin::new_unchecked(&mut pinned)
         }) {
           $crate::asnc::__rt::Poll::Ready(

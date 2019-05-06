@@ -8,7 +8,7 @@ use core::{
   future::Future,
   intrinsics::unreachable,
   pin::Pin,
-  task::{Poll, Waker},
+  task::{Context, Poll},
 };
 
 /// A future for a single value from another thread.
@@ -42,9 +42,9 @@ impl<R, E> TryFiberFuture<R, E> {
 impl<R> Future for FiberFuture<R> {
   type Output = R;
 
-  fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<R> {
+  fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<R> {
     let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
-    rx.poll(waker).map(|value| match value {
+    rx.poll(cx).map(|value| match value {
       Ok(value) => value,
       Err(RecvError::Canceled) => unsafe { unreachable() },
     })
@@ -54,9 +54,9 @@ impl<R> Future for FiberFuture<R> {
 impl<R, E> Future for TryFiberFuture<R, E> {
   type Output = Result<R, E>;
 
-  fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Result<R, E>> {
+  fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<R, E>> {
     let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
-    rx.poll(waker).map_err(|err| match err {
+    rx.poll(cx).map_err(|err| match err {
       RecvError::Complete(err) => err,
       RecvError::Canceled => unsafe { unreachable() },
     })
@@ -107,18 +107,20 @@ where
   C: Send + 'static,
 {
   let (rx, tx) = channel();
-  thr.add(move || loop {
-    if tx.is_canceled() {
-      break;
-    }
-    match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-      FiberState::Yielded(_) => {}
-      FiberState::Complete(complete) => {
-        tx.send(convert(complete)).ok();
+  thr.add(move || {
+    loop {
+      if tx.is_canceled() {
         break;
       }
+      match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+        FiberState::Yielded(_) => {}
+        FiberState::Complete(complete) => {
+          tx.send(convert(complete)).ok();
+          break;
+        }
+      }
+      yield;
     }
-    yield;
   });
   rx
 }

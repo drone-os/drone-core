@@ -28,9 +28,6 @@ const COMPLETE: usize = 1 << 2;
 const RX_LOCK: usize = 1 << 1;
 const TX_LOCK: usize = 1;
 
-// Layout of the state field:
-//     CCCC_LLLL
-// Where C is counter bits, and L is lock bits.
 struct Inner<E> {
   state: AtomicUsize,
   err: UnsafeCell<Option<E>>,
@@ -105,9 +102,10 @@ impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
 mod tests {
   use super::*;
   use core::{
+    num::NonZeroUsize,
     pin::Pin,
     sync::atomic::{AtomicUsize, Ordering::*},
-    task::{Poll, RawWaker, RawWakerVTable, Waker},
+    task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
   };
   use futures::stream::Stream;
 
@@ -121,12 +119,10 @@ mod tests {
       unsafe fn wake(counter: *const ()) {
         (*(counter as *const Counter)).0.fetch_add(1, Relaxed);
       }
-      static VTABLE: RawWakerVTable = RawWakerVTable { clone, wake, drop };
+      static VTABLE: RawWakerVTable =
+        RawWakerVTable::new(clone, wake, wake, drop);
       unsafe {
-        Waker::new_unchecked(RawWaker::new(
-          self as *const _ as *const (),
-          &VTABLE,
-        ))
+        Waker::from_raw(RawWaker::new(self as *const _ as *const (), &VTABLE))
       }
     }
   }
@@ -138,12 +134,12 @@ mod tests {
     assert_eq!(tx.send().unwrap(), ());
     drop(tx);
     let waker = COUNTER.to_waker();
-    COUNTER.0.store(0, Ordering::Relaxed);
+    let mut cx = Context::from_waker(&waker);
     assert_eq!(
-      Pin::new(&mut rx).poll_next(&waker),
+      Pin::new(&mut rx).poll_next(&mut cx),
       Poll::Ready(Some(Ok(())))
     );
-    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Ready(None));
+    assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
     assert_eq!(COUNTER.0.load(Ordering::Relaxed), 0);
   }
 
@@ -152,16 +148,16 @@ mod tests {
     static COUNTER: Counter = Counter(AtomicUsize::new(0));
     let (mut rx, mut tx) = channel::<()>();
     let waker = COUNTER.to_waker();
-    COUNTER.0.store(0, Ordering::Relaxed);
-    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Pending);
+    let mut cx = Context::from_waker(&waker);
+    assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
     assert_eq!(tx.send().unwrap(), ());
     assert_eq!(
-      Pin::new(&mut rx).poll_next(&waker),
+      Pin::new(&mut rx).poll_next(&mut cx),
       Poll::Ready(Some(Ok(())))
     );
-    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Pending);
+    assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
     drop(tx);
-    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Ready(None));
+    assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
     assert_eq!(COUNTER.0.load(Ordering::Relaxed), 2);
   }
 
@@ -171,12 +167,32 @@ mod tests {
     let (mut rx, tx) = channel::<()>();
     assert_eq!(tx.send_err(()).unwrap(), ());
     let waker = COUNTER.to_waker();
-    COUNTER.0.store(0, Ordering::Relaxed);
+    let mut cx = Context::from_waker(&waker);
     assert_eq!(
-      Pin::new(&mut rx).poll_next(&waker),
+      Pin::new(&mut rx).poll_next(&mut cx),
       Poll::Ready(Some(Err(())))
     );
-    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Ready(None));
+    assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
     assert_eq!(COUNTER.0.load(Ordering::Relaxed), 0);
+  }
+
+  #[test]
+  fn recv_all() {
+    static COUNTER: Counter = Counter(AtomicUsize::new(0));
+    let (mut rx, mut tx) = channel::<()>();
+    let waker = COUNTER.to_waker();
+    let mut cx = Context::from_waker(&waker);
+    assert_eq!(Pin::new(&mut rx).poll_all(&mut cx), Poll::Pending);
+    assert_eq!(tx.send().unwrap(), ());
+    assert_eq!(tx.send().unwrap(), ());
+    assert_eq!(tx.send().unwrap(), ());
+    assert_eq!(
+      Pin::new(&mut rx).poll_all(&mut cx),
+      Poll::Ready(Some(Ok(NonZeroUsize::new(3).unwrap())))
+    );
+    assert_eq!(Pin::new(&mut rx).poll_all(&mut cx), Poll::Pending);
+    drop(tx);
+    assert_eq!(Pin::new(&mut rx).poll_all(&mut cx), Poll::Ready(None));
+    assert_eq!(COUNTER.0.load(Ordering::Relaxed), 4);
   }
 }

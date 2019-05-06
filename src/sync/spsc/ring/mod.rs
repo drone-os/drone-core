@@ -146,7 +146,7 @@ mod tests {
   use core::{
     pin::Pin,
     sync::atomic::{AtomicUsize, Ordering::*},
-    task::{Poll, RawWaker, RawWakerVTable, Waker},
+    task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
   };
   use futures::stream::Stream;
 
@@ -160,12 +160,10 @@ mod tests {
       unsafe fn wake(counter: *const ()) {
         (*(counter as *const Counter)).0.fetch_add(1, Relaxed);
       }
-      static VTABLE: RawWakerVTable = RawWakerVTable { clone, wake, drop };
+      static VTABLE: RawWakerVTable =
+        RawWakerVTable::new(clone, wake, wake, drop);
       unsafe {
-        Waker::new_unchecked(RawWaker::new(
-          self as *const _ as *const (),
-          &VTABLE,
-        ))
+        Waker::from_raw(RawWaker::new(self as *const _ as *const (), &VTABLE))
       }
     }
   }
@@ -177,12 +175,13 @@ mod tests {
     assert_eq!(tx.send(314).unwrap(), ());
     drop(tx);
     let waker = COUNTER.to_waker();
+    let mut cx = Context::from_waker(&waker);
     COUNTER.0.store(0, Ordering::Relaxed);
     assert_eq!(
-      Pin::new(&mut rx).poll_next(&waker),
+      Pin::new(&mut rx).poll_next(&mut cx),
       Poll::Ready(Some(Ok(314)))
     );
-    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Ready(None));
+    assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
     assert_eq!(COUNTER.0.load(Ordering::Relaxed), 0);
   }
 
@@ -191,16 +190,17 @@ mod tests {
     static COUNTER: Counter = Counter(AtomicUsize::new(0));
     let (mut rx, mut tx) = channel::<usize, ()>(10);
     let waker = COUNTER.to_waker();
+    let mut cx = Context::from_waker(&waker);
     COUNTER.0.store(0, Ordering::Relaxed);
-    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Pending);
+    assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
     assert_eq!(tx.send(314).unwrap(), ());
     assert_eq!(
-      Pin::new(&mut rx).poll_next(&waker),
+      Pin::new(&mut rx).poll_next(&mut cx),
       Poll::Ready(Some(Ok(314)))
     );
-    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Pending);
+    assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
     drop(tx);
-    assert_eq!(Pin::new(&mut rx).poll_next(&waker), Poll::Ready(None));
+    assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
     assert_eq!(COUNTER.0.load(Ordering::Relaxed), 2);
   }
 }

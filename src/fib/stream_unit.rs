@@ -6,7 +6,7 @@ use crate::{
 use core::{
   convert::identity,
   pin::Pin,
-  task::{Poll, Waker},
+  task::{Context, Poll},
 };
 use futures::Stream;
 
@@ -44,10 +44,10 @@ impl Stream for FiberStreamUnit {
   #[inline]
   fn poll_next(
     self: Pin<&mut Self>,
-    waker: &Waker,
+    cx: &mut Context<'_>,
   ) -> Poll<Option<Self::Item>> {
     let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
-    rx.poll_next(waker).map(|value| {
+    rx.poll_next(cx).map(|value| {
       value.map(|value| match value {
         Ok(value) => value,
       })
@@ -61,10 +61,10 @@ impl<E> Stream for TryFiberStreamUnit<E> {
   #[inline]
   fn poll_next(
     self: Pin<&mut Self>,
-    waker: &Waker,
+    cx: &mut Context<'_>,
   ) -> Poll<Option<Self::Item>> {
     let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
-    rx.poll_next(waker)
+    rx.poll_next(cx)
   }
 }
 
@@ -115,39 +115,41 @@ where
   C: Send + 'static,
 {
   let (rx, mut tx) = channel();
-  thr.add(move || loop {
-    if tx.is_canceled() {
-      break;
-    }
-    match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-      FiberState::Yielded(None) => {}
-      FiberState::Yielded(Some(())) => match tx.send() {
-        Ok(()) => {}
-        Err(SendError::Canceled) => {
-          break;
-        }
-        Err(SendError::Overflow) => match overflow() {
-          Ok(()) => {}
-          Err(err) => {
-            tx.send_err(err).ok();
-            break;
-          }
-        },
-      },
-      FiberState::Complete(value) => {
-        match convert(value) {
-          Ok(None) => {}
-          Ok(Some(())) => {
-            tx.send().ok();
-          }
-          Err(err) => {
-            tx.send_err(err).ok();
-          }
-        }
+  thr.add(move || {
+    loop {
+      if tx.is_canceled() {
         break;
       }
+      match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+        FiberState::Yielded(None) => {}
+        FiberState::Yielded(Some(())) => match tx.send() {
+          Ok(()) => {}
+          Err(SendError::Canceled) => {
+            break;
+          }
+          Err(SendError::Overflow) => match overflow() {
+            Ok(()) => {}
+            Err(err) => {
+              tx.send_err(err).ok();
+              break;
+            }
+          },
+        },
+        FiberState::Complete(value) => {
+          match convert(value) {
+            Ok(None) => {}
+            Ok(Some(())) => {
+              tx.send().ok();
+            }
+            Err(err) => {
+              tx.send_err(err).ok();
+            }
+          }
+          break;
+        }
+      }
+      yield;
     }
-    yield;
   });
   rx
 }

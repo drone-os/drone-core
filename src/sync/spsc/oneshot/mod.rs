@@ -99,7 +99,7 @@ mod tests {
     future::Future,
     pin::Pin,
     sync::atomic::{AtomicUsize, Ordering::*},
-    task::{Poll, RawWaker, RawWakerVTable, Waker},
+    task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
   };
 
   struct Counter(AtomicUsize);
@@ -112,12 +112,10 @@ mod tests {
       unsafe fn wake(counter: *const ()) {
         (*(counter as *const Counter)).0.fetch_add(1, Relaxed);
       }
-      static VTABLE: RawWakerVTable = RawWakerVTable { clone, wake, drop };
+      static VTABLE: RawWakerVTable =
+        RawWakerVTable::new(clone, wake, wake, drop);
       unsafe {
-        Waker::new_unchecked(RawWaker::new(
-          self as *const _ as *const (),
-          &VTABLE,
-        ))
+        Waker::from_raw(RawWaker::new(self as *const _ as *const (), &VTABLE))
       }
     }
   }
@@ -128,8 +126,9 @@ mod tests {
     let (mut rx, tx) = channel::<usize, ()>();
     assert_eq!(tx.send(Ok(314)), Ok(()));
     let waker = COUNTER.to_waker();
+    let mut cx = Context::from_waker(&waker);
     COUNTER.0.store(0, Ordering::Relaxed);
-    assert_eq!(Pin::new(&mut rx).poll(&waker), Poll::Ready(Ok(314)));
+    assert_eq!(Pin::new(&mut rx).poll(&mut cx), Poll::Ready(Ok(314)));
     assert_eq!(COUNTER.0.load(Ordering::Relaxed), 0);
   }
 
@@ -138,10 +137,11 @@ mod tests {
     static COUNTER: Counter = Counter(AtomicUsize::new(0));
     let (mut rx, tx) = channel::<usize, ()>();
     let waker = COUNTER.to_waker();
+    let mut cx = Context::from_waker(&waker);
     COUNTER.0.store(0, Ordering::Relaxed);
-    assert_eq!(Pin::new(&mut rx).poll(&waker), Poll::Pending);
+    assert_eq!(Pin::new(&mut rx).poll(&mut cx), Poll::Pending);
     assert_eq!(tx.send(Ok(314)), Ok(()));
-    assert_eq!(Pin::new(&mut rx).poll(&waker), Poll::Ready(Ok(314)));
+    assert_eq!(Pin::new(&mut rx).poll(&mut cx), Poll::Ready(Ok(314)));
     assert_eq!(COUNTER.0.load(Ordering::Relaxed), 1);
   }
 }

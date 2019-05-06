@@ -48,13 +48,15 @@ pub trait StackLoopSess: Send {
     >,
   > {
     let mut input = In { cmd };
-    Box::pin(asnc(move || loop {
-      let FiberState::Yielded(output) = self.fib().resume(input);
-      input = match output {
-        Out::Req(req) => In {
-          req_res: awt!(self.run_req(req))?,
-        },
-        Out::CmdRes(res) => break Ok(res),
+    Box::pin(asnc(move || {
+      loop {
+        let FiberState::Yielded(output) = self.fib().resume(input);
+        input = match output {
+          Out::Req(req) => In {
+            req_res: awt!(self.run_req(req))?,
+          },
+          Out::CmdRes(res) => break Ok(res),
+        }
       }
     }))
   }

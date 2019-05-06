@@ -22,7 +22,6 @@
 //! [cargo-drone]: https://github.com/drone-os/cargo-drone
 //! [xargo]: https://github.com/japaric/xargo
 
-#![feature(alloc)]
 #![feature(allocator_api)]
 #![feature(associated_type_defaults)]
 #![feature(const_fn)]
