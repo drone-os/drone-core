@@ -1,12 +1,14 @@
-use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK, RX_LOCK};
-use crate::sync::spsc::SpscInner;
+use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK, RX_WAKER_STORED};
+use crate::sync::spsc::{SpscInner, SpscInnerErr};
 use alloc::sync::Arc;
 use core::{
   pin::Pin,
-  sync::atomic::Ordering::*,
-  task::{Context, Poll, Waker},
+  sync::atomic::Ordering,
+  task::{Context, Poll},
 };
 use failure::Fail;
+
+const IS_TX_HALF: bool = true;
 
 /// The sending-half of [`unit::channel`](super::channel).
 pub struct Sender<E> {
@@ -63,7 +65,13 @@ impl<E> Sender<E> {
   /// [`is_canceled`]: Sender::is_canceled
   #[inline]
   pub fn poll_cancel(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-    self.inner.poll_cancel(cx)
+    self.inner.poll_half(
+      cx,
+      IS_TX_HALF,
+      Ordering::Relaxed,
+      Ordering::Release,
+      Inner::take_cancel,
+    )
   }
 
   /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has gone
@@ -73,61 +81,39 @@ impl<E> Sender<E> {
   /// [`Receiver`]: super::Receiver
   #[inline]
   pub fn is_canceled(&self) -> bool {
-    self.inner.is_canceled()
+    self.inner.is_canceled(Ordering::Relaxed)
   }
 }
 
 impl<E> Drop for Sender<E> {
   #[inline]
   fn drop(&mut self) {
-    self.inner.drop_tx();
+    self.inner.close_half(IS_TX_HALF);
   }
 }
 
 impl<E> Inner<E> {
   fn send(&self) -> Result<(), SendError> {
+    let state = self.state_load(Ordering::Acquire);
     self
-      .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {
-        let mut lock = *state & LOCK_MASK;
-        if lock & COMPLETE != 0 {
+      .transaction(state, Ordering::Acquire, Ordering::Acquire, |state| {
+        if *state & COMPLETE != 0 {
           return Err(SendError::Canceled);
         }
+        let lock = *state & LOCK_MASK;
         *state = (*state as isize >> LOCK_BITS) as usize;
         *state = state.wrapping_add(1);
         if *state == 0 {
           return Err(SendError::Overflow);
         }
-        let rx_locked = if lock & RX_LOCK == 0 {
-          lock |= RX_LOCK;
-          true
-        } else {
-          false
-        };
         *state <<= LOCK_BITS;
         *state |= lock;
-        if rx_locked {
-          Ok(Some(*state))
-        } else {
-          Ok(None)
-        }
+        Ok(*state)
       })
       .map(|state| {
-        state.map(|state| {
-          unsafe { (&*self.rx_waker.get()).as_ref().map(Waker::wake_by_ref) };
-          self.update(state, Release, Relaxed, |state| {
-            *state ^= RX_LOCK;
-            Ok::<(), !>(())
-          })
-        });
+        if state & RX_WAKER_STORED != 0 {
+          unsafe { (*self.rx_waker.get()).get_ref().wake_by_ref() };
+        }
       })
-  }
-
-  fn send_err(&self, err: E) -> Result<(), E> {
-    if self.is_canceled() {
-      Err(err)
-    } else {
-      unsafe { *self.err.get() = Some(err) };
-      Ok(())
-    }
   }
 }

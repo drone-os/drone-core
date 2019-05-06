@@ -1,13 +1,15 @@
-use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK, RX_LOCK};
-use crate::sync::spsc::SpscInner;
+use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK};
+use crate::sync::spsc::{SpscInner, SpscInnerErr};
 use alloc::sync::Arc;
 use core::{
   num::NonZeroUsize,
   pin::Pin,
-  sync::atomic::Ordering::*,
+  sync::atomic::Ordering,
   task::{Context, Poll},
 };
 use futures::stream::Stream;
+
+const IS_TX_HALF: bool = false;
 
 /// The receiving-half of [`unit::channel`](super::channel).
 #[must_use]
@@ -25,7 +27,7 @@ impl<E> Receiver<E> {
   /// messages.
   #[inline]
   pub fn close(&mut self) {
-    self.inner.close_rx()
+    self.inner.close_half(IS_TX_HALF)
   }
 
   /// Polls this [`Receiver`] half for all values at once.
@@ -33,7 +35,14 @@ impl<E> Receiver<E> {
     self: Pin<&mut Self>,
     cx: &mut Context<'_>,
   ) -> Poll<Option<Result<NonZeroUsize, E>>> {
-    self.inner.recv(cx, Inner::<E>::take_all)
+    self.inner.poll_half_with_transaction(
+      cx,
+      IS_TX_HALF,
+      Ordering::Acquire,
+      Ordering::AcqRel,
+      Inner::<E>::take_all_try,
+      Inner::take_finalize,
+    )
   }
 }
 
@@ -45,86 +54,60 @@ impl<E> Stream for Receiver<E> {
     self: Pin<&mut Self>,
     cx: &mut Context<'_>,
   ) -> Poll<Option<Self::Item>> {
-    self.inner.recv(cx, Inner::<E>::take)
+    self.inner.poll_half_with_transaction(
+      cx,
+      IS_TX_HALF,
+      Ordering::Acquire,
+      Ordering::AcqRel,
+      Inner::<E>::take_try,
+      Inner::take_finalize,
+    )
   }
 }
 
 impl<E> Drop for Receiver<E> {
   #[inline]
   fn drop(&mut self) {
-    self.inner.drop_rx();
+    self.inner.close_half(IS_TX_HALF);
   }
 }
 
 impl<E> Inner<E> {
-  fn recv<T>(
-    &self,
-    cx: &mut Context<'_>,
-    take: impl Fn(&mut usize) -> Option<T>,
-  ) -> Poll<Option<Result<T, E>>> {
-    let some_value = |value| Ok(Poll::Ready(Some(Ok(value))));
-    self
-      .update(self.state_load(Acquire), Acquire, Acquire, |state| {
-        if let Some(value) = take(state) {
-          Ok(Ok(value))
-        } else if *state & COMPLETE == 0 {
-          *state |= RX_LOCK;
-          Ok(Err(*state))
-        } else {
-          Err(())
-        }
-      })
-      .and_then(|state| {
-        let no_value = |state| {
-          unsafe {
-            (*self.rx_waker.get()).get_or_insert_with(|| cx.waker().clone());
-          }
-          self
-            .update(state, AcqRel, Relaxed, |state| {
-              *state ^= RX_LOCK;
-              if let Some(value) = take(state) {
-                Ok(Ok(value))
-              } else {
-                Ok(Err(*state))
-              }
-            })
-            .and_then(|state| {
-              let no_value = |state| {
-                if state & COMPLETE == 0 {
-                  Ok(Poll::Pending)
-                } else {
-                  Err(())
-                }
-              };
-              state.map_or_else(no_value, some_value)
-            })
-        };
-        state.map_or_else(no_value, some_value)
-      })
-      .unwrap_or_else(|()| {
-        Poll::Ready(unsafe { &mut *self.err.get() }.take().map(Err))
-      })
-  }
-
-  #[inline]
-  fn take(state: &mut usize) -> Option<()> {
+  fn take_try(&self, state: &mut usize) -> Option<Result<(), ()>> {
     let lock = *state & LOCK_MASK;
     *state >>= LOCK_BITS;
-    let took = if *state == 0 {
+    let took = if *state != 0 {
+      *state = state.wrapping_sub(1);
+      Some(Ok(()))
+    } else if lock & COMPLETE == 0 {
       None
     } else {
-      *state = state.wrapping_sub(1);
-      Some(())
+      Some(Err(()))
     };
     *state <<= LOCK_BITS;
     *state |= lock;
     took
   }
 
-  #[inline]
-  fn take_all(state: &mut usize) -> Option<NonZeroUsize> {
+  fn take_all_try(
+    &self,
+    state: &mut usize,
+  ) -> Option<Result<NonZeroUsize, ()>> {
     let value = *state >> LOCK_BITS;
     *state &= LOCK_MASK;
-    NonZeroUsize::new(value)
+    if let Some(value) = NonZeroUsize::new(value) {
+      Some(Ok(value))
+    } else if *state & COMPLETE == 0 {
+      None
+    } else {
+      Some(Err(()))
+    }
+  }
+
+  fn take_finalize<T>(&self, value: Result<T, ()>) -> Option<Result<T, E>> {
+    match value {
+      Ok(value) => Some(Ok(value)),
+      Err(()) => self.take_err(),
+    }
   }
 }

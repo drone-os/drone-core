@@ -1,14 +1,16 @@
-use super::{Inner, COMPLETE, RX_LOCK};
+use super::{Inner, COMPLETE};
 use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
 use core::{
   fmt,
   future::Future,
   pin::Pin,
-  sync::atomic::Ordering::*,
+  sync::atomic::Ordering,
   task::{Context, Poll},
 };
 use failure::{Backtrace, Fail};
+
+const IS_TX_HALF: bool = false;
 
 /// The receiving-half of [`oneshot::channel`](super::channel).
 #[must_use]
@@ -34,7 +36,7 @@ impl<T, E> Receiver<T, E> {
   /// Gracefully close this `Receiver`, preventing sending any future messages.
   #[inline]
   pub fn close(&mut self) {
-    self.inner.close_rx()
+    self.inner.close_half(IS_TX_HALF)
   }
 }
 
@@ -43,48 +45,33 @@ impl<T, E> Future for Receiver<T, E> {
 
   #[inline]
   fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-    self.inner.recv(cx)
+    self.inner.poll_half(
+      cx,
+      IS_TX_HALF,
+      Ordering::Acquire,
+      Ordering::AcqRel,
+      Inner::take,
+    )
   }
 }
 
 impl<T, E> Drop for Receiver<T, E> {
   #[inline]
   fn drop(&mut self) {
-    self.inner.drop_rx();
+    self.inner.close_half(IS_TX_HALF);
   }
 }
 
 impl<T, E> Inner<T, E> {
-  fn recv(&self, cx: &mut Context<'_>) -> Poll<Result<T, RecvError<E>>> {
-    self
-      .update(self.state_load(Acquire), Acquire, Acquire, |state| {
-        if *state & (COMPLETE | RX_LOCK) == 0 {
-          *state |= RX_LOCK;
-          Ok(*state)
-        } else {
-          Err(())
-        }
-      })
-      .and_then(|state| {
-        unsafe { *self.rx_waker.get() = Some(cx.waker().clone()) };
-        self.update(state, AcqRel, Relaxed, |state| {
-          *state ^= RX_LOCK;
-          Ok(*state)
-        })
-      })
-      .and_then(|state| {
-        if state & COMPLETE == 0 {
-          Ok(Poll::Pending)
-        } else {
-          Err(())
-        }
-      })
-      .unwrap_or_else(|()| {
-        Poll::Ready(unsafe { &mut *self.data.get() }.take().map_or_else(
-          || Err(RecvError::Canceled),
-          |x| x.map_err(RecvError::Complete),
-        ))
-      })
+  fn take(&self, state: u8) -> Poll<Result<T, RecvError<E>>> {
+    if state & COMPLETE == 0 {
+      Poll::Pending
+    } else {
+      Poll::Ready(unsafe { &mut *self.data.get() }.take().map_or_else(
+        || Err(RecvError::Canceled),
+        |value| value.map_err(RecvError::Complete),
+      ))
+    }
   }
 }
 

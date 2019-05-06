@@ -1,9 +1,9 @@
 //! Single-producer, single-consumer queues.
 
 use core::{
-  convert::identity,
+  mem::MaybeUninit,
   ops::{BitAnd, BitOr, BitOrAssign, BitXorAssign},
-  sync::atomic::Ordering::{self, *},
+  sync::atomic::Ordering,
   task::{Context, Poll, Waker},
 };
 
@@ -21,13 +21,13 @@ where
     + BitXorAssign,
 {
   const ZERO: I;
-  const RX_LOCK: I;
-  const TX_LOCK: I;
+  const RX_WAKER_STORED: I;
+  const TX_WAKER_STORED: I;
   const COMPLETE: I;
 
   fn state_load(&self, order: Ordering) -> I;
 
-  fn state_exchange(
+  fn compare_exchange_weak(
     &self,
     current: I,
     new: I,
@@ -36,141 +36,201 @@ where
   ) -> Result<I, I>;
 
   #[allow(clippy::mut_from_ref)]
-  unsafe fn rx_waker_mut(&self) -> &mut Option<Waker>;
+  unsafe fn rx_waker_mut(&self) -> &mut MaybeUninit<Waker>;
 
   #[allow(clippy::mut_from_ref)]
-  unsafe fn tx_waker_mut(&self) -> &mut Option<Waker>;
+  unsafe fn tx_waker_mut(&self) -> &mut MaybeUninit<Waker>;
 
   #[inline]
-  fn update<F, R, E>(
+  fn transaction<R, E>(
     &self,
     mut old: I,
     success: Ordering,
     failure: Ordering,
-    f: F,
-  ) -> Result<R, E>
-  where
-    F: Fn(&mut I) -> Result<R, E>,
-  {
-    let cas = |old, new| match self.state_exchange(old, new, success, failure) {
-      Ok(x) | Err(x) if x == old => true,
-      _ => false,
-    };
+    f: impl Fn(&mut I) -> Result<R, E>,
+  ) -> Result<R, E> {
     loop {
       let mut new = old;
       let result = f(&mut new);
-      if result.is_err() || cas(old, new) {
+      if result.is_err() {
         break result;
       }
-      old = self.state_load(failure);
+      match self.compare_exchange_weak(old, new, success, failure) {
+        Ok(_) => break result,
+        Err(x) => old = x,
+      }
     }
   }
 
   #[inline]
-  fn is_canceled(&self) -> bool {
-    self.state_load(Relaxed) & Self::COMPLETE != Self::ZERO
+  fn is_canceled(&self, order: Ordering) -> bool {
+    let state = self.state_load(order);
+    self.take_cancel(state).is_ready()
   }
 
-  fn poll_cancel(&self, cx: &mut Context<'_>) -> Poll<()> {
-    self
-      .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {
-        if *state & (Self::COMPLETE | Self::TX_LOCK) == Self::ZERO {
-          *state |= Self::TX_LOCK;
-          Ok(*state)
-        } else {
-          Err(())
-        }
-      })
-      .and_then(|state| {
-        unsafe { *self.tx_waker_mut() = Some(cx.waker().clone()) };
-        self.update(state, Release, Relaxed, |state| {
-          *state ^= Self::TX_LOCK;
-          Ok(*state)
-        })
-      })
-      .and_then(|state| {
-        if state & Self::COMPLETE == Self::ZERO {
-          Ok(Poll::Pending)
-        } else {
-          Err(())
-        }
-      })
-      .unwrap_or_else(|()| Poll::Ready(()))
+  fn take_cancel(&self, state: I) -> Poll<()> {
+    if state & Self::COMPLETE == Self::ZERO {
+      Poll::Pending
+    } else {
+      Poll::Ready(())
+    }
   }
 
-  fn close_half(
+  fn poll_half<T>(
     &self,
-    waker_mut: unsafe fn(&Self) -> &mut Option<Waker>,
-    half_lock: I,
-    complete: I,
-    success: Ordering,
-  ) {
+    cx: &mut Context<'_>,
+    is_tx_half: bool,
+    read_order: Ordering,
+    cas_order: Ordering,
+    take: fn(&Self, I) -> Poll<T>,
+  ) -> Poll<T> {
+    let waker_stored = if is_tx_half {
+      Self::TX_WAKER_STORED
+    } else {
+      Self::RX_WAKER_STORED
+    };
+    let state = self.state_load(read_order);
+    let value = take(self, state);
+    if value.is_ready() || state & waker_stored != Self::ZERO {
+      return value;
+    }
+    unsafe {
+      let waker = if is_tx_half {
+        self.tx_waker_mut()
+      } else {
+        self.rx_waker_mut()
+      };
+      waker.write(cx.waker().clone());
+    }
+    let Ok(state) = self.transaction(state, cas_order, read_order, |state| {
+      *state |= waker_stored;
+      Ok::<_, !>(*state)
+    });
+    take(self, state)
+  }
+
+  fn poll_half_with_transaction<T, U, V>(
+    &self,
+    cx: &mut Context<'_>,
+    is_tx_half: bool,
+    read_order: Ordering,
+    cas_order: Ordering,
+    take_try: fn(&Self, &mut I) -> Option<Result<U, V>>,
+    take_finalize: fn(&Self, Result<U, V>) -> T,
+  ) -> Poll<T> {
+    let waker_stored = if is_tx_half {
+      Self::TX_WAKER_STORED
+    } else {
+      Self::RX_WAKER_STORED
+    };
+    let state = self.state_load(read_order);
     self
-      .update(self.state_load(Relaxed), success, Relaxed, |state| {
-        if *state & half_lock == Self::ZERO {
-          *state |= half_lock | complete;
-          Ok(Some(*state))
-        } else if *state & complete == Self::ZERO {
-          *state |= complete;
-          Ok(None)
-        } else {
-          Err(())
+      .transaction(state, cas_order, read_order, |state| {
+        match take_try(self, state) {
+          Some(value) => value.map(Ok).map_err(Ok),
+          None => Err(Err(if *state & waker_stored == Self::ZERO {
+            Ok(())
+          } else {
+            Err(())
+          })),
         }
       })
-      .ok()
-      .and_then(identity)
-      .map(|state| {
-        unsafe { waker_mut(self).take().map(Waker::wake) };
-        self.update(state, Release, Relaxed, |state| {
-          *state ^= half_lock;
-          Ok::<(), !>(())
+      .or_else(|value| {
+        value.map(Err).or_else(|no_waker| {
+          no_waker.and_then(|()| {
+            unsafe {
+              let waker = if is_tx_half {
+                self.tx_waker_mut()
+              } else {
+                self.rx_waker_mut()
+              };
+              waker.write(cx.waker().clone());
+            }
+            let Ok(value) =
+              self.transaction(state, cas_order, read_order, |state| {
+                *state |= waker_stored;
+                Ok::<_, !>(take_try(self, state))
+              });
+            value.ok_or(())
+          })
         })
-      });
+      })
+      .map_or_else(
+        |()| Poll::Pending,
+        |value| Poll::Ready(take_finalize(self, value)),
+      )
   }
 
-  #[inline]
-  fn close_rx(&self) {
-    self.close_half(Self::tx_waker_mut, Self::TX_LOCK, Self::COMPLETE, Acquire);
-  }
-
-  fn drop_rx(&self) {
-    self
-      .update(self.state_load(Relaxed), Acquire, Relaxed, |state| {
-        let mut mask = Self::ZERO;
-        if *state & Self::TX_LOCK == Self::ZERO {
-          mask |= Self::TX_LOCK;
-        }
-        if *state & Self::RX_LOCK == Self::ZERO {
-          mask |= Self::RX_LOCK;
-        }
-        if mask != Self::ZERO {
-          *state |= mask | Self::COMPLETE;
-          Ok(Some((*state, mask)))
-        } else if *state & Self::COMPLETE == Self::ZERO {
+  fn close_half(&self, is_tx_half: bool) {
+    let waker_stored = if is_tx_half {
+      Self::RX_WAKER_STORED
+    } else {
+      Self::TX_WAKER_STORED
+    };
+    let state = self.state_load(Ordering::Acquire);
+    if let Ok((waker, complete)) =
+      self.transaction(state, Ordering::Acquire, Ordering::Acquire, |state| {
+        let waker = if *state & waker_stored == Self::ZERO {
+          false
+        } else {
+          *state ^= waker_stored;
+          true
+        };
+        let complete = if *state & Self::COMPLETE == Self::ZERO {
           *state |= Self::COMPLETE;
-          Ok(None)
+          true
+        } else {
+          false
+        };
+        if waker || complete {
+          Ok((waker, complete))
         } else {
           Err(())
         }
       })
-      .ok()
-      .and_then(identity)
-      .map(|(state, mask)| {
-        if mask & Self::RX_LOCK != Self::ZERO {
-          unsafe { self.rx_waker_mut().take() };
+    {
+      unsafe {
+        if waker {
+          let waker = if is_tx_half {
+            self.rx_waker_mut()
+          } else {
+            self.tx_waker_mut()
+          };
+          let waker = waker.read();
+          if complete {
+            waker.wake();
+          }
         }
-        if mask & Self::TX_LOCK != Self::ZERO {
-          unsafe { self.tx_waker_mut().take().map(Waker::wake) };
-        }
-        self.update(state, Release, Relaxed, |state| {
-          *state ^= mask;
-          Ok::<(), !>(())
-        })
-      });
+      }
+    }
+  }
+}
+
+pub(self) trait SpscInnerErr<A, I>: SpscInner<A, I>
+where
+  I: Copy
+    + Eq
+    + BitAnd<Output = I>
+    + BitOr<Output = I>
+    + BitOrAssign
+    + BitXorAssign,
+{
+  type Error;
+
+  #[allow(clippy::mut_from_ref)]
+  unsafe fn err_mut(&self) -> &mut Option<Self::Error>;
+
+  fn send_err(&self, err: Self::Error) -> Result<(), Self::Error> {
+    if self.is_canceled(Ordering::Relaxed) {
+      Err(err)
+    } else {
+      unsafe { *self.err_mut() = Some(err) };
+      // Should we do an additional synchronization here?
+      Ok(())
+    }
   }
 
-  #[inline]
-  fn drop_tx(&self) {
-    self.close_half(Self::rx_waker_mut, Self::RX_LOCK, Self::COMPLETE, AcqRel);
+  fn take_err<T>(&self) -> Option<Result<T, Self::Error>> {
+    unsafe { self.err_mut().take().map(Err) }
   }
 }

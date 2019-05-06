@@ -10,11 +10,11 @@ pub use self::{
   sender::{SendError, Sender},
 };
 
-use crate::sync::spsc::SpscInner;
+use crate::sync::spsc::{SpscInner, SpscInnerErr};
 use alloc::sync::Arc;
 use core::{
   cell::UnsafeCell,
-  mem::size_of,
+  mem::{size_of, MaybeUninit},
   sync::atomic::{AtomicUsize, Ordering},
   task::Waker,
 };
@@ -25,14 +25,14 @@ pub const MAX_CAPACITY: usize = 1 << size_of::<usize>() * 8 - LOCK_BITS;
 const LOCK_MASK: usize = (1 << LOCK_BITS) - 1;
 const LOCK_BITS: usize = 3;
 const COMPLETE: usize = 1 << 2;
-const RX_LOCK: usize = 1 << 1;
-const TX_LOCK: usize = 1;
+const RX_WAKER_STORED: usize = 1 << 1;
+const TX_WAKER_STORED: usize = 1;
 
 struct Inner<E> {
   state: AtomicUsize,
   err: UnsafeCell<Option<E>>,
-  rx_waker: UnsafeCell<Option<Waker>>,
-  tx_waker: UnsafeCell<Option<Waker>>,
+  rx_waker: UnsafeCell<MaybeUninit<Waker>>,
+  tx_waker: UnsafeCell<MaybeUninit<Waker>>,
 }
 
 /// Creates a new asynchronous channel, returning the receiver/sender halves.
@@ -59,16 +59,16 @@ impl<E> Inner<E> {
     Self {
       state: AtomicUsize::new(0),
       err: UnsafeCell::new(None),
-      rx_waker: UnsafeCell::new(None),
-      tx_waker: UnsafeCell::new(None),
+      rx_waker: UnsafeCell::new(MaybeUninit::zeroed()),
+      tx_waker: UnsafeCell::new(MaybeUninit::zeroed()),
     }
   }
 }
 
 impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
   const ZERO: usize = 0;
-  const RX_LOCK: usize = RX_LOCK;
-  const TX_LOCK: usize = TX_LOCK;
+  const RX_WAKER_STORED: usize = RX_WAKER_STORED;
+  const TX_WAKER_STORED: usize = TX_WAKER_STORED;
   const COMPLETE: usize = COMPLETE;
 
   #[inline]
@@ -77,24 +77,34 @@ impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
   }
 
   #[inline]
-  fn state_exchange(
+  fn compare_exchange_weak(
     &self,
     current: usize,
     new: usize,
     success: Ordering,
     failure: Ordering,
   ) -> Result<usize, usize> {
-    self.state.compare_exchange(current, new, success, failure)
+    self
+      .state
+      .compare_exchange_weak(current, new, success, failure)
   }
 
   #[inline]
-  unsafe fn rx_waker_mut(&self) -> &mut Option<Waker> {
+  unsafe fn rx_waker_mut(&self) -> &mut MaybeUninit<Waker> {
     &mut *self.rx_waker.get()
   }
 
   #[inline]
-  unsafe fn tx_waker_mut(&self) -> &mut Option<Waker> {
+  unsafe fn tx_waker_mut(&self) -> &mut MaybeUninit<Waker> {
     &mut *self.tx_waker.get()
+  }
+}
+
+impl<E> SpscInnerErr<AtomicUsize, usize> for Inner<E> {
+  type Error = E;
+
+  unsafe fn err_mut(&self) -> &mut Option<Self::Error> {
+    &mut *self.err.get()
   }
 }
 
@@ -104,7 +114,7 @@ mod tests {
   use core::{
     num::NonZeroUsize,
     pin::Pin,
-    sync::atomic::{AtomicUsize, Ordering::*},
+    sync::atomic::AtomicUsize,
     task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
   };
   use futures::stream::Stream;
@@ -117,7 +127,9 @@ mod tests {
         RawWaker::new(counter, &VTABLE)
       }
       unsafe fn wake(counter: *const ()) {
-        (*(counter as *const Counter)).0.fetch_add(1, Relaxed);
+        (*(counter as *const Counter))
+          .0
+          .fetch_add(1, Ordering::SeqCst);
       }
       static VTABLE: RawWakerVTable =
         RawWakerVTable::new(clone, wake, wake, drop);
@@ -140,7 +152,7 @@ mod tests {
       Poll::Ready(Some(Ok(())))
     );
     assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
-    assert_eq!(COUNTER.0.load(Ordering::Relaxed), 0);
+    assert_eq!(COUNTER.0.load(Ordering::SeqCst), 0);
   }
 
   #[test]
@@ -158,7 +170,7 @@ mod tests {
     assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
     drop(tx);
     assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
-    assert_eq!(COUNTER.0.load(Ordering::Relaxed), 2);
+    assert_eq!(COUNTER.0.load(Ordering::SeqCst), 2);
   }
 
   #[test]
@@ -173,7 +185,7 @@ mod tests {
       Poll::Ready(Some(Err(())))
     );
     assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
-    assert_eq!(COUNTER.0.load(Ordering::Relaxed), 0);
+    assert_eq!(COUNTER.0.load(Ordering::SeqCst), 0);
   }
 
   #[test]
@@ -193,6 +205,6 @@ mod tests {
     assert_eq!(Pin::new(&mut rx).poll_all(&mut cx), Poll::Pending);
     drop(tx);
     assert_eq!(Pin::new(&mut rx).poll_all(&mut cx), Poll::Ready(None));
-    assert_eq!(COUNTER.0.load(Ordering::Relaxed), 4);
+    assert_eq!(COUNTER.0.load(Ordering::SeqCst), 4);
   }
 }

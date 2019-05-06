@@ -1,13 +1,15 @@
-use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_LOCK};
-use crate::sync::spsc::SpscInner;
+use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK};
+use crate::sync::spsc::{SpscInner, SpscInnerErr};
 use alloc::sync::Arc;
 use core::{
   pin::Pin,
   ptr,
-  sync::atomic::Ordering::*,
+  sync::atomic::Ordering,
   task::{Context, Poll},
 };
 use futures::stream::Stream;
+
+const IS_TX_HALF: bool = false;
 
 /// The receiving-half of [`ring::channel`](super::channel).
 #[must_use]
@@ -25,7 +27,7 @@ impl<T, E> Receiver<T, E> {
   /// messages.
   #[inline]
   pub fn close(&mut self) {
-    self.inner.close_rx()
+    self.inner.close_half(IS_TX_HALF)
   }
 }
 
@@ -37,78 +39,57 @@ impl<T, E> Stream for Receiver<T, E> {
     self: Pin<&mut Self>,
     cx: &mut Context<'_>,
   ) -> Poll<Option<Self::Item>> {
-    self.inner.recv(cx)
+    self.inner.poll_half_with_transaction(
+      cx,
+      IS_TX_HALF,
+      Ordering::Acquire,
+      Ordering::AcqRel,
+      Inner::take_index_try,
+      Inner::take_index_finalize,
+    )
   }
 }
 
 impl<T, E> Drop for Receiver<T, E> {
   #[inline]
   fn drop(&mut self) {
-    self.inner.drop_rx();
+    self.inner.close_half(IS_TX_HALF);
   }
 }
 
 impl<T, E> Inner<T, E> {
-  fn recv(&self, cx: &mut Context<'_>) -> Poll<Option<Result<T, E>>> {
-    let some_value = |index| unsafe {
-      Poll::Ready(Some(Ok(ptr::read(self.buffer.ptr().add(index)))))
-    };
-    self
-      .update(self.state_load(Acquire), Acquire, Acquire, |state| {
-        if let Some(index) = Self::take_index(state, self.buffer.cap()) {
-          Ok(Ok(index))
-        } else if *state & COMPLETE == 0 {
-          *state |= RX_LOCK;
-          Ok(Err(*state))
-        } else {
-          Err(())
-        }
-      })
-      .and_then(|state| {
-        state.map(some_value).or_else(|state| {
-          unsafe {
-            (*self.rx_waker.get()).get_or_insert_with(|| cx.waker().clone());
-          }
-          self
-            .update(state, AcqRel, Relaxed, |state| {
-              *state ^= RX_LOCK;
-              if let Some(index) = Self::take_index(state, self.buffer.cap()) {
-                Ok(Ok(index))
-              } else {
-                Ok(Err(*state))
-              }
-            })
-            .and_then(|state| {
-              state.map(some_value).or_else(|state| {
-                if state & COMPLETE == 0 {
-                  Ok(Poll::Pending)
-                } else {
-                  Err(())
-                }
-              })
-            })
-        })
-      })
-      .unwrap_or_else(|()| {
-        Poll::Ready(unsafe { &mut *self.err.get() }.take().map(Err))
-      })
-  }
-
-  #[inline]
-  pub(super) fn take_index(
-    state: &mut usize,
-    capacity: usize,
-  ) -> Option<usize> {
-    let count = *state & INDEX_MASK;
-    if count == 0 {
-      return None;
-    }
+  pub(super) fn take_index(&self, state: &mut usize, count: usize) -> usize {
     let begin = *state >> INDEX_BITS & INDEX_MASK;
     *state >>= INDEX_BITS << 1;
     *state <<= INDEX_BITS;
-    *state |= begin.wrapping_add(1).wrapping_rem(capacity);
+    *state |= begin.wrapping_add(1).wrapping_rem(self.buffer.cap());
     *state <<= INDEX_BITS;
     *state |= count.wrapping_sub(1);
-    Some(begin)
+    begin
+  }
+
+  pub(super) fn get_count(state: usize) -> usize {
+    state & INDEX_MASK
+  }
+
+  fn take_index_try(&self, state: &mut usize) -> Option<Result<usize, ()>> {
+    let count = Self::get_count(*state);
+    if count != 0 {
+      Some(Ok(self.take_index(state, count)))
+    } else if *state & COMPLETE == 0 {
+      None
+    } else {
+      Some(Err(()))
+    }
+  }
+
+  fn take_index_finalize(
+    &self,
+    value: Result<usize, ()>,
+  ) -> Option<Result<T, E>> {
+    match value {
+      Ok(index) => unsafe { Some(Ok(ptr::read(self.buffer.ptr().add(index)))) },
+      Err(()) => self.take_err(),
+    }
   }
 }

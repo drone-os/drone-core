@@ -3,8 +3,11 @@ use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
 use core::{
   pin::Pin,
+  sync::atomic::Ordering,
   task::{Context, Poll},
 };
+
+const IS_TX_HALF: bool = true;
 
 /// The sending-half of [`oneshot::channel`](super::channel).
 pub struct Sender<T, E> {
@@ -44,7 +47,13 @@ impl<T, E> Sender<T, E> {
   /// [`is_canceled`]: Sender::is_canceled
   #[inline]
   pub fn poll_cancel(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-    self.inner.poll_cancel(cx)
+    self.inner.poll_half(
+      cx,
+      IS_TX_HALF,
+      Ordering::Relaxed,
+      Ordering::Release,
+      Inner::take_cancel,
+    )
   }
 
   /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has gone
@@ -54,20 +63,20 @@ impl<T, E> Sender<T, E> {
   /// [`Receiver`]: super::Receiver
   #[inline]
   pub fn is_canceled(&self) -> bool {
-    self.inner.is_canceled()
+    self.inner.is_canceled(Ordering::Relaxed)
   }
 }
 
 impl<T, E> Drop for Sender<T, E> {
   #[inline]
   fn drop(&mut self) {
-    self.inner.drop_tx();
+    self.inner.close_half(IS_TX_HALF);
   }
 }
 
 impl<T, E> Inner<T, E> {
   fn send(&self, data: Result<T, E>) -> Result<(), Result<T, E>> {
-    if self.is_canceled() {
+    if self.is_canceled(Ordering::Relaxed) {
       Err(data)
     } else {
       unsafe { *self.data.get() = Some(data) };
