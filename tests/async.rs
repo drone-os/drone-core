@@ -1,5 +1,4 @@
 #![feature(const_fn)]
-#![feature(futures_api)]
 #![feature(generators)]
 #![feature(never_type)]
 #![feature(prelude_import)]

@@ -27,7 +27,6 @@
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(exhaustive_patterns)]
-#![feature(futures_api)]
 #![feature(generators)]
 #![feature(generator_trait)]
 #![feature(marker_trait_attr)]
