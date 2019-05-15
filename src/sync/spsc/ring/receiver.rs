@@ -29,6 +29,12 @@ impl<T, E> Receiver<T, E> {
   pub fn close(&mut self) {
     self.inner.close_half(IS_TX_HALF)
   }
+
+  /// Attempts to receive a value outside of the context of a task.
+  #[inline]
+  pub fn try_recv(&mut self) -> Result<Option<T>, E> {
+    self.inner.try_recv()
+  }
 }
 
 impl<T, E> Stream for Receiver<T, E> {
@@ -72,6 +78,21 @@ impl<T, E> Inner<T, E> {
     state & INDEX_MASK
   }
 
+  fn try_recv(&self) -> Result<Option<T>, E> {
+    let state = self.state_load(Ordering::Acquire);
+    self
+      .transaction(state, Ordering::AcqRel, Ordering::Acquire, |state| {
+        match self.take_index_try(state) {
+          Some(value) => value.map_err(Ok),
+          None => Err(Err(())),
+        }
+      })
+      .map(|index| unsafe { Some(self.take_value(index)) })
+      .or_else(|value| {
+        value.map_or_else(|()| Ok(None), |()| self.take_err().transpose())
+      })
+  }
+
   fn take_index_try(&self, state: &mut usize) -> Option<Result<usize, ()>> {
     let count = Self::get_count(*state);
     if count != 0 {
@@ -88,8 +109,12 @@ impl<T, E> Inner<T, E> {
     value: Result<usize, ()>,
   ) -> Option<Result<T, E>> {
     match value {
-      Ok(index) => unsafe { Some(Ok(ptr::read(self.buffer.ptr().add(index)))) },
+      Ok(index) => unsafe { Some(Ok(self.take_value(index))) },
       Err(()) => self.take_err(),
     }
+  }
+
+  unsafe fn take_value(&self, index: usize) -> T {
+    ptr::read(self.buffer.ptr().add(index))
   }
 }

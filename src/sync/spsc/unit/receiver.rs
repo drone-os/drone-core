@@ -30,6 +30,18 @@ impl<E> Receiver<E> {
     self.inner.close_half(IS_TX_HALF)
   }
 
+  /// Attempts to receive a value outside of the context of a task.
+  #[inline]
+  pub fn try_recv(&mut self) -> Result<Option<()>, E> {
+    self.inner.try_recv(Inner::<E>::take_try)
+  }
+
+  /// Attempts to receive all values outside of the context of a task.
+  #[inline]
+  pub fn try_recv_all(&mut self) -> Result<Option<NonZeroUsize>, E> {
+    self.inner.try_recv(Inner::<E>::take_all_try)
+  }
+
   /// Polls this [`Receiver`] half for all values at once.
   pub fn poll_all(
     self: Pin<&mut Self>,
@@ -73,6 +85,23 @@ impl<E> Drop for Receiver<E> {
 }
 
 impl<E> Inner<E> {
+  fn try_recv<T>(
+    &self,
+    take_try: fn(&Self, &mut usize) -> Option<Result<T, ()>>,
+  ) -> Result<Option<T>, E> {
+    let state = self.state_load(Ordering::Acquire);
+    self
+      .transaction(state, Ordering::AcqRel, Ordering::Acquire, |state| {
+        match take_try(self, state) {
+          Some(value) => value.map(Some).map_err(Ok),
+          None => Err(Err(())),
+        }
+      })
+      .or_else(|value| {
+        value.map_or_else(|()| Ok(None), |()| self.take_err().transpose())
+      })
+  }
+
   fn take_try(&self, state: &mut usize) -> Option<Result<(), ()>> {
     let lock = *state & LOCK_MASK;
     *state >>= LOCK_BITS;

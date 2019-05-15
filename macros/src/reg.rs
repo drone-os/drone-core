@@ -1,4 +1,4 @@
-use drone_macros_core::{new_def_ident, new_ident, unkeywordize};
+use drone_macros_core::{new_ident, unkeywordize};
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use quote::quote;
@@ -98,7 +98,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     traits,
     fields,
   } = parse_macro_input!(input as Reg);
-  let t = new_def_ident!("T");
+  let t = new_ident!("_T");
 
   let attrs = &attrs;
   let val_ty = new_ident!("u{}", size);

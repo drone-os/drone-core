@@ -13,21 +13,6 @@ macro_rules! new_ident {
   };
 }
 
-/// Creates def site [`Ident`](::syn::Ident) using interpolation of runtime
-/// expressions.
-#[macro_export]
-macro_rules! new_def_ident {
-  ($fmt:expr, $($args:tt)*) => {
-    ::syn::Ident::new(
-      &format!($fmt, $($args)*),
-      ::proc_macro2::Span::def_site(),
-    )
-  };
-  ($fmt:expr) => {
-    new_def_ident!($fmt,)
-  };
-}
-
 /// Unconditionally causes parsing to fail with the given error message.
 #[macro_export]
 macro_rules! compile_error {

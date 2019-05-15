@@ -38,6 +38,12 @@ impl<T, E> Receiver<T, E> {
   pub fn close(&mut self) {
     self.inner.close_half(IS_TX_HALF)
   }
+
+  /// Attempts to receive a value outside of the context of a task.
+  #[inline]
+  pub fn try_recv(&mut self) -> Result<Option<T>, RecvError<E>> {
+    self.inner.try_recv()
+  }
 }
 
 impl<T, E> Future for Receiver<T, E> {
@@ -63,6 +69,18 @@ impl<T, E> Drop for Receiver<T, E> {
 }
 
 impl<T, E> Inner<T, E> {
+  fn try_recv(&self) -> Result<Option<T>, RecvError<E>> {
+    let state = self.state_load(Ordering::Acquire);
+    if state & COMPLETE == 0 {
+      Ok(None)
+    } else {
+      unsafe { &mut *self.data.get() }.take().map_or_else(
+        || Err(RecvError::Canceled),
+        |value| value.map(Some).map_err(RecvError::Complete),
+      )
+    }
+  }
+
   fn take(&self, state: u8) -> Poll<Result<T, RecvError<E>>> {
     if state & COMPLETE == 0 {
       Poll::Pending

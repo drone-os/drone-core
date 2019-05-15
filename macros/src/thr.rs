@@ -1,4 +1,4 @@
-use drone_macros_core::new_def_ident;
+use drone_macros_core::new_ident;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
@@ -101,7 +101,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     array,
     fields,
   } = parse_macro_input!(input as Thr);
-  let local = new_def_ident!("Local");
+  let local = new_ident!("Local");
   let mut thr_tokens = Vec::new();
   let mut thr_ctor_tokens = Vec::new();
   let mut local_tokens = Vec::new();
