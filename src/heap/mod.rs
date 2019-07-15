@@ -21,8 +21,6 @@
 //! drone_core::heap! {
 //!   /// The allocator struct.
 //!   pub struct Heap;
-//!   extern fn alloc_hook;
-//!   extern fn dealloc_hook;
 //!
 //!   // The size of the heap should be known at the compile-time. It should
 //!   // equal the sum of all defined pools.
@@ -35,9 +33,6 @@
 //!     [0x800; 0x20],  // 2048-byte blocks with the capacity of 0x20
 //!   ];
 //! }
-//!
-//! fn alloc_hook(_layout: Layout, _pool: &Pool) {}
-//! fn dealloc_hook(_layout: Layout, _pool: &Pool) {}
 //! ```
 //!
 //! # Initialization
@@ -53,8 +48,6 @@
 //!
 //! drone_core::heap! {
 //!   pub struct Heap;
-//!   extern fn alloc_hook;
-//!   extern fn dealloc_hook;
 //!   size = 0;
 //!   pools = [];
 //! }
@@ -66,9 +59,6 @@
 //!   // heap region.
 //!   static mut HEAP_START: usize;
 //! }
-//!
-//! fn alloc_hook(_layout: Layout, _pool: &Pool) {}
-//! fn dealloc_hook(_layout: Layout, _pool: &Pool) {}
 //!
 //! fn main() {
 //!   unsafe { ALLOC.init(&mut HEAP_START) };

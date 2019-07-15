@@ -11,7 +11,7 @@ repository = "https://github.com/drone-os/drone-core"
 proc-macro = true
 
 [dependencies]
-if_chain = "0.1"
+if_chain = "1"
 Inflector = "0.11"
 proc-macro2 = { version = "0.4", features = ["nightly"] }
 quote = "0.6"

@@ -47,6 +47,14 @@ pub trait Allocator {
   #[inline]
   fn dealloc_hook(_layout: Layout, _pool: &Pool) {}
 
+  /// Growing in place hook.
+  #[inline]
+  fn grow_in_place_hook(_layout: Layout, _new_size: usize) {}
+
+  /// Shrinking in place hook.
+  #[inline]
+  fn shrink_in_place_hook(_layout: Layout, _new_size: usize) {}
+
   /// Binary searches the pools for a least-sized one which fits `value`.
   fn binary_search<T: Fits>(&self, value: T) -> usize {
     let (mut left, mut right) = (0, Self::POOL_COUNT);
@@ -86,6 +94,7 @@ pub trait Allocator {
     new_size: usize,
   ) -> Result<T, AllocErr> {
     if new_size < layout.size() {
+      let _ = self.shrink_in_place(ptr, layout, new_size);
       Ok(T::from(ptr, || {
         U::from(self.get_pool_unchecked(self.binary_search(ptr)))
       }))
@@ -128,6 +137,7 @@ pub trait Allocator {
   ) -> Result<T, CannotReallocInPlace> {
     let pool = self.get_pool_unchecked(self.binary_search(ptr));
     if Layout::from_size_align_unchecked(new_size, layout.align()).fits(pool) {
+      Self::grow_in_place_hook(layout, new_size);
       Ok(T::from(pool))
     } else {
       Err(CannotReallocInPlace)
@@ -138,9 +148,10 @@ pub trait Allocator {
   unsafe fn shrink_in_place(
     &self,
     _ptr: NonNull<u8>,
-    _layout: Layout,
-    _new_size: usize,
+    layout: Layout,
+    new_size: usize,
   ) -> Result<(), CannotReallocInPlace> {
+    Self::shrink_in_place_hook(layout, new_size);
     Ok(())
   }
 }
@@ -239,10 +250,6 @@ mod tests {
     {
       self.pools.get_unchecked_mut(index)
     }
-
-    fn alloc_hook(_layout: Layout, _pool: &Pool) {}
-
-    fn dealloc_hook(_layout: Layout, _pool: &Pool) {}
   }
 
   impl TestHeap {

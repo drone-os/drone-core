@@ -15,6 +15,8 @@ struct Heap {
   heap_ident: Ident,
   alloc_hook: Option<ExprPath>,
   dealloc_hook: Option<ExprPath>,
+  grow_in_place_hook: Option<ExprPath>,
+  shrink_in_place_hook: Option<ExprPath>,
   size: LitInt,
   pools: Vec<Pool>,
 }
@@ -31,19 +33,33 @@ impl Parse for Heap {
     input.parse::<Token![struct]>()?;
     let heap_ident = input.parse()?;
     input.parse::<Token![;]>()?;
-    let (alloc_hook, dealloc_hook) = if input.peek(Token![extern]) {
-      input.parse::<Token![extern]>()?;
-      input.parse::<Token![fn]>()?;
-      let alloc_hook = input.parse()?;
-      input.parse::<Token![;]>()?;
-      input.parse::<Token![extern]>()?;
-      input.parse::<Token![fn]>()?;
-      let dealloc_hook = input.parse()?;
-      input.parse::<Token![;]>()?;
-      (Some(alloc_hook), Some(dealloc_hook))
-    } else {
-      (None, None)
-    };
+    let (alloc_hook, dealloc_hook, grow_in_place_hook, shrink_in_place_hook) =
+      if input.peek(Token![extern]) {
+        input.parse::<Token![extern]>()?;
+        input.parse::<Token![fn]>()?;
+        let alloc_hook = input.parse()?;
+        input.parse::<Token![;]>()?;
+        input.parse::<Token![extern]>()?;
+        input.parse::<Token![fn]>()?;
+        let dealloc_hook = input.parse()?;
+        input.parse::<Token![;]>()?;
+        input.parse::<Token![extern]>()?;
+        input.parse::<Token![fn]>()?;
+        let grow_in_place_hook = input.parse()?;
+        input.parse::<Token![;]>()?;
+        input.parse::<Token![extern]>()?;
+        input.parse::<Token![fn]>()?;
+        let shrink_in_place_hook = input.parse()?;
+        input.parse::<Token![;]>()?;
+        (
+          Some(alloc_hook),
+          Some(dealloc_hook),
+          Some(grow_in_place_hook),
+          Some(shrink_in_place_hook),
+        )
+      } else {
+        (None, None, None, None)
+      };
     let mut size = None;
     let mut pools = Vec::new();
     while !input.is_empty() {
@@ -75,6 +91,8 @@ impl Parse for Heap {
       heap_ident,
       alloc_hook,
       dealloc_hook,
+      grow_in_place_hook,
+      shrink_in_place_hook,
       size: size.ok_or_else(|| input.error("`size` is not defined"))?,
       pools,
     })
@@ -105,6 +123,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     heap_ident,
     alloc_hook,
     dealloc_hook,
+    grow_in_place_hook,
+    shrink_in_place_hook,
     size,
     mut pools,
   } = parse_macro_input!(input as Heap);
@@ -152,6 +172,28 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         pool: &::drone_core::heap::Pool,
       ) {
         #path(layout, pool)
+      }
+    });
+  }
+  if let Some(path) = grow_in_place_hook {
+    hook_tokens.push(quote! {
+      #[inline]
+      fn grow_in_place_hook(
+        layout: ::core::alloc::Layout,
+        new_size: usize,
+      ) {
+        #path(layout, new_size)
+      }
+    });
+  }
+  if let Some(path) = shrink_in_place_hook {
+    hook_tokens.push(quote! {
+      #[inline]
+      fn shrink_in_place_hook(
+        layout: ::core::alloc::Layout,
+        new_size: usize,
+      ) {
+        #path(layout, new_size)
       }
     });
   }
