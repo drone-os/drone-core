@@ -37,7 +37,6 @@
 #![feature(prelude_import)]
 #![feature(raw_vec_internals)]
 #![feature(result_map_or_else)]
-#![feature(slice_concat_ext)]
 #![feature(slice_internals)]
 #![feature(todo_macro)]
 #![feature(untagged_unions)]
