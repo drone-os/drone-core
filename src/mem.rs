@@ -10,10 +10,10 @@ use core::ptr;
 /// * Must be called before accessing `static`s.
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub unsafe fn bss_init(start: &mut usize, end: &usize) {
-  let start = start as *mut _;
-  let end = end as *const _;
-  let count = end as usize - start as usize;
-  ptr::write_bytes(start, 0, count >> 2);
+    let start = start as *mut _;
+    let end = end as *const _;
+    let count = end as usize - start as usize;
+    ptr::write_bytes(start, 0, count >> 2);
 }
 
 /// Initializes the `.data` section.
@@ -24,9 +24,9 @@ pub unsafe fn bss_init(start: &mut usize, end: &usize) {
 /// * Must be called before accessing `static`s.
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub unsafe fn data_init(start: &mut usize, end: &usize, data: &usize) {
-  let start = start as *mut _;
-  let end = end as *const _;
-  let data = data as *const _;
-  let count = end as usize - start as usize;
-  ptr::copy_nonoverlapping(data, start, count >> 2);
+    let start = start as *mut _;
+    let end = end as *const _;
+    let data = data as *const _;
+    let count = end as usize - start as usize;
+    ptr::copy_nonoverlapping(data, start, count >> 2);
 }

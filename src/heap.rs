@@ -55,13 +55,13 @@
 //! static mut ALLOC: Heap = Heap::new();
 //!
 //! extern "C" {
-//!   // A symbol defined in the linker-script. Represents the beginning of the
-//!   // heap region.
-//!   static mut HEAP_START: usize;
+//!     // A symbol defined in the linker-script. Represents the beginning of the
+//!     // heap region.
+//!     static mut HEAP_START: usize;
 //! }
 //!
 //! fn main() {
-//!   unsafe { ALLOC.init(&mut HEAP_START) };
+//!     unsafe { ALLOC.init(&mut HEAP_START) };
 //! }
 //! ```
 //!

@@ -45,14 +45,14 @@
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(
-  clippy::cast_possible_truncation,
-  clippy::cast_possible_wrap,
-  clippy::cast_sign_loss,
-  clippy::enum_glob_use,
-  clippy::module_inception,
-  clippy::module_name_repetitions,
-  clippy::precedence,
-  clippy::use_self
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
+    clippy::enum_glob_use,
+    clippy::module_inception,
+    clippy::module_name_repetitions,
+    clippy::precedence,
+    clippy::use_self
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 

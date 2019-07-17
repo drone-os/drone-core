@@ -14,11 +14,11 @@ pub type size_t = usize;
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn strlen(s: *const c_char) -> size_t {
-  let mut cursor = s;
-  while *cursor != 0 {
-    cursor = cursor.add(1);
-  }
-  (cursor as size_t) - (s as size_t)
+    let mut cursor = s;
+    while *cursor != 0 {
+        cursor = cursor.add(1);
+    }
+    (cursor as size_t) - (s as size_t)
 }
 
 /// Returns a pointer to the first occurrence of the character `c` in the string
@@ -29,13 +29,13 @@ pub unsafe extern "C" fn strlen(s: *const c_char) -> size_t {
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn strchr(mut s: *const c_char, c: c_int) -> *mut c_char {
-  loop {
-    match *s {
-      x if x == c as c_char => return s as *mut _,
-      0 => return ptr::null_mut(),
-      _ => s = s.add(1),
+    loop {
+        match *s {
+            x if x == c as c_char => return s as *mut _,
+            0 => return ptr::null_mut(),
+            _ => s = s.add(1),
+        }
     }
-  }
 }
 
 /// Compares the two strings `s1` and `s2`. It returns an integer less than,
@@ -46,15 +46,12 @@ pub unsafe extern "C" fn strchr(mut s: *const c_char, c: c_int) -> *mut c_char {
 ///
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
-pub unsafe extern "C" fn strcmp(
-  mut s1: *const c_char,
-  mut s2: *const c_char,
-) -> c_int {
-  while *s1 != 0 && *s1 == *s2 {
-    s1 = s1.add(1);
-    s2 = s2.add(1);
-  }
-  c_int::from(*s1) - c_int::from(*s2)
+pub unsafe extern "C" fn strcmp(mut s1: *const c_char, mut s2: *const c_char) -> c_int {
+    while *s1 != 0 && *s1 == *s2 {
+        s1 = s1.add(1);
+        s2 = s2.add(1);
+    }
+    c_int::from(*s1) - c_int::from(*s2)
 }
 
 /// Allocates size bytes and returns a pointer to the allocated memory. *The
@@ -67,7 +64,7 @@ pub unsafe extern "C" fn strcmp(
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn malloc(size: size_t) -> *mut c_void {
-  alloc::alloc(Layout::from_size_align_unchecked(size, 1)) as *mut c_void
+    alloc::alloc(Layout::from_size_align_unchecked(size, 1)) as *mut c_void
 }
 
 /// Allocates memory for an array of `nmemb` elements of `size` bytes each and
@@ -80,8 +77,7 @@ pub unsafe extern "C" fn malloc(size: size_t) -> *mut c_void {
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn calloc(nmemb: size_t, size: size_t) -> *mut c_void {
-  alloc::alloc_zeroed(Layout::from_size_align_unchecked(nmemb * size, 1))
-    as *mut c_void
+    alloc::alloc_zeroed(Layout::from_size_align_unchecked(nmemb * size, 1)) as *mut c_void
 }
 
 /// Changes the size of the memory block pointed to by `ptr` to `size` bytes.
@@ -99,15 +95,12 @@ pub unsafe extern "C" fn calloc(nmemb: size_t, size: size_t) -> *mut c_void {
 ///
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
-pub unsafe extern "C" fn realloc(
-  ptr: *mut c_void,
-  size: size_t,
-) -> *mut c_void {
-  alloc::realloc(
-    ptr as *mut u8,
-    Layout::from_size_align_unchecked(1, 1),
-    size,
-  ) as *mut c_void
+pub unsafe extern "C" fn realloc(ptr: *mut c_void, size: size_t) -> *mut c_void {
+    alloc::realloc(
+        ptr as *mut u8,
+        Layout::from_size_align_unchecked(1, 1),
+        size,
+    ) as *mut c_void
 }
 
 /// Frees the memory space pointed to by `ptr`, which must have been returned by
@@ -121,5 +114,5 @@ pub unsafe extern "C" fn realloc(
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn free(ptr: *mut c_void) {
-  alloc::dealloc(ptr as *mut u8, Layout::from_size_align_unchecked(1, 1))
+    alloc::dealloc(ptr as *mut u8, Layout::from_size_align_unchecked(1, 1))
 }

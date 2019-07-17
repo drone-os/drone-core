@@ -8,6 +8,6 @@ fn assert_copy<T: Copy>() {}
 fn assert_clone<T: Clone>() {}
 
 fn main() {
-  assert_copy::<foo_bar::Reg<Crt>>();
-  assert_clone::<foo_bar::Reg<Crt>>();
+    assert_copy::<foo_bar::Reg<Crt>>();
+    assert_clone::<foo_bar::Reg<Crt>>();
 }

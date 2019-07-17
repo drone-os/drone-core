@@ -4,10 +4,10 @@
 #![feature(prelude_import)]
 
 use core::{
-  pin::Pin,
-  ptr,
-  sync::atomic::{AtomicUsize, Ordering::*},
-  task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
+    pin::Pin,
+    ptr,
+    sync::atomic::{AtomicUsize, Ordering::*},
+    task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
 };
 #[prelude_import]
 #[allow(unused_imports)]
@@ -20,57 +20,54 @@ static mut THREADS: [Thr; 1] = [Thr::new(0)];
 struct Sv;
 
 thr! {
-  struct Thr;
-  struct ThrLocal;
-  extern struct Sv;
-  extern static THREADS;
+    struct Thr;
+    struct ThrLocal;
+    extern struct Sv;
+    extern static THREADS;
 }
 
 struct Counter(AtomicUsize);
 
 impl Counter {
-  fn to_waker(&'static self) -> Waker {
-    unsafe fn clone(counter: *const ()) -> RawWaker {
-      RawWaker::new(counter, &VTABLE)
+    fn to_waker(&'static self) -> Waker {
+        unsafe fn clone(counter: *const ()) -> RawWaker {
+            RawWaker::new(counter, &VTABLE)
+        }
+        unsafe fn wake(counter: *const ()) {
+            (*(counter as *const Counter)).0.fetch_add(1, Relaxed);
+        }
+        static VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake, drop);
+        unsafe { Waker::from_raw(RawWaker::new(self as *const _ as *const (), &VTABLE)) }
     }
-    unsafe fn wake(counter: *const ()) {
-      (*(counter as *const Counter)).0.fetch_add(1, Relaxed);
-    }
-    static VTABLE: RawWakerVTable =
-      RawWakerVTable::new(clone, wake, wake, drop);
-    unsafe {
-      Waker::from_raw(RawWaker::new(self as *const _ as *const (), &VTABLE))
-    }
-  }
 }
 
 impl sv::Supervisor for Sv {
-  fn first() -> *const Self {
-    ptr::null()
-  }
+    fn first() -> *const Self {
+        ptr::null()
+    }
 }
 
 #[test]
 fn nested() {
-  static COUNTER: Counter = Counter(AtomicUsize::new(0));
-  unsafe { thr::init::<Thr>() };
-  let (rx, tx) = oneshot::channel::<usize, !>();
-  let mut fut = Box::pin(asnc(|| {
-    awt!(Box::pin(asnc(|| {
-      awt!(asnc(|| {
-        let number = awt!(rx)?;
-        Ok::<usize, oneshot::RecvError<!>>(number + 1)
-      }))
-    })))
-  }));
-  let waker = COUNTER.to_waker();
-  let mut cx = Context::from_waker(&waker);
-  COUNTER.0.store(0, Relaxed);
-  assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Pending);
-  assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Pending);
-  assert_eq!(COUNTER.0.load(Relaxed), 0);
-  assert_eq!(tx.send(Ok(1)), Ok(()));
-  assert_eq!(COUNTER.0.load(Relaxed), 1);
-  assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Ready(Ok(2)));
-  assert_eq!(COUNTER.0.load(Relaxed), 1);
+    static COUNTER: Counter = Counter(AtomicUsize::new(0));
+    unsafe { thr::init::<Thr>() };
+    let (rx, tx) = oneshot::channel::<usize, !>();
+    let mut fut = Box::pin(asnc(|| {
+        awt!(Box::pin(asnc(|| {
+            awt!(asnc(|| {
+                let number = awt!(rx)?;
+                Ok::<usize, oneshot::RecvError<!>>(number + 1)
+            }))
+        })))
+    }));
+    let waker = COUNTER.to_waker();
+    let mut cx = Context::from_waker(&waker);
+    COUNTER.0.store(0, Relaxed);
+    assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Pending);
+    assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Pending);
+    assert_eq!(COUNTER.0.load(Relaxed), 0);
+    assert_eq!(tx.send(Ok(1)), Ok(()));
+    assert_eq!(COUNTER.0.load(Relaxed), 1);
+    assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Ready(Ok(2)));
+    assert_eq!(COUNTER.0.load(Relaxed), 1);
 }

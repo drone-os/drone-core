@@ -1,9 +1,9 @@
 use crate::ffi::{c_char, strlen, CStr};
 use alloc::borrow::{Borrow, Cow};
 use core::{
-  fmt, mem, ops, ptr,
-  slice::{self, memchr},
-  str::Utf8Error,
+    fmt, mem, ops, ptr,
+    slice::{self, memchr},
+    str::Utf8Error,
 };
 use failure::Fail;
 
@@ -68,7 +68,7 @@ use failure::Fail;
 /// // can .unwrap()
 /// let c_to_print = CString::new("Hello, world!").unwrap();
 /// unsafe {
-///   my_printer(c_to_print.as_ptr());
+///     my_printer(c_to_print.as_ptr());
 /// }
 /// ```
 ///
@@ -84,7 +84,7 @@ use failure::Fail;
 /// memory errors.
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
 pub struct CString {
-  pub(super) inner: Box<[u8]>,
+    pub(super) inner: Box<[u8]>,
 }
 
 /// An error indicating that an interior nul byte was found.
@@ -124,439 +124,440 @@ pub struct NulError(usize, Vec<u8>);
 #[derive(Clone, PartialEq, Eq, Debug, Fail)]
 #[fail(display = "C string contained non-utf8 bytes")]
 pub struct IntoStringError {
-  inner: CString,
-  error: Utf8Error,
+    inner: CString,
+    error: Utf8Error,
 }
 
 impl CString {
-  /// Creates a new C-compatible string from a container of bytes.
-  ///
-  /// This function will consume the provided data and use the underlying bytes
-  /// to construct a new string, ensuring that there is a trailing 0 byte. This
-  /// trailing 0 byte will be appended by this function; the provided data
-  /// should *not* contain any 0 bytes in it.
-  ///
-  /// # Examples
-  ///
-  /// ```
-  /// use drone_core::ffi::{c_char, CString};
-  ///
-  /// unsafe fn puts(_s: *const c_char) {}
-  ///
-  /// let to_print = CString::new("Hello!").unwrap();
-  /// unsafe {
-  ///   puts(to_print.as_ptr());
-  /// }
-  /// ```
-  ///
-  /// # Errors
-  ///
-  /// This function will return an error if the supplied bytes contain an
-  /// internal 0 byte. The [`NulError`] returned will contain the bytes as well
-  /// as the position of the nul byte.
-  ///
-  /// [`NulError`]: NulError
-  pub fn new<T: Into<Vec<u8>>>(t: T) -> Result<Self, NulError> {
-    Self::_new(t.into())
-  }
-
-  fn _new(bytes: Vec<u8>) -> Result<Self, NulError> {
-    match memchr::memchr(0, &bytes) {
-      Some(i) => Err(NulError(i, bytes)),
-      None => Ok(unsafe { Self::from_vec_unchecked(bytes) }),
+    /// Creates a new C-compatible string from a container of bytes.
+    ///
+    /// This function will consume the provided data and use the underlying
+    /// bytes to construct a new string, ensuring that there is a trailing 0
+    /// byte. This trailing 0 byte will be appended by this function; the
+    /// provided data should *not* contain any 0 bytes in it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use drone_core::ffi::{c_char, CString};
+    ///
+    /// unsafe fn puts(_s: *const c_char) {}
+    ///
+    /// let to_print = CString::new("Hello!").unwrap();
+    /// unsafe {
+    ///     puts(to_print.as_ptr());
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the supplied bytes contain an
+    /// internal 0 byte. The [`NulError`] returned will contain the bytes as
+    /// well as the position of the nul byte.
+    ///
+    /// [`NulError`]: NulError
+    pub fn new<T: Into<Vec<u8>>>(t: T) -> Result<Self, NulError> {
+        Self::_new(t.into())
     }
-  }
 
-  /// Creates a C-compatible string by consuming a byte vector, without checking
-  /// for interior 0 bytes.
-  ///
-  /// This method is equivalent to [`new`] except that no runtime assertion is
-  /// made that `v` contains no 0 bytes, and it requires an actual byte vector,
-  /// not anything that can be converted to one with Into.
-  ///
-  /// [`new`]: CString::new
-  ///
-  /// # Examples
-  ///
-  /// ```
-  /// use drone_core::ffi::CString;
-  ///
-  /// let raw = b"foo".to_vec();
-  /// unsafe {
-  ///   let c_string = CString::from_vec_unchecked(raw);
-  /// }
-  /// ```
-  pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> Self {
-    v.reserve_exact(1);
-    v.push(0);
-    Self {
-      inner: v.into_boxed_slice(),
+    fn _new(bytes: Vec<u8>) -> Result<Self, NulError> {
+        match memchr::memchr(0, &bytes) {
+            Some(i) => Err(NulError(i, bytes)),
+            None => Ok(unsafe { Self::from_vec_unchecked(bytes) }),
+        }
     }
-  }
 
-  /// Retakes ownership of a `CString` that was transferred to C via
-  /// [`into_raw`].
-  ///
-  /// Additionally, the length of the string will be recalculated from the
-  /// pointer.
-  ///
-  /// # Safety
-  ///
-  /// This should only ever be called with a pointer that was earlier obtained
-  /// by calling [`into_raw`] on a `CString`. Other usage (e.g. trying to take
-  /// ownership of a string that was allocated by foreign code) is likely to
-  /// lead to undefined behavior or allocator corruption.
-  ///
-  /// > **Note:** If you need to borrow a string that was allocated by foreign
-  /// > code, use [`CStr`]. If you need to take ownership of a string that was
-  /// > allocated by foreign code, you will need to make your own provisions for
-  /// > freeing it appropriately, likely with the foreign code's API to do that.
-  ///
-  /// [`into_raw`]: CString::into_raw
-  /// [`CStr`]: CStr
-  ///
-  /// # Examples
-  ///
-  /// Create a `CString`, pass ownership to an `extern` function (via raw
-  /// pointer), then retake ownership with `from_raw`:
-  ///
-  /// ```
-  /// use drone_core::ffi::{c_char, CString};
-  ///
-  /// unsafe fn some_extern_function(_s: *mut c_char) {}
-  ///
-  /// let c_string = CString::new("Hello!").unwrap();
-  /// let raw = c_string.into_raw();
-  /// unsafe {
-  ///   some_extern_function(raw);
-  ///   let c_string = CString::from_raw(raw);
-  /// }
-  /// ```
-  pub unsafe fn from_raw(ptr: *mut c_char) -> Self {
-    let len = strlen(ptr) + 1; // Including the NUL byte
-    let slice = slice::from_raw_parts_mut(ptr, len as usize);
-    Self {
-      inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]),
+    /// Creates a C-compatible string by consuming a byte vector, without
+    /// checking for interior 0 bytes.
+    ///
+    /// This method is equivalent to [`new`] except that no runtime assertion is
+    /// made that `v` contains no 0 bytes, and it requires an actual byte
+    /// vector, not anything that can be converted to one with Into.
+    ///
+    /// [`new`]: CString::new
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use drone_core::ffi::CString;
+    ///
+    /// let raw = b"foo".to_vec();
+    /// unsafe {
+    ///     let c_string = CString::from_vec_unchecked(raw);
+    /// }
+    /// ```
+    pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> Self {
+        v.reserve_exact(1);
+        v.push(0);
+        Self {
+            inner: v.into_boxed_slice(),
+        }
     }
-  }
 
-  /// Consumes the `CString` and transfers ownership of the string to a C
-  /// caller.
-  ///
-  /// The pointer which this function returns must be returned to Rust and
-  /// reconstituted using [`from_raw`] to be properly deallocated. Specifically,
-  /// one should *not* use the standard C `free()` function to deallocate this
-  /// string.
-  ///
-  /// Failure to call [`from_raw`] will lead to a memory leak.
-  ///
-  /// [`from_raw`]: CString::from_raw
-  ///
-  /// # Examples
-  ///
-  /// ```
-  /// use drone_core::ffi::CString;
-  ///
-  /// let c_string = CString::new("foo").unwrap();
-  ///
-  /// let ptr = c_string.into_raw();
-  ///
-  /// unsafe {
-  ///   assert_eq!(b'f', *ptr as u8);
-  ///   assert_eq!(b'o', *ptr.offset(1) as u8);
-  ///   assert_eq!(b'o', *ptr.offset(2) as u8);
-  ///   assert_eq!(b'\0', *ptr.offset(3) as u8);
-  ///
-  ///   // retake pointer to free memory
-  ///   let _ = CString::from_raw(ptr);
-  /// }
-  /// ```
-  #[inline]
-  pub fn into_raw(self) -> *mut c_char {
-    Box::into_raw(self.into_inner()) as *mut c_char
-  }
-
-  /// Converts the `CString` into a `String` if it contains valid UTF-8 data.
-  ///
-  /// On failure, ownership of the original `CString` is returned.
-  ///
-  /// # Examples
-  ///
-  /// ```
-  /// use drone_core::ffi::CString;
-  ///
-  /// let valid_utf8 = vec![b'f', b'o', b'o'];
-  /// let cstring = CString::new(valid_utf8).unwrap();
-  /// assert_eq!(cstring.into_string().unwrap(), "foo");
-  ///
-  /// let invalid_utf8 = vec![b'f', 0xff, b'o', b'o'];
-  /// let cstring = CString::new(invalid_utf8).unwrap();
-  /// let err = cstring.into_string().err().unwrap();
-  /// assert_eq!(err.utf8_error().valid_up_to(), 1);
-  /// ```
-  pub fn into_string(self) -> Result<String, IntoStringError> {
-    String::from_utf8(self.into_bytes()).map_err(|e| IntoStringError {
-      error: e.utf8_error(),
-      inner: unsafe { Self::from_vec_unchecked(e.into_bytes()) },
-    })
-  }
-
-  /// Consumes the `CString` and returns the underlying byte buffer.
-  ///
-  /// The returned buffer does **not** contain the trailing nul terminator, and
-  /// it is guaranteed to not have any interior nul bytes.
-  ///
-  /// # Examples
-  ///
-  /// ```
-  /// use drone_core::ffi::CString;
-  ///
-  /// let c_string = CString::new("foo").unwrap();
-  /// let bytes = c_string.into_bytes();
-  /// assert_eq!(bytes, vec![b'f', b'o', b'o']);
-  /// ```
-  pub fn into_bytes(self) -> Vec<u8> {
-    let mut vec = self.into_inner().into_vec();
-    let nul = vec.pop();
-    debug_assert_eq!(nul, Some(0_u8));
-    vec
-  }
-
-  /// Equivalent to the [`into_bytes`] function except that the returned vector
-  /// includes the trailing nul terminator.
-  ///
-  /// [`into_bytes`]: CString::into_bytes
-  ///
-  /// # Examples
-  ///
-  /// ```
-  /// use drone_core::ffi::CString;
-  ///
-  /// let c_string = CString::new("foo").unwrap();
-  /// let bytes = c_string.into_bytes_with_nul();
-  /// assert_eq!(bytes, vec![b'f', b'o', b'o', b'\0']);
-  /// ```
-  pub fn into_bytes_with_nul(self) -> Vec<u8> {
-    self.into_inner().into_vec()
-  }
-
-  /// Returns the contents of this `CString` as a slice of bytes.
-  ///
-  /// The returned slice does **not** contain the trailing nul terminator, and
-  /// it is guaranteed to not have any interior nul bytes. If you need the nul
-  /// terminator, use [`as_bytes_with_nul`] instead.
-  ///
-  /// [`as_bytes_with_nul`]: CString::as_bytes_with_nul
-  ///
-  /// # Examples
-  ///
-  /// ```
-  /// use drone_core::ffi::CString;
-  ///
-  /// let c_string = CString::new("foo").unwrap();
-  /// let bytes = c_string.as_bytes();
-  /// assert_eq!(bytes, &[b'f', b'o', b'o']);
-  /// ```
-  #[inline]
-  pub fn as_bytes(&self) -> &[u8] {
-    &self.inner[..self.inner.len() - 1]
-  }
-
-  /// Equivalent to the [`as_bytes`] function except that the returned slice
-  /// includes the trailing nul terminator.
-  ///
-  /// [`as_bytes`]: CString::as_bytes
-  ///
-  /// # Examples
-  ///
-  /// ```
-  /// use drone_core::ffi::CString;
-  ///
-  /// let c_string = CString::new("foo").unwrap();
-  /// let bytes = c_string.as_bytes_with_nul();
-  /// assert_eq!(bytes, &[b'f', b'o', b'o', b'\0']);
-  /// ```
-  #[inline]
-  pub fn as_bytes_with_nul(&self) -> &[u8] {
-    &self.inner
-  }
-
-  /// Extracts a [`CStr`] slice containing the entire string.
-  ///
-  /// [`CStr`]: CStr
-  ///
-  /// # Examples
-  ///
-  /// ```
-  /// use drone_core::ffi::{CStr, CString};
-  ///
-  /// let c_string = CString::new(b"foo".to_vec()).unwrap();
-  /// let c_str = c_string.as_c_str();
-  /// assert_eq!(c_str, CStr::from_bytes_with_nul(b"foo\0").unwrap());
-  /// ```
-  #[inline]
-  pub fn as_c_str(&self) -> &CStr {
-    &*self
-  }
-
-  /// Converts this `CString` into a boxed [`CStr`].
-  ///
-  /// [`CStr`]: CStr
-  ///
-  /// # Examples
-  ///
-  /// ```
-  /// use drone_core::ffi::{CStr, CString};
-  ///
-  /// let c_string = CString::new(b"foo".to_vec()).unwrap();
-  /// let boxed = c_string.into_boxed_c_str();
-  /// assert_eq!(&*boxed, CStr::from_bytes_with_nul(b"foo\0").unwrap());
-  /// ```
-  pub fn into_boxed_c_str(self) -> Box<CStr> {
-    unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut CStr) }
-  }
-
-  // Bypass "move out of struct which implements `Drop` trait" restriction.
-  pub(super) fn into_inner(self) -> Box<[u8]> {
-    unsafe {
-      let result = ptr::read(&self.inner);
-      mem::forget(self);
-      result
+    /// Retakes ownership of a `CString` that was transferred to C via
+    /// [`into_raw`].
+    ///
+    /// Additionally, the length of the string will be recalculated from the
+    /// pointer.
+    ///
+    /// # Safety
+    ///
+    /// This should only ever be called with a pointer that was earlier obtained
+    /// by calling [`into_raw`] on a `CString`. Other usage (e.g. trying to take
+    /// ownership of a string that was allocated by foreign code) is likely to
+    /// lead to undefined behavior or allocator corruption.
+    ///
+    /// > **Note:** If you need to borrow a string that was allocated by foreign
+    /// > code, use [`CStr`]. If you need to take ownership of a string that was
+    /// > allocated by foreign code, you will need to make your own provisions
+    /// for > freeing it appropriately, likely with the foreign code's API
+    /// to do that.
+    ///
+    /// [`into_raw`]: CString::into_raw
+    /// [`CStr`]: CStr
+    ///
+    /// # Examples
+    ///
+    /// Create a `CString`, pass ownership to an `extern` function (via raw
+    /// pointer), then retake ownership with `from_raw`:
+    ///
+    /// ```
+    /// use drone_core::ffi::{c_char, CString};
+    ///
+    /// unsafe fn some_extern_function(_s: *mut c_char) {}
+    ///
+    /// let c_string = CString::new("Hello!").unwrap();
+    /// let raw = c_string.into_raw();
+    /// unsafe {
+    ///     some_extern_function(raw);
+    ///     let c_string = CString::from_raw(raw);
+    /// }
+    /// ```
+    pub unsafe fn from_raw(ptr: *mut c_char) -> Self {
+        let len = strlen(ptr) + 1; // Including the NUL byte
+        let slice = slice::from_raw_parts_mut(ptr, len as usize);
+        Self {
+            inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]),
+        }
     }
-  }
+
+    /// Consumes the `CString` and transfers ownership of the string to a C
+    /// caller.
+    ///
+    /// The pointer which this function returns must be returned to Rust and
+    /// reconstituted using [`from_raw`] to be properly deallocated.
+    /// Specifically, one should *not* use the standard C `free()` function
+    /// to deallocate this string.
+    ///
+    /// Failure to call [`from_raw`] will lead to a memory leak.
+    ///
+    /// [`from_raw`]: CString::from_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use drone_core::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    ///
+    /// let ptr = c_string.into_raw();
+    ///
+    /// unsafe {
+    ///     assert_eq!(b'f', *ptr as u8);
+    ///     assert_eq!(b'o', *ptr.offset(1) as u8);
+    ///     assert_eq!(b'o', *ptr.offset(2) as u8);
+    ///     assert_eq!(b'\0', *ptr.offset(3) as u8);
+    ///
+    ///     // retake pointer to free memory
+    ///     let _ = CString::from_raw(ptr);
+    /// }
+    /// ```
+    #[inline]
+    pub fn into_raw(self) -> *mut c_char {
+        Box::into_raw(self.into_inner()) as *mut c_char
+    }
+
+    /// Converts the `CString` into a `String` if it contains valid UTF-8 data.
+    ///
+    /// On failure, ownership of the original `CString` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use drone_core::ffi::CString;
+    ///
+    /// let valid_utf8 = vec![b'f', b'o', b'o'];
+    /// let cstring = CString::new(valid_utf8).unwrap();
+    /// assert_eq!(cstring.into_string().unwrap(), "foo");
+    ///
+    /// let invalid_utf8 = vec![b'f', 0xff, b'o', b'o'];
+    /// let cstring = CString::new(invalid_utf8).unwrap();
+    /// let err = cstring.into_string().err().unwrap();
+    /// assert_eq!(err.utf8_error().valid_up_to(), 1);
+    /// ```
+    pub fn into_string(self) -> Result<String, IntoStringError> {
+        String::from_utf8(self.into_bytes()).map_err(|e| IntoStringError {
+            error: e.utf8_error(),
+            inner: unsafe { Self::from_vec_unchecked(e.into_bytes()) },
+        })
+    }
+
+    /// Consumes the `CString` and returns the underlying byte buffer.
+    ///
+    /// The returned buffer does **not** contain the trailing nul terminator,
+    /// and it is guaranteed to not have any interior nul bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use drone_core::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    /// let bytes = c_string.into_bytes();
+    /// assert_eq!(bytes, vec![b'f', b'o', b'o']);
+    /// ```
+    pub fn into_bytes(self) -> Vec<u8> {
+        let mut vec = self.into_inner().into_vec();
+        let nul = vec.pop();
+        debug_assert_eq!(nul, Some(0_u8));
+        vec
+    }
+
+    /// Equivalent to the [`into_bytes`] function except that the returned
+    /// vector includes the trailing nul terminator.
+    ///
+    /// [`into_bytes`]: CString::into_bytes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use drone_core::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    /// let bytes = c_string.into_bytes_with_nul();
+    /// assert_eq!(bytes, vec![b'f', b'o', b'o', b'\0']);
+    /// ```
+    pub fn into_bytes_with_nul(self) -> Vec<u8> {
+        self.into_inner().into_vec()
+    }
+
+    /// Returns the contents of this `CString` as a slice of bytes.
+    ///
+    /// The returned slice does **not** contain the trailing nul terminator, and
+    /// it is guaranteed to not have any interior nul bytes. If you need the nul
+    /// terminator, use [`as_bytes_with_nul`] instead.
+    ///
+    /// [`as_bytes_with_nul`]: CString::as_bytes_with_nul
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use drone_core::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    /// let bytes = c_string.as_bytes();
+    /// assert_eq!(bytes, &[b'f', b'o', b'o']);
+    /// ```
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.inner[..self.inner.len() - 1]
+    }
+
+    /// Equivalent to the [`as_bytes`] function except that the returned slice
+    /// includes the trailing nul terminator.
+    ///
+    /// [`as_bytes`]: CString::as_bytes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use drone_core::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    /// let bytes = c_string.as_bytes_with_nul();
+    /// assert_eq!(bytes, &[b'f', b'o', b'o', b'\0']);
+    /// ```
+    #[inline]
+    pub fn as_bytes_with_nul(&self) -> &[u8] {
+        &self.inner
+    }
+
+    /// Extracts a [`CStr`] slice containing the entire string.
+    ///
+    /// [`CStr`]: CStr
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use drone_core::ffi::{CStr, CString};
+    ///
+    /// let c_string = CString::new(b"foo".to_vec()).unwrap();
+    /// let c_str = c_string.as_c_str();
+    /// assert_eq!(c_str, CStr::from_bytes_with_nul(b"foo\0").unwrap());
+    /// ```
+    #[inline]
+    pub fn as_c_str(&self) -> &CStr {
+        &*self
+    }
+
+    /// Converts this `CString` into a boxed [`CStr`].
+    ///
+    /// [`CStr`]: CStr
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use drone_core::ffi::{CStr, CString};
+    ///
+    /// let c_string = CString::new(b"foo".to_vec()).unwrap();
+    /// let boxed = c_string.into_boxed_c_str();
+    /// assert_eq!(&*boxed, CStr::from_bytes_with_nul(b"foo\0").unwrap());
+    /// ```
+    pub fn into_boxed_c_str(self) -> Box<CStr> {
+        unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut CStr) }
+    }
+
+    // Bypass "move out of struct which implements `Drop` trait" restriction.
+    pub(super) fn into_inner(self) -> Box<[u8]> {
+        unsafe {
+            let result = ptr::read(&self.inner);
+            mem::forget(self);
+            result
+        }
+    }
 }
 
 impl NulError {
-  /// Returns the position of the nul byte in the slice that caused
-  /// [`CString::new`] to fail.
-  ///
-  /// [`CString::new`]: CString::new
-  ///
-  /// # Examples
-  ///
-  /// ```
-  /// use drone_core::ffi::CString;
-  ///
-  /// let nul_error = CString::new("foo\0bar").unwrap_err();
-  /// assert_eq!(nul_error.nul_position(), 3);
-  ///
-  /// let nul_error = CString::new("foo bar\0").unwrap_err();
-  /// assert_eq!(nul_error.nul_position(), 7);
-  /// ```
-  pub fn nul_position(&self) -> usize {
-    self.0
-  }
+    /// Returns the position of the nul byte in the slice that caused
+    /// [`CString::new`] to fail.
+    ///
+    /// [`CString::new`]: CString::new
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use drone_core::ffi::CString;
+    ///
+    /// let nul_error = CString::new("foo\0bar").unwrap_err();
+    /// assert_eq!(nul_error.nul_position(), 3);
+    ///
+    /// let nul_error = CString::new("foo bar\0").unwrap_err();
+    /// assert_eq!(nul_error.nul_position(), 7);
+    /// ```
+    pub fn nul_position(&self) -> usize {
+        self.0
+    }
 
-  /// Consumes this error, returning the underlying vector of bytes which
-  /// generated the error in the first place.
-  ///
-  /// # Examples
-  ///
-  /// ```
-  /// use drone_core::ffi::CString;
-  ///
-  /// let nul_error = CString::new("foo\0bar").unwrap_err();
-  /// assert_eq!(nul_error.into_vec(), b"foo\0bar");
-  /// ```
-  pub fn into_vec(self) -> Vec<u8> {
-    self.1
-  }
+    /// Consumes this error, returning the underlying vector of bytes which
+    /// generated the error in the first place.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use drone_core::ffi::CString;
+    ///
+    /// let nul_error = CString::new("foo\0bar").unwrap_err();
+    /// assert_eq!(nul_error.into_vec(), b"foo\0bar");
+    /// ```
+    pub fn into_vec(self) -> Vec<u8> {
+        self.1
+    }
 }
 
 impl IntoStringError {
-  /// Consumes this error, returning original [`CString`] which generated the
-  /// error.
-  ///
-  /// [`CString`]: CString
-  pub fn into_cstring(self) -> CString {
-    self.inner
-  }
+    /// Consumes this error, returning original [`CString`] which generated the
+    /// error.
+    ///
+    /// [`CString`]: CString
+    pub fn into_cstring(self) -> CString {
+        self.inner
+    }
 
-  /// Access the underlying UTF-8 error that was the cause of this error.
-  pub fn utf8_error(&self) -> Utf8Error {
-    self.error
-  }
+    /// Access the underlying UTF-8 error that was the cause of this error.
+    pub fn utf8_error(&self) -> Utf8Error {
+        self.error
+    }
 }
 
 // Turns this `CString` into an empty string to prevent
 // memory unsafe code from working by accident. Inline
 // to prevent LLVM from optimizing it away in debug builds.
 impl Drop for CString {
-  #[inline]
-  fn drop(&mut self) {
-    unsafe { *self.inner.get_unchecked_mut(0) = 0 };
-  }
+    #[inline]
+    fn drop(&mut self) {
+        unsafe { *self.inner.get_unchecked_mut(0) = 0 };
+    }
 }
 
 impl ops::Deref for CString {
-  type Target = CStr;
+    type Target = CStr;
 
-  #[inline]
-  fn deref(&self) -> &CStr {
-    unsafe { CStr::from_bytes_with_nul_unchecked(self.as_bytes_with_nul()) }
-  }
+    #[inline]
+    fn deref(&self) -> &CStr {
+        unsafe { CStr::from_bytes_with_nul_unchecked(self.as_bytes_with_nul()) }
+    }
 }
 
 impl fmt::Debug for CString {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    fmt::Debug::fmt(&**self, f)
-  }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&**self, f)
+    }
 }
 
 impl From<CString> for Vec<u8> {
-  #[inline]
-  fn from(s: CString) -> Self {
-    s.into_bytes()
-  }
+    #[inline]
+    fn from(s: CString) -> Self {
+        s.into_bytes()
+    }
 }
 
 impl Default for CString {
-  /// Creates an empty `CString`.
-  fn default() -> Self {
-    let a: &CStr = Default::default();
-    a.to_owned()
-  }
+    /// Creates an empty `CString`.
+    fn default() -> Self {
+        let a: &CStr = Default::default();
+        a.to_owned()
+    }
 }
 
 impl Borrow<CStr> for CString {
-  #[inline]
-  fn borrow(&self) -> &CStr {
-    self
-  }
+    #[inline]
+    fn borrow(&self) -> &CStr {
+        self
+    }
 }
 
 impl<'a> From<&'a CStr> for CString {
-  fn from(s: &'a CStr) -> Self {
-    s.to_owned()
-  }
+    fn from(s: &'a CStr) -> Self {
+        s.to_owned()
+    }
 }
 
 impl<'a> From<Cow<'a, CStr>> for CString {
-  #[inline]
-  fn from(s: Cow<'a, CStr>) -> Self {
-    s.into_owned()
-  }
+    #[inline]
+    fn from(s: Cow<'a, CStr>) -> Self {
+        s.into_owned()
+    }
 }
 
 impl From<Box<CStr>> for CString {
-  #[inline]
-  fn from(s: Box<CStr>) -> Self {
-    s.into_c_string()
-  }
+    #[inline]
+    fn from(s: Box<CStr>) -> Self {
+        s.into_c_string()
+    }
 }
 
 impl ops::Index<ops::RangeFull> for CString {
-  type Output = CStr;
+    type Output = CStr;
 
-  #[inline]
-  fn index(&self, _index: ops::RangeFull) -> &CStr {
-    self
-  }
+    #[inline]
+    fn index(&self, _index: ops::RangeFull) -> &CStr {
+        self
+    }
 }
 
 impl AsRef<CStr> for CString {
-  #[inline]
-  fn as_ref(&self) -> &CStr {
-    self
-  }
+    #[inline]
+    fn as_ref(&self) -> &CStr {
+        self
+    }
 }
