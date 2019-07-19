@@ -1,16 +1,15 @@
 //! Timers.
 
 use core::{
+    fmt,
     future::Future,
     pin::Pin,
     task::{Context, Poll},
 };
-use failure::Fail;
 use futures::stream::Stream;
 
 /// Error returned from [`Timer::interval`] on overflow.
-#[derive(Debug, Fail)]
-#[fail(display = "Timer stream overflow.")]
+#[derive(Debug)]
 pub struct TimerOverflow;
 
 /// Generic timer driver.
@@ -100,5 +99,11 @@ impl<'a, T: TimerStop, I> Drop for TimerInterval<'a, T, I> {
     #[inline]
     fn drop(&mut self) {
         self.stop.stop();
+    }
+}
+
+impl fmt::Display for TimerOverflow {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Timer stream overflow.")
     }
 }

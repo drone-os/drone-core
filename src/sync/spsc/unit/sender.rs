@@ -2,11 +2,11 @@ use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK, RX_WAKER_STORED};
 use crate::sync::spsc::{SpscInner, SpscInnerErr};
 use alloc::sync::Arc;
 use core::{
+    fmt,
     pin::Pin,
     sync::atomic::Ordering,
     task::{Context, Poll},
 };
-use failure::Fail;
 
 const IS_TX_HALF: bool = true;
 
@@ -16,13 +16,11 @@ pub struct Sender<E> {
 }
 
 /// Error returned from [`Sender::send`](Sender::send).
-#[derive(Debug, Fail)]
+#[derive(Debug)]
 pub enum SendError {
     /// The corresponding [`Receiver`](super::Receiver) is dropped.
-    #[fail(display = "Receiver is dropped.")]
     Canceled,
     /// Counter overflow.
-    #[fail(display = "Channel buffer overflow.")]
     Overflow,
 }
 
@@ -114,5 +112,14 @@ impl<E> Inner<E> {
                 unsafe { (*self.rx_waker.get()).get_ref().wake_by_ref() };
             }
         })
+    }
+}
+
+impl fmt::Display for SendError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SendError::Canceled => write!(f, "Receiver is dropped."),
+            SendError::Overflow => write!(f, "Channel buffer overflow."),
+        }
     }
 }

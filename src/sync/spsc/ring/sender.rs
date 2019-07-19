@@ -8,7 +8,6 @@ use core::{
     sync::atomic::Ordering,
     task::{Context, Poll},
 };
-use failure::{Backtrace, Fail};
 
 const IS_TX_HALF: bool = true;
 
@@ -27,13 +26,11 @@ pub struct SendError<T> {
 }
 
 /// Kind of [`SendError`](SendError).
-#[derive(Debug, Fail)]
+#[derive(Debug)]
 pub enum SendErrorKind {
     /// The corresponding [`Receiver`](super::Receiver) is dropped.
-    #[fail(display = "Receiver is dropped.")]
     Canceled,
     /// Buffer overflow.
-    #[fail(display = "Channel buffer overflow.")]
     Overflow,
 }
 
@@ -188,21 +185,17 @@ impl<T> SendError<T> {
     }
 }
 
-impl<T> Fail for SendError<T>
-where
-    T: fmt::Display + fmt::Debug + Send + Sync + 'static,
-{
-    fn cause(&self) -> Option<&dyn Fail> {
-        Some(&self.kind)
-    }
-
-    fn backtrace(&self) -> Option<&Backtrace> {
-        None
-    }
-}
-
 impl<T: fmt::Display> fmt::Display for SendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind.fmt(f)
+    }
+}
+
+impl fmt::Display for SendErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SendErrorKind::Canceled => write!(f, "Receiver is dropped."),
+            SendErrorKind::Overflow => write!(f, "Channel buffer overflow."),
+        }
     }
 }

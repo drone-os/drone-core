@@ -5,7 +5,6 @@ use core::{
     slice::{self, memchr},
     str::Utf8Error,
 };
-use failure::Fail;
 
 /// A type representing an owned, C-compatible, nul-terminated string with no
 /// nul bytes in the middle.
@@ -105,8 +104,7 @@ pub struct CString {
 ///
 /// let _: NulError = CString::new(b"f\0oo".to_vec()).unwrap_err();
 /// ```
-#[derive(Clone, PartialEq, Eq, Debug, Fail)]
-#[fail(display = "nul byte found in provided data at position: {}", _0)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct NulError(usize, Vec<u8>);
 
 /// An error indicating invalid UTF-8 when converting a [`CString`] into a
@@ -121,8 +119,7 @@ pub struct NulError(usize, Vec<u8>);
 ///
 /// [`CString`]: CString
 /// [`CString::into_string`]: CString::into_string
-#[derive(Clone, PartialEq, Eq, Debug, Fail)]
-#[fail(display = "C string contained non-utf8 bytes")]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct IntoStringError {
     inner: CString,
     error: Utf8Error,
@@ -559,5 +556,17 @@ impl AsRef<CStr> for CString {
     #[inline]
     fn as_ref(&self) -> &CStr {
         self
+    }
+}
+
+impl fmt::Display for NulError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "nul byte found in provided data at position: {}", self.0)
+    }
+}
+
+impl fmt::Display for IntoStringError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "C string contained non-utf8 bytes")
     }
 }

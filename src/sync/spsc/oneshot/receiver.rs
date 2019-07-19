@@ -8,7 +8,6 @@ use core::{
     sync::atomic::Ordering,
     task::{Context, Poll},
 };
-use failure::{Backtrace, Fail};
 
 const IS_TX_HALF: bool = false;
 
@@ -91,19 +90,6 @@ impl<T, E> Inner<T, E> {
                 |value| value.map_err(RecvError::Complete),
             ))
         }
-    }
-}
-
-impl<E> Fail for RecvError<E>
-where
-    E: fmt::Display + fmt::Debug + Send + Sync + 'static,
-{
-    fn cause(&self) -> Option<&dyn Fail> {
-        None
-    }
-
-    fn backtrace(&self) -> Option<&Backtrace> {
-        None
     }
 }
 

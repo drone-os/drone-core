@@ -7,7 +7,6 @@ use core::{
     slice::{self, memchr},
     str::{self, Utf8Error},
 };
-use failure::Fail;
 
 /// Representation of a borrowed C string.
 ///
@@ -102,20 +101,14 @@ pub struct CStr {
 ///
 /// let _: FromBytesWithNulError = CStr::from_bytes_with_nul(b"f\0oo").unwrap_err();
 /// ```
-#[derive(Clone, PartialEq, Eq, Debug, Fail)]
-#[fail(display = "{}", kind)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FromBytesWithNulError {
     kind: FromBytesWithNulErrorKind,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Fail)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 enum FromBytesWithNulErrorKind {
-    #[fail(
-        display = "data provided contains an interior nul byte at byte pos {}",
-        _0
-    )]
     InteriorNul(usize),
-    #[fail(display = "data provided is not nul terminated")]
     NotNulTerminated,
 }
 
@@ -558,5 +551,26 @@ impl Default for Box<CStr> {
     fn default() -> Self {
         let boxed: Box<[u8]> = Box::from([0]);
         unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
+    }
+}
+
+impl fmt::Display for FromBytesWithNulError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.kind)
+    }
+}
+
+impl fmt::Display for FromBytesWithNulErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FromBytesWithNulErrorKind::InteriorNul(pos) => write!(
+                f,
+                "data provided contains an interior nul byte at byte pos {}",
+                pos
+            ),
+            FromBytesWithNulErrorKind::NotNulTerminated => {
+                write!(f, "data provided is not nul terminated")
+            }
+        }
     }
 }
