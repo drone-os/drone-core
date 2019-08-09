@@ -1,7 +1,10 @@
 //! Machinery for wrapping stackful synchronous code into stackless asynchronous
 //! command loop.
 
-use crate::fib::{Fiber, FiberState};
+use crate::{
+    fib::{Fiber, FiberState},
+    future::fallback::*,
+};
 use core::{future::Future, pin::Pin};
 
 /// A type responsive for handling requests from synchronous code.
@@ -44,7 +47,7 @@ pub trait StackLoopSess: Send {
         >,
     > {
         let mut input = In { cmd };
-        Box::pin(asnc(move || {
+        Box::pin(asyn(move || {
             loop {
                 let FiberState::Yielded(output) = self.fib().resume(input);
                 input = match output {

@@ -91,11 +91,11 @@ impl Parse for Mode {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let ident = input.parse::<Ident>()?;
         if ident == "r" {
-            Ok(Mode::Read)
+            Ok(Self::Read)
         } else if ident == "rw" {
-            Ok(Mode::ReadWrite)
+            Ok(Self::ReadWrite)
         } else if ident == "w" {
-            Ok(Mode::Write)
+            Ok(Self::Write)
         } else {
             Err(input.error("invalid mode"))
         }
@@ -105,15 +105,15 @@ impl Parse for Mode {
 impl Mode {
     fn is_read(&self) -> bool {
         match *self {
-            Mode::Read | Mode::ReadWrite => true,
-            Mode::Write => false,
+            Self::Read | Self::ReadWrite => true,
+            Self::Write => false,
         }
     }
 
     fn is_write(&self) -> bool {
         match *self {
-            Mode::Read => false,
-            Mode::ReadWrite | Mode::Write => true,
+            Self::Read => false,
+            Self::ReadWrite | Self::Write => true,
         }
     }
 }

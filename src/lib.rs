@@ -22,6 +22,7 @@
 //! [cargo-drone]: https://github.com/drone-os/cargo-drone
 //! [xargo]: https://github.com/japaric/xargo
 
+#![feature(alloc_prelude)]
 #![feature(allocator_api)]
 #![feature(associated_type_defaults)]
 #![feature(const_fn)]
@@ -52,19 +53,19 @@
     clippy::module_inception,
     clippy::module_name_repetitions,
     clippy::precedence,
+    clippy::type_repetition_in_bounds,
     clippy::use_self
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
 
-#[macro_use]
-pub mod asnc;
 pub mod bitfield;
 pub mod drv;
 pub mod ffi;
 pub mod fib;
 pub mod fs;
+pub mod future;
 pub mod heap;
 pub mod inventory;
 pub mod io;

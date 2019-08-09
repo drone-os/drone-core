@@ -7,16 +7,20 @@ use core::{
     task::{Context, Poll},
 };
 
-/// Wrap a future in a generator.
+/// Wrap a generator in a future.
 #[inline]
-pub fn asnc<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
+pub fn from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
     GenFuture(x)
 }
 
+/// A wrapper around generators used to implement `Future` for `async`/`await`
+/// code.
 #[must_use]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 struct GenFuture<T: Generator<Yield = ()>>(T);
 
+// We rely on the fact that async/await futures are immovable in order to create
+// self-referential borrows in the underlying generator.
 impl<T: Generator<Yield = ()>> !Unpin for GenFuture<T> {}
 
 impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
@@ -24,7 +28,8 @@ impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let gen = unsafe { self.map_unchecked_mut(|x| &mut x.0) };
+        // Safe because we're !Unpin + !Drop mapping to a ?Unpin value
+        let gen = unsafe { Pin::map_unchecked_mut(self, |s| &mut s.0) };
         current_task().set_context(cx, || match gen.resume() {
             GeneratorState::Yielded(()) => Poll::Pending,
             GeneratorState::Complete(x) => Poll::Ready(x),

@@ -13,4 +13,4 @@ readme:
 # Run tests.
 test:
 	cargo test --all --exclude drone-core
-	cargo test --features "std" -p drone-core
+	cargo test --features std --package drone-core

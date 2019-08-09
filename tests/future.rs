@@ -3,27 +3,34 @@
 #![feature(never_type)]
 #![feature(prelude_import)]
 
+#[prelude_import]
+#[allow(unused_imports)]
+use drone_core::prelude::*;
+
 use core::{
     pin::Pin,
     ptr,
     sync::atomic::{AtomicUsize, Ordering::*},
     task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
 };
-#[prelude_import]
-#[allow(unused_imports)]
-use drone_core::prelude::*;
-use drone_core::{awt, sv, sync::spsc::oneshot, thr};
+use drone_core::{future::fallback::*, sv, sync::spsc::oneshot, thr};
 use futures::prelude::*;
 
 static mut THREADS: [Thr; 1] = [Thr::new(0)];
-
-struct Sv;
 
 thr! {
     struct Thr;
     struct ThrLocal;
     extern struct Sv;
     extern static THREADS;
+}
+
+struct Sv;
+
+impl sv::Supervisor for Sv {
+    fn first() -> *const Self {
+        ptr::null()
+    }
 }
 
 struct Counter(AtomicUsize);
@@ -41,28 +48,32 @@ impl Counter {
     }
 }
 
-impl sv::Supervisor for Sv {
-    fn first() -> *const Self {
-        ptr::null()
-    }
+fn test_awt() {
+    static COUNTER: Counter = Counter(AtomicUsize::new(0));
+    let waker = COUNTER.to_waker();
+    let mut cx = Context::from_waker(&waker);
+    let (rx, tx) = oneshot::channel::<usize, !>();
+    let mut fut = Box::pin(asyn(|| {
+        let number = awt!(rx)?;
+        Ok::<usize, oneshot::RecvError<!>>(number + 1)
+    }));
+    assert_eq!(tx.send(Ok(1)), Ok(()));
+    assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Ready(Ok(2)));
 }
 
-#[test]
-fn nested() {
+fn test_nested() {
     static COUNTER: Counter = Counter(AtomicUsize::new(0));
-    unsafe { thr::init::<Thr>() };
+    let waker = COUNTER.to_waker();
+    let mut cx = Context::from_waker(&waker);
     let (rx, tx) = oneshot::channel::<usize, !>();
-    let mut fut = Box::pin(asnc(|| {
-        awt!(Box::pin(asnc(|| {
-            awt!(asnc(|| {
+    let mut fut = Box::pin(asyn(|| {
+        awt!(Box::pin(asyn(|| {
+            awt!(asyn(|| {
                 let number = awt!(rx)?;
                 Ok::<usize, oneshot::RecvError<!>>(number + 1)
             }))
         })))
     }));
-    let waker = COUNTER.to_waker();
-    let mut cx = Context::from_waker(&waker);
-    COUNTER.0.store(0, Relaxed);
     assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Pending);
     assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Pending);
     assert_eq!(COUNTER.0.load(Relaxed), 0);
@@ -70,4 +81,13 @@ fn nested() {
     assert_eq!(COUNTER.0.load(Relaxed), 1);
     assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Ready(Ok(2)));
     assert_eq!(COUNTER.0.load(Relaxed), 1);
+}
+
+// Tests that involves Drone threads shouldn't be run in parallel as the default
+// test runner does. Therefore we wrap all tests into one test case.
+#[test]
+fn thread_sequence() {
+    unsafe { thr::init::<Thr>() };
+    test_awt();
+    test_nested();
 }

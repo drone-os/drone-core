@@ -127,7 +127,7 @@ impl<T, E> Inner<T, E> {
                 return Err(None);
             }
             let count = Self::get_count(*state);
-            if count == self.buffer.cap() {
+            if count == self.buffer.capacity() {
                 let index = self.take_index(state, count);
                 Ok((*state, index))
             } else {
@@ -165,7 +165,7 @@ impl<T, E> Inner<T, E> {
 
     fn put_index_try(&self, state: usize) -> Option<usize> {
         let count = Self::get_count(state);
-        if count == self.buffer.cap() {
+        if count == self.buffer.capacity() {
             None
         } else {
             Some(self.put_index(state, count))
@@ -174,7 +174,9 @@ impl<T, E> Inner<T, E> {
 
     fn put_index(&self, state: usize, count: usize) -> usize {
         let begin = state >> INDEX_BITS & INDEX_MASK;
-        begin.wrapping_add(count).wrapping_rem(self.buffer.cap())
+        begin
+            .wrapping_add(count)
+            .wrapping_rem(self.buffer.capacity())
     }
 }
 

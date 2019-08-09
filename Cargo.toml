@@ -8,12 +8,12 @@ authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 edition = "2018"
 description = "Drone is a Hard Real-Time Operating System Framework."
 readme = "README.md"
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/drone-os/drone-core"
 
 [features]
 default = []
-std = ['futures-preview/std']
+std = ["futures-preview/std"]
 
 [dependencies.drone-ctypes]
 version = "=0.9.0"
@@ -25,7 +25,3 @@ path = "macros"
 
 [dependencies]
 futures-preview = { version = "0.3.0-alpha", default-features = false }
-
-[dev-dependencies]
-glob = "0.3"
-compiletest_rs = { version = "0.3", features = ["tmp"] }

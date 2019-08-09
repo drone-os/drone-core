@@ -65,7 +65,7 @@ impl<T, E> Inner<T, E> {
         let begin = *state >> INDEX_BITS & INDEX_MASK;
         *state >>= INDEX_BITS << 1;
         *state <<= INDEX_BITS;
-        *state |= begin.wrapping_add(1).wrapping_rem(self.buffer.cap());
+        *state |= begin.wrapping_add(1).wrapping_rem(self.buffer.capacity());
         *state <<= INDEX_BITS;
         *state |= count.wrapping_sub(1);
         begin

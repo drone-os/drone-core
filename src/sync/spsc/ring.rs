@@ -84,12 +84,14 @@ impl<T, E> Drop for Inner<T, E> {
         let state = self.state_load(Ordering::Acquire);
         let count = state & INDEX_MASK;
         let begin = state >> INDEX_BITS & INDEX_MASK;
-        let end = begin.wrapping_add(count).wrapping_rem(self.buffer.cap());
+        let end = begin
+            .wrapping_add(count)
+            .wrapping_rem(self.buffer.capacity());
         match begin.cmp(&end) {
             cmp::Ordering::Equal => unsafe {
                 ptr::drop_in_place(slice::from_raw_parts_mut(
                     self.buffer.ptr(),
-                    self.buffer.cap(),
+                    self.buffer.capacity(),
                 ));
             },
             cmp::Ordering::Less => unsafe {
@@ -102,7 +104,7 @@ impl<T, E> Drop for Inner<T, E> {
                 ptr::drop_in_place(slice::from_raw_parts_mut(self.buffer.ptr(), end));
                 ptr::drop_in_place(slice::from_raw_parts_mut(
                     self.buffer.ptr().add(begin),
-                    self.buffer.cap() - begin,
+                    self.buffer.capacity() - begin,
                 ));
             },
         }

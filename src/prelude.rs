@@ -1,10 +1,12 @@
 //! The Drone Prelude.
 //!
-//! It is an analogue of [`std::prelude`], which is not available in
-//! `#![no_std]` contexts.
+//! This module re-exports:
+//! * Contents of [`core::prelude`].
+//! * Contents of [`alloc::prelude`].
 //!
-//! To automatically inject the imports into every module, place this code to
-//! the crate root:
+//! By default Rust automatically injects libcore prelude imports into every
+//! module. To inject the Drone prelude instead, place the following code to the
+//! `src/lib.rs`:
 //!
 //! ```
 //! #![feature(prelude_import)]
@@ -13,16 +15,6 @@
 //! #[allow(unused_imports)]
 //! use drone_core::prelude::*;
 //! ```
-//!
-//! [`std::prelude`]: https://doc.rust-lang.org/std/prelude/
 
+pub use alloc::prelude::v1::*;
 pub use core::prelude::v1::*;
-
-pub use alloc::{
-    borrow::ToOwned,
-    boxed::Box,
-    string::{String, ToString},
-    vec::Vec,
-};
-
-pub use crate::asnc::asnc;

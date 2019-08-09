@@ -66,3 +66,111 @@ mod tag;
 
 pub use self::{field::*, hold::*, reg::*, tag::*};
 pub use drone_core_macros::unsafe_reg_tokens as unsafe_tokens;
+
+mod compile_tests {
+    //! ```compile_fail
+    //! use drone_core::reg::prelude::*;
+    //! drone_core::reg! {
+    //!     pub mod TST TST_RW_REG;
+    //!     0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg;
+    //!     TST_BIT { 0 1 RRRegField WWRegField }
+    //! }
+    //! fn assert_rw_reg_unsync<'a, T: drone_core::reg::RwRegUnsync<'a>>() {}
+    //! fn main() {
+    //!     assert_rw_reg_unsync::<tst_tst_rw_reg::Reg<Srt>>();
+    //! }
+    //! ```
+    //!
+    //! ```compile_fail
+    //! use drone_core::reg::prelude::*;
+    //! drone_core::reg! {
+    //!     pub mod TST TST_RO_REG;
+    //!     0xDEAD_BEEF 0x20 0xBEEF_CACE RReg RoReg;
+    //!     TST_BIT { 0 1 RRRegField RoRRegField }
+    //! }
+    //! fn assert_rw_reg_unsync<'a, T: drone_core::reg::RwRegUnsync<'a>>() {}
+    //! fn main() {
+    //!     assert_rw_reg_unsync::<tst_tst_ro_reg::Reg<Urt>>();
+    //! }
+    //! ```
+    //!
+    //! ```compile_fail
+    //! use drone_core::reg::prelude::*;
+    //! drone_core::reg! {
+    //!     pub mod TST TST_WO_REG;
+    //!     0xDEAD_BEEF 0x20 0xBEEF_CACE WReg WoReg;
+    //!     TST_BIT { 0 1 WWRegField WoWRegField }
+    //! }
+    //! fn assert_rw_reg_unsync<'a, T: drone_core::reg::RwRegUnsync<'a>>() {}
+    //! fn main() {
+    //!     assert_rw_reg_unsync::<tst_tst_wo_reg::Reg<Urt>>();
+    //! }
+    //! ```
+    //!
+    //! ```
+    //! use drone_core::reg::prelude::*;
+    //! drone_core::reg! {
+    //!     pub mod FOO BAR;
+    //!     0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg;
+    //!     BAZ { 0 1 RRRegField WWRegField }
+    //! }
+    //! fn assert_rw_reg_unsync<'a, T: drone_core::reg::RwRegUnsync<'a>>() {}
+    //! fn main() {
+    //!     assert_rw_reg_unsync::<foo_bar::Reg<Urt>>();
+    //! }
+    //! ```
+    //!
+    //! ```compile_fail
+    //! use drone_core::reg::prelude::*;
+    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE; BAZ { 0 1 });
+    //! fn assert_copy<T: Copy>() {}
+    //! fn main() {
+    //!     assert_copy::<foo_bar::Reg<Urt>>();
+    //! }
+    //! ```
+    //!
+    //! ```compile_fail
+    //! use drone_core::reg::prelude::*;
+    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE; BAZ { 0 1 });
+    //! fn assert_clone<T: Clone>() {}
+    //! fn main() {
+    //!     assert_clone::<foo_bar::Reg<Urt>>();
+    //! }
+    //! ```
+    //!
+    //! ```compile_fail
+    //! use drone_core::reg::prelude::*;
+    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE; BAZ { 0 1 });
+    //! fn assert_copy<T: Copy>() {}
+    //! fn main() {
+    //!     assert_copy::<foo_bar::Reg<Srt>>();
+    //! }
+    //! ```
+    //!
+    //! ```compile_fail
+    //! use drone_core::reg::prelude::*;
+    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE; BAZ { 0 1 });
+    //! fn assert_clone<T: Clone>() {}
+    //! fn main() {
+    //!     assert_clone::<foo_bar::Reg<Srt>>();
+    //! }
+    //! ```
+    //!
+    //! ```
+    //! use drone_core::reg::prelude::*;
+    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE; BAZ { 0 1 });
+    //! fn assert_copy<T: Copy>() {}
+    //! fn main() {
+    //!     assert_copy::<foo_bar::Reg<Crt>>();
+    //! }
+    //! ```
+    //!
+    //! ```
+    //! use drone_core::reg::prelude::*;
+    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE; BAZ { 0 1 });
+    //! fn assert_clone<T: Clone>() {}
+    //! fn main() {
+    //!     assert_clone::<foo_bar::Reg<Crt>>();
+    //! }
+    //! ```
+}
