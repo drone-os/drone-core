@@ -1,8 +1,10 @@
-//! Platform-specific types, as defined by C.
+//! Platform-specific types, as defined by C, for [Drone] applications.
 //!
-//! Part of [Drone].
+//! This crate is an analogue of [`std::os::raw`] module. See its documentation
+//! for more details.
 //!
-//! [Drone]: https://github.com/drone-os/drone-core
+//! [Drone]: https://github.com/drone-os/drone
+//! [`std::os::raw`]: https://doc.rust-lang.org/std/os/raw/
 
 #![deny(bare_trait_objects)]
 #![deny(elided_lifetimes_in_paths)]

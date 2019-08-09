@@ -26,6 +26,7 @@
 #![feature(allocator_api)]
 #![feature(associated_type_defaults)]
 #![feature(const_fn)]
+#![feature(const_raw_ptr_deref)]
 #![feature(core_intrinsics)]
 #![feature(exhaustive_patterns)]
 #![feature(generator_trait)]

@@ -1,3 +1,11 @@
+//! Subset of C standard library.
+//!
+//! This module implements some functions from libc. Thus it eases linking Drone
+//! applications with C libraries.
+//!
+//! Dynamic memory functions (e.g. `malloc`, `free`) are implemented in terms of
+//! [Drone Heap][`crate::heap`].
+
 use crate::ffi::{c_char, c_int};
 use ::alloc::alloc;
 use core::{alloc::Layout, ffi::c_void, ptr};

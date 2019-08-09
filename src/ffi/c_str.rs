@@ -1,27 +1,27 @@
-use crate::ffi::{c_char, strlen, CString};
+use crate::ffi::{c_char, libc::strlen, CString};
 use alloc::{borrow::Cow, rc::Rc, sync::Arc};
 use core::{
     ascii,
     cmp::Ordering,
     fmt::{self, Write},
     slice::{self, memchr},
-    str::{self, Utf8Error},
+    str,
 };
 
 /// Representation of a borrowed C string.
 ///
 /// This type represents a borrowed reference to a nul-terminated array of
-/// bytes. It can be constructed safely from a `&[u8]` slice, or unsafely from a
-/// raw `*const c_char`. It can then be converted to a Rust `&str` by performing
-/// UTF-8 validation, or into an owned [`CString`].
+/// bytes. It can be constructed safely from a `&`[`u8`] slice, or unsafely from
+/// a raw `*const c_char`. It can then be converted to a Rust `&`[`str`] by
+/// performing UTF-8 validation, or into an owned [`CString`].
 ///
-/// `CStr` is to [`CString`] as `&str` is to `String`: the former in each pair
-/// are borrowed references; the latter are owned strings.
+/// `&CStr` is to [`CString`] as `&`[`str`] is to [`String`]: the former in each
+/// pair are borrowed references; the latter are owned strings.
 ///
 /// Note that this structure is **not** `repr(C)` and is not recommended to be
 /// placed in the signatures of FFI functions. Instead, safe wrappers of FFI
-/// functions may leverage the unsafe [`from_ptr`] constructor to provide a safe
-/// interface to other consumers.
+/// functions may leverage the unsafe [`CStr::from_ptr`] constructor to provide
+/// a safe interface to other consumers.
 ///
 /// # Examples
 ///
@@ -30,8 +30,8 @@ use core::{
 /// ```
 /// use drone_core::ffi::{c_char, CStr};
 ///
-/// unsafe fn my_string() -> *const c_char {
-///     "foo".as_ptr()
+/// extern "C" fn my_string() -> *const c_char {
+///     "example".as_ptr()
 /// }
 ///
 /// unsafe {
@@ -49,22 +49,22 @@ use core::{
 /// use drone_core::ffi::{c_char, CStr, CString};
 ///
 /// fn work(data: &CStr) {
-///     unsafe fn work_with(_data: *const c_char) {}
+///     extern "C" fn work_with(_data: *const c_char) {}
 ///
 ///     unsafe { work_with(data.as_ptr()) }
 /// }
 ///
-/// let s = CString::new("data data data data").unwrap();
+/// let s = CString::new("data data data data").expect("CString::new failed");
 /// work(&s);
 /// ```
 ///
-/// Converting a foreign C string into a Rust `String`:
+/// Converting a foreign C string into a Rust [`String`]:
 ///
 /// ```
 /// use drone_core::ffi::{c_char, CStr};
 ///
-/// unsafe fn my_string() -> *const c_char {
-///     "foo".as_ptr()
+/// extern "C" fn my_string() -> *const c_char {
+///     "example".as_ptr()
 /// }
 ///
 /// fn my_string_safe() -> String {
@@ -73,9 +73,6 @@ use core::{
 ///
 /// println!("string: {}", my_string_safe());
 /// ```
-///
-/// [`CString`]: CString
-/// [`from_ptr`]: CStr::from_ptr
 #[allow(clippy::derive_hash_xor_eq)]
 #[derive(Hash)]
 pub struct CStr {
@@ -90,9 +87,6 @@ pub struct CStr {
 /// This error is created by the
 /// [`from_bytes_with_nul`][`CStr::from_bytes_with_nul`] method on [`CStr`]. See
 /// its documentation for more.
-///
-/// [`CStr`]: CStr
-/// [`CStr::from_bytes_with_nul`]: CStr::from_bytes_with_nul
 ///
 /// # Examples
 ///
@@ -134,16 +128,18 @@ impl CStr {
     /// # Examples
     ///
     /// ```
+    /// # fn main() {
     /// use drone_core::ffi::{c_char, CStr};
     ///
-    /// unsafe fn my_string() -> *const c_char {
-    ///     "foo\0".as_ptr()
+    /// extern "C" fn my_string() -> *const c_char {
+    ///     "example\0".as_ptr()
     /// }
     ///
     /// unsafe {
     ///     let slice = CStr::from_ptr(my_string());
     ///     println!("string returned: {}", slice.to_str().unwrap());
     /// }
+    /// # }
     /// ```
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a Self {
         let len = strlen(ptr);
@@ -207,23 +203,26 @@ impl CStr {
     /// use drone_core::ffi::{CStr, CString};
     ///
     /// unsafe {
-    ///     let cstring = CString::new("hello").unwrap();
+    ///     let cstring = CString::new("hello").expect("CString::new failed");
     ///     let cstr = CStr::from_bytes_with_nul_unchecked(cstring.to_bytes_with_nul());
     ///     assert_eq!(cstr, &*cstring);
     /// }
     /// ```
     #[inline]
-    pub unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &Self {
+    pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &Self {
         &*(bytes as *const [u8] as *const Self)
     }
 
     /// Returns the inner pointer to this C string.
     ///
     /// The returned pointer will be valid for as long as `self` is, and points
-    /// to a contiguous region of memory terminated with a 0 byte to
-    /// represent the end of the string.
+    /// to a contiguous region of memory terminated with a 0 byte to represent
+    /// the end of the string.
     ///
     /// **WARNING**
+    ///
+    /// The returned pointer is read-only; writing to it (including passing it
+    /// to C code that writes to it) causes undefined behavior.
     ///
     /// It is your responsibility to make sure that the underlying memory is not
     /// freed too early. For example, the following code will cause undefined
@@ -233,7 +232,7 @@ impl CStr {
     /// # #![allow(unused_must_use)]
     /// use drone_core::ffi::CString;
     ///
-    /// let ptr = CString::new("Hello").unwrap().as_ptr();
+    /// let ptr = CString::new("Hello").expect("CString::new failed").as_ptr();
     /// unsafe {
     ///     // `ptr` is dangling
     ///     *ptr;
@@ -242,15 +241,15 @@ impl CStr {
     ///
     /// This happens because the pointer returned by `as_ptr` does not carry any
     /// lifetime information and the [`CString`] is deallocated immediately
-    /// after the `CString::new("Hello").unwrap().as_ptr()` expression is
-    /// evaluated.  To fix the problem, bind the `CString` to a local
-    /// variable:
+    /// after the `CString::new("Hello").expect("CString::new failed").as_ptr()`
+    /// expression is evaluated. To fix the problem, bind the `CString` to a
+    /// local variable:
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
     /// use drone_core::ffi::CString;
     ///
-    /// let hello = CString::new("Hello").unwrap();
+    /// let hello = CString::new("Hello").expect("CString::new failed");
     /// let ptr = hello.as_ptr();
     /// unsafe {
     ///     // `ptr` is valid because `hello` is in scope
@@ -260,10 +259,8 @@ impl CStr {
     ///
     /// This way, the lifetime of the `CString` in `hello` encompasses the
     /// lifetime of `ptr` and the `unsafe` block.
-    ///
-    /// [`CString`]: CString
     #[inline]
-    pub fn as_ptr(&self) -> *const c_char {
+    pub const fn as_ptr(&self) -> *const c_char {
         self.inner.as_ptr()
     }
 
@@ -273,15 +270,15 @@ impl CStr {
     /// this C string has.
     ///
     /// > **Note**: This method is currently implemented as a constant-time
-    /// cast, > but it is planned to alter its definition in the future to
-    /// perform the > length calculation whenever this method is called.
+    /// > cast, but it is planned to alter its definition in the future to
+    /// > perform the length calculation whenever this method is called.
     ///
     /// # Examples
     ///
     /// ```
     /// use drone_core::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").unwrap();
+    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(c_str.to_bytes(), b"foo");
     /// ```
     #[inline]
@@ -292,21 +289,19 @@ impl CStr {
 
     /// Converts this C string to a byte slice containing the trailing 0 byte.
     ///
-    /// This function is the equivalent of [`to_bytes`] except that it will
-    /// retain the trailing nul terminator instead of chopping it off.
+    /// This function is the equivalent of [`CStr::to_bytes`] except that it
+    /// will retain the trailing nul terminator instead of chopping it off.
     ///
     /// > **Note**: This method is currently implemented as a 0-cost cast, but
-    /// it > is planned to alter its definition in the future to perform the
-    /// length > calculation whenever this method is called.
-    ///
-    /// [`to_bytes`]: CStr::to_bytes
+    /// > it is planned to alter its definition in the future to perform the
+    /// > length calculation whenever this method is called.
     ///
     /// # Examples
     ///
     /// ```
     /// use drone_core::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").unwrap();
+    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(c_str.to_bytes_with_nul(), b"foo\0");
     /// ```
     #[inline]
@@ -314,45 +309,45 @@ impl CStr {
         unsafe { &*(&self.inner as *const [c_char] as *const [u8]) }
     }
 
-    /// Yields a `&str` slice if the `CStr` contains valid UTF-8.
+    /// Yields a `&`[`str`] slice if the `CStr` contains valid UTF-8.
     ///
     /// If the contents of the `CStr` are valid UTF-8 data, this function will
-    /// return the corresponding `&str` slice. Otherwise, it will return an
+    /// return the corresponding `&`[`str`] slice. Otherwise, it will return an
     /// error with details of where UTF-8 validation failed.
     ///
     /// > **Note**: This method is currently implemented to check for validity
     /// > after a constant-time cast, but it is planned to alter its definition
-    /// in > the future to perform the length calculation in addition to the
-    /// UTF-8 > check whenever this method is called.
+    /// > in the future to perform the length calculation in addition to the
+    /// > UTF-8 check whenever this method is called.
     ///
     /// # Examples
     ///
     /// ```
     /// use drone_core::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").unwrap();
+    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(c_str.to_str(), Ok("foo"));
     /// ```
-    pub fn to_str(&self) -> Result<&str, Utf8Error> {
-        // NB: When CStr is changed to perform the length check in .to_bytes()
-        // instead of in from_ptr(), it may be worth considering if this should
+    pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
+        // N.B., when `CStr` is changed to perform the length check in `.to_bytes()`
+        // instead of in `from_ptr()`, it may be worth considering if this should
         // be rewritten to do the UTF-8 check inline with the length calculation
         // instead of doing it afterwards.
         str::from_utf8(self.to_bytes())
     }
 
-    /// Converts a `CStr` into a `Cow<str>`.
+    /// Converts a `CStr` into a [`Cow`]`<`[`str`]`>`.
     ///
     /// If the contents of the `CStr` are valid UTF-8 data, this function will
-    /// return a `Cow::Borrowed(&str)` with the the corresponding `&str` slice.
-    /// Otherwise, it will replace any invalid UTF-8 sequences with `U+FFFD
-    /// REPLACEMENT CHARACTER` and return a `Cow::Owned(String)` with the
-    /// result.
+    /// return a [`Cow::Borrowed`]`(&`[`str`]`)` with the corresponding
+    /// `&`[`str`] slice. Otherwise, it will replace any invalid UTF-8 sequences
+    /// with [`U+FFFD REPLACEMENT CHARACTER`][core::char::REPLACEMENT_CHARACTER]
+    /// and return a [`Cow::Owned`]`(`[`String`]`)` with the result.
     ///
     /// > **Note**: This method is currently implemented to check for validity
     /// > after a constant-time cast, but it is planned to alter its definition
-    /// in > the future to perform the length calculation in addition to the
-    /// UTF-8 > check whenever this method is called.
+    /// > in the future to perform the length calculation in addition to the
+    /// > UTF-8 check whenever this method is called.
     ///
     /// # Examples
     ///
@@ -364,7 +359,8 @@ impl CStr {
     /// use alloc::borrow::Cow;
     /// use drone_core::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"Hello World\0").unwrap();
+    /// let c_str =
+    ///     CStr::from_bytes_with_nul(b"Hello World\0").expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(c_str.to_string_lossy(), Cow::Borrowed("Hello World"));
     /// ```
     ///
@@ -376,28 +372,31 @@ impl CStr {
     /// use alloc::borrow::Cow;
     /// use drone_core::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0").unwrap();
+    /// let c_str = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0")
+    ///     .expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(
     ///     c_str.to_string_lossy(),
-    ///     Cow::Owned(String::from("Hello �World")) as Cow<str>
+    ///     Cow::Owned(String::from("Hello �World")) as Cow<'_, str>
     /// );
     /// ```
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
         String::from_utf8_lossy(self.to_bytes())
     }
 
-    /// Converts a `Box<CStr>` into a [`CString`] without copying or allocating.
-    ///
-    /// [`CString`]: CString
+    /// Converts a [`Box`]`<CStr>` into a [`CString`] without copying or
+    /// allocating.
     ///
     /// # Examples
     ///
     /// ```
     /// use drone_core::ffi::CString;
     ///
-    /// let c_string = CString::new(b"foo".to_vec()).unwrap();
+    /// let c_string = CString::new(b"foo".to_vec()).expect("CString::new failed");
     /// let boxed = c_string.into_boxed_c_str();
-    /// assert_eq!(boxed.into_c_string(), CString::new("foo").unwrap());
+    /// assert_eq!(
+    ///     boxed.into_c_string(),
+    ///     CString::new("foo").expect("CString::new failed")
+    /// );
     /// ```
     #[allow(clippy::wrong_self_convention)]
     pub fn into_c_string(self: Box<Self>) -> CString {
@@ -436,8 +435,8 @@ impl fmt::Debug for CStr {
     }
 }
 
-impl<'a> Default for &'a CStr {
-    fn default() -> &'a CStr {
+impl Default for &CStr {
+    fn default() -> Self {
         const SLICE: &[c_char] = &[0];
         unsafe { CStr::from_ptr(SLICE.as_ptr()) }
     }
@@ -453,13 +452,13 @@ impl Eq for CStr {}
 
 impl PartialOrd for CStr {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.to_bytes().partial_cmp(other.to_bytes())
+        self.to_bytes().partial_cmp(&other.to_bytes())
     }
 }
 
 impl Ord for CStr {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.to_bytes().cmp(other.to_bytes())
+        self.to_bytes().cmp(&other.to_bytes())
     }
 }
 
@@ -480,14 +479,30 @@ impl AsRef<CStr> for CStr {
     }
 }
 
-impl<'a> From<&'a CStr> for Box<CStr> {
-    fn from(s: &'a CStr) -> Self {
+impl Default for Box<CStr> {
+    fn default() -> Self {
+        let boxed: Box<[u8]> = Box::from([0]);
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
+    }
+}
+
+impl Clone for Box<CStr> {
+    #[inline]
+    fn clone(&self) -> Self {
+        (**self).into()
+    }
+}
+
+impl From<&CStr> for Box<CStr> {
+    fn from(s: &CStr) -> Self {
         let boxed: Box<[u8]> = Box::from(s.to_bytes_with_nul());
         unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
     }
 }
 
 impl From<CString> for Box<CStr> {
+    /// Converts a [`CString`] into a [`Box`]`<`[`CStr`]`>` without copying or
+    /// allocating.
     #[inline]
     fn from(s: CString) -> Self {
         s.into_boxed_c_str()
@@ -495,6 +510,8 @@ impl From<CString> for Box<CStr> {
 }
 
 impl From<CString> for Arc<CStr> {
+    /// Converts a [`CString`] into a [`Arc`]`<`[`CStr`]`>` without copying or
+    /// allocating.
     #[inline]
     fn from(s: CString) -> Self {
         let arc: Arc<[u8]> = Arc::from(s.into_inner());
@@ -502,7 +519,7 @@ impl From<CString> for Arc<CStr> {
     }
 }
 
-impl<'a> From<&'a CStr> for Arc<CStr> {
+impl From<&CStr> for Arc<CStr> {
     #[inline]
     fn from(s: &CStr) -> Self {
         let arc: Arc<[u8]> = Arc::from(s.to_bytes_with_nul());
@@ -511,6 +528,8 @@ impl<'a> From<&'a CStr> for Arc<CStr> {
 }
 
 impl From<CString> for Rc<CStr> {
+    /// Converts a [`CString`] into a [`Rc`]`<`[`CStr`]`>` without copying or
+    /// allocating.
     #[inline]
     fn from(s: CString) -> Self {
         let rc: Rc<[u8]> = Rc::from(s.into_inner());
@@ -518,7 +537,7 @@ impl From<CString> for Rc<CStr> {
     }
 }
 
-impl<'a> From<&'a CStr> for Rc<CStr> {
+impl From<&CStr> for Rc<CStr> {
     #[inline]
     fn from(s: &CStr) -> Self {
         let rc: Rc<[u8]> = Rc::from(s.to_bytes_with_nul());
@@ -528,29 +547,22 @@ impl<'a> From<&'a CStr> for Rc<CStr> {
 
 impl<'a> From<CString> for Cow<'a, CStr> {
     #[inline]
-    fn from(s: CString) -> Cow<'a, CStr> {
+    fn from(s: CString) -> Self {
         Cow::Owned(s)
     }
 }
 
 impl<'a> From<&'a CStr> for Cow<'a, CStr> {
     #[inline]
-    fn from(s: &'a CStr) -> Cow<'a, CStr> {
+    fn from(s: &'a CStr) -> Self {
         Cow::Borrowed(s)
     }
 }
 
 impl<'a> From<&'a CString> for Cow<'a, CStr> {
     #[inline]
-    fn from(s: &'a CString) -> Cow<'a, CStr> {
+    fn from(s: &'a CString) -> Self {
         Cow::Borrowed(s.as_c_str())
-    }
-}
-
-impl Default for Box<CStr> {
-    fn default() -> Self {
-        let boxed: Box<[u8]> = Box::from([0]);
-        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
     }
 }
 
