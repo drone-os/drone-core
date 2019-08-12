@@ -21,6 +21,7 @@ pub use self::{
 use crate::{
     fib::{Chain, FiberRoot},
     sv::SvOpt,
+    token::Token,
 };
 
 /// A thread interface.
@@ -60,6 +61,7 @@ pub trait ThrToken<T>
 where
     Self: Sized + Clone + Copy,
     Self: Send + Sync + 'static,
+    Self: Token,
     T: ThrTag,
 {
     /// Thread.
@@ -76,13 +78,6 @@ where
 
     /// A thread position within threads array.
     const THR_NUM: usize;
-
-    /// Creates an instance of the thread token.
-    ///
-    /// # Safety
-    ///
-    /// Caller must take care for synchronizing instances.
-    unsafe fn take() -> Self;
 
     /// Returns a reference to the thread.
     ///

@@ -1,6 +1,9 @@
-//! Drone procedural macros shared lib.
+//! Core procedural macros crate for [Drone].
 //!
-//! See `drone-core` documentation for details.
+//! This crate provides shared functionality for all Drone procedural macro
+//! crates.
+//!
+//! [Drone]: https://github.com/drone-os/drone
 
 #![deny(bare_trait_objects)]
 #![deny(elided_lifetimes_in_paths)]

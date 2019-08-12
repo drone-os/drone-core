@@ -182,7 +182,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             $(#[$attr])* $vis struct $ty {
                 #(#def_tokens)* $($def)*
             }
-            unsafe impl ::drone_core::token::Tokens for $ty {
+            unsafe impl ::drone_core::token::Token for $ty {
                 unsafe fn take() -> Self {
                     Self { #(#ctor_tokens)* $($ctor)* }
                 }

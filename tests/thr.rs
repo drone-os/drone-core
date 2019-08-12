@@ -5,6 +5,7 @@
 use drone_core::{
     sv::Supervisor,
     thr::{prelude::*, ThrToken},
+    token::Token,
 };
 use std::{
     marker::PhantomData,
@@ -62,6 +63,12 @@ macro_rules! thr_num {
             _tag: PhantomData<T>,
         }
 
+        unsafe impl<T: ThrTag> Token for $name<T> {
+            unsafe fn take() -> Self {
+                Self { _tag: PhantomData }
+            }
+        }
+
         impl<T: ThrTag> ThrToken<T> for $name<T> {
             type Thr = Thr;
             type TThrToken = $name<Ttt>;
@@ -69,10 +76,6 @@ macro_rules! thr_num {
             type PThrToken = $name<Ptt>;
 
             const THR_NUM: usize = $position;
-
-            unsafe fn take() -> Self {
-                Self { _tag: PhantomData }
-            }
         }
     };
 }

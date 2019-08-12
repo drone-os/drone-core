@@ -65,7 +65,6 @@ pub mod bitfield;
 pub mod drv;
 pub mod ffi;
 pub mod fib;
-pub mod fs;
 pub mod future;
 pub mod heap;
 pub mod inventory;
@@ -80,7 +79,25 @@ pub mod sync;
 pub mod thr;
 pub mod token;
 
-pub use drone_core_macros::{heap, periph, reg, thr};
+/// Defines dynamic memory structures.
+///
+/// See [the module level documentation][heap] for details.
+pub use drone_core_macros::heap;
+
+/// Defines peripherals.
+///
+/// See [the module level documentation][periph] for details.
+pub use drone_core_macros::periph;
+
+/// Defines registers.
+///
+/// See [the module level documentation][reg] for details.
+pub use drone_core_macros::reg;
+
+/// Defines threads.
+///
+/// See [the module level documentation][thr] for details.
+pub use drone_core_macros::thr;
 
 #[prelude_import]
 #[allow(unused_imports)]

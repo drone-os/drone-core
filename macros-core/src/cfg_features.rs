@@ -69,8 +69,7 @@ impl CfgFeatures {
     ///
     /// # Panics
     ///
-    /// If `rhs` or `self` is a result of
-    /// [`transpose`](CfgFeaturesExt::transpose).
+    /// If `rhs` or `self` is a result of [`CfgFeaturesExt::transpose`].
     pub fn add_clause(&mut self, rhs: &Self) {
         assert!(!self.inverse);
         assert!(!rhs.inverse);

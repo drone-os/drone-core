@@ -1,4 +1,4 @@
-/// Creates call site [`Ident`](::syn::Ident) using interpolation of runtime
+/// Creates call site [`struct@syn::Ident`] using interpolation of runtime
 /// expressions.
 #[macro_export]
 macro_rules! new_ident {

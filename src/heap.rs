@@ -1,89 +1,102 @@
 //! Dynamic memory allocation.
 //!
-//! Drone provides an efficient lock-free allocator based on an array of
-//! fixed-size memory pools. It allows deterministic constant time allocations
-//! and deallocations well-suited for real-time systems. It doesn't need to
-//! store allocation metadata or each allocation, neither an expensive run-time
-//! initialization. The drawback is that it may need to be tuned for the
-//! particular application.
+//! Dynamic memory is crucial for Drone operation. Objectives like real-time
+//! characteristics, high concurrency, small code size, fast execution have led
+//! to Memory Pools design of the heap. All operations are lock-free and have
+//! *O(1)* time complexity, which means they are deterministic.
 //!
-//! # Configuration
+//! The continuous memory region for the heap is split into pools. A pool is
+//! further split into fixed-sized blocks that hold actual allocations. A pool
+//! is defined by its block-size and the number of blocks. The pools
+//! configuration should be defined in the compile-time. A drawback of this
+//! approach is that memory pools may need to be tuned for the application.
 //!
-//! Allocator is configured statically by `heap!` macro.
+//! # Usage
+//!
+//! There are multiple steps involved in heap usage:
+//!
+//! 1. Map a memory region in the `layout.ld`:
+//!
+//! ```ld
+//! MEMORY
+//! {
+//!     /* ... */
+//!     /* Continuous memory region for the heap: */
+//!     HEAP (WX) : ORIGIN = 0x20000000, LENGTH = 256K
+//!     /* ... */
+//! }
+//!
+//! SECTIONS
+//! {
+//!     /* ... */
+//!     /* Reserve a region for the heap and define HEAP_START symbol: */
+//!     .heap : ALIGN(4)
+//!     {
+//!         HEAP_START = .;
+//!         /* The number should match the LENGTH at the MEMORY section. */
+//!         . += 0x40000;
+//!     } > HEAP
+//!     /* ... */
+//! }
+//! ```
+//!
+//! 2. Configure memory pools layout:
 //!
 //! ```
 //! # #![feature(allocator_api)]
-//! # #![feature(const_fn)]
 //! # fn main() {}
-//! use core::alloc::Layout;
-//! use drone_core::heap::Pool;
+//! use drone_core::heap;
 //!
-//! drone_core::heap! {
-//!   /// The allocator struct.
+//! heap! {
+//!   /// The heap structure.
 //!   pub struct Heap;
 //!
-//!   // The size of the heap should be known at the compile-time. It should
-//!   // equal the sum of all defined pools.
+//!   // The total size of the heap. Should match the layout.ld.
 //!   size = 0x40000;
-//!   // Use 4 pools of different size.
+//!   // Declare the memory pools. The format is [BLOCK_SIZE; NUMBER_OF_BLOCKS]
 //!   pools = [
-//!     [0x4; 0x4000],  // 4-byte blocks with the capacity of 0x4000
-//!     [0x20; 0x800],  // 32-byte blocks with the capacity of 0x800
-//!     [0x100; 0x100], // 256-byte blocks with the capacity of 0x100
-//!     [0x800; 0x20],  // 2048-byte blocks with the capacity of 0x20
+//!     [0x4; 0x4000],
+//!     [0x20; 0x800],
+//!     [0x100; 0x100],
+//!     [0x800; 0x20],
 //!   ];
 //! }
 //! ```
 //!
-//! # Initialization
+//! 3. Initialize the heap before the first use in the run-time.
 //!
-//! Allocator needs a simple run-time initialization before using.
+//! ```ignore
+//! use drone_core::heap::Allocator;
 //!
-//! ```
-//! # #![feature(allocator_api)]
-//! # #![feature(const_fn)]
-//! # pub mod symbols { #[no_mangle] pub static HEAP_START: usize = 0; }
-//! use core::alloc::Layout;
-//! use drone_core::heap::{Allocator, Pool};
-//!
-//! drone_core::heap! {
-//!   pub struct Heap;
-//!   size = 0;
-//!   pools = [];
-//! }
-//!
-//! static mut ALLOC: Heap = Heap::new();
+//! /// The global allocator.
+//! #[global_allocator]
+//! pub static mut HEAP: Heap = Heap::new();
 //!
 //! extern "C" {
-//!     // A symbol defined in the linker-script. Represents the beginning of the
-//!     // heap region.
+//!     /// A value declared in the linker script at step 1.
 //!     static mut HEAP_START: usize;
 //! }
 //!
+//! // Your entry point.
 //! fn main() {
-//!     unsafe { ALLOC.init(&mut HEAP_START) };
+//!     // ...
+//!     unsafe {
+//!         HEAP.init(&mut HEAP_START);
+//!     }
+//!     // ...
 //! }
 //! ```
 //!
-//! # Operation
+//! # Tuning
 //!
-//! Allocation steps:
+//! Using empiric values for the memory pools layout may lead to undesired
+//! memory fragmentation. Eventually the layout will need to be tuned for the
+//! application. Drone can capture allocation statistics from the real target
+//! device at the run-time and generate an optimized memory layout for this
+//! specific application. Ideally this will result in zero fragmentation.
 //!
-//! 1. Given a size of memory to allocate, binary search for a pool with the
-//!    lower size of blocks which can fit the size. This step should compute in
-//!    *O(log N)* time, where *N* is the total number of pools.
-//!
-//! 2. Get a free block from the pool. This step should compute in *O(1)* time.
-//!    If the pool is exhausted, retry this step with the next bigger pool.
-//!
-//! Deallocation steps:
-//!
-//! 1. Given a pointer of the memory to deallocate, binary search for a pool for
-//!    which the pointer belongs. This step should compute in *O(log N)* time,
-//!    where *N* is the total number of pools.
-//!
-//! 2. Mark a block as free in the pool. This step should compute in *O(1)*
-//!    time.
+//! The actual steps are platform-specific. Refer to the platform crate
+//! documentation for instructions.
 
 mod allocator;
 mod pool;

@@ -1,11 +1,12 @@
 use core::{future::Future, pin::Pin};
 
-/// A trait for objects which are byte-oriented sinks.
+/// The `Write` trait allows for writing bytes to a source asynchronously.
 pub trait Write<'sess> {
-    /// The error type for I/O operations.
+    /// The error type returned by [`Write::write`].
     type Error;
 
-    /// Write a buffer into this object, returning how many bytes were written.
+    /// Write a buffer into this writer asynchronously, eventually returning how
+    /// many bytes were written.
     fn write(
         &'sess mut self,
         buf: &'sess [u8],

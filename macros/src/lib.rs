@@ -1,6 +1,6 @@
-//! Drone procedural macros.
+//! Procedural macros for [drone-core].
 //!
-//! See `drone-core` documentation for details.
+//! [drone-core]: https://github.com/drone-os/drone-core
 
 #![recursion_limit = "512"]
 #![deny(bare_trait_objects)]
@@ -24,6 +24,7 @@ mod reg;
 mod reg_tokens;
 mod static_tokens;
 mod thr;
+mod unit_token;
 
 use proc_macro::TokenStream;
 
@@ -75,4 +76,9 @@ pub fn unsafe_static_tokens(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn thr(input: TokenStream) -> TokenStream {
     thr::proc_macro(input)
+}
+
+#[proc_macro]
+pub fn unit_token(input: TokenStream) -> TokenStream {
+    unit_token::proc_macro(input)
 }

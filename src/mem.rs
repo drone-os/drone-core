@@ -2,12 +2,17 @@
 
 use core::ptr;
 
-/// Initializes the `.bss` section.
+/// Initializes initially zeroed mutable `static`s.
+///
+/// This function **must** be called before any use of initially zeroed mutable
+/// statics.
+///
+/// See also [`data_init`].
 ///
 /// # Safety
 ///
-/// * Must be called no more than once.
-/// * Must be called before accessing `static`s.
+/// * Calling this function after mutating initially zeroed statics effectively
+///   zeroes them again.
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub unsafe fn bss_init(start: &mut usize, end: &usize) {
     let start = start as *mut _;
@@ -16,12 +21,17 @@ pub unsafe fn bss_init(start: &mut usize, end: &usize) {
     ptr::write_bytes(start, 0, count >> 2);
 }
 
-/// Initializes the `.data` section.
+/// Initializes mutable `static`s.
+///
+/// This function **must** be called before any use of initially non-zeroed
+/// mutable statics.
+///
+/// See also [`bss_init`].
 ///
 /// # Safety
 ///
-/// * Must be called no more than once.
-/// * Must be called before accessing `static`s.
+/// * Calling this function after mutating statics effectively reverts them to
+///   the initial state.
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub unsafe fn data_init(start: &mut usize, end: &usize, data: &usize) {
     let start = start as *mut _;

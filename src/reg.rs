@@ -9,7 +9,7 @@
 //! # #![feature(proc_macro_hygiene)]
 //! # #[prelude_import] use drone_core::prelude::*;
 //! use core::mem::size_of_val;
-//! use drone_core::{reg::prelude::*, token::Tokens};
+//! use drone_core::{reg::prelude::*, token::Token};
 //!
 //! drone_core::reg! {
 //!   /// SysTick control and status register.

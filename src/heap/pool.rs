@@ -4,32 +4,27 @@ use core::{
     sync::atomic::{AtomicPtr, Ordering::*},
 };
 
-/// A lock-free fixed-size blocks allocator.
+/// The set of free memory blocks.
 ///
-/// The `Pool` allows lock-free O(1) allocations, deallocations, and
-/// initialization.
-///
-/// A `Pool` consists of `capacity` number of fixed-size blocks. It maintains a
-/// *free list* of deallocated blocks.
+/// It operates by connecting unallocated regions of memory together in a linked
+/// list, using the first word of each unallocated region as a pointer to the
+/// next.
 pub struct Pool {
     /// Free List of previously allocated blocks.
     free: AtomicPtr<u8>,
-    /// Growing inclusive pointer to the left edge of the uninitialized area.
+    /// Growing pointer to the inclusive left edge of the uninitialized area.
     head: AtomicPtr<u8>,
     /// Non-inclusive right edge of the pool.
     edge: *mut u8,
-    /// Size of blocks in the pool.
+    /// Block size.
     size: usize,
 }
 
 impl Pool {
-    /// Creates an empty `Pool`.
+    /// Creates an uninitialized `Pool`.
     ///
-    /// The returned pool needs to be further initialized with [`init`] method.
-    /// Resulting location of the pool should be the sum of `offset` argument
-    /// provided to the current method and `start` argument for [`init`] method.
-    ///
-    /// [`init`]: Pool::init
+    /// The returned pool should be initialized in the run-time with
+    /// [`init`][Pool::init] method before use.
     pub const fn new(offset: usize, size: usize, capacity: usize) -> Self {
         Self {
             free: AtomicPtr::new(ptr::null_mut()),
@@ -41,12 +36,14 @@ impl Pool {
 
     /// Initializes the pool with `start` address.
     ///
-    /// This operation should compute in O(1) time.
+    /// This method **must** be called before any use of the pool.
+    ///
+    /// The time complexity of this method is *O(1)*.
     ///
     /// # Safety
     ///
-    /// * Must be called no more than once.
-    /// * Must be called before using the pool.
+    /// * Calling this method while live allocations exists may lead to data
+    ///   corruption.
     pub unsafe fn init(&mut self, start: &mut usize) {
         let offset = start as *mut _ as usize;
         let head = self.head.get_mut();
@@ -54,28 +51,32 @@ impl Pool {
         self.edge = self.edge.add(offset);
     }
 
-    /// Returns the pool size.
+    /// Returns the block size.
     #[inline]
     pub fn size(&self) -> usize {
         self.size
     }
 
-    /// Allocates a fixed-size block of memory. Returns `None` if the pool is
-    /// exhausted.
+    /// Allocates one block of memory.
     ///
-    /// This operation should compute in O(1) time.
+    /// If this method returns `Some(addr)`, then the `addr` returned will be
+    /// non-null address pointing to the block. If this method returns `None`,
+    /// then the pool is exhausted.
+    ///
+    /// This operation is lock-free and has *O(1)* time complexity.
     pub fn alloc(&self) -> Option<NonNull<u8>> {
         unsafe { self.alloc_free().or_else(|| self.alloc_head()) }
     }
 
-    /// Deallocates a fixed-size block of memory referenced by `ptr`.
+    /// Deallocates the block referenced by `ptr`.
     ///
-    /// This operation should compute in O(1) time.
+    /// This operation is lock-free and has *O(1)* time complexity.
     ///
     /// # Safety
     ///
-    /// * `ptr` should be a valid allocation.
-    /// * `ptr` should not be used after deallocation.
+    /// * `ptr` must point to a block previously allocated by
+    ///   [`alloc`][Pool::alloc].
+    /// * `ptr` must not be used after deallocation.
     #[allow(clippy::cast_ptr_alignment)]
     pub unsafe fn dealloc(&self, ptr: NonNull<u8>) {
         loop {

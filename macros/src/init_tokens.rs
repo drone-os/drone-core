@@ -66,29 +66,42 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         ident,
         tokens,
     } = parse_macro_input!(input as InitTokens);
+    let wrapper = new_ident!("__{}_init_tokens", ident.to_string().to_snake_case());
     let mut def_tokens = Vec::new();
     let mut ctor_tokens = Vec::new();
     for Token { name } in tokens {
         let struct_ident = new_ident!("{}Token", name);
         let field_ident = new_ident!("{}", name.to_snake_case());
-        def_tokens.push(quote!(pub #field_ident: #struct_ident));
-        ctor_tokens.push(quote!(#field_ident: ::drone_core::token::InitToken::take()));
+        def_tokens.push(quote! {
+            #[allow(missing_docs)]
+            pub #field_ident: #struct_ident,
+        });
+        ctor_tokens.push(quote! {
+            #field_ident: ::drone_core::token::Token::take(),
+        });
     }
     let expanded = quote! {
-        #(#attrs)*
-        #[allow(missing_docs)]
-        #vis struct #ident {
-            #(#def_tokens),*
-        }
+        mod #wrapper {
+            use super::*;
 
-        unsafe impl ::drone_core::token::Tokens for #ident {
-            #[inline]
-            unsafe fn take() -> Self {
-                Self {
-                    #(#ctor_tokens),*
+            #(#attrs)*
+            pub struct #ident {
+                #(#def_tokens)*
+                __priv: (),
+            }
+
+            unsafe impl ::drone_core::token::Token for #ident {
+                #[inline]
+                unsafe fn take() -> Self {
+                    Self {
+                        #(#ctor_tokens)*
+                        __priv: (),
+                    }
                 }
             }
         }
+
+        #vis use #wrapper::#ident;
     };
     expanded.into()
 }

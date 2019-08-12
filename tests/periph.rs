@@ -3,7 +3,7 @@
 use drone_core::{
     periph,
     reg::{marker::*, prelude::*},
-    token::Tokens,
+    token::Token,
 };
 
 use drone_core::reg;

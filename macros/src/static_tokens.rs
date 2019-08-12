@@ -61,23 +61,36 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         ident,
         tokens,
     } = parse_macro_input!(input as StaticTokens);
+    let wrapper = new_ident!("__{}_static_tokens", ident.to_string().to_snake_case());
     let mut outer_tokens = Vec::new();
     let mut def_tokens = Vec::new();
     let mut ctor_tokens = Vec::new();
     for Token { attrs, ident, ty } in tokens {
+        let wrapper = new_ident!(
+            "__{}_nested_static_tokens",
+            ident.to_string().to_snake_case()
+        );
         let struct_ident = new_ident!("{}Token", ident.to_string().to_pascal_case());
         let field_ident = new_ident!("{}", ident.to_string().to_snake_case());
         outer_tokens.push(quote! {
-            #(#attrs)*
-            #vis struct #struct_ident(());
+            mod #wrapper {
+                use super::*;
+
+                #(#attrs)*
+                pub struct #struct_ident(());
+
+                unsafe impl ::drone_core::token::Token for #struct_ident {
+                    #[inline]
+                    unsafe fn take() -> Self {
+                        #struct_ident(())
+                    }
+                }
+            }
+
+            #vis use #wrapper::#struct_ident;
 
             unsafe impl ::drone_core::token::StaticToken for #struct_ident {
                 type Target = #ty;
-
-                #[inline]
-                unsafe fn take() -> Self {
-                    #struct_ident(())
-                }
 
                 #[inline]
                 fn get(&mut self) -> &mut Self::Target {
@@ -90,24 +103,36 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 }
             }
         });
-        def_tokens.push(quote!(pub #field_ident: #struct_ident));
-        ctor_tokens.push(quote!(#field_ident: ::drone_core::token::StaticToken::take()));
+        def_tokens.push(quote! {
+            #[allow(missing_docs)]
+            pub #field_ident: #struct_ident,
+        });
+        ctor_tokens.push(quote! {
+            #field_ident: ::drone_core::token::Token::take(),
+        });
     }
     let expanded = quote! {
-        #(#attrs)*
-        #[allow(missing_docs)]
-        #vis struct #ident {
-            #(#def_tokens),*
-        }
+        mod #wrapper {
+            use super::*;
 
-        unsafe impl ::drone_core::token::Tokens for #ident {
-            #[inline]
-            unsafe fn take() -> Self {
-                Self {
-                    #(#ctor_tokens),*
+            #(#attrs)*
+            pub struct #ident {
+                #(#def_tokens)*
+                __priv: (),
+            }
+
+            unsafe impl ::drone_core::token::Token for #ident {
+                #[inline]
+                unsafe fn take() -> Self {
+                    Self {
+                        #(#ctor_tokens)*
+                        __priv: (),
+                    }
                 }
             }
         }
+
+        #vis use #wrapper::#ident;
 
         #(#outer_tokens)*
     };

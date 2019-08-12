@@ -6,21 +6,48 @@ use core::{
     slice::SliceIndex,
 };
 
-/// A lock-free allocator that composes multiple memory pools.
+/// Allocator for a generic memory pools layout.
 ///
-/// An `Allocator` maintains a sort-order of its pools, so they can be
-/// effectively accessed with [`binary_search`](Allocator::binary_search).
+/// The trait is supposed to be implemented for an array of pools.
+/// [`heap`][`crate::heap`] macro should be used to generate the concrete type
+/// and the implementation.
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub trait Allocator {
-    /// Number of memory pools.
+    /// The total number of memory pools.
     const POOL_COUNT: usize;
 
-    /// Initializes the pools with `start` address.
+    /// Returns a reference to a pool or subslice, without doing bounds
+    /// checking.
     ///
     /// # Safety
     ///
-    /// * Must be called no more than once.
-    /// * Must be called before using the allocator.
+    /// Calling this method with an out-of-bounds index is Undefined Behavior.
+    unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
+    where
+        I: SliceIndex<[Pool]>;
+
+    /// Returns a mutable reference to a pool or subslice, without doing bounds
+    /// checking.
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with an out-of-bounds index is Undefined Behavior.
+    unsafe fn get_pool_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
+    where
+        I: SliceIndex<[Pool]>;
+
+    /// Initializes the pools with `start` address.
+    ///
+    /// This method **must** be called before any use of the allocator.
+    ///
+    /// The time complexity of this method is
+    /// *O([`POOL_COUNT`][Allocator::POOL_COUNT])*. It is invariant to the
+    /// actual memory size.
+    ///
+    /// # Safety
+    ///
+    /// * Calling this method while live allocations exists may lead to data
+    ///   corruption.
     /// * `start` must be word-aligned.
     unsafe fn init(&mut self, start: &mut usize) {
         for i in 0..Self::POOL_COUNT {
@@ -28,35 +55,24 @@ pub trait Allocator {
         }
     }
 
-    /// Returns a reference to a pool or subslice, without doing bounds
-    /// checking.
-    unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
-    where
-        I: SliceIndex<[Pool]>;
-
-    /// Returns a mutable reference to a pool or subslice, without doing bounds
-    /// checking.
-    unsafe fn get_pool_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
-    where
-        I: SliceIndex<[Pool]>;
-
-    /// Allocation hook.
+    /// Empty allocation hook. Can be re-defined by the implementation.
     #[inline]
     fn alloc_hook(_layout: Layout, _pool: &Pool) {}
 
-    /// Deallocation hook.
+    /// Empty deallocation hook. Can be re-defined by the implementation.
     #[inline]
     fn dealloc_hook(_layout: Layout, _pool: &Pool) {}
 
-    /// Growing in place hook.
+    /// Empty growing in place hook. Can be re-defined by the implementation.
     #[inline]
     fn grow_in_place_hook(_layout: Layout, _new_size: usize) {}
 
-    /// Shrinking in place hook.
+    /// Empty shrinking in place hook. Can be re-defined by the implementation.
     #[inline]
     fn shrink_in_place_hook(_layout: Layout, _new_size: usize) {}
 
-    /// Binary searches the pools for a least-sized one which fits `value`.
+    /// Does a binary search for the pool with the smallest block size to fit
+    /// `value`.
     fn binary_search<T: Fits>(&self, value: T) -> usize {
         let (mut left, mut right) = (0, Self::POOL_COUNT);
         while right > left {
