@@ -53,7 +53,8 @@ reg! {
 
 reg::unsafe_tokens! {
     pub macro unsafe_reg_tokens;
-    super;;
+    crate;
+    crate;
 
     pub mod RCC { AHB2ENR; }
     pub mod GPIOA { ODR; IDR; }

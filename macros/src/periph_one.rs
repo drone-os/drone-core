@@ -165,7 +165,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 periph_tokens.push(quote! {
                     #(#reg_attrs)*
                     pub #block_reg_snk: #root_path::#block_ident::#reg_ident::Reg<
-                        ::drone_core::reg::Srt,
+                        ::drone_core::reg::tag::Srt,
                     >
                 });
                 macro_tokens.push((
@@ -189,7 +189,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     periph_tokens.push(quote! {
                         #(#field_attrs)*
                         pub #block_reg_field_snk: #root_path::#block_ident::#reg_ident::#field_psc<
-                            ::drone_core::reg::Srt,
+                            ::drone_core::reg::tag::Srt,
                         >
                     });
                     macro_tokens.push((

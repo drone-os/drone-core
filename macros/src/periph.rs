@@ -233,22 +233,22 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 let field_attrs = &features.attrs();
                 let struct_attrs = &field_features.attrs();
                 let field_trait_items = quote! {
-                    type #u_field: ::drone_core::reg::RegField<
-                        ::drone_core::reg::Urt,
+                    type #u_field: ::drone_core::reg::field::RegField<
+                        ::drone_core::reg::tag::Urt,
                         Reg = Self::#u_reg,
                         URegField = Self::#u_field,
                         SRegField = Self::#s_field,
                         CRegField = Self::#c_field,
                     > #(+ #u_traits)*;
-                    type #s_field: ::drone_core::reg::RegField<
-                        ::drone_core::reg::Srt,
+                    type #s_field: ::drone_core::reg::field::RegField<
+                        ::drone_core::reg::tag::Srt,
                         Reg = Self::#s_reg,
                         URegField = Self::#u_field,
                         SRegField = Self::#s_field,
                         CRegField = Self::#c_field,
                     > #(+ #s_traits)*;
-                    type #c_field: ::drone_core::reg::RegField<
-                        ::drone_core::reg::Crt,
+                    type #c_field: ::drone_core::reg::field::RegField<
+                        ::drone_core::reg::tag::Crt,
                         Reg = Self::#c_reg,
                         URegField = Self::#u_field,
                         SRegField = Self::#s_field,
@@ -579,21 +579,21 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     pub trait #reg_trait {
                         type #val: ::drone_core::bitfield::Bitfield<Bits = #val_ty>;
                         type #u_reg: ::drone_core::reg::Reg<
-                            ::drone_core::reg::Urt,
+                            ::drone_core::reg::tag::Urt,
                             Val = Self::#val,
                             UReg = Self::#u_reg,
                             SReg = Self::#s_reg,
                             CReg = Self::#c_reg,
                         > #(+ #u_traits)*;
                         type #s_reg: ::drone_core::reg::Reg<
-                            ::drone_core::reg::Srt,
+                            ::drone_core::reg::tag::Srt,
                             Val = Self::#val,
                             UReg = Self::#u_reg,
                             SReg = Self::#s_reg,
                             CReg = Self::#c_reg,
                         > #(+ #s_traits)*;
                         type #c_reg: ::drone_core::reg::Reg<
-                            ::drone_core::reg::Crt,
+                            ::drone_core::reg::tag::Crt,
                             Val = Self::#val,
                             UReg = Self::#u_reg,
                             SReg = Self::#s_reg,

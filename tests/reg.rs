@@ -21,7 +21,8 @@ reg::unsafe_tokens! {
     /// Test index doc attribute
     #[doc = "test index attribute"]
     pub macro unsafe_reg_tokens;
-    super;;
+    crate;
+    crate;
 
     /// Test block doc attribute
     #[doc = "test block attribute"]

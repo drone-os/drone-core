@@ -1,40 +1,55 @@
-//! The [`Token`][`token::Token`] trait and common patterns.
+//! The [`Token`][`token::Token`] trait and its common patterns.
 //!
-//! This module is centered around the [`Token`][`token::Token`] trait - a
-//! common pattern in Drone for zero-sized singletons. Tokens represent
-//! ownerships of various resources: memory-mapped registers, threads, mutable
-//! statics, one-time initializers.
+//! A token is a zero-sized type, at most one instance of which ever exists.
+//! This concept is ubiquitous in Drone. It is used for representing
+//! memory-mapped registers, threads, one-time initializers, mutable statics
+//! ownership. While affinity (also called move-semantics in Rust) could be
+//! represented by Rust type-system, the other properties couldn't. Therefore
+//! the concept relies on the two `unsafe` contracts below.
 //!
-//! Singleton properties can't be declared by type-system, therefore here we
-//! rely on `unsafe` contracts. Declaring a token type is often `unsafe` because
-//! the developer should ensure that the target resource is not used in other
-//! ways than through the token. Instantiating a token object is `unsafe`
-//! because only one instance of the token should exist. It is supposed that the
-//! tokens are grouped in sets and instantiated as early as possible alongside
-//! of other unsafe initializations like [`mem::data_init`] or
-//! [`heap::Allocator::init`].
+//! 1. *Implementing* the trait is `unsafe`, and it is the implementer
+//! responsibility to ensure the following:
 //!
-//! # Init Tokens
+//!     * The type must not implement [`Clone`].
+//!     * The type must be instantiated only inside
+//!       [`Token::take`][`token::Token::take`] method.
+//!     * The type must be zero-sized.
 //!
-//! Sometimes we need to ensure that a particular function is executed only once
-//! in the entire program lifetime. Here is an example:
+//! 2. *Calling* [`Token::take`][`token::Token::take`] is `unsafe`, and it is
+//! the caller responsibility to ensure that at most one instance of the type
+//! ever exists.
+//!
+//! Tokens are often nested to minimize the usage of `unsafe`
+//! [`Token::take`][`token::Token::take`] constructor. It is supposed to
+//! instantiate all needed tokens at the very beginning of the program and pass
+//! the instances further to the code.
+//!
+//! Since tokens are zero-sized, [`Token::take`][`token::Token::take`] is no-op
+//! from the assembly perspective. Likewise passing the instance around doesn't
+//! consume the stack, and storing the instance inside other types doesn't
+//! consume the memory.
+//!
+//! # Simple Tokens
+//!
+//! Here is a usage example of tokens of their simplest form - `simple_token!`
+//! macro. In this example we implement one-timer initializers.
 //!
 //! ```
-//! use drone_core::token::{unit_token, unsafe_init_tokens, Token};
+//! use drone_core::token::{simple_token, unsafe_simple_tokens, Token};
 //!
-//! unit_token! {
+//! simple_token! {
 //!     /// The token for Foo initializer.
 //!     pub struct FooInitToken;
 //! }
 //!
-//! unit_token! {
+//! simple_token! {
 //!     /// The token for Bar initializer.
 //!     pub struct BarInitToken;
 //! }
 //!
 //! // Here is `unsafe`, we need to ensure that `FooInitToken` and `BarInitToken`
 //! // are not used anywhere else.
-//! unsafe_init_tokens! {
+//! unsafe_simple_tokens! {
 //!     /// The group token for all initializers.
 //!     pub struct Inits {
 //!         FooInitToken,
@@ -57,10 +72,10 @@
 //! fn main() {
 //!     // Various unsafe initializations goes here.
 //!     unsafe {
-//!         // Calling unsafe take(), we need to ensure that it is the only
-//!         // place we call it and we are not in a cycle or recursion.
+//!         // Calling unsafe `take()`, we need to ensure that it is the only place
+//!         // we call it and we are not in a cycle or recursion.
 //!         let ini = Inits::take();
-//!         // Pass the token to your safe entry point.
+//!         // Pass the token instance to your safe entry point.
 //!         trunk(ini);
 //!     }
 //! }
@@ -76,7 +91,7 @@
 //!
 //! # Static Tokens
 //!
-//! Mutable statics are unsafe in Rust. One way to make them safe is to use the
+//! Mutable statics are unsafe in Rust. One way to make them safe is to use
 //! interior-mutability. For example [`Mutex`][`crate::sync::mutex::Mutex`]
 //! ensures that concurrent access to the data is safe. If you don't need
 //! simultaneous access to the static but still need other static
@@ -103,10 +118,10 @@
 //! fn main() {
 //!     // Various unsafe initializations goes here.
 //!     unsafe {
-//!         // Calling unsafe take(), we need to ensure that it is the only
-//!         // place we call it and we are not in a cycle or recursion.
+//!         // Calling unsafe `take()`, we need to ensure that it is the only place
+//!         // we call it and we are not in a cycle or recursion.
 //!         let stc = Statics::take();
-//!         // Pass the token to your safe entry point.
+//!         // Pass the token instance to your safe entry point.
 //!         trunk(stc);
 //!     }
 //! }
@@ -128,19 +143,19 @@
 //! }
 //! ```
 
-/// Defines a new unit token.
+/// Defines a new simple [`Token`].
 ///
 /// See [the module-level documentation][self] for details.
-pub use drone_core_macros::unit_token;
+pub use drone_core_macros::simple_token;
 
-/// Defines a new token for the set of unit tokens.
+/// Defines a new token for the set of simple [`Token`]s.
 ///
 /// See [the module-level documentation][self] for details.
 ///
 /// # Safety
 ///
-/// The inner tokens must not be instantiated elsewhere.
-pub use drone_core_macros::unsafe_init_tokens;
+/// The tokens must not be instantiated anywhere else.
+pub use drone_core_macros::unsafe_simple_tokens;
 
 /// Defines a new token for the set of [`StaticToken`]s.
 ///
@@ -148,43 +163,43 @@ pub use drone_core_macros::unsafe_init_tokens;
 ///
 /// # Safety
 ///
-/// The inner statics must not be used directly elsewhere.
+/// The tokens must not be instantiated anywhere else.
 pub use drone_core_macros::unsafe_static_tokens;
 
-/// Zero-sized singleton.
+/// A zero-sized affine type, at most one instance of which ever exists.
 ///
-/// A token is a ZST which assumed to be a singleton. The invariants can't be
-/// enforced by the type-system, therefore the trait is marked `unsafe` and the
-/// invariants should be maintained manually as part of the `unsafe` contract.
+/// The above properties can't be expressed with Rust type-system, therefore the
+/// trait is marked `unsafe`, and it is the implementer responsibility to keep
+/// the following invariants:
 ///
-/// The caller should assume that the instance of the type is the only instance
-/// in the entire lifetime of the program. Because the instance can be
-/// constructed only by [`Token::take`] method, which is marked `unsafe`.
-///
-/// # Safety
-///
-/// * The type must be instantiated only inside [`Token::take`] method.
-/// * The type must be zero-sized.
-/// * If the type contains other zero-sized types, they must be instantiated
-///   only as part of this type.
+/// 1. The type must not implement [`Clone`].
+/// 2. The type must be instantiated only inside [`Token::take`] method.
+/// 3. The type must be zero-sized.
 pub unsafe trait Token: Sized + Send + 'static {
-    /// Creates the only instance of the type. Calling this method more than
-    /// once in the entire lifetime of the program violates the contract.
+    /// Creates the token instance.
     ///
-    /// # Safety
+    /// At most one instance of the token must ever exist. This invariant can't
+    /// be expressed with Rust type-system, therefore the method is marked
+    /// `unsafe`, and it is the caller responsibility to keep the invariant.
     ///
-    /// Must be called no more than once in the entire lifetime of the program.
+    /// It is recommended to call this method at the very beginning of the
+    /// program and pass the instance further to the code.
+    ///
+    /// Since the type is ZST, the method is no-op from the assembly
+    /// perspective. Likewise passing the instance around doesn't consume
+    /// the stack, and storing the instance inside other types doesn't
+    /// consume the memory.
     unsafe fn take() -> Self;
 }
 
-/// A mutable static token.
+/// A token for a mutable static variable.
 ///
 /// See [the module-level documentation][self] for details.
 ///
 /// # Safety
 ///
-/// * The target static must be used only inside [`StaticToken`] methods.
-/// * The type, which implements this trait, must not be `Sync`.
+/// * The type must not implement [`Sync`].
+/// * The target static must not be used anywhere else.
 pub unsafe trait StaticToken: Token + Sized + Send + 'static {
     /// Type of the target static.
     type Target: ?Sized;
@@ -198,7 +213,7 @@ pub unsafe trait StaticToken: Token + Sized + Send + 'static {
 
 mod compile_tests {
     //! ```compile_fail
-    //! drone_core::token::unit_token!(struct Foo);
+    //! drone_core::token::simple_token!(struct Foo);
     //! fn main() {
     //!     let foo = Foo { __priv: () };
     //! }
@@ -206,8 +221,8 @@ mod compile_tests {
     //!
     //! ```compile_fail
     //! use drone_core::token::Token;
-    //! drone_core::token::unit_token!(struct FooToken);
-    //! drone_core::token::unsafe_init_tokens! {
+    //! drone_core::token::simple_token!(struct FooToken);
+    //! drone_core::token::unsafe_simple_tokens! {
     //!     struct Foo {
     //!         FooToken,
     //!     }

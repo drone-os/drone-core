@@ -1,10 +1,20 @@
-use super::*;
-use crate::bitfield::{Bitfield, Bits};
+//! Memory-mapped register fields module.
+//!
+//! See [the top-level module documentation][self] for details.
+
+use crate::{
+    bitfield::{Bitfield, Bits},
+    reg::{
+        tag::{Crt, RegAtomic, RegTag, Srt, Urt},
+        RReg, Reg, WReg, WoReg,
+    },
+    token::Token,
+};
 use core::ptr::{read_volatile, write_volatile};
 
-/// Register field token.
-pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
-    /// Parent register type.
+/// The base trait for a field token of a memory-mapped register.
+pub trait RegField<T: RegTag>: Token + Sync {
+    /// Parent register token.
     type Reg: Reg<T>;
 
     /// Corresponding unsynchronized register field token.
@@ -16,20 +26,13 @@ pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
     /// Corresponding copyable register field token.
     type CRegField: RegField<Crt>;
 
-    /// Address offset of the field.
+    /// The offset of the field inside the parent register.
     const OFFSET: usize;
 
-    /// Bit-width of the field.
+    /// The bit-width of the field.
     const WIDTH: usize;
 
-    /// Creates an instance of the register field token.
-    ///
-    /// # Safety
-    ///
-    /// Caller must take care for synchronizing instances.
-    unsafe fn take() -> Self;
-
-    /// Converts to unsynchronized register field token.
+    /// Converts into unsynchronized register field token.
     #[inline]
     fn into_unsync(self) -> Self
     where
@@ -38,7 +41,7 @@ pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
         self
     }
 
-    /// Converts to synchronized register field token.
+    /// Converts into synchronized register field token.
     #[inline]
     fn into_sync(self) -> Self
     where
@@ -47,7 +50,7 @@ pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
         self
     }
 
-    /// Converts to copyable register field token.
+    /// Converts into copyable register field token.
     #[inline]
     fn into_copy(self) -> Self::CRegField
     where
@@ -56,7 +59,7 @@ pub trait RegField<T: RegTag>: Sized + Send + Sync + 'static {
         unsafe { Self::CRegField::take() }
     }
 
-    /// Converts to synchronized register field token reference.
+    /// Returns a reference to the synchronized field token.
     #[inline]
     fn as_sync(&self) -> &Self::SRegField
     where
@@ -72,13 +75,13 @@ pub trait RegFieldBit<T: RegTag>: RegField<T> {}
 /// Multiple-bits register field.
 pub trait RegFieldBits<T: RegTag>: RegField<T> {}
 
-/// Register field that can read its value.
+/// Readable field of readable register.
 pub trait RRRegField<T: RegTag>
 where
     Self: RegField<T>,
     Self::Reg: RReg<T>,
 {
-    /// Reads a register value from its memory address.
+    /// Reads the value from the register memory to the opaque value type.
     #[inline]
     fn load_val(&self) -> <Self::Reg as Reg<T>>::Val {
         unsafe {
@@ -89,7 +92,7 @@ where
     }
 }
 
-/// Register field that can write its value.
+/// Writable field of writable register.
 pub trait WWRegField<T: RegTag>
 where
     Self: RegField<T>,
@@ -97,7 +100,7 @@ where
 {
 }
 
-/// Register field that can only read its value.
+/// Read-only field of readable register.
 pub trait RoRRegField<T: RegTag>
 where
     Self: RRRegField<T>,
@@ -105,7 +108,7 @@ where
 {
 }
 
-/// Register field that can only write its value.
+/// Write-only field of writable register.
 pub trait WoWRegField<T: RegTag>
 where
     Self: WWRegField<T>,
@@ -119,33 +122,39 @@ where
     Self: WoWRegField<T>,
     Self::Reg: WoReg<T>,
 {
-    /// Creates a new reset value.
+    /// Creates a new opaque register value, and initializes it with the reset
+    /// value.
     fn default_val(&self) -> <Self::Reg as Reg<T>>::Val;
 
-    /// Writes the value `val`.
+    /// Writes an opaque value `val` into the register memory.
+    ///
+    /// See also [`store`][`WoWoRegField::store`].
     fn store_val(&self, val: <Self::Reg as Reg<T>>::Val);
 
-    /// Updates a new reset value with `f` and writes the result to the
-    /// register's memory address.
+    /// Passes the opaque reset value to the closure `f`, then writes the result
+    /// of the closure into the register memory.
+    ///
+    /// See also [`store_val`][`WoWoRegField::store_val`].
     fn store<F>(&self, f: F)
     where
         F: Fn(&mut <Self::Reg as Reg<T>>::Val);
 }
 
-/// Single-bit register field that can read its value.
+/// Readable single-bit field of readable register.
 pub trait RRRegFieldBit<T: RegTag>
 where
     Self: RegFieldBit<T> + RRRegField<T>,
     Self::Reg: RReg<T>,
 {
-    /// Reads the state of the bit from `val`.
+    /// Returns `true` if the bit is set in `val`.
     fn read(&self, val: &<Self::Reg as Reg<T>>::Val) -> bool;
 
-    /// Reads the state of the bit from memory.
+    /// Reads the value from the register memory and returns `true` if the bit
+    /// is set.
     fn read_bit(&self) -> bool;
 }
 
-/// Single-bit register field that can write its value.
+/// Writable single-bit field of writable register.
 pub trait WWRegFieldBit<T: RegTag>
 where
     Self: RegFieldBit<T> + WWRegField<T>,
@@ -161,63 +170,45 @@ where
     fn toggle(&self, val: &mut <Self::Reg as Reg<T>>::Val);
 }
 
-/// Single-bit write-only field of write-only register.
+/// Write-only single-bit field of write-only register.
 pub trait WoWoRegFieldBit<T: RegTag>
 where
     Self: RegFieldBit<T> + WoWRegField<T>,
     Self::Reg: WoReg<T>,
 {
-    /// Sets the bit in memory.
+    /// Writes the reset value with the bit set into the register memory.
     fn set_bit(&self);
 
-    /// Clears the bit in memory.
+    /// Writes the reset value with the bit cleared into the register memory.
     fn clear_bit(&self);
 
-    /// Toggles the bit in memory.
+    /// Writes the reset value with the bit toggled into the register memory.
     fn toggle_bit(&self);
-
-    /// An alias for [`set_bit`](WoWoRegFieldBit::set_bit).
-    #[inline]
-    fn store_set(&self) {
-        self.set_bit();
-    }
-
-    /// An alias for [`clear_bit`](WoWoRegFieldBit::clear_bit).
-    #[inline]
-    fn store_clear(&self) {
-        self.clear_bit();
-    }
-
-    /// An alias for [`toggle_bit`](WoWoRegFieldBit::toggle_bit).
-    #[inline]
-    fn store_toggle(&self) {
-        self.toggle_bit();
-    }
 }
 
-/// Multiple-bits register field that can read its value.
+/// Readable multiple-bits field of readable register.
 pub trait RRRegFieldBits<T: RegTag>
 where
     Self: RegFieldBits<T> + RRRegField<T>,
     Self::Reg: RReg<T>,
 {
-    /// Reads the bits from `val`.
+    /// Extracts the field bits from `val`.
     fn read(
         &self,
         val: &<Self::Reg as Reg<T>>::Val,
     ) -> <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits;
 
-    /// Reads the bits from memory.
+    /// Reads the value from the register memory and extracts the field bits.
     fn read_bits(&self) -> <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits;
 }
 
-/// Multiple-bits register field that can write its value.
+/// Writable multiple-bits field of writable register.
 pub trait WWRegFieldBits<T: RegTag>
 where
     Self: RegFieldBits<T> + WWRegField<T>,
     Self::Reg: WReg<T>,
 {
-    /// Write `bits` to `val`.
+    /// Replaces the field bits in `val` by `bits`.
     fn write(
         &self,
         val: &mut <Self::Reg as Reg<T>>::Val,
@@ -225,20 +216,15 @@ where
     );
 }
 
-/// Multiple-bits write-only field of write-only register.
+/// Write-only multiple-bits field of write-only register.
 pub trait WoWoRegFieldBits<T: RegTag>
 where
     Self: RegFieldBits<T> + WoWRegField<T>,
     Self::Reg: WoReg<T>,
 {
-    /// Sets the bit in memory.
+    /// Writes the reset value with the field bits replaced by `bits` into the
+    /// register memory.
     fn write_bits(&self, bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits);
-
-    /// An alias for [`write_bits`](WoWoRegFieldBits::write_bits).
-    #[inline]
-    fn store_bits(&self, bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits) {
-        self.write_bits(bits);
-    }
 }
 
 impl<T, U> WoWoRegField<T> for U

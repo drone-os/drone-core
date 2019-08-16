@@ -1,14 +1,19 @@
-//! Marker traits for memory-mapped registers.
+//! Marker traits representing properties of memory-mapped registers.
 
-pub use super::{RoReg, WoReg, WoWoRegFieldBit, WoWoRegFieldBits};
-
-use crate::reg::{
-    Crt, RRRegFieldBit, RRRegFieldBits, RReg, RegTag, RoRRegField, RwRegUnsync, Srt, Urt, WReg,
-    WRegAtomic, WRegUnsync, WWRegFieldBit, WWRegFieldBits, WoWRegField,
+pub use crate::reg::{
+    field::{WoWoRegFieldBit, WoWoRegFieldBits},
+    RoReg, WoReg,
 };
 
-// {{{ RwReg
-/// Read-write register token.
+use crate::reg::{
+    field::{
+        RRRegFieldBit, RRRegFieldBits, RoRRegField, WWRegFieldBit, WWRegFieldBits, WoWRegField,
+    },
+    tag::{Crt, RegTag, Srt, Urt},
+    RReg, RwRegUnsync, WReg, WRegAtomic, WRegUnsync,
+};
+
+/// Read-write register.
 #[marker]
 pub trait RwReg<T: RegTag>
 where
@@ -24,9 +29,7 @@ where
 {
 }
 
-// }}}
-// {{{ URwReg
-/// Unsynchronized read-write register token.
+/// Unsynchronized read-write register.
 #[marker]
 pub trait URwReg
 where
@@ -42,9 +45,7 @@ where
 {
 }
 
-// }}}
-// {{{ URoReg
-/// Unsynchronized read-only register token.
+/// Unsynchronized read-only register.
 #[marker]
 pub trait URoReg
 where
@@ -54,9 +55,7 @@ where
 
 impl<R> URoReg for R where R: RoReg<Urt> {}
 
-// }}}
-// {{{ UWoReg
-/// Unsynchronized write-only register token.
+/// Unsynchronized write-only register.
 #[marker]
 pub trait UWoReg
 where
@@ -72,9 +71,7 @@ where
 {
 }
 
-// }}}
-// {{{ SRwReg
-/// Synchronized read-write register token.
+/// Synchronized read-write register.
 #[marker]
 pub trait SRwReg
 where
@@ -90,9 +87,7 @@ where
 {
 }
 
-// }}}
-// {{{ SRoReg
-/// Synchronized read-only register token.
+/// Synchronized read-only register.
 #[marker]
 pub trait SRoReg
 where
@@ -102,9 +97,7 @@ where
 
 impl<R> SRoReg for R where R: RoReg<Srt> {}
 
-// }}}
-// {{{ SWoReg
-/// Synchronized write-only register token.
+/// Synchronized write-only register.
 #[marker]
 pub trait SWoReg
 where
@@ -120,9 +113,7 @@ where
 {
 }
 
-// }}}
-// {{{ CRwReg
-/// Copyable read-write register token.
+/// Copyable read-write register.
 #[marker]
 pub trait CRwReg
 where
@@ -140,9 +131,7 @@ where
 {
 }
 
-// }}}
-// {{{ CRoReg
-/// Copyable read-only register token.
+/// Copyable read-only register.
 #[marker]
 pub trait CRoReg
 where
@@ -158,9 +147,7 @@ where
 {
 }
 
-// }}}
-// {{{ CWoReg
-/// Copyable write-only register token.
+/// Copyable write-only register.
 #[marker]
 pub trait CWoReg
 where
@@ -178,9 +165,7 @@ where
 {
 }
 
-// }}}
-// {{{ RwRwRegFieldBit
-/// One-bit read-write field of read-write register token.
+/// Single-bit read-write field of read-write register.
 #[marker]
 pub trait RwRwRegFieldBit<T: RegTag>
 where
@@ -198,9 +183,7 @@ where
 {
 }
 
-// }}}
-// {{{ RwRwRegFieldBits
-/// Multi-bit read-write field of read-write register token.
+/// Multi-bit read-write field of read-write register.
 #[marker]
 pub trait RwRwRegFieldBits<T: RegTag>
 where
@@ -218,9 +201,7 @@ where
 {
 }
 
-// }}}
-// {{{ WoRwRegFieldBit
-/// One-bit write-only field of read-write register token.
+/// Single-bit write-only field of read-write register.
 #[marker]
 pub trait WoRwRegFieldBit<T: RegTag>
 where
@@ -238,9 +219,7 @@ where
 {
 }
 
-// }}}
-// {{{ WoRwRegFieldBits
-/// Multi-bit write-only field of read-write register token.
+/// Multi-bit write-only field of read-write register.
 #[marker]
 pub trait WoRwRegFieldBits<T: RegTag>
 where
@@ -258,9 +237,7 @@ where
 {
 }
 
-// }}}
-// {{{ RoRwRegFieldBit
-/// One-bit read-only field of read-write register token.
+/// Single-bit read-only field of read-write register.
 #[marker]
 pub trait RoRwRegFieldBit<T: RegTag>
 where
@@ -278,9 +255,7 @@ where
 {
 }
 
-// }}}
-// {{{ RoRwRegFieldBits
-/// Multi-bit read-only field of read-write register token.
+/// Multi-bit read-only field of read-write register.
 #[marker]
 pub trait RoRwRegFieldBits<T: RegTag>
 where
@@ -298,9 +273,7 @@ where
 {
 }
 
-// }}}
-// {{{ RoRoRegFieldBit
-/// One-bit read-only field of read-only register token.
+/// Single-bit read-only field of read-only register.
 #[marker]
 pub trait RoRoRegFieldBit<T: RegTag>
 where
@@ -318,9 +291,7 @@ where
 {
 }
 
-// }}}
-// {{{ RoRoRegFieldBits
-/// Multi-bit read-only field of read-only register token.
+/// Multi-bit read-only field of read-only register.
 #[marker]
 pub trait RoRoRegFieldBits<T: RegTag>
 where
@@ -338,9 +309,7 @@ where
 {
 }
 
-// }}}
-// {{{ URwRwRegFieldBit
-/// Unsynchronized one-bit read-write field of read-write register token.
+/// Unsynchronized single-bit read-write field of read-write register.
 #[marker]
 pub trait URwRwRegFieldBit
 where
@@ -356,9 +325,7 @@ where
 {
 }
 
-// }}}
-// {{{ URwRwRegFieldBits
-/// Unsynchronized multi-bit read-write field of read-write register token.
+/// Unsynchronized multi-bit read-write field of read-write register.
 #[marker]
 pub trait URwRwRegFieldBits
 where
@@ -374,9 +341,7 @@ where
 {
 }
 
-// }}}
-// {{{ UWoRwRegFieldBit
-/// Unsynchronized one-bit write-only field of read-write register token.
+/// Unsynchronized single-bit write-only field of read-write register.
 #[marker]
 pub trait UWoRwRegFieldBit
 where
@@ -392,9 +357,7 @@ where
 {
 }
 
-// }}}
-// {{{ UWoRwRegFieldBits
-/// Unsynchronized multi-bit write-only field of read-write register token.
+/// Unsynchronized multi-bit write-only field of read-write register.
 #[marker]
 pub trait UWoRwRegFieldBits
 where
@@ -410,9 +373,7 @@ where
 {
 }
 
-// }}}
-// {{{ UWoWoRegFieldBit
-/// Unsynchronized one-bit write-only field of write-only register token.
+/// Unsynchronized single-bit write-only field of write-only register.
 #[marker]
 pub trait UWoWoRegFieldBit
 where
@@ -428,9 +389,7 @@ where
 {
 }
 
-// }}}
-// {{{ UWoWoRegFieldBits
-/// Unsynchronized multi-bit write-only field of write-only register token.
+/// Unsynchronized multi-bit write-only field of write-only register.
 #[marker]
 pub trait UWoWoRegFieldBits
 where
@@ -446,9 +405,7 @@ where
 {
 }
 
-// }}}
-// {{{ URoRwRegFieldBit
-/// Unsynchronized one-bit read-only field of read-write register token.
+/// Unsynchronized single-bit read-only field of read-write register.
 #[marker]
 pub trait URoRwRegFieldBit
 where
@@ -464,9 +421,7 @@ where
 {
 }
 
-// }}}
-// {{{ URoRwRegFieldBits
-/// Unsynchronized multi-bit read-only field of read-write register token.
+/// Unsynchronized multi-bit read-only field of read-write register.
 #[marker]
 pub trait URoRwRegFieldBits
 where
@@ -482,9 +437,7 @@ where
 {
 }
 
-// }}}
-// {{{ URoRoRegFieldBit
-/// Unsynchronized one-bit read-only field of read-only register token.
+/// Unsynchronized single-bit read-only field of read-only register.
 #[marker]
 pub trait URoRoRegFieldBit
 where
@@ -500,9 +453,7 @@ where
 {
 }
 
-// }}}
-// {{{ URoRoRegFieldBits
-/// Unsynchronized multi-bit read-only field of read-only register token.
+/// Unsynchronized multi-bit read-only field of read-only register.
 #[marker]
 pub trait URoRoRegFieldBits
 where
@@ -518,9 +469,7 @@ where
 {
 }
 
-// }}}
-// {{{ SRwRwRegFieldBit
-/// Synchronized one-bit read-write field of read-write register token.
+/// Synchronized single-bit read-write field of read-write register.
 #[marker]
 pub trait SRwRwRegFieldBit
 where
@@ -536,9 +485,7 @@ where
 {
 }
 
-// }}}
-// {{{ SRwRwRegFieldBits
-/// Synchronized multi-bit read-write field of read-write register token.
+/// Synchronized multi-bit read-write field of read-write register.
 #[marker]
 pub trait SRwRwRegFieldBits
 where
@@ -554,9 +501,7 @@ where
 {
 }
 
-// }}}
-// {{{ SWoRwRegFieldBit
-/// Synchronized one-bit write-only field of read-write register token.
+/// Synchronized single-bit write-only field of read-write register.
 #[marker]
 pub trait SWoRwRegFieldBit
 where
@@ -572,9 +517,7 @@ where
 {
 }
 
-// }}}
-// {{{ SWoRwRegFieldBits
-/// Synchronized multi-bit write-only field of read-write register token.
+/// Synchronized multi-bit write-only field of read-write register.
 #[marker]
 pub trait SWoRwRegFieldBits
 where
@@ -590,9 +533,7 @@ where
 {
 }
 
-// }}}
-// {{{ SWoWoRegFieldBit
-/// Synchronized one-bit write-only field of write-only register token.
+/// Synchronized single-bit write-only field of write-only register.
 #[marker]
 pub trait SWoWoRegFieldBit
 where
@@ -608,9 +549,7 @@ where
 {
 }
 
-// }}}
-// {{{ SWoWoRegFieldBits
-/// Synchronized multi-bit write-only field of write-only register token.
+/// Synchronized multi-bit write-only field of write-only register.
 #[marker]
 pub trait SWoWoRegFieldBits
 where
@@ -626,9 +565,7 @@ where
 {
 }
 
-// }}}
-// {{{ SRoRwRegFieldBit
-/// Synchronized one-bit read-only field of read-write register token.
+/// Synchronized single-bit read-only field of read-write register.
 #[marker]
 pub trait SRoRwRegFieldBit
 where
@@ -644,9 +581,7 @@ where
 {
 }
 
-// }}}
-// {{{ SRoRwRegFieldBits
-/// Synchronized multi-bit read-only field of read-write register token.
+/// Synchronized multi-bit read-only field of read-write register.
 #[marker]
 pub trait SRoRwRegFieldBits
 where
@@ -662,9 +597,7 @@ where
 {
 }
 
-// }}}
-// {{{ SRoRoRegFieldBit
-/// Synchronized one-bit read-only field of read-only register token.
+/// Synchronized single-bit read-only field of read-only register.
 #[marker]
 pub trait SRoRoRegFieldBit
 where
@@ -680,9 +613,7 @@ where
 {
 }
 
-// }}}
-// {{{ SRoRoRegFieldBits
-/// Synchronized multi-bit read-only field of read-only register token.
+/// Synchronized multi-bit read-only field of read-only register.
 #[marker]
 pub trait SRoRoRegFieldBits
 where
@@ -698,9 +629,7 @@ where
 {
 }
 
-// }}}
-// {{{ CRwRwRegFieldBit
-/// Copyable one-bit read-write field of read-write register token.
+/// Copyable single-bit read-write field of read-write register.
 #[marker]
 pub trait CRwRwRegFieldBit
 where
@@ -718,9 +647,7 @@ where
 {
 }
 
-// }}}
-// {{{ CRwRwRegFieldBits
-/// Copyable multi-bit read-write field of read-write register token.
+/// Copyable multi-bit read-write field of read-write register.
 #[marker]
 pub trait CRwRwRegFieldBits
 where
@@ -738,9 +665,7 @@ where
 {
 }
 
-// }}}
-// {{{ CWoRwRegFieldBit
-/// Copyable one-bit write-only field of read-write register token.
+/// Copyable single-bit write-only field of read-write register.
 #[marker]
 pub trait CWoRwRegFieldBit
 where
@@ -758,9 +683,7 @@ where
 {
 }
 
-// }}}
-// {{{ CWoRwRegFieldBits
-/// Copyable multi-bit write-only field of read-write register token.
+/// Copyable multi-bit write-only field of read-write register.
 #[marker]
 pub trait CWoRwRegFieldBits
 where
@@ -778,9 +701,7 @@ where
 {
 }
 
-// }}}
-// {{{ CWoWoRegFieldBit
-/// Copyable one-bit write-only field of write-only register token.
+/// Copyable single-bit write-only field of write-only register.
 #[marker]
 pub trait CWoWoRegFieldBit
 where
@@ -798,9 +719,7 @@ where
 {
 }
 
-// }}}
-// {{{ CWoWoRegFieldBits
-/// Copyable multi-bit write-only field of write-only register token.
+/// Copyable multi-bit write-only field of write-only register.
 #[marker]
 pub trait CWoWoRegFieldBits
 where
@@ -818,9 +737,7 @@ where
 {
 }
 
-// }}}
-// {{{ CRoRwRegFieldBit
-/// Copyable one-bit read-only field of read-write register token.
+/// Copyable single-bit read-only field of read-write register.
 #[marker]
 pub trait CRoRwRegFieldBit
 where
@@ -838,9 +755,7 @@ where
 {
 }
 
-// }}}
-// {{{ CRoRwRegFieldBits
-/// Copyable multi-bit read-only field of read-write register token.
+/// Copyable multi-bit read-only field of read-write register.
 #[marker]
 pub trait CRoRwRegFieldBits
 where
@@ -858,9 +773,7 @@ where
 {
 }
 
-// }}}
-// {{{ CRoRoRegFieldBit
-/// Copyable one-bit read-only field of read-only register token.
+/// Copyable single-bit read-only field of read-only register.
 #[marker]
 pub trait CRoRoRegFieldBit
 where
@@ -878,9 +791,7 @@ where
 {
 }
 
-// }}}
-// {{{ CRoRoRegFieldBits
-/// Copyable multi-bit read-only field of read-only register token.
+/// Copyable multi-bit read-only field of read-only register.
 #[marker]
 pub trait CRoRoRegFieldBits
 where
@@ -897,6 +808,3 @@ where
     R::Reg: CRoReg,
 {
 }
-
-// }}}
-// vim: set fdm=marker fmr={{{,}}} :

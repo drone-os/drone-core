@@ -42,7 +42,6 @@
 #![feature(slice_internals)]
 #![feature(todo_macro)]
 #![feature(untagged_unions)]
-#![deny(bare_trait_objects)]
 #![deny(elided_lifetimes_in_paths)]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
@@ -51,7 +50,6 @@
     clippy::cast_possible_wrap,
     clippy::cast_sign_loss,
     clippy::enum_glob_use,
-    clippy::module_inception,
     clippy::module_name_repetitions,
     clippy::precedence,
     clippy::type_repetition_in_bounds,
@@ -62,7 +60,6 @@
 extern crate alloc;
 
 pub mod bitfield;
-pub mod drv;
 pub mod ffi;
 pub mod fib;
 pub mod future;
@@ -89,7 +86,7 @@ pub use drone_core_macros::heap;
 /// See [the module level documentation][periph] for details.
 pub use drone_core_macros::periph;
 
-/// Defines registers.
+/// Defines a memory-mapped register.
 ///
 /// See [the module level documentation][reg] for details.
 pub use drone_core_macros::reg;

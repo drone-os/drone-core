@@ -50,6 +50,7 @@ impl Parse for RegIndex {
         };
         let root_path = input.parse()?;
         input.parse::<Token![;]>()?;
+        input.parse::<Token![crate]>()?;
         let macro_root_path = if input.peek(Token![;]) {
             input.parse::<Token![;]>()?;
             None
@@ -147,15 +148,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             def_tokens.push(quote! {
                 #(#attrs)*
                 #[allow(missing_docs)]
-                pub #reg_long: $crate#(::#macro_root_path)*::#block_ident::#reg_psc<
-                    ::drone_core::reg::Srt,
+                pub #reg_long: $crate#(#macro_root_path)*::#block_ident::#reg_psc<
+                    ::drone_core::reg::tag::Srt,
                 >,
             });
             ctor_tokens.push(quote! {
-                #reg_long: <
-                    $crate#(::#macro_root_path)*::#block_ident::#reg_psc<_> as
-                        ::drone_core::reg::Reg<_>
-                >::take(),
+                #reg_long: ::drone_core::token::Token::take(),
             });
         }
         tokens.push(quote! {
@@ -183,6 +181,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 #(#def_tokens)* $($def)*
             }
             unsafe impl ::drone_core::token::Token for $ty {
+                #[inline]
                 unsafe fn take() -> Self {
                     Self { #(#ctor_tokens)* $($ctor)* }
                 }

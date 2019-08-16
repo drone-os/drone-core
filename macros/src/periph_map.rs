@@ -192,9 +192,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         macro_root_path,
         blocks,
     } = &parse_macro_input!(input as PeriphMap);
-    let core_urt = quote!(::drone_core::reg::Urt);
-    let core_srt = quote!(::drone_core::reg::Srt);
-    let core_crt = quote!(::drone_core::reg::Crt);
+    let core_urt = quote!(::drone_core::reg::tag::Urt);
+    let core_srt = quote!(::drone_core::reg::tag::Srt);
+    let core_crt = quote!(::drone_core::reg::tag::Crt);
 
     let mut tokens = Vec::new();
     let mut macro_tokens = Vec::new();

@@ -4,7 +4,9 @@ use core::{
     ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr, Sub},
 };
 
-/// Underlying integer for [`Bitfield`](super::Bitfield).
+/// An integer interface for [`Bitfield`][`super::Bitfield`].
+///
+/// See [the module level documentation][super] for details.
 pub trait Bits
 where
     Self: Sized
@@ -19,16 +21,13 @@ where
         + Shl<Self, Output = Self>
         + Shr<Self, Output = Self>,
 {
-    /// Converts `usize` to `Bits`.
+    /// Creates a new value with the bits of `bits`.
     fn from_usize(bits: usize) -> Self;
 
-    /// Returns the width of the type in bits.
+    /// Returns the width of the integer type in bits.
     fn width() -> Self;
 
-    /// Returns the value of one.
-    fn one() -> Self;
-
-    /// Returns `true` if all bits are zeros.
+    /// Returns `true` if all bits of the value are cleared.
     fn is_zero(self) -> bool;
 }
 
@@ -43,11 +42,6 @@ macro_rules! bits {
             #[inline]
             fn width() -> Self {
                 size_of::<Self>() as Self * 8
-            }
-
-            #[inline]
-            fn one() -> Self {
-                1
             }
 
             #[inline]

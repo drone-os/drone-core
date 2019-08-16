@@ -123,51 +123,56 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             pub #field_ident: #field_psc<#t>
         });
         ctor_tokens.push(quote! {
-            #field_ident: ::drone_core::reg::RegField::<#t>::take()
+            #field_ident: ::drone_core::token::Token::take()
         });
         tokens.push(quote! {
             #(#attrs)*
             #[derive(Clone, Copy)]
-            pub struct #field_psc<#t: ::drone_core::reg::RegTag>(#t);
+            pub struct #field_psc<#t: ::drone_core::reg::tag::RegTag>(#t);
 
-            impl<#t> ::drone_core::reg::RegField<#t> for #field_psc<#t>
+            unsafe impl<#t> ::drone_core::token::Token for #field_psc<#t>
             where
-                #t: ::drone_core::reg::RegTag,
+                #t: ::drone_core::reg::tag::RegTag,
             {
-                type Reg = Reg<#t>;
-                type URegField = #field_psc<::drone_core::reg::Urt>;
-                type SRegField = #field_psc<::drone_core::reg::Srt>;
-                type CRegField = #field_psc<::drone_core::reg::Crt>;
-
-                const OFFSET: usize = #offset;
-                const WIDTH: usize = #width;
-
                 #[inline]
                 unsafe fn take() -> Self {
                     #field_psc(#t::default())
                 }
             }
+
+            impl<#t> ::drone_core::reg::field::RegField<#t> for #field_psc<#t>
+            where
+                #t: ::drone_core::reg::tag::RegTag,
+            {
+                type Reg = Reg<#t>;
+                type URegField = #field_psc<::drone_core::reg::tag::Urt>;
+                type SRegField = #field_psc<::drone_core::reg::tag::Srt>;
+                type CRegField = #field_psc<::drone_core::reg::tag::Crt>;
+
+                const OFFSET: usize = #offset;
+                const WIDTH: usize = #width;
+            }
         });
         for ident in traits {
             tokens.push(quote! {
-                impl<#t: ::drone_core::reg::RegTag> #ident<#t> for #field_psc<#t> {}
+                impl<#t: ::drone_core::reg::tag::RegTag> #ident<#t> for #field_psc<#t> {}
             });
         }
         if width.value() == 1 {
             tokens.push(quote! {
-                impl<#t> ::drone_core::reg::RegFieldBit<#t> for #field_psc<#t>
+                impl<#t> ::drone_core::reg::field::RegFieldBit<#t> for #field_psc<#t>
                 where
-                    #t: ::drone_core::reg::RegTag,
+                    #t: ::drone_core::reg::tag::RegTag,
                 {
                 }
             });
             if traits.iter().any(|name| name == "RRRegField") {
                 tokens.push(quote! {
-                    impl<'a, #t: ::drone_core::reg::RegTag> Hold<'a, #t> {
+                    impl<'a, #t: ::drone_core::reg::tag::RegTag> Hold<'a, #t> {
                         #(#attrs)*
                         #[inline]
                         pub fn #field_ident(&self) -> bool {
-                            ::drone_core::reg::RRRegFieldBit::read(
+                            ::drone_core::reg::field::RRRegFieldBit::read(
                                 &self.reg.#field_ident,
                                 &self.val,
                             )
@@ -180,11 +185,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 let clear_field = new_ident!("clear_{}", field_snk);
                 let toggle_field = new_ident!("toggle_{}", field_snk);
                 tokens.push(quote! {
-                    impl<'a, #t: ::drone_core::reg::RegTag> Hold<'a, #t> {
+                    impl<'a, #t: ::drone_core::reg::tag::RegTag> Hold<'a, #t> {
                         #(#attrs)*
                         #[inline]
                         pub fn #set_field(&mut self) -> &mut Self {
-                            ::drone_core::reg::WWRegFieldBit::set(
+                            ::drone_core::reg::field::WWRegFieldBit::set(
                                 &self.reg.#field_ident,
                                 &mut self.val,
                             );
@@ -194,7 +199,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         #(#attrs)*
                         #[inline]
                         pub fn #clear_field(&mut self) -> &mut Self {
-                            ::drone_core::reg::WWRegFieldBit::clear(
+                            ::drone_core::reg::field::WWRegFieldBit::clear(
                                 &self.reg.#field_ident,
                                 &mut self.val,
                             );
@@ -204,7 +209,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         #(#attrs)*
                         #[inline]
                         pub fn #toggle_field(&mut self) -> &mut Self {
-                            ::drone_core::reg::WWRegFieldBit::toggle(
+                            ::drone_core::reg::field::WWRegFieldBit::toggle(
                                 &self.reg.#field_ident,
                                 &mut self.val,
                             );
@@ -215,19 +220,19 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
         } else {
             tokens.push(quote! {
-                impl<#t> ::drone_core::reg::RegFieldBits<#t> for #field_psc<#t>
+                impl<#t> ::drone_core::reg::field::RegFieldBits<#t> for #field_psc<#t>
                 where
-                    #t: ::drone_core::reg::RegTag,
+                    #t: ::drone_core::reg::tag::RegTag,
                 {
                 }
             });
             if traits.iter().any(|name| name == "RRRegField") {
                 tokens.push(quote! {
-                    impl<'a, #t: ::drone_core::reg::RegTag> Hold<'a, #t> {
+                    impl<'a, #t: ::drone_core::reg::tag::RegTag> Hold<'a, #t> {
                         #(#attrs)*
                         #[inline]
                         pub fn #field_ident(&self) -> #val_ty {
-                            ::drone_core::reg::RRRegFieldBits::read(
+                            ::drone_core::reg::field::RRRegFieldBits::read(
                                 &self.reg.#field_ident,
                                 &self.val,
                             )
@@ -238,11 +243,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             if traits.iter().any(|name| name == "WWRegField") {
                 let write_field = new_ident!("write_{}", field_snk);
                 tokens.push(quote! {
-                    impl<'a, #t: ::drone_core::reg::RegTag> Hold<'a, #t> {
+                    impl<'a, #t: ::drone_core::reg::tag::RegTag> Hold<'a, #t> {
                         #(#attrs)*
                         #[inline]
                         pub fn #write_field(&mut self, bits: #val_ty) -> &mut Self {
-                            ::drone_core::reg::WWRegFieldBits::write(
+                            ::drone_core::reg::field::WWRegFieldBits::write(
                                 &self.reg.#field_ident,
                                 &mut self.val,
                                 bits,
@@ -260,7 +265,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
     for ident in traits {
         tokens.push(quote! {
-            impl<#t: ::drone_core::reg::RegTag> #ident<#t> for Reg<#t> {}
+            impl<#t: ::drone_core::reg::tag::RegTag> #ident<#t> for Reg<#t> {}
         });
     }
     let reg_full = new_ident!(
@@ -287,46 +292,48 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
             #(#attrs)*
             #[derive(Clone, Copy)]
-            pub struct Reg<#t: ::drone_core::reg::RegTag> {
+            pub struct Reg<#t: ::drone_core::reg::tag::RegTag> {
                 #(#struct_tokens),*
             }
 
-            impl<#t: ::drone_core::reg::RegTag> ::drone_core::reg::Reg<#t> for Reg<#t> {
-                type Val = Val;
-                type UReg = Reg<::drone_core::reg::Urt>;
-                type SReg = Reg<::drone_core::reg::Srt>;
-                type CReg = Reg<::drone_core::reg::Crt>;
-
-                const ADDRESS: usize = #address;
-
+            unsafe impl<#t: ::drone_core::reg::tag::RegTag> ::drone_core::token::Token for Reg<#t> {
                 #[inline]
                 unsafe fn take() -> Self {
                     Self { #(#ctor_tokens,)* }
                 }
             }
 
+            impl<#t: ::drone_core::reg::tag::RegTag> ::drone_core::reg::Reg<#t> for Reg<#t> {
+                type Val = Val;
+                type UReg = Reg<::drone_core::reg::tag::Urt>;
+                type SReg = Reg<::drone_core::reg::tag::Srt>;
+                type CReg = Reg<::drone_core::reg::tag::Crt>;
+
+                const ADDRESS: usize = #address;
+            }
+
             impl<'a, #t> ::drone_core::reg::RegRef<'a, #t> for Reg<#t>
             where
-                #t: ::drone_core::reg::RegTag + 'a,
+                #t: ::drone_core::reg::tag::RegTag + 'a,
             {
                 type Hold = Hold<'a, #t>;
+
+                #[inline]
+                fn hold(&'a self, val: Self::Val) -> Self::Hold {
+                    Hold { reg: self, val }
+                }
             }
 
             #(#attrs)*
-            pub struct Hold<'a, #t: ::drone_core::reg::RegTag + 'a> {
+            pub struct Hold<'a, #t: ::drone_core::reg::tag::RegTag + 'a> {
                 reg: &'a Reg<#t>,
                 val: Val,
             }
 
             impl<'a, #t> ::drone_core::reg::RegHold<'a, #t, Reg<#t>> for Hold<'a, #t>
             where
-                #t: ::drone_core::reg::RegTag,
+                #t: ::drone_core::reg::tag::RegTag,
             {
-                #[inline]
-                unsafe fn new(reg: &'a Reg<#t>, val: Val) -> Self {
-                    Self { reg, val }
-                }
-
                 #[inline]
                 fn val(&self) -> Val {
                     self.val
