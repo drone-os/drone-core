@@ -77,6 +77,7 @@ impl Parse for PeriphMap {
         }
         let root_path = input.parse()?;
         input.parse::<Token![;]>()?;
+        input.parse::<Token![crate]>()?;
         let macro_root_path = if input.peek(Token![;]) {
             input.parse::<Token![;]>()?;
             None
@@ -585,8 +586,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             #[macro_export]
             macro_rules! #periph_macro {
                 ($reg:ident) => {
-                    $crate#(::#macro_root_path)*::#periph_struct::<
-                        $crate#(::#macro_root_path)*::#periph_ty,
+                    $crate#(#macro_root_path)*::#periph_struct::<
+                        $crate#(#macro_root_path)*::#periph_ty,
                     > {
                         #(#macro_tokens,)*
                     }

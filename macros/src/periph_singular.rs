@@ -11,7 +11,7 @@ use syn::{
 const MACRO_PREFIX: &str = "periph_";
 const STRUCT_SUFFIX: &str = "Periph";
 
-struct PeriphOne {
+struct PeriphSingular {
     macro_attrs: Vec<Attribute>,
     macro_ident: Ident,
     struct_attrs: Vec<Attribute>,
@@ -37,7 +37,7 @@ struct Field {
     ident: Ident,
 }
 
-impl Parse for PeriphOne {
+impl Parse for PeriphSingular {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let macro_attrs = input.call(Attribute::parse_outer)?;
         input.parse::<Token![pub]>()?;
@@ -63,6 +63,7 @@ impl Parse for PeriphOne {
         input.parse::<Token![;]>()?;
         let root_path = input.parse()?;
         input.parse::<Token![;]>()?;
+        input.parse::<Token![crate]>()?;
         let macro_root_path = if input.peek(Token![;]) {
             input.parse::<Token![;]>()?;
             None
@@ -132,7 +133,7 @@ impl Parse for Field {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let PeriphOne {
+    let PeriphSingular {
         macro_attrs,
         macro_ident,
         struct_attrs,
@@ -140,7 +141,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         root_path,
         macro_root_path,
         blocks,
-    } = &parse_macro_input!(input as PeriphOne);
+    } = &parse_macro_input!(input as PeriphSingular);
     let mut tokens = Vec::new();
     let mut periph_tokens = Vec::new();
     let mut macro_tokens = Vec::new();
@@ -163,6 +164,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             let reg_attrs = &reg_features.attrs();
             if fields.is_empty() {
                 periph_tokens.push(quote! {
+                    #[allow(missing_docs)]
                     #(#reg_attrs)*
                     pub #block_reg_snk: #root_path::#block_ident::#reg_ident::Reg<
                         ::drone_core::reg::tag::Srt,
@@ -187,6 +189,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     features.add_clause(&field_features);
                     let field_attrs = &features.attrs();
                     periph_tokens.push(quote! {
+                        #[allow(missing_docs)]
                         #(#field_attrs)*
                         pub #block_reg_field_snk: #root_path::#block_ident::#reg_ident::#field_psc<
                             ::drone_core::reg::tag::Srt,
@@ -208,7 +211,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             #[macro_export]
             macro_rules! #macro_ident {
                 ($reg:ident) => {
-                    $crate#(::#macro_root_path)*::#struct_ident {
+                    $crate#(#macro_root_path)*::#struct_ident {
                         #(#macro_tokens,)*
                     }
                 };
@@ -217,7 +220,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
     let expanded = quote! {
         #(#struct_attrs)*
-        #[allow(missing_docs)]
         pub struct #struct_ident {
             #(#periph_tokens,)*
         }

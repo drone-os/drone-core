@@ -81,7 +81,7 @@ pub mod token;
 /// See [the module level documentation][heap] for details.
 pub use drone_core_macros::heap;
 
-/// Defines peripherals.
+/// Defines a new generic peripheral.
 ///
 /// See [the module level documentation][periph] for details.
 pub use drone_core_macros::periph;

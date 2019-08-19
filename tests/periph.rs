@@ -68,6 +68,7 @@ unsafe_reg_tokens! {
 
 periph! {
     pub trait GpioMap {}
+    pub struct GpioPeriph;
 
     RCC {
         AHB2ENR {
@@ -95,7 +96,8 @@ periph::map! {
     pub macro periph_gpio_a;
     pub struct GpioA;
     impl GpioMap for GpioA {}
-    self;;
+    self;
+    crate;
 
     RCC {
         AHB2ENR {
@@ -124,7 +126,8 @@ periph::map! {
     pub macro periph_gpio_b;
     pub struct GpioB;
     impl GpioMap for GpioB {}
-    self;;
+    self;
+    crate;
 
     RCC {
         AHB2ENR {
@@ -153,7 +156,8 @@ periph::map! {
     pub macro periph_gpio_c;
     pub struct GpioC;
     impl GpioMap for GpioC {}
-    self;;
+    self;
+    crate;
 
     RCC {
         AHB2ENR {

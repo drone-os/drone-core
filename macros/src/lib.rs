@@ -17,7 +17,7 @@ mod bitfield;
 mod heap;
 mod periph;
 mod periph_map;
-mod periph_one;
+mod periph_singular;
 mod reg;
 mod reg_tokens;
 mod simple_token;
@@ -48,8 +48,8 @@ pub fn periph_map(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn periph_one(input: TokenStream) -> TokenStream {
-    periph_one::proc_macro(input)
+pub fn periph_singular(input: TokenStream) -> TokenStream {
+    periph_singular::proc_macro(input)
 }
 
 #[proc_macro]

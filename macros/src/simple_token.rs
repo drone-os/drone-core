@@ -7,13 +7,13 @@ use syn::{
     parse_macro_input, Attribute, Ident, Token, Visibility,
 };
 
-struct InitTokens {
+struct SimpleToken {
     attrs: Vec<Attribute>,
     vis: Visibility,
     ident: Ident,
 }
 
-impl Parse for InitTokens {
+impl Parse for SimpleToken {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
@@ -25,7 +25,7 @@ impl Parse for InitTokens {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let InitTokens { attrs, vis, ident } = parse_macro_input!(input as InitTokens);
+    let SimpleToken { attrs, vis, ident } = parse_macro_input!(input as SimpleToken);
     let wrapper = new_ident!("__{}_unit_token", ident.to_string().to_snake_case());
     let expanded = quote! {
         mod #wrapper {
