@@ -9,28 +9,22 @@ use drone_core::prelude::*;
 
 use core::{
     pin::Pin,
-    ptr,
     sync::atomic::{AtomicUsize, Ordering::*},
     task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
 };
-use drone_core::{future::fallback::*, sv, sync::spsc::oneshot, thr};
+use drone_core::{
+    future::{self, fallback::*},
+    sync::spsc::oneshot,
+    thr,
+};
 use futures::prelude::*;
 
 static mut THREADS: [Thr; 1] = [Thr::new(0)];
 
 thr! {
-    struct Thr;
-    struct ThrLocal;
-    extern struct Sv;
-    extern static THREADS;
-}
-
-struct Sv;
-
-impl sv::Supervisor for Sv {
-    fn first() -> *const Self {
-        ptr::null()
-    }
+    use THREADS;
+    struct Thr {}
+    struct ThrLocal {}
 }
 
 struct Counter(AtomicUsize);
@@ -87,7 +81,7 @@ fn test_nested() {
 // test runner does. Therefore we wrap all tests into one test case.
 #[test]
 fn thread_sequence() {
-    unsafe { thr::init::<Thr>() };
+    future::init::<Thr>();
     test_awt();
     test_nested();
 }

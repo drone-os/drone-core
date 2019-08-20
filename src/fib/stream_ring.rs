@@ -10,20 +10,28 @@ use core::{
 };
 use futures::Stream;
 
-/// A stream of values from another thread.
+/// A stream of `I` from the fiber in another thread.
+///
+/// Dropping or closing this future will remove the fiber on a next thread
+/// invocation without resuming it.
 #[must_use]
 pub struct FiberStreamRing<I> {
     rx: Receiver<I, !>,
 }
 
-/// A stream of results from another thread.
+/// A stream of `Result<I, E>` from the fiber in another thread.
+///
+/// Dropping or closing this future will remove the fiber on a next thread
+/// invocation without resuming it.
 #[must_use]
 pub struct TryFiberStreamRing<I, E> {
     rx: Receiver<I, E>,
 }
 
 impl<I> FiberStreamRing<I> {
-    /// Gracefully close this stream, preventing sending any future messages.
+    /// Gracefully close this future.
+    ///
+    /// The fiber will be removed on a next thread invocation without resuming.
     #[inline]
     pub fn close(&mut self) {
         self.rx.close()
@@ -31,7 +39,9 @@ impl<I> FiberStreamRing<I> {
 }
 
 impl<I, E> TryFiberStreamRing<I, E> {
-    /// Gracefully close this stream, preventing sending any future messages.
+    /// Gracefully close this future.
+    ///
+    /// The fiber will be removed on a next thread invocation without resuming.
     #[inline]
     pub fn close(&mut self) {
         self.rx.close()
@@ -62,9 +72,13 @@ impl<I, E> Stream for TryFiberStreamRing<I, E> {
     }
 }
 
-/// Ring stream extension to the thread token.
-pub trait ThrStreamRing<T: ThrAttach>: ThrToken<T> {
-    /// Adds a new ring stream fiber. Overflows will be ignored.
+/// Extends [`ThrToken`][`crate::thr::ThrToken`] types with `add_stream_ring`
+/// methods.
+pub trait ThrStreamRing: ThrToken {
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of `I`
+    /// yielded from the fiber.
+    ///
+    /// When the underlying ring buffer overflows, new items will be skipped.
     fn add_stream_ring_skip<F, I>(self, capacity: usize, fib: F) -> FiberStreamRing<I>
     where
         F: Fiber<Input = (), Yield = Option<I>, Return = Option<I>>,
@@ -76,7 +90,11 @@ pub trait ThrStreamRing<T: ThrAttach>: ThrToken<T> {
         }
     }
 
-    /// Adds a new ring stream fiber. Overflows will overwrite.
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of `I`
+    /// yielded from the fiber.
+    ///
+    /// When the underlying ring buffer overflows, new items will overwrite
+    /// existing ones.
     fn add_stream_ring_overwrite<F, I>(self, capacity: usize, fib: F) -> FiberStreamRing<I>
     where
         F: Fiber<Input = (), Yield = Option<I>, Return = Option<I>>,
@@ -88,7 +106,10 @@ pub trait ThrStreamRing<T: ThrAttach>: ThrToken<T> {
         }
     }
 
-    /// Adds a new fallible ring stream fiber.
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of
+    /// `Result<I, E>` yielded from the fiber.
+    ///
+    /// When the underlying ring buffer overflows, new items will be skipped.
     fn add_stream_ring<O, F, I, E>(
         self,
         capacity: usize,
@@ -108,7 +129,11 @@ pub trait ThrStreamRing<T: ThrAttach>: ThrToken<T> {
         }
     }
 
-    /// Adds a new fallible ring stream fiber. Overflows will overwrite.
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of
+    /// `Result<I, E>` yielded from the fiber.
+    ///
+    /// When the underlying ring buffer overflows, new items will overwrite
+    /// existing ones.
     fn add_try_stream_ring_overwrite<F, I, E>(
         self,
         capacity: usize,
@@ -127,7 +152,7 @@ pub trait ThrStreamRing<T: ThrAttach>: ThrToken<T> {
 }
 
 #[inline]
-fn add_rx<T, U, O, F, I, E, C>(
+fn add_rx<T, O, F, I, E, C>(
     thr: T,
     capacity: usize,
     overflow: O,
@@ -135,8 +160,7 @@ fn add_rx<T, U, O, F, I, E, C>(
     convert: C,
 ) -> Receiver<I, E>
 where
-    T: ThrToken<U>,
-    U: ThrAttach,
+    T: ThrToken,
     O: Fn(I) -> Result<(), E>,
     F: Fiber<Input = (), Yield = Option<I>>,
     C: FnOnce(F::Return) -> Result<Option<I>, E>,
@@ -189,15 +213,14 @@ where
 }
 
 #[inline]
-fn add_rx_overwrite<T, U, F, I, E, C>(
+fn add_rx_overwrite<T, F, I, E, C>(
     thr: T,
     capacity: usize,
     mut fib: F,
     convert: C,
 ) -> Receiver<I, E>
 where
-    T: ThrToken<U>,
-    U: ThrAttach,
+    T: ThrToken,
     F: Fiber<Input = (), Yield = Option<I>>,
     C: FnOnce(F::Return) -> Result<Option<I>, E>,
     F: Send + 'static,
@@ -236,4 +259,4 @@ where
     rx
 }
 
-impl<T: ThrAttach, U: ThrToken<T>> ThrStreamRing<T> for U {}
+impl<T: ThrToken> ThrStreamRing for T {}

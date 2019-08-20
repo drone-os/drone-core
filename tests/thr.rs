@@ -3,77 +3,49 @@
 #![feature(integer_atomics)]
 
 use drone_core::{
-    sv::Supervisor,
-    thr::{prelude::*, ThrToken},
+    thr::{prelude::*, Thread},
     token::Token,
 };
-use std::{
-    marker::PhantomData,
-    ptr,
-    sync::{
-        atomic::{AtomicI8, Ordering::*},
-        Arc,
-    },
+use std::sync::{
+    atomic::{AtomicI8, Ordering::*},
+    Arc,
 };
 
 use drone_core::thr;
 
 static mut THREADS: [Thr; 2] = [Thr::new(0), Thr::new(1)];
 
-pub struct Sv;
-
-impl Supervisor for Sv {
-    fn first() -> *const Self {
-        ptr::null()
-    }
-}
-
 thr! {
+    use THREADS;
+
     /// Test doc attribute
     #[doc = "test attribute"]
-    pub struct Thr;
+    pub struct Thr {
+        #[allow(dead_code)]
+        pub bar: isize = 1 - 2;
+    }
+
     /// Test doc attribute
     #[doc = "test attribute"]
-    pub struct ThrLocal;
-    extern struct Sv;
-    extern static THREADS;
-
-    #[allow(dead_code)]
-    pub foo: usize = 0;
-    #[allow(dead_code)]
-    bar: isize = 1 - 2;
-}
-
-mod without_sv {
-    use drone_core::thr;
-
-    static mut THREADS: [Thr; 0] = [];
-
-    thr! {
-        struct Thr;
-        struct ThrLocal;
-        extern static THREADS;
+    pub struct ThrLocal {
+        #[allow(dead_code)]
+        pub foo: usize = 0;
     }
 }
 
 macro_rules! thr_num {
     ($name:ident, $position:expr) => {
         #[derive(Clone, Copy)]
-        struct $name<T: ThrTag> {
-            _tag: PhantomData<T>,
-        }
+        struct $name;
 
-        unsafe impl<T: ThrTag> Token for $name<T> {
+        unsafe impl Token for $name {
             unsafe fn take() -> Self {
-                Self { _tag: PhantomData }
+                Self
             }
         }
 
-        impl<T: ThrTag> ThrToken<T> for $name<T> {
+        unsafe impl ThrToken for $name {
             type Thr = Thr;
-            type TThrToken = $name<Ttt>;
-            type AThrToken = $name<Att>;
-            type PThrToken = $name<Ptt>;
 
             const THR_NUM: usize = $position;
         }
@@ -96,7 +68,7 @@ fn fiber() {
     let counter = Arc::new(AtomicI8::new(0));
     let inner = Counter(Arc::clone(&counter));
     unsafe {
-        let thr = Thr0::<Att>::take();
+        let thr = Thr0::take();
         thr.add(move || {
             while inner.0.fetch_add(1, Relaxed) < 2 {
                 yield;
@@ -119,7 +91,7 @@ fn fiber_fn() {
     let counter = Arc::new(AtomicI8::new(0));
     let inner = Counter(Arc::clone(&counter));
     unsafe {
-        let thr = Thr1::<Att>::take();
+        let thr = Thr1::take();
         thr.add_fn(move || {
             inner.0.fetch_add(1, Relaxed);
         });

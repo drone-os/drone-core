@@ -4,7 +4,9 @@ use crate::{
 };
 use core::{marker::Unpin, pin::Pin};
 
-/// Closure fiber.
+/// Fiber for [`FnOnce`] closure.
+///
+/// Can be created with [`new_fn`].
 pub struct FiberFn<F, R>(Option<F>)
 where
     F: FnOnce() -> R,
@@ -40,7 +42,9 @@ where
     }
 }
 
-/// Creates a new closure fiber.
+/// Creates a fiber from the closure `f`.
+///
+/// This type of fiber will busy its thread until completion.
 #[inline]
 pub fn new_fn<F, R>(f: F) -> FiberFn<F, R>
 where
@@ -50,9 +54,9 @@ where
     FiberFn(Some(f))
 }
 
-/// Closure fiber extension to the thread token.
-pub trait ThrFiberFn<T: ThrAttach>: ThrToken<T> {
-    /// Adds a new closure fiber.
+/// Extends [`ThrToken`][`crate::thr::ThrToken`] types with `add_fn` method.
+pub trait ThrFiberFn: ThrToken {
+    /// Adds a fiber for the closure `f` to the fiber chain.
     fn add_fn<F>(self, f: F)
     where
         F: FnOnce(),
@@ -62,4 +66,4 @@ pub trait ThrFiberFn<T: ThrAttach>: ThrToken<T> {
     }
 }
 
-impl<T: ThrAttach, U: ThrToken<T>> ThrFiberFn<T> for U {}
+impl<T: ThrToken> ThrFiberFn for T {}

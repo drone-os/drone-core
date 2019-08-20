@@ -1,5 +1,5 @@
 use crate::{
-    fib::{Fiber, FiberState, YieldNone},
+    fib::{Fiber, FiberState},
     sync::spsc::oneshot::{channel, Receiver, RecvError},
     thr::prelude::*,
 };
@@ -11,20 +11,35 @@ use core::{
     task::{Context, Poll},
 };
 
-/// A future for a single value from another thread.
+/// A future that resolves on completion of the fiber from another thread.
+///
+/// Dropping or closing this future will remove the fiber on a next thread
+/// invocation without resuming it.
 #[must_use]
 pub struct FiberFuture<R> {
     rx: Receiver<R, !>,
 }
 
-/// A future for a single result from another thread.
+/// A future that resolves on completion of the fallible fiber from another
+/// thread.
+///
+/// Dropping or closing this future will remove the fiber on a next thread
+/// invocation without resuming it.
 #[must_use]
 pub struct TryFiberFuture<R, E> {
     rx: Receiver<R, E>,
 }
 
+#[marker]
+pub trait YieldNone: Send + 'static {}
+
+impl YieldNone for () {}
+impl YieldNone for ! {}
+
 impl<R> FiberFuture<R> {
-    /// Gracefully close this future, preventing sending any future messages.
+    /// Gracefully close this future.
+    ///
+    /// The fiber will be removed on a next thread invocation without resuming.
     #[inline]
     pub fn close(&mut self) {
         self.rx.close()
@@ -32,7 +47,9 @@ impl<R> FiberFuture<R> {
 }
 
 impl<R, E> TryFiberFuture<R, E> {
-    /// Gracefully close this future, preventing sending any future messages.
+    /// Gracefully close this future.
+    ///
+    /// The fiber will be removed on a next thread invocation without resuming.
     #[inline]
     pub fn close(&mut self) {
         self.rx.close()
@@ -63,9 +80,11 @@ impl<R, E> Future for TryFiberFuture<R, E> {
     }
 }
 
-/// Future fiber extension to the thread token.
-pub trait ThrFiberFuture<T: ThrAttach>: ThrToken<T> {
-    /// Adds a new future fiber.
+/// Extends [`ThrToken`][`crate::thr::ThrToken`] types with `add_future`
+/// methods.
+pub trait ThrFiberFuture: ThrToken {
+    /// Adds the fiber `fib` to the fiber chain and returns a future, which
+    /// resolves on completion of the fiber.
     fn add_future<F, Y, R>(self, fib: F) -> FiberFuture<R>
     where
         F: Fiber<Input = (), Yield = Y, Return = R>,
@@ -78,7 +97,8 @@ pub trait ThrFiberFuture<T: ThrAttach>: ThrToken<T> {
         }
     }
 
-    /// Adds a new fallible future fiber.
+    /// Adds the fallible fiber `fib` to the fiber chain and returns a future,
+    /// which resolves on completion of the fiber.
     fn add_try_future<F, Y, R, E>(self, fib: F) -> TryFiberFuture<R, E>
     where
         F: Fiber<Input = (), Yield = Y, Return = Result<R, E>>,
@@ -94,10 +114,9 @@ pub trait ThrFiberFuture<T: ThrAttach>: ThrToken<T> {
 }
 
 #[inline]
-fn add_rx<T, U, F, Y, R, E, C>(thr: T, mut fib: F, convert: C) -> Receiver<R, E>
+fn add_rx<T, F, Y, R, E, C>(thr: T, mut fib: F, convert: C) -> Receiver<R, E>
 where
-    T: ThrToken<U>,
-    U: ThrAttach,
+    T: ThrToken,
     F: Fiber<Input = (), Yield = Y>,
     Y: YieldNone,
     C: FnOnce(F::Return) -> Result<R, E>,
@@ -125,4 +144,4 @@ where
     rx
 }
 
-impl<T: ThrAttach, U: ThrToken<T>> ThrFiberFuture<T> for U {}
+impl<T: ThrToken> ThrFiberFuture for T {}

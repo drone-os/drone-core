@@ -1,20 +1,26 @@
-# Check with clippy
-clippy:
+# Check for mistakes
+lint:
+	rustup component add clippy
 	cargo clippy --all
 
-# Generate the documentation
+# Reformat the code
+fmt:
+	rustup component add rustfmt
+	cargo fmt
+
+# Generate the docs
 doc:
 	cargo doc --all
 
-# Open the documentation in a browser
-doc_open:
+# Open the docs in a browser
+doc_open: doc
 	cargo doc --package drone-core --open
 
-# Generate README.md
+# Update README.md
 readme:
 	cargo readme -o README.md
 
-# Run tests
+# Run the tests
 test:
 	cargo test --all --exclude drone-core
 	cargo test --features std --package drone-core

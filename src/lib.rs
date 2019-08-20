@@ -71,7 +71,6 @@ pub mod periph;
 pub mod prelude;
 pub mod reg;
 pub mod stack_loop;
-pub mod sv;
 pub mod sync;
 pub mod thr;
 pub mod token;

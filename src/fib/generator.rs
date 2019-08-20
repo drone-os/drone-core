@@ -7,7 +7,9 @@ use core::{
     pin::Pin,
 };
 
-/// Generator fiber.
+/// Fiber for [`Generator`].
+///
+/// Can be created with [`new`].
 pub struct FiberGen<G>(G)
 where
     G: Generator;
@@ -51,7 +53,9 @@ impl<Y, R> From<GeneratorState<Y, R>> for FiberState<Y, R> {
     }
 }
 
-/// Creates a new generator fiber.
+/// Creates a fiber from the generator `gen`.
+///
+/// This type of fiber yields its thread with each generator `yield`.
 #[inline]
 pub fn new<G>(gen: G) -> FiberGen<G>
 where
@@ -60,9 +64,9 @@ where
     FiberGen(gen)
 }
 
-/// Generator fiber extension to the thread token.
-pub trait ThrFiberGen<T: ThrAttach>: ThrToken<T> {
-    /// Adds a new generator fiber.
+/// Extends [`ThrToken`][`crate::thr::ThrToken`] types with `add` method.
+pub trait ThrFiberGen: ThrToken {
+    /// Adds a fiber for the generator `gen` to the fiber chain.
     fn add<G>(self, gen: G)
     where
         G: Generator<Yield = (), Return = ()>,
@@ -72,4 +76,4 @@ pub trait ThrFiberGen<T: ThrAttach>: ThrToken<T> {
     }
 }
 
-impl<T: ThrAttach, U: ThrToken<T>> ThrFiberGen<T> for U {}
+impl<T: ThrToken> ThrFiberGen for T {}

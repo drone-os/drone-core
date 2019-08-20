@@ -16,14 +16,14 @@ struct Node {
 }
 
 impl Chain {
-    /// Creates an empty `Chain`.
+    /// Creates an empty fiber chain.
     pub const fn new() -> Self {
         Self {
             head: AtomicPtr::new(ptr::null_mut()),
         }
     }
 
-    /// Adds a fiber first in the chain.
+    /// Adds the fiber `fib` first to the chain.
     pub fn add<F: FiberRoot>(&self, fib: F) {
         self.push(Node::new(fib));
     }
@@ -33,11 +33,11 @@ impl Chain {
         self.head.load(Acquire).is_null()
     }
 
-    /// Advances all fibers, removing completed ones.
+    /// Advances fibers, removing completed ones.
     ///
     /// # Safety
     ///
-    /// Must not be called concurrently.
+    /// This method is not reentrant.
     #[inline(never)]
     pub unsafe fn drain(&self) {
         let mut prev = ptr::null_mut();

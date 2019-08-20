@@ -1,15 +1,6 @@
-use crate::thr::{current, prelude::*, ThreadLocal};
-use core::{
-    cell::Cell,
-    mem::transmute,
-    ptr::NonNull,
-    sync::atomic::{AtomicUsize, Ordering::*},
-    task::Context,
-};
+use core::{cell::Cell, mem::transmute, ptr::NonNull, task::Context};
 
-static CURRENT: AtomicUsize = AtomicUsize::new(0);
-
-/// A thread-local storage of the task pointer.
+/// Thread-local task context cell.
 pub struct TaskCell(Cell<TaskContext>);
 
 type TaskContext = Option<NonNull<Context<'static>>>;
@@ -17,7 +8,7 @@ type TaskContext = Option<NonNull<Context<'static>>>;
 struct ResetContext<'a>(TaskContext, &'a Cell<TaskContext>);
 
 impl TaskCell {
-    /// Creates a new `TaskCell`.
+    /// Creates a new task context cell.
     pub const fn new() -> Self {
         Self(Cell::new(None))
     }
@@ -46,27 +37,4 @@ impl<'a> Drop for ResetContext<'a> {
     fn drop(&mut self) {
         self.1.set(self.0);
     }
-}
-
-/// Initializes the `futures` task system.
-///
-/// # Safety
-///
-/// Must be called before using `futures`.
-pub unsafe fn init<T: Thread>() {
-    CURRENT.store(current_task_fn::<T> as usize, Relaxed);
-}
-
-#[doc(hidden)]
-pub fn current_task() -> &'static TaskCell {
-    let ptr = CURRENT.load(Relaxed);
-    if ptr == 0 {
-        panic!("not initialized");
-    } else {
-        unsafe { transmute::<usize, fn() -> &'static TaskCell>(ptr)() }
-    }
-}
-
-fn current_task_fn<T: Thread>() -> &'static TaskCell {
-    current::<T>().task()
 }

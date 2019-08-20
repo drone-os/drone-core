@@ -34,21 +34,17 @@ impl Parse for Heap {
         let heap_ident = input.parse()?;
         input.parse::<Token![;]>()?;
         let (alloc_hook, dealloc_hook, grow_in_place_hook, shrink_in_place_hook) =
-            if input.peek(Token![extern]) {
-                input.parse::<Token![extern]>()?;
-                input.parse::<Token![fn]>()?;
+            if input.peek(Token![use]) {
+                input.parse::<Token![use]>()?;
                 let alloc_hook = input.parse()?;
                 input.parse::<Token![;]>()?;
-                input.parse::<Token![extern]>()?;
-                input.parse::<Token![fn]>()?;
+                input.parse::<Token![use]>()?;
                 let dealloc_hook = input.parse()?;
                 input.parse::<Token![;]>()?;
-                input.parse::<Token![extern]>()?;
-                input.parse::<Token![fn]>()?;
+                input.parse::<Token![use]>()?;
                 let grow_in_place_hook = input.parse()?;
                 input.parse::<Token![;]>()?;
-                input.parse::<Token![extern]>()?;
-                input.parse::<Token![fn]>()?;
+                input.parse::<Token![use]>()?;
                 let shrink_in_place_hook = input.parse()?;
                 input.parse::<Token![;]>()?;
                 (

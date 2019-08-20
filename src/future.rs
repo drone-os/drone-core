@@ -1,7 +1,9 @@
 //! Asynchronous values.
 //!
-//! This module provides an API for `async`/`await` feature. There are two ways
-//! to use `async`/`await` in Drone applications:
+//! This module provides the runtime for `async`/`await` feature. The runtime
+//! relies on the Thread-Local Storage feature of [Drone threads][thr] and
+//! should be initialized with [`future::init`]. There are two ways to use
+//! `async`/`await` in Drone applications:
 //!
 //! 1. The preferred way is to use `drone-async-await` crate as a dependency.
 //! Place the following to the Cargo.toml:
@@ -30,13 +32,41 @@ mod gen_future;
 
 pub use self::gen_future::from_generator;
 
-use crate::thr::current_task;
-use core::{future::Future, pin::Pin, task::Poll};
+use crate::thr::{local, TaskCell, Thread, ThreadLocal};
+use core::{
+    future::Future,
+    mem::transmute,
+    pin::Pin,
+    sync::atomic::{AtomicUsize, Ordering::*},
+    task::Poll,
+};
+
+static LOCAL_TASK_FN: AtomicUsize = AtomicUsize::new(0);
+
+/// Uses the thread-local storage of `T` for the `futures` task system.
+///
+/// This function should be called before polling any future.
+pub fn init<T: Thread>() {
+    LOCAL_TASK_FN.store(local_task_fn::<T> as usize, Relaxed);
+}
 
 /// Polls a future in the current task context.
 pub fn poll_with_context<F>(f: Pin<&mut F>) -> Poll<F::Output>
 where
     F: Future,
 {
-    current_task().get_context(|cx| F::poll(f, cx))
+    local_task().get_context(|cx| F::poll(f, cx))
+}
+
+fn local_task() -> &'static TaskCell {
+    let ptr = LOCAL_TASK_FN.load(Relaxed);
+    if ptr == 0 {
+        panic!("drone_core::future::init not called");
+    } else {
+        unsafe { transmute::<usize, unsafe fn() -> &'static TaskCell>(ptr)() }
+    }
+}
+
+unsafe fn local_task_fn<T: Thread>() -> &'static TaskCell {
+    local::<T>().task()
 }

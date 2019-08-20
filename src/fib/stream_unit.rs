@@ -10,20 +10,28 @@ use core::{
 };
 use futures::Stream;
 
-/// A stream of values from another thread.
+/// A stream of `()` from the fiber in another thread.
+///
+/// Dropping or closing this future will remove the fiber on a next thread
+/// invocation without resuming it.
 #[must_use]
 pub struct FiberStreamUnit {
     rx: Receiver<!>,
 }
 
-/// A stream of results from another thread.
+/// A stream of `Result<(), E>` from the fiber in another thread.
+///
+/// Dropping or closing this future will remove the fiber on a next thread
+/// invocation without resuming it.
 #[must_use]
 pub struct TryFiberStreamUnit<E> {
     rx: Receiver<E>,
 }
 
 impl FiberStreamUnit {
-    /// Gracefully close this stream, preventing sending any future messages.
+    /// Gracefully close this future.
+    ///
+    /// The fiber will be removed on a next thread invocation without resuming.
     #[inline]
     pub fn close(&mut self) {
         self.rx.close()
@@ -31,7 +39,9 @@ impl FiberStreamUnit {
 }
 
 impl<E> TryFiberStreamUnit<E> {
-    /// Gracefully close this stream, preventing sending any future messages.
+    /// Gracefully close this future.
+    ///
+    /// The fiber will be removed on a next thread invocation without resuming.
     #[inline]
     pub fn close(&mut self) {
         self.rx.close()
@@ -62,9 +72,11 @@ impl<E> Stream for TryFiberStreamUnit<E> {
     }
 }
 
-/// Unit stream extension to the thread token.
-pub trait ThrStreamUnit<T: ThrAttach>: ThrToken<T> {
-    /// Adds a new unit stream fiber. Overflows will be ignored.
+/// Extends [`ThrToken`][`crate::thr::ThrToken`] types with `add_stream`
+/// methods.
+pub trait ThrStreamUnit: ThrToken {
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of `()`
+    /// yielded from the fiber.
     fn add_stream_skip<F>(self, fib: F) -> FiberStreamUnit
     where
         F: Fiber<Input = (), Yield = Option<()>, Return = Option<()>>,
@@ -75,7 +87,8 @@ pub trait ThrStreamUnit<T: ThrAttach>: ThrToken<T> {
         }
     }
 
-    /// Adds a new fallible unit stream fiber.
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of
+    /// `Result<(), E>` yielded from the fiber.
     fn add_stream<O, F, E>(self, overflow: O, fib: F) -> TryFiberStreamUnit<E>
     where
         O: Fn() -> Result<(), E>,
@@ -91,10 +104,9 @@ pub trait ThrStreamUnit<T: ThrAttach>: ThrToken<T> {
 }
 
 #[inline]
-fn add_rx<T, U, O, F, E, C>(thr: T, overflow: O, mut fib: F, convert: C) -> Receiver<E>
+fn add_rx<T, O, F, E, C>(thr: T, overflow: O, mut fib: F, convert: C) -> Receiver<E>
 where
-    T: ThrToken<U>,
-    U: ThrAttach,
+    T: ThrToken,
     O: Fn() -> Result<(), E>,
     F: Fiber<Input = (), Yield = Option<()>>,
     C: FnOnce(F::Return) -> Result<Option<()>, E>,
@@ -143,4 +155,4 @@ where
     rx
 }
 
-impl<T: ThrAttach, U: ThrToken<T>> ThrStreamUnit<T> for U {}
+impl<T: ThrToken> ThrStreamUnit for T {}

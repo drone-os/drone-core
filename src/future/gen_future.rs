@@ -1,4 +1,4 @@
-use crate::thr::current_task;
+use super::local_task;
 use core::{
     future::Future,
     marker::Unpin,
@@ -30,7 +30,7 @@ impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Safe because we're !Unpin + !Drop mapping to a ?Unpin value
         let gen = unsafe { Pin::map_unchecked_mut(self, |s| &mut s.0) };
-        current_task().set_context(cx, || match gen.resume() {
+        local_task().set_context(cx, || match gen.resume() {
             GeneratorState::Yielded(()) => Poll::Pending,
             GeneratorState::Complete(x) => Poll::Ready(x),
         })
