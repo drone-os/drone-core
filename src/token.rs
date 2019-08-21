@@ -1,4 +1,4 @@
-//! The [`Token`][`token::Token`] trait and its common patterns.
+//! The [`Token`](token::Token) trait and its common patterns.
 //!
 //! A token is a zero-sized type, at most one instance of which ever exists.
 //! This concept is ubiquitous in Drone. It is used for representing
@@ -12,19 +12,19 @@
 //!
 //!     * The type must not implement [`Clone`].
 //!     * The type must be instantiated only inside
-//!       [`Token::take`][`token::Token::take`] method.
+//!       [`Token::take`](token::Token::take) method.
 //!     * The type must be zero-sized.
 //!
-//! 2. *Calling* [`Token::take`][`token::Token::take`] is `unsafe`, and it is
-//! the caller responsibility to ensure that at most one instance of the type
-//! ever exists.
+//! 2. *Calling* [`Token::take`](token::Token::take) is `unsafe`, and it is the
+//! caller responsibility to ensure that at most one instance of the type ever
+//! exists.
 //!
 //! Tokens are often nested to minimize the usage of `unsafe`
-//! [`Token::take`][`token::Token::take`] constructor. It is supposed to
+//! [`Token::take`](token::Token::take) constructor. It is supposed to
 //! instantiate all needed tokens at the very beginning of the program and pass
 //! the instances further to the code.
 //!
-//! Since tokens are zero-sized, [`Token::take`][`token::Token::take`] is no-op
+//! Since tokens are zero-sized, [`Token::take`](token::Token::take) is no-op
 //! from the assembly perspective. Likewise passing the instance around doesn't
 //! consume the stack, and storing the instance inside other types doesn't
 //! consume the memory.
@@ -92,7 +92,7 @@
 //! # Static Tokens
 //!
 //! Mutable statics are unsafe in Rust. One way to make them safe is to use
-//! interior-mutability. For example [`Mutex`][`crate::sync::mutex::Mutex`]
+//! interior-mutability. For example [`Mutex`](crate::sync::mutex::Mutex)
 //! ensures that concurrent access to the data is safe. If you don't need
 //! simultaneous access to the static but still need other static
 //! characteristics like known and stable address, you can use static tokens:
@@ -145,12 +145,12 @@
 
 /// Defines a new simple [`Token`].
 ///
-/// See [the module-level documentation][self] for details.
+/// See [the module-level documentation](self) for details.
 pub use drone_core_macros::simple_token;
 
 /// Defines a new token for the set of simple [`Token`]s.
 ///
-/// See [the module-level documentation][self] for details.
+/// See [the module-level documentation](self) for details.
 ///
 /// # Safety
 ///
@@ -159,7 +159,7 @@ pub use drone_core_macros::unsafe_simple_tokens;
 
 /// Defines a new token for the set of [`StaticToken`]s.
 ///
-/// See [the module-level documentation][self] for details.
+/// See [the module-level documentation](self) for details.
 ///
 /// # Safety
 ///
@@ -194,7 +194,7 @@ pub unsafe trait Token: Sized + Send + 'static {
 
 /// A token for a mutable static variable.
 ///
-/// See [the module-level documentation][self] for details.
+/// See [the module-level documentation](self) for details.
 ///
 /// # Safety
 ///

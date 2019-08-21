@@ -64,7 +64,7 @@ where
     FiberGen(gen)
 }
 
-/// Extends [`ThrToken`][`crate::thr::ThrToken`] types with `add` method.
+/// Extends [`ThrToken`](crate::thr::ThrToken) types with `add` method.
 pub trait ThrFiberGen: ThrToken {
     /// Adds a fiber for the generator `gen` to the fiber chain.
     fn add<G>(self, gen: G)

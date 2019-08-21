@@ -16,67 +16,79 @@ pub struct Sender<T, E> {
     inner: Arc<Inner<T, E>>,
 }
 
-/// Error returned from [`Sender::send`](Sender::send).
+/// The error type returned from [`Sender::send`].
 #[derive(Debug)]
 pub struct SendError<T> {
-    /// Value which wasn't sent.
+    /// The value which has been not sent.
     pub value: T,
     /// The error kind.
     pub kind: SendErrorKind,
 }
 
-/// Kind of [`SendError`](SendError).
-#[derive(Debug)]
+/// Kind of [`SendError`].
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SendErrorKind {
     /// The corresponding [`Receiver`](super::Receiver) is dropped.
     Canceled,
-    /// Buffer overflow.
+    /// The ring buffer overflow.
     Overflow,
 }
 
 impl<T, E> Sender<T, E> {
-    #[inline]
     pub(super) fn new(inner: Arc<Inner<T, E>>) -> Self {
         Self { inner }
     }
 
-    /// Sends a value across the channel.
+    /// Puts `value` to the ring buffer. The value can be immediately read by
+    /// the receiving half.
+    ///
+    /// If the value is successfully enqueued for the remote end to receive,
+    /// then `Ok(())` is returned. However if the receiving end was dropped
+    /// before this function was called or there is the ring buffer overflow,
+    /// then `Err` is returned with the value provided.
     #[inline]
     pub fn send(&mut self, value: T) -> Result<(), SendError<T>> {
         self.inner.send(value)
     }
 
-    /// Sends a value across the channel. Overwrites on overflow.
+    /// Puts `value` to the ring buffer. The value can be immediately read by
+    /// the receiving half. This method overwrites old items on overflow.
+    ///
+    /// If the value is successfully enqueued for the remote end to receive,
+    /// then `Ok(())` is returned. If the receiving end was dropped before this
+    /// function was called, however, then `Err` is returned with the value
+    /// provided.
     #[inline]
     pub fn send_overwrite(&mut self, value: T) -> Result<(), T> {
         self.inner.send_overwrite(value)
     }
 
-    /// Completes this stream with an error.
+    /// Completes this channel with an `Err` result.
     ///
-    /// If the value is successfully enqueued, then `Ok(())` is returned. If the
-    /// receiving end was dropped before this function was called, then `Err` is
-    /// returned with the value provided.
+    /// This function will consume `self` and indicate to the other end, the
+    /// [`Receiver`](super::Receiver), that the channel is closed.
+    ///
+    /// If the value is successfully enqueued for the remote end to receive,
+    /// then `Ok(())` is returned. If the receiving end was dropped before this
+    /// function was called, however, then `Err` is returned with the value
+    /// provided.
     #[inline]
     pub fn send_err(self, err: E) -> Result<(), E> {
         self.inner.send_err(err)
     }
 
-    /// Polls this [`Sender`] half to detect whether the [`Receiver`] this has
-    /// paired with has gone away.
+    /// Polls this `Sender` half to detect whether its associated
+    /// [`Receiver`](super::Receiver) with has been dropped.
     ///
-    /// # Panics
+    /// # Return values
     ///
-    /// Like `Future::poll`, this function will panic if it's not called from
-    /// within the context of a task. In other words, this should only ever be
-    /// called from inside another future.
+    /// If `Ok(Ready)` is returned then the associated `Receiver` has been
+    /// dropped.
     ///
-    /// If you're calling this function from a context that does not have a
-    /// task, then you can use the [`is_canceled`] API instead.
-    ///
-    /// [`Sender`]: Sender
-    /// [`Receiver`]: super::Receiver
-    /// [`is_canceled`]: Sender::is_canceled
+    /// If `Ok(Pending)` is returned then the associated `Receiver` is still
+    /// alive and may be able to receive values if sent. The current task,
+    /// however, is scheduled to receive a notification if the corresponding
+    /// `Receiver` goes away.
     #[inline]
     pub fn poll_cancel(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         self.inner.poll_half(
@@ -88,11 +100,12 @@ impl<T, E> Sender<T, E> {
         )
     }
 
-    /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has
-    /// gone away.
+    /// Tests to see whether this `Sender`'s corresponding `Receiver` has been
+    /// dropped.
     ///
-    /// [`Sender`]: Sender
-    /// [`Receiver`]: super::Receiver
+    /// Unlike [`poll_cancel`](Sender::poll_cancel), this function does not
+    /// enqueue a task for wakeup upon cancellation, but merely reports the
+    /// current state, which may be subject to concurrent modification.
     #[inline]
     pub fn is_canceled(&self) -> bool {
         self.inner.is_canceled(Ordering::Relaxed)

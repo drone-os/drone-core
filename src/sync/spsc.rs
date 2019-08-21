@@ -1,4 +1,4 @@
-//! Single-producer, single-consumer queues.
+//! Single-producer, single-consumer communication primitives.
 
 use core::{
     mem::MaybeUninit,
@@ -8,8 +8,8 @@ use core::{
 };
 
 pub mod oneshot;
+pub mod pulse;
 pub mod ring;
-pub mod unit;
 
 pub(self) trait SpscInner<A, I>
 where

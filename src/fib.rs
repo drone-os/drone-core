@@ -9,24 +9,23 @@ mod chain;
 mod closure;
 mod future;
 mod generator;
+mod stream_pulse;
 mod stream_ring;
-mod stream_unit;
 
 pub use self::{
     chain::Chain,
     closure::{new_fn, FiberFn, ThrFiberFn},
-    future::{FiberFuture, ThrFiberFuture, TryFiberFuture},
+    future::{FiberFuture, ThrFiberFuture},
     generator::{new, FiberGen, ThrFiberGen},
+    stream_pulse::{FiberStreamPulse, ThrStreamPulse, TryFiberStreamPulse},
     stream_ring::{FiberStreamRing, ThrStreamRing, TryFiberStreamRing},
-    stream_unit::{FiberStreamUnit, ThrStreamUnit, TryFiberStreamUnit},
 };
 
 use core::pin::Pin;
 
 /// The main task unit of Drone.
 pub trait Fiber {
-    /// The type of value this fiber consumes on each
-    /// [`resume`][`Fiber::resume`].
+    /// The type of value this fiber consumes on each [`resume`](Fiber::resume).
     type Input;
 
     /// The type of value this fiber yields.

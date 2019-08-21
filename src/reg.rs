@@ -69,78 +69,79 @@
 //!
 //! ## Field Token
 #![doc = "
-|              | Single-Bit | Multiple-Bits | Read | Write | Write-Only Register |
-|------------------------------------------------------------|---|---|---|---|---|
-| [`into_unsync`][`reg::field::RegField::into_unsync`]       |   |   |   |   |   |
-| [`into_sync`][`reg::field::RegField::into_sync`]           |   |   |   |   |   |
-| [`into_copy`][`reg::field::RegField::into_copy`]           |   |   |   |   |   |
-| [`as_sync`][`reg::field::RegField::as_sync`]               |   |   |   |   |   |
-| [`load_val`][`reg::field::RRRegField::load_val`]           |   |   | + |   |   |
-| [`default_val`][`reg::field::WoWoRegField::default_val`]   |   |   |   |   | + |
-| [`store_val`][`reg::field::WoWoRegField::store_val`]       |   |   |   |   | + |
-| [`store`][`reg::field::WoWoRegField::store`]               |   |   |   |   | + |
-| [`read`][`reg::field::RRRegFieldBit::read`]                | + |   | + |   |   |
-| [`read_bit`][`reg::field::RRRegFieldBit::read_bit`]        | + |   | + |   |   |
-| [`set`][`reg::field::WWRegFieldBit::set`]                  | + |   |   | + |   |
-| [`clear`][`reg::field::WWRegFieldBit::clear`]              | + |   |   | + |   |
-| [`toggle`][`reg::field::WWRegFieldBit::toggle`]            | + |   |   | + |   |
-| [`set_bit`][`reg::field::WoWoRegFieldBit::set_bit`]        | + |   |   |   | + |
-| [`clear_bit`][`reg::field::WoWoRegFieldBit::clear_bit`]    | + |   |   |   | + |
-| [`toggle_bit`][`reg::field::WoWoRegFieldBit::toggle_bit`]  | + |   |   |   | + |
-| [`read`][`reg::field::RRRegFieldBits::read`]               |   | + | + |   |   |
-| [`read_bits`][`reg::field::RRRegFieldBits::read_bits`]     |   | + | + |   |   |
-| [`write`][`reg::field::WWRegFieldBits::write`]             |   | + |   | + |   |
-| [`write_bits`][`reg::field::WoWoRegFieldBits::write_bits`] |   | + |   |   | + |
+|            | Single-Bit | Multiple-Bits | Read | Write | Write-Only Register |
+|----------------------------------------------------------|---|---|---|---|---|
+| [`into_unsync`](reg::field::RegField::into_unsync)       |   |   |   |   |   |
+| [`into_sync`](reg::field::RegField::into_sync)           |   |   |   |   |   |
+| [`into_copy`](reg::field::RegField::into_copy)           |   |   |   |   |   |
+| [`as_sync`](reg::field::RegField::as_sync)               |   |   |   |   |   |
+| [`load_val`](reg::field::RRRegField::load_val)           |   |   | + |   |   |
+| [`default_val`](reg::field::WoWoRegField::default_val)   |   |   |   |   | + |
+| [`store_val`](reg::field::WoWoRegField::store_val)       |   |   |   |   | + |
+| [`store`](reg::field::WoWoRegField::store)               |   |   |   |   | + |
+| [`read`](reg::field::RRRegFieldBit::read)                | + |   | + |   |   |
+| [`read_bit`](reg::field::RRRegFieldBit::read_bit)        | + |   | + |   |   |
+| [`set`](reg::field::WWRegFieldBit::set)                  | + |   |   | + |   |
+| [`clear`](reg::field::WWRegFieldBit::clear)              | + |   |   | + |   |
+| [`toggle`](reg::field::WWRegFieldBit::toggle)            | + |   |   | + |   |
+| [`set_bit`](reg::field::WoWoRegFieldBit::set_bit)        | + |   |   |   | + |
+| [`clear_bit`](reg::field::WoWoRegFieldBit::clear_bit)    | + |   |   |   | + |
+| [`toggle_bit`](reg::field::WoWoRegFieldBit::toggle_bit)  | + |   |   |   | + |
+| [`read`](reg::field::RRRegFieldBits::read)               |   | + | + |   |   |
+| [`read_bits`](reg::field::RRRegFieldBits::read_bits)     |   | + | + |   |   |
+| [`write`](reg::field::WWRegFieldBits::write)             |   | + |   | + |   |
+| [`write_bits`](reg::field::WoWoRegFieldBits::write_bits) |   | + |   |   | + |
 "]
 //! ## Register Token
 #![doc = "
-|               | Read | Write | Read-Write | Atomic | Non-atomic |
-|---------------------------------------------|---|---|---|---|---|
-| [`into_unsync`][`reg::Reg::into_unsync`]    |   |   |   |   |   |
-| [`into_sync`][`reg::Reg::into_sync`]        |   |   |   |   |   |
-| [`into_copy`][`reg::Reg::into_copy`]        |   |   |   |   |   |
-| [`as_sync`][`reg::Reg::as_sync`]            |   |   |   |   |   |
-| [`default_val`][`reg::Reg::default_val`]    |   |   |   |   |   |
-| [`default`][`reg::RegRef::default`]         |   |   |   |   |   |
-| [`hold`][`reg::RegRef::hold`]               |   |   |   |   |   |
-| [`load_val`][`reg::RReg::load_val`]         | + |   |   |   |   |
-| [`load`][`reg::RReg::load`]                 | + |   |   |   |   |
-| [`to_ptr`][`reg::RReg::to_ptr`]             | + |   |   |   |   |
-| [`to_mut_ptr`][`reg::WReg::to_mut_ptr`]     |   | + |   |   |   |
-| [`store`][`reg::WRegUnsync::store`]         |   | + |   |   | + |
-| [`store`][`reg::WRegAtomic::store`]         |   | + |   | + |   |
-| [`store_val`][`reg::WRegUnsync::store_val`] |   | + |   |   | + |
-| [`store_val`][`reg::WRegAtomic::store_val`] |   | + |   | + |   |
-| [`reset`][`reg::WRegUnsync::reset`]         |   | + |   |   | + |
-| [`reset`][`reg::WRegAtomic::reset`]         |   | + |   | + |   |
-| [`modify`][`reg::RwRegUnsync::modify`]      |   |   | + |   | + |
+|             | Read | Write | Read-Write | Atomic | Non-atomic |
+|-------------------------------------------|---|---|---|---|---|
+| [`into_unsync`](reg::Reg::into_unsync)    |   |   |   |   |   |
+| [`into_sync`](reg::Reg::into_sync)        |   |   |   |   |   |
+| [`into_copy`](reg::Reg::into_copy)        |   |   |   |   |   |
+| [`as_sync`](reg::Reg::as_sync)            |   |   |   |   |   |
+| [`default_val`](reg::Reg::default_val)    |   |   |   |   |   |
+| [`default`](reg::RegRef::default)         |   |   |   |   |   |
+| [`hold`](reg::RegRef::hold)               |   |   |   |   |   |
+| [`load_val`](reg::RReg::load_val)         | + |   |   |   |   |
+| [`load`](reg::RReg::load)                 | + |   |   |   |   |
+| [`to_ptr`](reg::RReg::to_ptr)             | + |   |   |   |   |
+| [`to_mut_ptr`](reg::WReg::to_mut_ptr)     |   | + |   |   |   |
+| [`store`](reg::WRegUnsync::store)         |   | + |   |   | + |
+| [`store`](reg::WRegAtomic::store)         |   | + |   | + |   |
+| [`store_val`](reg::WRegUnsync::store_val) |   | + |   |   | + |
+| [`store_val`](reg::WRegAtomic::store_val) |   | + |   | + |   |
+| [`reset`](reg::WRegUnsync::reset)         |   | + |   |   | + |
+| [`reset`](reg::WRegAtomic::reset)         |   | + |   | + |   |
+| [`modify`](reg::RwRegUnsync::modify)      |   |   | + |   | + |
 "]
 //! ## Register Value
-//! Autogenerated field methods for [`RegHold`][`reg::RegHold`] (`foo` as an
+//!
+//! Autogenerated field methods for [`RegHold`](reg::RegHold) (`foo` as an
 //! example field name):
 #![doc = "
-|                                        | Single-Bit | Multiple-Bits | Read | Write |
-|--------------------------------------------------------------------|---|---|---|---|
-| `foo()` ([`read`][`reg::field::RRRegFieldBit::read`])              | + |   | + |   |
-| `foo()` ([`read`][`reg::field::RRRegFieldBits::read`])             |   | + | + |   |
-| `set_foo()` ([`set`][`reg::field::WWRegFieldBit::set`])            | + |   |   | + |
-| `clear_foo()` ([`clear`][`reg::field::WWRegFieldBit::clear`])      | + |   |   | + |
-| `toggle_foo()` ([`toggle`][`reg::field::WWRegFieldBit::toggle`])   | + |   |   | + |
-| `write_foo(bits)` ([`write`][`reg::field::WWRegFieldBits::write`]) |   | + |   | + |
+|                                      | Single-Bit | Multiple-Bits | Read | Write |
+|------------------------------------------------------------------|---|---|---|---|
+| `foo()` ([`read`](reg::field::RRRegFieldBit::read))              | + |   | + |   |
+| `foo()` ([`read`](reg::field::RRRegFieldBits::read))             |   | + | + |   |
+| `set_foo()` ([`set`](reg::field::WWRegFieldBit::set))            | + |   |   | + |
+| `clear_foo()` ([`clear`](reg::field::WWRegFieldBit::clear))      | + |   |   | + |
+| `toggle_foo()` ([`toggle`](reg::field::WWRegFieldBit::toggle))   | + |   |   | + |
+| `write_foo(bits)` ([`write`](reg::field::WWRegFieldBits::write)) |   | + |   | + |
 "]
 //! # Tags
 //!
 //! Each register or field token can have one of three flavors. They are encoded
-//! by [`tag`][`reg::tag`]s in their types. For example `Reg<Urt>`, or
+//! by [`tag`](reg::tag)s in their types. For example `Reg<Urt>`, or
 //! `RegField<Srt>`.
 //!
 //! Here are available tags and their properties:
 //!
-//! |                                           | Atomic | Affine |
-//! |-------------------------------------------|--------|--------|
-//! | [`Urt`][`reg::tag::Urt`] (Unsynchronized) | -      | **+**  |
-//! | [`Srt`][`reg::tag::Srt`] (Synchronized)   | **+**  | **+**  |
-//! | [`Crt`][`reg::tag::Crt`] (Copyable)       | **+**  | -      |
+//! |                                         | Atomic | Affine |
+//! |-----------------------------------------|--------|--------|
+//! | [`Urt`](reg::tag::Urt) (Unsynchronized) | -      | **+**  |
+//! | [`Srt`](reg::tag::Srt) (Synchronized)   | **+**  | **+**  |
+//! | [`Crt`](reg::tag::Crt) (Copyable)       | **+**  | -      |
 //!
 //! **Atomic** means the token uses more costly atomic operations, but could be
 //! shared between threads.
@@ -286,7 +287,7 @@ pub mod tag;
 
 /// A macro to define a macro to define a set of register tokens.
 ///
-/// See [the module level documentation][self] for details.
+/// See [the module level documentation](self) for details.
 ///
 /// # Safety
 ///
@@ -309,7 +310,7 @@ pub trait Reg<T: RegTag>: Token + Sync {
     /// bits. It should be used in conjunction with [`RegHold`] or register
     /// [`field`]s.
     ///
-    /// See also [`Hold`][`RegRef::Hold`].
+    /// See also [`Hold`](RegRef::Hold).
     type Val: Bitfield;
 
     /// Corresponding unsynchronized register token.
@@ -360,7 +361,7 @@ pub trait Reg<T: RegTag>: Token + Sync {
     /// Creates a new opaque register value, and initializes it with the reset
     /// value.
     ///
-    /// See also [`default`][`RegRef::default`].
+    /// See also [`default`](RegRef::default).
     #[inline]
     fn default_val(&self) -> Self::Val {
         unsafe { Self::Val::default() }
@@ -371,7 +372,7 @@ pub trait Reg<T: RegTag>: Token + Sync {
 pub trait RegRef<'a, T: RegTag>: Reg<T> {
     /// Exposed storage for register values.
     ///
-    /// See also [`Val`][`Reg::Val`].
+    /// See also [`Val`](Reg::Val).
     type Hold: RegHold<'a, T, Self>;
 
     /// Creates a new exposed register value from `val`.
@@ -380,7 +381,7 @@ pub trait RegRef<'a, T: RegTag>: Reg<T> {
     /// Creates a new exposed register value, and initializes it with the reset
     /// value.
     ///
-    /// See also [`default_val`][`Reg::default_val`].
+    /// See also [`default_val`](Reg::default_val).
     #[inline]
     fn default(&'a self) -> Self::Hold {
         self.hold(self.default_val())
@@ -408,7 +409,7 @@ where
 pub trait RReg<T: RegTag>: Reg<T> {
     /// Reads the value from the register memory to the opaque value type.
     ///
-    /// See also [`load`][`RReg::load`].
+    /// See also [`load`](RReg::load).
     #[inline]
     fn load_val(&self) -> Self::Val {
         unsafe { Self::Val::from_bits(read_volatile(self.to_ptr())) }
@@ -416,7 +417,7 @@ pub trait RReg<T: RegTag>: Reg<T> {
 
     /// Reads the value from the register memory to the exposed value type.
     ///
-    /// See also [`load_val`][`RReg::load_val`].
+    /// See also [`load_val`](RReg::load_val).
     #[inline]
     fn load<'a>(&'a self) -> <Self as RegRef<'a, T>>::Hold
     where
@@ -427,7 +428,7 @@ pub trait RReg<T: RegTag>: Reg<T> {
 
     /// Returns a raw pointer to the register memory.
     ///
-    /// See also [`to_mut_ptr`][`WReg::to_mut_ptr`].
+    /// See also [`to_mut_ptr`](WReg::to_mut_ptr).
     #[inline]
     fn to_ptr(&self) -> *const <Self::Val as Bitfield>::Bits {
         Self::ADDRESS as *const <Self::Val as Bitfield>::Bits
@@ -438,7 +439,7 @@ pub trait RReg<T: RegTag>: Reg<T> {
 pub trait WReg<T: RegTag>: Reg<T> {
     /// Returns a mutable raw pointer to the register memory.
     ///
-    /// See also [`to_ptr`][`RReg::to_ptr`].
+    /// See also [`to_ptr`](RReg::to_ptr).
     #[inline]
     fn to_mut_ptr(&self) -> *mut <Self::Val as Bitfield>::Bits {
         Self::ADDRESS as *mut <Self::Val as Bitfield>::Bits
@@ -457,7 +458,7 @@ pub trait WRegUnsync<'a>: WReg<Urt> + RegRef<'a, Urt> {
     /// Passes the reset value to the closure `f`, then writes the result of the
     /// closure into the register memory.
     ///
-    /// See also [`store_val`][`WRegUnsync::store_val`].
+    /// See also [`store_val`](WRegUnsync::store_val).
     fn store<F>(&'a mut self, f: F)
     where
         F: for<'b> FnOnce(
@@ -466,7 +467,7 @@ pub trait WRegUnsync<'a>: WReg<Urt> + RegRef<'a, Urt> {
 
     /// Writes an opaque value `val` into the register memory.
     ///
-    /// See also [`store`][`WRegUnsync::store`].
+    /// See also [`store`](WRegUnsync::store).
     fn store_val(&mut self, val: Self::Val);
 
     /// Writes the reset value into the register memory.
@@ -479,7 +480,7 @@ pub trait WRegAtomic<'a, T: RegAtomic>: WReg<T> + RegRef<'a, T> {
     /// Passes the reset value to the closure `f`, then writes the result of the
     /// closure into the register memory.
     ///
-    /// See also [`store_val`][`WRegAtomic::store_val`].
+    /// See also [`store_val`](WRegAtomic::store_val).
     fn store<F>(&'a self, f: F)
     where
         F: for<'b> FnOnce(
@@ -488,7 +489,7 @@ pub trait WRegAtomic<'a, T: RegAtomic>: WReg<T> + RegRef<'a, T> {
 
     /// Writes an opaque value `val` into the register memory.
     ///
-    /// See also [`store`][`WRegAtomic::store`].
+    /// See also [`store`](WRegAtomic::store).
     fn store_val(&self, val: Self::Val);
 
     /// Writes the reset value into the register memory.

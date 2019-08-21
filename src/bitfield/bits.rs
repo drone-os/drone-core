@@ -4,9 +4,9 @@ use core::{
     ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr, Sub},
 };
 
-/// An integer interface for [`Bitfield`][`super::Bitfield`].
+/// An integer interface for [`Bitfield`](super::Bitfield).
 ///
-/// See [the module level documentation][super] for details.
+/// See [the module level documentation](super) for details.
 pub trait Bits
 where
     Self: Sized

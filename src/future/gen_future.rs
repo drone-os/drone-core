@@ -15,7 +15,7 @@ pub fn from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T:
 
 /// A wrapper around generators used to implement `Future` for `async`/`await`
 /// code.
-#[must_use]
+#[must_use = "futures do nothing unless you `.await` or poll them"]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 struct GenFuture<T: Generator<Yield = ()>>(T);
 

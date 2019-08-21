@@ -1,6 +1,6 @@
 //! Memory-mapped register fields module.
 //!
-//! See [the top-level module documentation][self] for details.
+//! See [the top-level module documentation](self) for details.
 
 use crate::{
     bitfield::{Bitfield, Bits},
@@ -128,13 +128,13 @@ where
 
     /// Writes an opaque value `val` into the register memory.
     ///
-    /// See also [`store`][`WoWoRegField::store`].
+    /// See also [`store`](WoWoRegField::store).
     fn store_val(&self, val: <Self::Reg as Reg<T>>::Val);
 
     /// Passes the opaque reset value to the closure `f`, then writes the result
     /// of the closure into the register memory.
     ///
-    /// See also [`store_val`][`WoWoRegField::store_val`].
+    /// See also [`store_val`](WoWoRegField::store_val).
     fn store<F>(&self, f: F)
     where
         F: Fn(&mut <Self::Reg as Reg<T>>::Val);

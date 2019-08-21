@@ -1,10 +1,9 @@
 use crate::{
     fib::{Fiber, FiberState},
-    sync::spsc::oneshot::{channel, Receiver, RecvError},
+    sync::spsc::oneshot::{channel, Canceled, Receiver},
     thr::prelude::*,
 };
 use core::{
-    convert::identity,
     future::Future,
     intrinsics::unreachable,
     pin::Pin,
@@ -15,19 +14,9 @@ use core::{
 ///
 /// Dropping or closing this future will remove the fiber on a next thread
 /// invocation without resuming it.
-#[must_use]
-pub struct FiberFuture<R> {
-    rx: Receiver<R, !>,
-}
-
-/// A future that resolves on completion of the fallible fiber from another
-/// thread.
-///
-/// Dropping or closing this future will remove the fiber on a next thread
-/// invocation without resuming it.
-#[must_use]
-pub struct TryFiberFuture<R, E> {
-    rx: Receiver<R, E>,
+#[must_use = "futures do nothing unless you `.await` or poll them"]
+pub struct FiberFuture<T> {
+    rx: Receiver<T>,
 }
 
 #[marker]
@@ -36,7 +25,7 @@ pub trait YieldNone: Send + 'static {}
 impl YieldNone for () {}
 impl YieldNone for ! {}
 
-impl<R> FiberFuture<R> {
+impl<T> FiberFuture<T> {
     /// Gracefully close this future.
     ///
     /// The fiber will be removed on a next thread invocation without resuming.
@@ -46,86 +35,45 @@ impl<R> FiberFuture<R> {
     }
 }
 
-impl<R, E> TryFiberFuture<R, E> {
-    /// Gracefully close this future.
-    ///
-    /// The fiber will be removed on a next thread invocation without resuming.
-    #[inline]
-    pub fn close(&mut self) {
-        self.rx.close()
-    }
-}
+impl<T> Future for FiberFuture<T> {
+    type Output = T;
 
-impl<R> Future for FiberFuture<R> {
-    type Output = R;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<R> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
         let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
         rx.poll(cx).map(|value| match value {
             Ok(value) => value,
-            Err(RecvError::Canceled) => unsafe { unreachable() },
+            Err(Canceled) => unsafe { unreachable() },
         })
     }
 }
 
-impl<R, E> Future for TryFiberFuture<R, E> {
-    type Output = Result<R, E>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<R, E>> {
-        let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
-        rx.poll(cx).map_err(|err| match err {
-            RecvError::Complete(err) => err,
-            RecvError::Canceled => unsafe { unreachable() },
-        })
-    }
-}
-
-/// Extends [`ThrToken`][`crate::thr::ThrToken`] types with `add_future`
-/// methods.
+/// Extends [`ThrToken`](crate::thr::ThrToken) types with `add_future` method.
 pub trait ThrFiberFuture: ThrToken {
     /// Adds the fiber `fib` to the fiber chain and returns a future, which
     /// resolves on completion of the fiber.
-    fn add_future<F, Y, R>(self, fib: F) -> FiberFuture<R>
+    fn add_future<F, Y, T>(self, fib: F) -> FiberFuture<T>
     where
-        F: Fiber<Input = (), Yield = Y, Return = R>,
+        F: Fiber<Input = (), Yield = Y, Return = T>,
         Y: YieldNone,
         F: Send + 'static,
-        R: Send + 'static,
+        T: Send + 'static,
     {
         FiberFuture {
-            rx: add_rx(self, fib, Ok),
-        }
-    }
-
-    /// Adds the fallible fiber `fib` to the fiber chain and returns a future,
-    /// which resolves on completion of the fiber.
-    fn add_try_future<F, Y, R, E>(self, fib: F) -> TryFiberFuture<R, E>
-    where
-        F: Fiber<Input = (), Yield = Y, Return = Result<R, E>>,
-        Y: YieldNone,
-        F: Send + 'static,
-        R: Send + 'static,
-        E: Send + 'static,
-    {
-        TryFiberFuture {
-            rx: add_rx(self, fib, identity),
+            rx: add_rx(self, fib),
         }
     }
 }
 
 #[inline]
-fn add_rx<T, F, Y, R, E, C>(thr: T, mut fib: F, convert: C) -> Receiver<R, E>
+fn add_rx<H, F, Y, T>(thr: H, mut fib: F) -> Receiver<T>
 where
-    T: ThrToken,
-    F: Fiber<Input = (), Yield = Y>,
+    H: ThrToken,
+    F: Fiber<Input = (), Yield = Y, Return = T>,
     Y: YieldNone,
-    C: FnOnce(F::Return) -> Result<R, E>,
     F: Send + 'static,
-    R: Send + 'static,
-    E: Send + 'static,
-    C: Send + 'static,
+    T: Send + 'static,
 {
-    let (rx, tx) = channel();
+    let (tx, rx) = channel();
     thr.add(move || {
         loop {
             if tx.is_canceled() {
@@ -134,7 +82,7 @@ where
             match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
                 FiberState::Yielded(_) => {}
                 FiberState::Complete(complete) => {
-                    tx.send(convert(complete)).ok();
+                    drop(tx.send(complete));
                     break;
                 }
             }

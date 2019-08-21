@@ -1,5 +1,5 @@
-//! A [`Bitfield`][`bitfield::Bitfield`] is an integer value treated as a
-//! sequence of bits, which can be toggled individually.
+//! A [`Bitfield`](bitfield::Bitfield) is an integer value treated as a sequence
+//! of bits, which can be toggled individually.
 //!
 //! A type with named bit-fields can be defined with the attribute macro:
 //!
@@ -56,7 +56,7 @@ mod bits;
 
 /// Defines a new [`Bitfield`].
 ///
-/// See [the module level documentation][self] for details.
+/// See [the module level documentation](self) for details.
 pub use drone_core_macros::Bitfield;
 
 pub use self::bits::Bits;
@@ -64,7 +64,7 @@ pub use self::bits::Bits;
 /// An integer value treated as a sequence of bits, which can be toggled
 /// individually.
 ///
-/// See [the module level documentation][self] for more.
+/// See [the module level documentation](self) for more.
 pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
     /// The type of the integer. Determines the total number of bits.
     type Bits: Bits;
@@ -84,7 +84,7 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
     /// Returns a mutable reference to the underlying integer.
     fn bits_mut(&mut self) -> &mut Self::Bits;
 
-    /// Creates a new [`Bitfield`] with the [`DEFAULT`][Bitfield::DEFAULT]
+    /// Creates a new [`Bitfield`] with the [`DEFAULT`](Bitfield::DEFAULT)
     /// value.
     ///
     /// This method is marked `unsafe` to allow the implementor of the trait to

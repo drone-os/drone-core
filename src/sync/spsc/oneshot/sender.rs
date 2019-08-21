@@ -10,41 +10,42 @@ use core::{
 const IS_TX_HALF: bool = true;
 
 /// The sending-half of [`oneshot::channel`](super::channel).
-pub struct Sender<T, E> {
-    inner: Arc<Inner<T, E>>,
+pub struct Sender<T> {
+    inner: Arc<Inner<T>>,
 }
 
-impl<T, E> Sender<T, E> {
-    #[inline]
-    pub(super) fn new(inner: Arc<Inner<T, E>>) -> Self {
+impl<T> Sender<T> {
+    pub(super) fn new(inner: Arc<Inner<T>>) -> Self {
         Self { inner }
     }
 
-    /// Completes this oneshot with a result.
+    /// Completes this oneshot with a successful result.
     ///
-    /// If the value is successfully enqueued, then `Ok(())` is returned. If the
-    /// receiving end was dropped before this function was called, then `Err` is
-    /// returned with the value provided.
+    /// This function will consume `self` and indicate to the other end, the
+    /// [`Receiver`](super::Receiver), that the value provided is the result of
+    /// the computation this represents.
+    ///
+    /// If the value is successfully enqueued for the remote end to receive,
+    /// then `Ok(())` is returned. If the receiving end was dropped before this
+    /// function was called, however, then `Err` is returned with the value
+    /// provided.
     #[inline]
-    pub fn send(self, data: Result<T, E>) -> Result<(), Result<T, E>> {
+    pub fn send(self, data: T) -> Result<(), T> {
         self.inner.send(data)
     }
 
-    /// Polls this [`Sender`] half to detect whether the [`Receiver`] this has
-    /// paired with has gone away.
+    /// Polls this `Sender` half to detect whether its associated
+    /// [`Receiver`](super::Receiver) with has been dropped.
     ///
-    /// # Panics
+    /// # Return values
     ///
-    /// Like `Future::poll`, this function will panic if it's not called from
-    /// within the context of a task. In other words, this should only ever be
-    /// called from inside another future.
+    /// If `Ok(Ready)` is returned then the associated `Receiver` has been
+    /// dropped, which means any work required for sending should be canceled.
     ///
-    /// If you're calling this function from a context that does not have a
-    /// task, then you can use the [`is_canceled`] API instead.
-    ///
-    /// [`Sender`]: Sender
-    /// [`Receiver`]: super::Receiver
-    /// [`is_canceled`]: Sender::is_canceled
+    /// If `Ok(Pending)` is returned then the associated `Receiver` is still
+    /// alive and may be able to receive a message if sent. The current task,
+    /// however, is scheduled to receive a notification if the corresponding
+    /// `Receiver` goes away.
     #[inline]
     pub fn poll_cancel(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         self.inner.poll_half(
@@ -56,26 +57,27 @@ impl<T, E> Sender<T, E> {
         )
     }
 
-    /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has
-    /// gone away.
+    /// Tests to see whether this `Sender`'s corresponding `Receiver` has been
+    /// dropped.
     ///
-    /// [`Sender`]: Sender
-    /// [`Receiver`]: super::Receiver
+    /// Unlike [`poll_cancel`](Sender::poll_cancel), this function does not
+    /// enqueue a task for wakeup upon cancellation, but merely reports the
+    /// current state, which may be subject to concurrent modification.
     #[inline]
     pub fn is_canceled(&self) -> bool {
         self.inner.is_canceled(Ordering::Relaxed)
     }
 }
 
-impl<T, E> Drop for Sender<T, E> {
+impl<T> Drop for Sender<T> {
     #[inline]
     fn drop(&mut self) {
         self.inner.close_half(IS_TX_HALF);
     }
 }
 
-impl<T, E> Inner<T, E> {
-    fn send(&self, data: Result<T, E>) -> Result<(), Result<T, E>> {
+impl<T> Inner<T> {
+    fn send(&self, data: T) -> Result<(), T> {
         if self.is_canceled(Ordering::Relaxed) {
             Err(data)
         } else {

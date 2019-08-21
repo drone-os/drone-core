@@ -216,7 +216,7 @@ use core::{
 /// The inventory wrapper for `T`. Parameter `C` encodes the number of emitted
 /// tokens.
 ///
-/// See [the module-level documentation][self] for details.
+/// See [the module-level documentation](self) for details.
 #[repr(transparent)]
 pub struct Inventory<T: Item, C> {
     item: T,
@@ -225,7 +225,7 @@ pub struct Inventory<T: Item, C> {
 
 /// An RAII scoped guard for the inventory item `T`. Will call
 /// [`Item::teardown`] on `drop`.
-#[must_use]
+#[must_use = "if unused the item will immediately teardown"]
 pub struct Guard<'a, T: Item> {
     borrow: &'a mut T,
     token: Token<T>,

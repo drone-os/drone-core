@@ -1,12 +1,12 @@
-//! A single-producer, single-consumer oneshot channel.
+//! A channel for sending a single message between asynchronous tasks.
 //!
-//! See [`oneshot::channel`] documentation for more.
+//! See [`channel`](oneshot::channel) constructor for more.
 
 mod receiver;
 mod sender;
 
 pub use self::{
-    receiver::{Receiver, RecvError},
+    receiver::{Canceled, Receiver},
     sender::Sender,
 };
 
@@ -19,36 +19,35 @@ use core::{
     task::Waker,
 };
 
-const COMPLETE: u8 = 1 << 2;
+#[allow(clippy::identity_op)]
+const TX_WAKER_STORED: u8 = 1 << 0;
 const RX_WAKER_STORED: u8 = 1 << 1;
-const TX_WAKER_STORED: u8 = 1;
+const COMPLETE: u8 = 1 << 2;
 
-struct Inner<T, E> {
+struct Inner<T> {
     state: AtomicU8,
-    data: UnsafeCell<Option<Result<T, E>>>,
+    data: UnsafeCell<Option<T>>,
     rx_waker: UnsafeCell<MaybeUninit<Waker>>,
     tx_waker: UnsafeCell<MaybeUninit<Waker>>,
 }
 
-/// Creates a new asynchronous channel, returning the receiver/sender halves.
-/// The data sent on the [`Sender`] will become available on the [`Receiver`].
+/// Creates a new one-shot channel, returning the sender/receiver halves.
 ///
-/// Only one [`Receiver`]/[`Sender`] is supported.
-///
-/// [`Receiver`]: Receiver
-/// [`Sender`]: Sender
+/// The [`Sender`] half is used to signal the end of a computation and provide
+/// its value. The [`Receiver`] half is a [`Future`](core::future::Future)
+/// resolving to the value that was given to the [`Sender`] half.
 #[inline]
-pub fn channel<T, E>() -> (Receiver<T, E>, Sender<T, E>) {
+pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
     let inner = Arc::new(Inner::new());
-    let receiver = Receiver::new(Arc::clone(&inner));
-    let sender = Sender::new(inner);
-    (receiver, sender)
+    let sender = Sender::new(Arc::clone(&inner));
+    let receiver = Receiver::new(inner);
+    (sender, receiver)
 }
 
-unsafe impl<T: Send, E: Send> Send for Inner<T, E> {}
-unsafe impl<T: Send, E: Send> Sync for Inner<T, E> {}
+unsafe impl<T: Send> Send for Inner<T> {}
+unsafe impl<T: Send> Sync for Inner<T> {}
 
-impl<T, E> Inner<T, E> {
+impl<T> Inner<T> {
     #[inline]
     fn new() -> Self {
         Self {
@@ -60,7 +59,7 @@ impl<T, E> Inner<T, E> {
     }
 }
 
-impl<T, E> SpscInner<AtomicU8, u8> for Inner<T, E> {
+impl<T> SpscInner<AtomicU8, u8> for Inner<T> {
     const ZERO: u8 = 0;
     const RX_WAKER_STORED: u8 = RX_WAKER_STORED;
     const TX_WAKER_STORED: u8 = TX_WAKER_STORED;
@@ -124,8 +123,8 @@ mod tests {
     #[test]
     fn send_sync() {
         static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (mut rx, tx) = channel::<usize, ()>();
-        assert_eq!(tx.send(Ok(314)), Ok(()));
+        let (tx, mut rx) = channel::<usize>();
+        assert_eq!(tx.send(314), Ok(()));
         let waker = COUNTER.to_waker();
         let mut cx = Context::from_waker(&waker);
         COUNTER.0.store(0, Ordering::SeqCst);
@@ -136,12 +135,12 @@ mod tests {
     #[test]
     fn send_async() {
         static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (mut rx, tx) = channel::<usize, ()>();
+        let (tx, mut rx) = channel::<usize>();
         let waker = COUNTER.to_waker();
         let mut cx = Context::from_waker(&waker);
         COUNTER.0.store(0, Ordering::SeqCst);
         assert_eq!(Pin::new(&mut rx).poll(&mut cx), Poll::Pending);
-        assert_eq!(tx.send(Ok(314)), Ok(()));
+        assert_eq!(tx.send(314), Ok(()));
         assert_eq!(Pin::new(&mut rx).poll(&mut cx), Poll::Ready(Ok(314)));
         assert_eq!(COUNTER.0.load(Ordering::SeqCst), 1);
     }

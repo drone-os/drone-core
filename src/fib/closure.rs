@@ -54,7 +54,7 @@ where
     FiberFn(Some(f))
 }
 
-/// Extends [`ThrToken`][`crate::thr::ThrToken`] types with `add_fn` method.
+/// Extends [`ThrToken`](crate::thr::ThrToken) types with `add_fn` method.
 pub trait ThrFiberFn: ThrToken {
     /// Adds a fiber for the closure `f` to the fiber chain.
     fn add_fn<F>(self, f: F)

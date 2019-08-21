@@ -93,7 +93,7 @@ pub struct CString {
 /// While Rust strings may contain nul bytes in the middle, C strings can't, as
 /// that byte would effectively truncate the string.
 ///
-/// This error is created by the [`new`][`CString::new`] method on [`CString`].
+/// This error is created by the [`new`](CString::new) method on [`CString`].
 /// See its documentation for more.
 ///
 /// # Examples

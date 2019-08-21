@@ -1,34 +1,35 @@
 use crate::{
     fib::{Fiber, FiberState},
-    sync::spsc::unit::{channel, Receiver, SendError},
+    sync::spsc::pulse::{channel, Receiver, SendError},
     thr::prelude::*,
 };
 use core::{
     convert::identity,
+    num::NonZeroUsize,
     pin::Pin,
     task::{Context, Poll},
 };
 use futures::Stream;
 
-/// A stream of `()` from the fiber in another thread.
+/// A stream of pulses from the fiber in another thread.
 ///
 /// Dropping or closing this future will remove the fiber on a next thread
 /// invocation without resuming it.
-#[must_use]
-pub struct FiberStreamUnit {
+#[must_use = "streams do nothing unless you `.await` or poll them"]
+pub struct FiberStreamPulse {
     rx: Receiver<!>,
 }
 
-/// A stream of `Result<(), E>` from the fiber in another thread.
+/// A fallible stream of pulses from the fiber in another thread.
 ///
 /// Dropping or closing this future will remove the fiber on a next thread
 /// invocation without resuming it.
-#[must_use]
-pub struct TryFiberStreamUnit<E> {
+#[must_use = "streams do nothing unless you `.await` or poll them"]
+pub struct TryFiberStreamPulse<E> {
     rx: Receiver<E>,
 }
 
-impl FiberStreamUnit {
+impl FiberStreamPulse {
     /// Gracefully close this future.
     ///
     /// The fiber will be removed on a next thread invocation without resuming.
@@ -38,7 +39,7 @@ impl FiberStreamUnit {
     }
 }
 
-impl<E> TryFiberStreamUnit<E> {
+impl<E> TryFiberStreamPulse<E> {
     /// Gracefully close this future.
     ///
     /// The fiber will be removed on a next thread invocation without resuming.
@@ -48,22 +49,18 @@ impl<E> TryFiberStreamUnit<E> {
     }
 }
 
-impl Stream for FiberStreamUnit {
-    type Item = ();
+impl Stream for FiberStreamPulse {
+    type Item = NonZeroUsize;
 
     #[inline]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let rx = unsafe { self.map_unchecked_mut(|x| &mut x.rx) };
-        rx.poll_next(cx).map(|value| {
-            value.map(|value| match value {
-                Ok(value) => value,
-            })
-        })
+        rx.poll_next(cx).map(|value| value.map(|Ok(value)| value))
     }
 }
 
-impl<E> Stream for TryFiberStreamUnit<E> {
-    type Item = Result<(), E>;
+impl<E> Stream for TryFiberStreamPulse<E> {
+    type Item = Result<NonZeroUsize, E>;
 
     #[inline]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -72,50 +69,50 @@ impl<E> Stream for TryFiberStreamUnit<E> {
     }
 }
 
-/// Extends [`ThrToken`][`crate::thr::ThrToken`] types with `add_stream`
+/// Extends [`ThrToken`](crate::thr::ThrToken) types with `add_stream_pulse`
 /// methods.
-pub trait ThrStreamUnit: ThrToken {
-    /// Adds the fiber `fib` to the fiber chain and returns a stream of `()`
+pub trait ThrStreamPulse: ThrToken {
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of pulses
     /// yielded from the fiber.
-    fn add_stream_skip<F>(self, fib: F) -> FiberStreamUnit
+    fn add_stream_pulse_skip<F>(self, fib: F) -> FiberStreamPulse
     where
-        F: Fiber<Input = (), Yield = Option<()>, Return = Option<()>>,
+        F: Fiber<Input = (), Yield = Option<usize>, Return = Option<usize>>,
         F: Send + 'static,
     {
-        FiberStreamUnit {
+        FiberStreamPulse {
             rx: add_rx(self, || Ok(()), fib, Ok),
         }
     }
 
-    /// Adds the fiber `fib` to the fiber chain and returns a stream of
-    /// `Result<(), E>` yielded from the fiber.
-    fn add_stream<O, F, E>(self, overflow: O, fib: F) -> TryFiberStreamUnit<E>
+    /// Adds the fiber `fib` to the fiber chain and returns a fallible stream of
+    /// pulses yielded from the fiber.
+    fn add_stream_pulse<O, F, E>(self, overflow: O, fib: F) -> TryFiberStreamPulse<E>
     where
         O: Fn() -> Result<(), E>,
-        F: Fiber<Input = (), Yield = Option<()>, Return = Result<Option<()>, E>>,
+        F: Fiber<Input = (), Yield = Option<usize>, Return = Result<Option<usize>, E>>,
         O: Send + 'static,
         F: Send + 'static,
         E: Send + 'static,
     {
-        TryFiberStreamUnit {
+        TryFiberStreamPulse {
             rx: add_rx(self, overflow, fib, identity),
         }
     }
 }
 
 #[inline]
-fn add_rx<T, O, F, E, C>(thr: T, overflow: O, mut fib: F, convert: C) -> Receiver<E>
+fn add_rx<H, O, F, E, C>(thr: H, overflow: O, mut fib: F, convert: C) -> Receiver<E>
 where
-    T: ThrToken,
+    H: ThrToken,
     O: Fn() -> Result<(), E>,
-    F: Fiber<Input = (), Yield = Option<()>>,
-    C: FnOnce(F::Return) -> Result<Option<()>, E>,
+    F: Fiber<Input = (), Yield = Option<usize>>,
+    C: FnOnce(F::Return) -> Result<Option<usize>, E>,
     O: Send + 'static,
     F: Send + 'static,
     E: Send + 'static,
     C: Send + 'static,
 {
-    let (rx, mut tx) = channel();
+    let (mut tx, rx) = channel();
     thr.add(move || {
         loop {
             if tx.is_canceled() {
@@ -123,7 +120,7 @@ where
             }
             match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
                 FiberState::Yielded(None) => {}
-                FiberState::Yielded(Some(())) => match tx.send() {
+                FiberState::Yielded(Some(pulses)) => match tx.send(pulses) {
                     Ok(()) => {}
                     Err(SendError::Canceled) => {
                         break;
@@ -131,7 +128,7 @@ where
                     Err(SendError::Overflow) => match overflow() {
                         Ok(()) => {}
                         Err(err) => {
-                            tx.send_err(err).ok();
+                            drop(tx.send_err(err));
                             break;
                         }
                     },
@@ -139,11 +136,17 @@ where
                 FiberState::Complete(value) => {
                     match convert(value) {
                         Ok(None) => {}
-                        Ok(Some(())) => {
-                            tx.send().ok();
-                        }
+                        Ok(Some(pulses)) => match tx.send(pulses) {
+                            Ok(()) | Err(SendError::Canceled) => {}
+                            Err(SendError::Overflow) => match overflow() {
+                                Ok(()) => {}
+                                Err(err) => {
+                                    drop(tx.send_err(err));
+                                }
+                            },
+                        },
                         Err(err) => {
-                            tx.send_err(err).ok();
+                            drop(tx.send_err(err));
                         }
                     }
                     break;
@@ -155,4 +158,4 @@ where
     rx
 }
 
-impl<T: ThrToken> ThrStreamUnit for T {}
+impl<T: ThrToken> ThrStreamPulse for T {}

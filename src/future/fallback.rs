@@ -8,7 +8,7 @@
 //! # #![feature(never_type)]
 //! use drone_core::sync::spsc::oneshot;
 //!
-//! async fn plus_one(rx: oneshot::Receiver<usize, !>) -> Result<usize, oneshot::RecvError<!>> {
+//! async fn plus_one(rx: oneshot::Receiver<usize>) -> Result<usize, oneshot::Canceled> {
 //!     let number = rx.await?;
 //!     Ok(number + 1)
 //! }
@@ -23,8 +23,8 @@
 //! use futures::prelude::*;
 //!
 //! fn plus_one(
-//!     rx: oneshot::Receiver<usize, !>,
-//! ) -> impl Future<Output = Result<usize, oneshot::RecvError<!>>> {
+//!     rx: oneshot::Receiver<usize>,
+//! ) -> impl Future<Output = Result<usize, oneshot::Canceled>> {
 //!     asyn(|| {
 //!         let number = awt!(rx)?;
 //!         Ok(number + 1)

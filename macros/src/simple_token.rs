@@ -26,7 +26,7 @@ impl Parse for SimpleToken {
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
     let SimpleToken { attrs, vis, ident } = parse_macro_input!(input as SimpleToken);
-    let wrapper = new_ident!("__{}_unit_token", ident.to_string().to_snake_case());
+    let wrapper = new_ident!("__{}_simple_token", ident.to_string().to_snake_case());
     let expanded = quote! {
         mod #wrapper {
             use super::*;

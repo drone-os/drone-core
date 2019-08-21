@@ -1,7 +1,7 @@
 //! Asynchronous values.
 //!
 //! This module provides the runtime for `async`/`await` feature. The runtime
-//! relies on the Thread-Local Storage feature of [Drone threads][thr] and
+//! relies on the Thread-Local Storage feature of [Drone threads](thr) and
 //! should be initialized with [`future::init`]. There are two ways to use
 //! `async`/`await` in Drone applications:
 //!

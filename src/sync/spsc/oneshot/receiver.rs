@@ -12,42 +12,49 @@ use core::{
 const IS_TX_HALF: bool = false;
 
 /// The receiving-half of [`oneshot::channel`](super::channel).
-#[must_use]
-pub struct Receiver<T, E> {
-    inner: Arc<Inner<T, E>>,
+#[must_use = "futures do nothing unless you `.await` or poll them"]
+pub struct Receiver<T> {
+    inner: Arc<Inner<T>>,
 }
 
-/// Error for `Future` implementation for [`Receiver`](Receiver).
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum RecvError<E> {
-    /// The corresponding [`Sender`](super::Sender) is dropped.
-    Canceled,
-    /// The corresponding [`Sender`](super::Sender) completed with an error.
-    Complete(E),
-}
+/// Error returned from a [`Receiver`] when the corresponding
+/// [`Sender`](super::Sender) is dropped.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Canceled;
 
-impl<T, E> Receiver<T, E> {
-    #[inline]
-    pub(super) fn new(inner: Arc<Inner<T, E>>) -> Self {
+impl<T> Receiver<T> {
+    pub(super) fn new(inner: Arc<Inner<T>>) -> Self {
         Self { inner }
     }
 
-    /// Gracefully close this `Receiver`, preventing sending any future
-    /// messages.
+    /// Gracefully close this receiver, preventing any subsequent attempts to
+    /// send to it.
+    ///
+    /// Any `send` operation which happens after this method returns is
+    /// guaranteed to fail. After calling this method, you can use
+    /// [`Receiver::poll`](core::future::Future::poll) to determine whether a
+    /// message had previously been sent.
     #[inline]
     pub fn close(&mut self) {
         self.inner.close_half(IS_TX_HALF)
     }
 
-    /// Attempts to receive a value outside of the context of a task.
+    /// Attempts to receive a message outside of the context of a task.
+    ///
+    /// Does not schedule a task wakeup or have any other side effects.
+    ///
+    /// A return value of `Ok(None)` must be considered immediately stale (out
+    /// of date) unless [`close`](Receiver::close) has been called first.
+    ///
+    /// Returns an error if the sender was dropped.
     #[inline]
-    pub fn try_recv(&mut self) -> Result<Option<T>, RecvError<E>> {
+    pub fn try_recv(&mut self) -> Result<Option<T>, Canceled> {
         self.inner.try_recv()
     }
 }
 
-impl<T, E> Future for Receiver<T, E> {
-    type Output = Result<T, RecvError<E>>;
+impl<T> Future for Receiver<T> {
+    type Output = Result<T, Canceled>;
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -61,43 +68,37 @@ impl<T, E> Future for Receiver<T, E> {
     }
 }
 
-impl<T, E> Drop for Receiver<T, E> {
+impl<T> Drop for Receiver<T> {
     #[inline]
     fn drop(&mut self) {
         self.inner.close_half(IS_TX_HALF);
     }
 }
 
-impl<T, E> Inner<T, E> {
-    fn try_recv(&self) -> Result<Option<T>, RecvError<E>> {
+impl<T> Inner<T> {
+    fn try_recv(&self) -> Result<Option<T>, Canceled> {
         let state = self.state_load(Ordering::Acquire);
         if state & COMPLETE == 0 {
             Ok(None)
         } else {
-            unsafe { &mut *self.data.get() }.take().map_or_else(
-                || Err(RecvError::Canceled),
-                |value| value.map(Some).map_err(RecvError::Complete),
-            )
+            unsafe { &mut *self.data.get() }
+                .take()
+                .ok_or(Canceled)
+                .map(Some)
         }
     }
 
-    fn take(&self, state: u8) -> Poll<Result<T, RecvError<E>>> {
+    fn take(&self, state: u8) -> Poll<Result<T, Canceled>> {
         if state & COMPLETE == 0 {
             Poll::Pending
         } else {
-            Poll::Ready(unsafe { &mut *self.data.get() }.take().map_or_else(
-                || Err(RecvError::Canceled),
-                |value| value.map_err(RecvError::Complete),
-            ))
+            Poll::Ready(unsafe { &mut *self.data.get() }.take().ok_or(Canceled))
         }
     }
 }
 
-impl<E: fmt::Display> fmt::Display for RecvError<E> {
+impl fmt::Display for Canceled {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            RecvError::Canceled => write!(f, "Sender is dropped."),
-            RecvError::Complete(err) => write!(f, "Received an error: {}", err),
-        }
+        write!(f, "oneshot canceled")
     }
 }

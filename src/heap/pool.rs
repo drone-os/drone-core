@@ -24,7 +24,7 @@ impl Pool {
     /// Creates an uninitialized `Pool`.
     ///
     /// The returned pool should be initialized in the run-time with
-    /// [`init`][Pool::init] method before use.
+    /// [`init`](Pool::init) method before use.
     pub const fn new(offset: usize, size: usize, capacity: usize) -> Self {
         Self {
             free: AtomicPtr::new(ptr::null_mut()),
@@ -75,7 +75,7 @@ impl Pool {
     /// # Safety
     ///
     /// * `ptr` must point to a block previously allocated by
-    ///   [`alloc`][Pool::alloc].
+    ///   [`alloc`](Pool::alloc).
     /// * `ptr` must not be used after deallocation.
     #[allow(clippy::cast_ptr_alignment)]
     pub unsafe fn dealloc(&self, ptr: NonNull<u8>) {

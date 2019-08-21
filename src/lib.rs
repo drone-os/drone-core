@@ -77,22 +77,22 @@ pub mod token;
 
 /// Defines dynamic memory structures.
 ///
-/// See [the module level documentation][heap] for details.
+/// See [the module level documentation](heap) for details.
 pub use drone_core_macros::heap;
 
 /// Defines a new generic peripheral.
 ///
-/// See [the module level documentation][periph] for details.
+/// See [the module level documentation](periph) for details.
 pub use drone_core_macros::periph;
 
 /// Defines a memory-mapped register.
 ///
-/// See [the module level documentation][reg] for details.
+/// See [the module level documentation](reg) for details.
 pub use drone_core_macros::reg;
 
-/// Defines threads.
+/// Defines the thread type.
 ///
-/// See [the module level documentation][thr] for details.
+/// See [the module level documentation](thr) for details.
 pub use drone_core_macros::thr;
 
 #[prelude_import]

@@ -10,57 +10,60 @@ use core::{
 
 const IS_TX_HALF: bool = true;
 
-/// The sending-half of [`unit::channel`](super::channel).
+/// The sending-half of [`pulse::channel`](super::channel).
 pub struct Sender<E> {
     inner: Arc<Inner<E>>,
 }
 
-/// Error returned from [`Sender::send`](Sender::send).
-#[derive(Debug)]
+/// The error type returned from [`Sender::send`].
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SendError {
     /// The corresponding [`Receiver`](super::Receiver) is dropped.
     Canceled,
-    /// Counter overflow.
+    /// The pulse counter overflow.
     Overflow,
 }
 
 impl<E> Sender<E> {
-    #[inline]
     pub(super) fn new(inner: Arc<Inner<E>>) -> Self {
         Self { inner }
     }
 
-    /// Sends a unit across the channel.
+    /// Sends the `pulses` number of pulses to the receiving half.
+    ///
+    /// Returns an error if the receiver was dropped or there is the counter
+    /// overflow.
     #[inline]
-    pub fn send(&mut self) -> Result<(), SendError> {
-        self.inner.send()
+    pub fn send(&mut self, pulses: usize) -> Result<(), SendError> {
+        self.inner.send(pulses)
     }
 
-    /// Completes this stream with an error.
+    /// Completes this channel with an `Err` result.
     ///
-    /// If the value is successfully enqueued, then `Ok(())` is returned. If the
-    /// receiving end was dropped before this function was called, then `Err` is
-    /// returned with the value provided.
+    /// This function will consume `self` and indicate to the other end, the
+    /// [`Receiver`](super::Receiver), that the channel is closed.
+    ///
+    /// If the value is successfully enqueued for the remote end to receive,
+    /// then `Ok(())` is returned. If the receiving end was dropped before this
+    /// function was called, however, then `Err` is returned with the value
+    /// provided.
     #[inline]
     pub fn send_err(self, err: E) -> Result<(), E> {
         self.inner.send_err(err)
     }
 
-    /// Polls this [`Sender`] half to detect whether the [`Receiver`] this has
-    /// paired with has gone away.
+    /// Polls this `Sender` half to detect whether its associated
+    /// [`Receiver`](super::Receiver) with has been dropped.
     ///
-    /// # Panics
+    /// # Return values
     ///
-    /// Like `Future::poll`, this function will panic if it's not called from
-    /// within the context of a task. In other words, this should only ever be
-    /// called from inside another future.
+    /// If `Ok(Ready)` is returned then the associated `Receiver` has been
+    /// dropped.
     ///
-    /// If you're calling this function from a context that does not have a
-    /// task, then you can use the [`is_canceled`] API instead.
-    ///
-    /// [`Sender`]: Sender
-    /// [`Receiver`]: super::Receiver
-    /// [`is_canceled`]: Sender::is_canceled
+    /// If `Ok(Pending)` is returned then the associated `Receiver` is still
+    /// alive and may be able to receive pulses if sent. The current task,
+    /// however, is scheduled to receive a notification if the corresponding
+    /// `Receiver` goes away.
     #[inline]
     pub fn poll_cancel(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         self.inner.poll_half(
@@ -72,11 +75,12 @@ impl<E> Sender<E> {
         )
     }
 
-    /// Tests to see whether this [`Sender`]'s corresponding [`Receiver`] has
-    /// gone away.
+    /// Tests to see whether this `Sender`'s corresponding `Receiver` has been
+    /// dropped.
     ///
-    /// [`Sender`]: Sender
-    /// [`Receiver`]: super::Receiver
+    /// Unlike [`poll_cancel`](Sender::poll_cancel), this function does not
+    /// enqueue a task for wakeup upon cancellation, but merely reports the
+    /// current state, which may be subject to concurrent modification.
     #[inline]
     pub fn is_canceled(&self) -> bool {
         self.inner.is_canceled(Ordering::Relaxed)
@@ -91,7 +95,7 @@ impl<E> Drop for Sender<E> {
 }
 
 impl<E> Inner<E> {
-    fn send(&self) -> Result<(), SendError> {
+    fn send(&self, pulses: usize) -> Result<(), SendError> {
         let state = self.state_load(Ordering::Acquire);
         self.transaction(state, Ordering::Acquire, Ordering::Acquire, |state| {
             if *state & COMPLETE != 0 {
@@ -99,10 +103,7 @@ impl<E> Inner<E> {
             }
             let lock = *state & LOCK_MASK;
             *state = (*state as isize >> LOCK_BITS) as usize;
-            *state = state.wrapping_add(1);
-            if *state == 0 {
-                return Err(SendError::Overflow);
-            }
+            *state = state.checked_add(pulses).ok_or(SendError::Overflow)?;
             *state <<= LOCK_BITS;
             *state |= lock;
             Ok(*state)

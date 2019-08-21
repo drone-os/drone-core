@@ -12,25 +12,34 @@ use futures::stream::Stream;
 const IS_TX_HALF: bool = false;
 
 /// The receiving-half of [`ring::channel`](super::channel).
-#[must_use]
+#[must_use = "futures do nothing unless you `.await` or poll them"]
 pub struct Receiver<T, E> {
     inner: Arc<Inner<T, E>>,
 }
 
 impl<T, E> Receiver<T, E> {
-    #[inline]
     pub(super) fn new(inner: Arc<Inner<T, E>>) -> Self {
         Self { inner }
     }
 
-    /// Gracefully close this `Receiver`, preventing sending any future
-    /// messages.
+    /// Gracefully close this receiver, preventing any subsequent attempts to
+    /// send to it.
+    ///
+    /// Any `send` operation which happens after this method returns is
+    /// guaranteed to fail. After calling this method, you can use
+    /// [`Receiver::poll`](core::future::Future::poll) to determine whether a
+    /// message had previously been sent.
     #[inline]
     pub fn close(&mut self) {
         self.inner.close_half(IS_TX_HALF)
     }
 
     /// Attempts to receive a value outside of the context of a task.
+    ///
+    /// Does not schedule a task wakeup or have any other side effects.
+    ///
+    /// A return value of `Ok(None)` must be considered immediately stale (out
+    /// of date) unless [`close`](Receiver::close) has been called first.
     #[inline]
     pub fn try_recv(&mut self) -> Result<Option<T>, E> {
         self.inner.try_recv()

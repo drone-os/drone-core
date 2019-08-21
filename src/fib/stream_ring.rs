@@ -10,25 +10,25 @@ use core::{
 };
 use futures::Stream;
 
-/// A stream of `I` from the fiber in another thread.
+/// A stream of `T` from the fiber in another thread.
 ///
 /// Dropping or closing this future will remove the fiber on a next thread
 /// invocation without resuming it.
-#[must_use]
-pub struct FiberStreamRing<I> {
-    rx: Receiver<I, !>,
+#[must_use = "streams do nothing unless you `.await` or poll them"]
+pub struct FiberStreamRing<T> {
+    rx: Receiver<T, !>,
 }
 
-/// A stream of `Result<I, E>` from the fiber in another thread.
+/// A stream of `Result<T, E>` from the fiber in another thread.
 ///
 /// Dropping or closing this future will remove the fiber on a next thread
 /// invocation without resuming it.
-#[must_use]
-pub struct TryFiberStreamRing<I, E> {
-    rx: Receiver<I, E>,
+#[must_use = "streams do nothing unless you `.await` or poll them"]
+pub struct TryFiberStreamRing<T, E> {
+    rx: Receiver<T, E>,
 }
 
-impl<I> FiberStreamRing<I> {
+impl<T> FiberStreamRing<T> {
     /// Gracefully close this future.
     ///
     /// The fiber will be removed on a next thread invocation without resuming.
@@ -38,7 +38,7 @@ impl<I> FiberStreamRing<I> {
     }
 }
 
-impl<I, E> TryFiberStreamRing<I, E> {
+impl<T, E> TryFiberStreamRing<T, E> {
     /// Gracefully close this future.
     ///
     /// The fiber will be removed on a next thread invocation without resuming.
@@ -48,8 +48,8 @@ impl<I, E> TryFiberStreamRing<I, E> {
     }
 }
 
-impl<I> Stream for FiberStreamRing<I> {
-    type Item = I;
+impl<T> Stream for FiberStreamRing<T> {
+    type Item = T;
 
     #[inline]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -62,8 +62,8 @@ impl<I> Stream for FiberStreamRing<I> {
     }
 }
 
-impl<I, E> Stream for TryFiberStreamRing<I, E> {
-    type Item = Result<I, E>;
+impl<T, E> Stream for TryFiberStreamRing<T, E> {
+    type Item = Result<T, E>;
 
     #[inline]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -72,34 +72,34 @@ impl<I, E> Stream for TryFiberStreamRing<I, E> {
     }
 }
 
-/// Extends [`ThrToken`][`crate::thr::ThrToken`] types with `add_stream_ring`
+/// Extends [`ThrToken`](crate::thr::ThrToken) types with `add_stream_ring`
 /// methods.
 pub trait ThrStreamRing: ThrToken {
-    /// Adds the fiber `fib` to the fiber chain and returns a stream of `I`
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of `T`
     /// yielded from the fiber.
     ///
     /// When the underlying ring buffer overflows, new items will be skipped.
-    fn add_stream_ring_skip<F, I>(self, capacity: usize, fib: F) -> FiberStreamRing<I>
+    fn add_stream_ring_skip<F, T>(self, capacity: usize, fib: F) -> FiberStreamRing<T>
     where
-        F: Fiber<Input = (), Yield = Option<I>, Return = Option<I>>,
+        F: Fiber<Input = (), Yield = Option<T>, Return = Option<T>>,
         F: Send + 'static,
-        I: Send + 'static,
+        T: Send + 'static,
     {
         FiberStreamRing {
             rx: add_rx(self, capacity, |_| Ok(()), fib, Ok),
         }
     }
 
-    /// Adds the fiber `fib` to the fiber chain and returns a stream of `I`
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of `T`
     /// yielded from the fiber.
     ///
     /// When the underlying ring buffer overflows, new items will overwrite
     /// existing ones.
-    fn add_stream_ring_overwrite<F, I>(self, capacity: usize, fib: F) -> FiberStreamRing<I>
+    fn add_stream_ring_overwrite<F, T>(self, capacity: usize, fib: F) -> FiberStreamRing<T>
     where
-        F: Fiber<Input = (), Yield = Option<I>, Return = Option<I>>,
+        F: Fiber<Input = (), Yield = Option<T>, Return = Option<T>>,
         F: Send + 'static,
-        I: Send + 'static,
+        T: Send + 'static,
     {
         FiberStreamRing {
             rx: add_rx_overwrite(self, capacity, fib, Ok),
@@ -107,21 +107,21 @@ pub trait ThrStreamRing: ThrToken {
     }
 
     /// Adds the fiber `fib` to the fiber chain and returns a stream of
-    /// `Result<I, E>` yielded from the fiber.
+    /// `Result<T, E>` yielded from the fiber.
     ///
     /// When the underlying ring buffer overflows, new items will be skipped.
-    fn add_stream_ring<O, F, I, E>(
+    fn add_stream_ring<O, F, T, E>(
         self,
         capacity: usize,
         overflow: O,
         fib: F,
-    ) -> TryFiberStreamRing<I, E>
+    ) -> TryFiberStreamRing<T, E>
     where
-        O: Fn(I) -> Result<(), E>,
-        F: Fiber<Input = (), Yield = Option<I>, Return = Result<Option<I>, E>>,
+        O: Fn(T) -> Result<(), E>,
+        F: Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>,
         O: Send + 'static,
         F: Send + 'static,
-        I: Send + 'static,
+        T: Send + 'static,
         E: Send + 'static,
     {
         TryFiberStreamRing {
@@ -130,19 +130,19 @@ pub trait ThrStreamRing: ThrToken {
     }
 
     /// Adds the fiber `fib` to the fiber chain and returns a stream of
-    /// `Result<I, E>` yielded from the fiber.
+    /// `Result<T, E>` yielded from the fiber.
     ///
     /// When the underlying ring buffer overflows, new items will overwrite
     /// existing ones.
-    fn add_try_stream_ring_overwrite<F, I, E>(
+    fn add_try_stream_ring_overwrite<F, T, E>(
         self,
         capacity: usize,
         fib: F,
-    ) -> TryFiberStreamRing<I, E>
+    ) -> TryFiberStreamRing<T, E>
     where
-        F: Fiber<Input = (), Yield = Option<I>, Return = Result<Option<I>, E>>,
+        F: Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>,
         F: Send + 'static,
-        I: Send + 'static,
+        T: Send + 'static,
         E: Send + 'static,
     {
         TryFiberStreamRing {
@@ -152,25 +152,25 @@ pub trait ThrStreamRing: ThrToken {
 }
 
 #[inline]
-fn add_rx<T, O, F, I, E, C>(
-    thr: T,
+fn add_rx<H, O, F, T, E, C>(
+    thr: H,
     capacity: usize,
     overflow: O,
     mut fib: F,
     convert: C,
-) -> Receiver<I, E>
+) -> Receiver<T, E>
 where
-    T: ThrToken,
-    O: Fn(I) -> Result<(), E>,
-    F: Fiber<Input = (), Yield = Option<I>>,
-    C: FnOnce(F::Return) -> Result<Option<I>, E>,
+    H: ThrToken,
+    O: Fn(T) -> Result<(), E>,
+    F: Fiber<Input = (), Yield = Option<T>>,
+    C: FnOnce(F::Return) -> Result<Option<T>, E>,
     O: Send + 'static,
     F: Send + 'static,
-    I: Send + 'static,
+    T: Send + 'static,
     E: Send + 'static,
     C: Send + 'static,
 {
-    let (rx, mut tx) = channel(capacity);
+    let (mut tx, rx) = channel(capacity);
     thr.add(move || {
         loop {
             if tx.is_canceled() {
@@ -187,7 +187,7 @@ where
                         SendErrorKind::Overflow => match overflow(value) {
                             Ok(()) => {}
                             Err(err) => {
-                                tx.send_err(err).ok();
+                                drop(tx.send_err(err));
                                 break;
                             }
                         },
@@ -196,11 +196,20 @@ where
                 FiberState::Complete(value) => {
                     match convert(value) {
                         Ok(None) => {}
-                        Ok(Some(value)) => {
-                            tx.send(value).ok();
-                        }
+                        Ok(Some(value)) => match tx.send(value) {
+                            Ok(()) => {}
+                            Err(SendError { value, kind }) => match kind {
+                                SendErrorKind::Canceled => {}
+                                SendErrorKind::Overflow => match overflow(value) {
+                                    Ok(()) => {}
+                                    Err(err) => {
+                                        drop(tx.send_err(err));
+                                    }
+                                },
+                            },
+                        },
                         Err(err) => {
-                            tx.send_err(err).ok();
+                            drop(tx.send_err(err));
                         }
                     }
                     break;
@@ -213,22 +222,22 @@ where
 }
 
 #[inline]
-fn add_rx_overwrite<T, F, I, E, C>(
-    thr: T,
+fn add_rx_overwrite<H, F, T, E, C>(
+    thr: H,
     capacity: usize,
     mut fib: F,
     convert: C,
-) -> Receiver<I, E>
+) -> Receiver<T, E>
 where
-    T: ThrToken,
-    F: Fiber<Input = (), Yield = Option<I>>,
-    C: FnOnce(F::Return) -> Result<Option<I>, E>,
+    H: ThrToken,
+    F: Fiber<Input = (), Yield = Option<T>>,
+    C: FnOnce(F::Return) -> Result<Option<T>, E>,
     F: Send + 'static,
-    I: Send + 'static,
+    T: Send + 'static,
     E: Send + 'static,
     C: Send + 'static,
 {
-    let (rx, mut tx) = channel(capacity);
+    let (mut tx, rx) = channel(capacity);
     thr.add(move || {
         loop {
             if tx.is_canceled() {
@@ -244,10 +253,10 @@ where
                     match convert(value) {
                         Ok(None) => {}
                         Ok(Some(value)) => {
-                            tx.send_overwrite(value).ok();
+                            drop(tx.send_overwrite(value));
                         }
                         Err(err) => {
-                            tx.send_err(err).ok();
+                            drop(tx.send_err(err));
                         }
                     }
                     break;

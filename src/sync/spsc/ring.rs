@@ -1,6 +1,7 @@
-//! A single-producer, single-consumer channel based on a ring buffer.
+//! A single-producer, single-consumer queue for sending values across
+//! asynchronous tasks.
 //!
-//! See [`ring::channel`] documentation for more details.
+//! See [`channel`](ring::channel) constructor for more.
 
 mod receiver;
 mod sender;
@@ -46,20 +47,19 @@ struct Inner<T, E> {
     tx_waker: UnsafeCell<MaybeUninit<Waker>>,
 }
 
-/// Creates a new asynchronous channel, returning the receiver/sender halves.
-/// All data sent on the [`Sender`] will become available on the [`Receiver`] in
-/// the same order as it was sent.
+/// Creates a new channel, returning the sender/receiver halves.
 ///
-/// Only one [`Receiver`]/[`Sender`] is supported.
+/// `capacity` is the capacity of the underlying ring buffer.
 ///
-/// [`Receiver`]: Receiver
-/// [`Sender`]: Sender
+/// The [`Sender`] half is used to write values to the ring buffer. The
+/// [`Receiver`] half is a [`Stream`](futures::stream::Stream) that reads the
+/// values from the ring buffer.
 #[inline]
-pub fn channel<T, E>(capacity: usize) -> (Receiver<T, E>, Sender<T, E>) {
+pub fn channel<T, E>(capacity: usize) -> (Sender<T, E>, Receiver<T, E>) {
     let inner = Arc::new(Inner::new(capacity));
-    let receiver = Receiver::new(Arc::clone(&inner));
-    let sender = Sender::new(inner);
-    (receiver, sender)
+    let sender = Sender::new(Arc::clone(&inner));
+    let receiver = Receiver::new(inner);
+    (sender, receiver)
 }
 
 unsafe impl<T: Send, E: Send> Send for Inner<T, E> {}
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn send_sync() {
         static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (mut rx, mut tx) = channel::<usize, ()>(10);
+        let (mut tx, mut rx) = channel::<usize, ()>(10);
         assert_eq!(tx.send(314).unwrap(), ());
         drop(tx);
         let waker = COUNTER.to_waker();
@@ -200,7 +200,7 @@ mod tests {
     #[test]
     fn send_async() {
         static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (mut rx, mut tx) = channel::<usize, ()>(10);
+        let (mut tx, mut rx) = channel::<usize, ()>(10);
         let waker = COUNTER.to_waker();
         let mut cx = Context::from_waker(&waker);
         COUNTER.0.store(0, Ordering::SeqCst);

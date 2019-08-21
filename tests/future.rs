@@ -46,12 +46,12 @@ fn test_awt() {
     static COUNTER: Counter = Counter(AtomicUsize::new(0));
     let waker = COUNTER.to_waker();
     let mut cx = Context::from_waker(&waker);
-    let (rx, tx) = oneshot::channel::<usize, !>();
+    let (tx, rx) = oneshot::channel::<usize>();
     let mut fut = Box::pin(asyn(|| {
         let number = awt!(rx)?;
-        Ok::<usize, oneshot::RecvError<!>>(number + 1)
+        Ok::<usize, oneshot::Canceled>(number + 1)
     }));
-    assert_eq!(tx.send(Ok(1)), Ok(()));
+    assert_eq!(tx.send(1), Ok(()));
     assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Ready(Ok(2)));
 }
 
@@ -59,19 +59,19 @@ fn test_nested() {
     static COUNTER: Counter = Counter(AtomicUsize::new(0));
     let waker = COUNTER.to_waker();
     let mut cx = Context::from_waker(&waker);
-    let (rx, tx) = oneshot::channel::<usize, !>();
+    let (tx, rx) = oneshot::channel::<usize>();
     let mut fut = Box::pin(asyn(|| {
         awt!(Box::pin(asyn(|| {
             awt!(asyn(|| {
                 let number = awt!(rx)?;
-                Ok::<usize, oneshot::RecvError<!>>(number + 1)
+                Ok::<usize, oneshot::Canceled>(number + 1)
             }))
         })))
     }));
     assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Pending);
     assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Pending);
     assert_eq!(COUNTER.0.load(Relaxed), 0);
-    assert_eq!(tx.send(Ok(1)), Ok(()));
+    assert_eq!(tx.send(1), Ok(()));
     assert_eq!(COUNTER.0.load(Relaxed), 1);
     assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Ready(Ok(2)));
     assert_eq!(COUNTER.0.load(Relaxed), 1);

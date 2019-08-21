@@ -16,7 +16,7 @@ impl PreemptedCell {
 /// Returns a reference to the thread-local storage of the current thread.
 ///
 /// The contents of this object can be customized with `thr!` macro. See [`the
-/// module-level documentation`][`crate::thr`] for details.
+/// module-level documentation`](crate::thr) for details.
 #[inline]
 pub fn local<T: Thread>() -> &'static T::Local {
     unsafe { (*T::first().add(CURRENT)).local() }

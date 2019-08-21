@@ -1,6 +1,7 @@
-//! A single-producer, single-consumer channel for `()`.
+//! A single-producer, single-consumer queue for sending pulses across
+//! asynchronous tasks.
 //!
-//! See [`unit::channel`] documentation for more details.
+//! See [`channel`](pulse::channel) constructor for more.
 
 mod receiver;
 mod sender;
@@ -24,9 +25,10 @@ pub const MAX_CAPACITY: usize = 1 << size_of::<usize>() * 8 - LOCK_BITS;
 
 const LOCK_MASK: usize = (1 << LOCK_BITS) - 1;
 const LOCK_BITS: usize = 3;
-const COMPLETE: usize = 1 << 2;
+#[allow(clippy::identity_op)]
+const TX_WAKER_STORED: usize = 1 << 0;
 const RX_WAKER_STORED: usize = 1 << 1;
-const TX_WAKER_STORED: usize = 1;
+const COMPLETE: usize = 1 << 2;
 
 struct Inner<E> {
     state: AtomicUsize,
@@ -35,19 +37,17 @@ struct Inner<E> {
     tx_waker: UnsafeCell<MaybeUninit<Waker>>,
 }
 
-/// Creates a new asynchronous channel, returning the receiver/sender halves.
-/// All units sent on the [`Sender`] will become available on the [`Receiver`].
+/// Creates a new pulse channel, returning the sender/receiver halves.
 ///
-/// Only one [`Receiver`]/[`Sender`] is supported.
-///
-/// [`Receiver`]: Receiver
-/// [`Sender`]: Sender
+/// The [`Sender`] half is used to signal a number of pulses. The [`Receiver`]
+/// half is a [`Stream`](futures::stream::Stream) that reads the number of
+/// pulses signaled from the last polling.
 #[inline]
-pub fn channel<E>() -> (Receiver<E>, Sender<E>) {
+pub fn channel<E>() -> (Sender<E>, Receiver<E>) {
     let inner = Arc::new(Inner::new());
-    let receiver = Receiver::new(Arc::clone(&inner));
-    let sender = Sender::new(inner);
-    (receiver, sender)
+    let sender = Sender::new(Arc::clone(&inner));
+    let receiver = Receiver::new(inner);
+    (sender, receiver)
 }
 
 unsafe impl<E: Send> Send for Inner<E> {}
@@ -138,14 +138,14 @@ mod tests {
     #[test]
     fn send_sync() {
         static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (mut rx, mut tx) = channel::<()>();
-        assert_eq!(tx.send().unwrap(), ());
+        let (mut tx, mut rx) = channel::<()>();
+        assert_eq!(tx.send(1).unwrap(), ());
         drop(tx);
         let waker = COUNTER.to_waker();
         let mut cx = Context::from_waker(&waker);
         assert_eq!(
             Pin::new(&mut rx).poll_next(&mut cx),
-            Poll::Ready(Some(Ok(())))
+            Poll::Ready(Some(Ok(NonZeroUsize::new(1).unwrap())))
         );
         assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
         assert_eq!(COUNTER.0.load(Ordering::SeqCst), 0);
@@ -154,14 +154,14 @@ mod tests {
     #[test]
     fn send_async() {
         static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (mut rx, mut tx) = channel::<()>();
+        let (mut tx, mut rx) = channel::<()>();
         let waker = COUNTER.to_waker();
         let mut cx = Context::from_waker(&waker);
         assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
-        assert_eq!(tx.send().unwrap(), ());
+        assert_eq!(tx.send(1).unwrap(), ());
         assert_eq!(
             Pin::new(&mut rx).poll_next(&mut cx),
-            Poll::Ready(Some(Ok(())))
+            Poll::Ready(Some(Ok(NonZeroUsize::new(1).unwrap())))
         );
         assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
         drop(tx);
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn send_err() {
         static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (mut rx, tx) = channel::<()>();
+        let (tx, mut rx) = channel::<()>();
         assert_eq!(tx.send_err(()).unwrap(), ());
         let waker = COUNTER.to_waker();
         let mut cx = Context::from_waker(&waker);
@@ -185,22 +185,22 @@ mod tests {
     }
 
     #[test]
-    fn recv_all() {
+    fn recv_many() {
         static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (mut rx, mut tx) = channel::<()>();
+        let (mut tx, mut rx) = channel::<()>();
         let waker = COUNTER.to_waker();
         let mut cx = Context::from_waker(&waker);
-        assert_eq!(Pin::new(&mut rx).poll_all(&mut cx), Poll::Pending);
-        assert_eq!(tx.send().unwrap(), ());
-        assert_eq!(tx.send().unwrap(), ());
-        assert_eq!(tx.send().unwrap(), ());
+        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
+        assert_eq!(tx.send(1).unwrap(), ());
+        assert_eq!(tx.send(1).unwrap(), ());
+        assert_eq!(tx.send(1).unwrap(), ());
         assert_eq!(
-            Pin::new(&mut rx).poll_all(&mut cx),
+            Pin::new(&mut rx).poll_next(&mut cx),
             Poll::Ready(Some(Ok(NonZeroUsize::new(3).unwrap())))
         );
-        assert_eq!(Pin::new(&mut rx).poll_all(&mut cx), Poll::Pending);
+        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
         drop(tx);
-        assert_eq!(Pin::new(&mut rx).poll_all(&mut cx), Poll::Ready(None));
+        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
         assert_eq!(COUNTER.0.load(Ordering::SeqCst), 4);
     }
 }

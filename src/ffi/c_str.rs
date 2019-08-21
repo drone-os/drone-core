@@ -85,7 +85,7 @@ pub struct CStr {
 /// the end of the slice.
 ///
 /// This error is created by the
-/// [`from_bytes_with_nul`][`CStr::from_bytes_with_nul`] method on [`CStr`]. See
+/// [`from_bytes_with_nul`](CStr::from_bytes_with_nul) method on [`CStr`]. See
 /// its documentation for more.
 ///
 /// # Examples
@@ -341,7 +341,7 @@ impl CStr {
     /// If the contents of the `CStr` are valid UTF-8 data, this function will
     /// return a [`Cow::Borrowed`]`(&`[`str`]`)` with the corresponding
     /// `&`[`str`] slice. Otherwise, it will replace any invalid UTF-8 sequences
-    /// with [`U+FFFD REPLACEMENT CHARACTER`][core::char::REPLACEMENT_CHARACTER]
+    /// with [`U+FFFD REPLACEMENT CHARACTER`](core::char::REPLACEMENT_CHARACTER)
     /// and return a [`Cow::Owned`]`(`[`String`]`)` with the result.
     ///
     /// > **Note**: This method is currently implemented to check for validity

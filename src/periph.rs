@@ -1,4 +1,4 @@
-//! Peripheral is a group of [`memory-mapped registers`][reg] or their fields.
+//! Peripheral is a group of [`memory-mapped registers`](reg) or their fields.
 //!
 //! # Singular Peripheral
 //!
@@ -223,10 +223,10 @@
 
 /// Implements the generic peripheral.
 ///
-/// See [the module level documentation][self] for details.
+/// See [the module level documentation](self) for details.
 pub use drone_core_macros::periph_map as map;
 
 /// Defines a singular peripheral.
 ///
-/// See [the module level documentation][self] for details.
+/// See [the module level documentation](self) for details.
 pub use drone_core_macros::periph_singular as singular;
