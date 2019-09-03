@@ -15,8 +15,6 @@
 //!     //                  `w` (for write-only).
 //!     foo(rw, 1, 4, "4-bits field"),
 //!     bar(rw, 5, 1, "1-bit field"),
-//!     // Optional default value for `MyValue::default()`. 0 if omitted.
-//!     default = 0b1010_1010,
 //! )]
 //! // The choice of the underlying integer determines the total number of bits.
 //! // Available sizes: `u8`, `u16`, `u32`, `u64`, `u128`.
@@ -57,6 +55,7 @@ mod bits;
 /// Defines a new [`Bitfield`].
 ///
 /// See [the module level documentation](self) for details.
+#[doc(inline)]
 pub use drone_core_macros::Bitfield;
 
 pub use self::bits::Bits;
@@ -69,30 +68,11 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
     /// The type of the integer. Determines the total number of bits.
     type Bits: Bits;
 
-    /// The default pattern of bits.
-    const DEFAULT: Self::Bits;
-
-    /// Wraps the `bits` integer to a [`Bitfield`].
-    ///
-    /// This method is marked `unsafe` to allow the implementor of the trait to
-    /// have additional constraints.
-    unsafe fn from_bits(bits: Self::Bits) -> Self;
-
     /// Returns a copy of the underlying integer.
     fn bits(&self) -> Self::Bits;
 
     /// Returns a mutable reference to the underlying integer.
     fn bits_mut(&mut self) -> &mut Self::Bits;
-
-    /// Creates a new [`Bitfield`] with the [`DEFAULT`](Bitfield::DEFAULT)
-    /// value.
-    ///
-    /// This method is marked `unsafe` to allow the implementor of the trait to
-    /// have additional constraints.
-    #[inline]
-    unsafe fn default() -> Self {
-        Self::from_bits(Self::DEFAULT)
-    }
 
     /// Returns `true` if the bit at `offset` is set.
     ///

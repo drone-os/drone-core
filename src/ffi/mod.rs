@@ -11,11 +11,13 @@ pub mod libc;
 mod c_str;
 mod c_string;
 
+#[doc(no_inline)]
+pub use drone_ctypes::*;
+
 pub use self::{
     c_str::{CStr, FromBytesWithNulError},
     c_string::{CString, IntoStringError, NulError},
 };
-pub use drone_ctypes::*;
 
 #[cfg(test)]
 mod tests {

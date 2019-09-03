@@ -8,12 +8,14 @@
 //! use drone_core::reg::prelude::*;
 //! ```
 
+#[doc(no_inline)]
 pub use crate::reg::{
     field::{RRRegField, RegField, RoRRegField, WWRegField, WoWRegField},
     tag::{Crt, RegAtomic, RegOwned, RegTag, Srt, Urt},
     RReg, Reg, RegHold, RoReg, WReg, WoReg,
 };
 
+#[doc(no_inline)]
 pub use crate::reg::{
     field::{
         RRRegFieldBit as _, RRRegFieldBits as _, RegFieldBit as _, RegFieldBits as _,

@@ -287,7 +287,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
             #(#attrs)*
             #[derive(Bitfield, Clone, Copy)]
-            #[bitfield(default = #reset)]
             pub struct Val(#val_ty);
 
             #(#attrs)*
@@ -310,6 +309,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 type CReg = Reg<::drone_core::reg::tag::Crt>;
 
                 const ADDRESS: usize = #address;
+                const RESET: #val_ty = #reset;
+
+                #[inline]
+                unsafe fn val_from(bits: #val_ty) -> Val {
+                    Val(bits)
+                }
             }
 
             impl<'a, #t> ::drone_core::reg::RegRef<'a, #t> for Reg<#t>
@@ -325,7 +330,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
 
             #(#attrs)*
-            pub struct Hold<'a, #t: ::drone_core::reg::tag::RegTag + 'a> {
+            pub struct Hold<'a, #t: ::drone_core::reg::tag::RegTag> {
                 reg: &'a Reg<#t>,
                 val: Val,
             }

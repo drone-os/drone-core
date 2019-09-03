@@ -9,7 +9,7 @@ use core::{
 
 /// Fiber for [`Generator`].
 ///
-/// Can be created with [`new`].
+/// Can be created with [`fib::new`](crate::fib::new).
 pub struct FiberGen<G>(G)
 where
     G: Generator;
@@ -55,7 +55,7 @@ impl<Y, R> From<GeneratorState<Y, R>> for FiberState<Y, R> {
 
 /// Creates a fiber from the generator `gen`.
 ///
-/// This type of fiber yields its thread with each generator `yield`.
+/// This type of fiber yields on each generator `yield`.
 #[inline]
 pub fn new<G>(gen: G) -> FiberGen<G>
 where
@@ -67,6 +67,7 @@ where
 /// Extends [`ThrToken`](crate::thr::ThrToken) types with `add` method.
 pub trait ThrFiberGen: ThrToken {
     /// Adds a fiber for the generator `gen` to the fiber chain.
+    #[inline]
     fn add<G>(self, gen: G)
     where
         G: Generator<Yield = (), Return = ()>,

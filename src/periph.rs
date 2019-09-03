@@ -13,7 +13,7 @@
 //! # reg!(pub mod RTC TR; 0 32 0;);
 //! # reg!(pub mod RTC DR; 0 32 0;);
 //! # reg!(pub mod RTC CR; 0 32 0;);
-//! # reg::unsafe_tokens! {
+//! # reg::tokens! {
 //! #     macro reg_tokens; crate; crate;
 //! #     mod RCC { APB1ENR1; }
 //! #     mod RTC { TR; DR; CR; }
@@ -23,9 +23,9 @@
 //! use drone_core::periph;
 //!
 //! periph::singular! {
-//!     /// Acquires RTC.
+//!     /// Extracts RTC register tokens.
 //!     pub macro periph_rtc;
-//!     /// Real-Time Clock.
+//!     /// Real-Time Clock peripheral.
 //!     pub struct RtcPeriph;
 //!
 //!     // Path prefix to reach registers.
@@ -63,7 +63,7 @@
 //!     pub rtc_cr: rtc::Cr<Srt>,
 //! }
 //!
-//! /// Acquires RTC.
+//! /// Extracts RTC register tokens.
 //! macro_rules! periph_rtc {
 //!     ($reg:ident) => {
 //!         RtcPeriph {
@@ -105,7 +105,7 @@
 //! #                                              UARTRST { 0 1 RRRegField WWRegField });
 //! # reg!(pub mod UART4 CR1; 0 32 0 RReg WReg; CMIE { 0 1 RRRegField WWRegField });
 //! # reg!(pub mod UART4 RTOR; 0 32 0 RReg WReg; BLEN { 0 2 RRRegField WWRegField });
-//! # reg::unsafe_tokens! {
+//! # reg::tokens! {
 //! #     macro reg_tokens; crate; crate;
 //! #     mod RCC { APB1ENR1; }
 //! #     mod UART4 { CR1; RTOR; }
@@ -116,7 +116,7 @@
 //!
 //! // Here we define the generic UART peripheral.
 //! periph! {
-//!     /// Generic Universal Asynchronous Receiver/Transmitter.
+//!     /// Generic Universal Asynchronous Receiver/Transmitter peripheral variant.
 //!     pub trait UartMap {
 //!         // Concrete UART peripherals will implement this trait. Arbitrary code
 //!         // can be placed here.
@@ -124,7 +124,7 @@
 //!     // This will be the peripheral struct with public fields corresponding to
 //!     // registers and/or register fields. The signature is
 //!     // `struct UartPeriph<T: UartMap>`.
-//!     /// Generic Universal Asynchronous Receiver/Transmitter.
+//!     /// Generic Universal Asynchronous Receiver/Transmitter peripheral.
 //!     pub struct UartPeriph;
 //!
 //!     // With RCC namespace...
@@ -166,9 +166,9 @@
 //!
 //! // Here we define the concrete UART4 peripheral.
 //! periph::map! {
-//!     // Acquires UART4.
+//!     // Extracts UART4 register tokens.
 //!     pub macro periph_uart4;
-//!     // UART4.
+//!     // UART4 peripheral variant.
 //!     pub struct Uart4;
 //!
 //!     impl UartMap for Uart4 {
@@ -224,9 +224,11 @@
 /// Implements the generic peripheral.
 ///
 /// See [the module level documentation](self) for details.
+#[doc(inline)]
 pub use drone_core_macros::periph_map as map;
 
 /// Defines a singular peripheral.
 ///
 /// See [the module level documentation](self) for details.
+#[doc(inline)]
 pub use drone_core_macros::periph_singular as singular;

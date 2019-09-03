@@ -1,5 +1,8 @@
 //! The Memory-Mapped Registers module.
 //!
+//! **NOTE** A Drone platform crate may re-export this module with its own
+//! additions under the same name, in which case it should be used instead.
+//!
 //! A memory-mapped register is a special location in memory. Reads and writes
 //! from/to this location produce side-effects. For example writing `1` or `0`
 //! to such location may set the related GPIO output pin to the high or low
@@ -68,67 +71,67 @@
 //! ```
 //!
 //! ## Field Token
-#![doc = "
-|            | Single-Bit | Multiple-Bits | Read | Write | Write-Only Register |
-|----------------------------------------------------------|---|---|---|---|---|
-| [`into_unsync`](reg::field::RegField::into_unsync)       |   |   |   |   |   |
-| [`into_sync`](reg::field::RegField::into_sync)           |   |   |   |   |   |
-| [`into_copy`](reg::field::RegField::into_copy)           |   |   |   |   |   |
-| [`as_sync`](reg::field::RegField::as_sync)               |   |   |   |   |   |
-| [`load_val`](reg::field::RRRegField::load_val)           |   |   | + |   |   |
-| [`default_val`](reg::field::WoWoRegField::default_val)   |   |   |   |   | + |
-| [`store_val`](reg::field::WoWoRegField::store_val)       |   |   |   |   | + |
-| [`store`](reg::field::WoWoRegField::store)               |   |   |   |   | + |
-| [`read`](reg::field::RRRegFieldBit::read)                | + |   | + |   |   |
-| [`read_bit`](reg::field::RRRegFieldBit::read_bit)        | + |   | + |   |   |
-| [`set`](reg::field::WWRegFieldBit::set)                  | + |   |   | + |   |
-| [`clear`](reg::field::WWRegFieldBit::clear)              | + |   |   | + |   |
-| [`toggle`](reg::field::WWRegFieldBit::toggle)            | + |   |   | + |   |
-| [`set_bit`](reg::field::WoWoRegFieldBit::set_bit)        | + |   |   |   | + |
-| [`clear_bit`](reg::field::WoWoRegFieldBit::clear_bit)    | + |   |   |   | + |
-| [`toggle_bit`](reg::field::WoWoRegFieldBit::toggle_bit)  | + |   |   |   | + |
-| [`read`](reg::field::RRRegFieldBits::read)               |   | + | + |   |   |
-| [`read_bits`](reg::field::RRRegFieldBits::read_bits)     |   | + | + |   |   |
-| [`write`](reg::field::WWRegFieldBits::write)             |   | + |   | + |   |
-| [`write_bits`](reg::field::WoWoRegFieldBits::write_bits) |   | + |   |   | + |
-"]
+//!
+//! |                                                | Field Width | Field Mode | Register Mode |
+//! |----------------------------------------------------------|-----------|-------|------------|
+//! | [`into_unsync`](reg::field::RegField::into_unsync)       |           |       |            |
+//! | [`into_sync`](reg::field::RegField::into_sync)           |           |       |            |
+//! | [`into_copy`](reg::field::RegField::into_copy)           |           |       |            |
+//! | [`as_sync`](reg::field::RegField::as_sync)               |           |       |            |
+//! | [`load_val`](reg::field::RRRegField::load_val)           |           | read  | read       |
+//! | [`default_val`](reg::field::WoWoRegField::default_val)   |           | write | write-only |
+//! | [`store_val`](reg::field::WoWoRegField::store_val)       |           | write | write-only |
+//! | [`store`](reg::field::WoWoRegField::store)               |           | write | write-only |
+//! | [`read`](reg::field::RRRegFieldBit::read)                | one-bit   | read  | read       |
+//! | [`read_bit`](reg::field::RRRegFieldBit::read_bit)        | one-bit   | read  | read       |
+//! | [`set`](reg::field::WWRegFieldBit::set)                  | one-bit   | write | write      |
+//! | [`clear`](reg::field::WWRegFieldBit::clear)              | one-bit   | write | write      |
+//! | [`toggle`](reg::field::WWRegFieldBit::toggle)            | one-bit   | write | write      |
+//! | [`set_bit`](reg::field::WoWoRegFieldBit::set_bit)        | one-bit   | write | write-only |
+//! | [`clear_bit`](reg::field::WoWoRegFieldBit::clear_bit)    | one-bit   | write | write-only |
+//! | [`toggle_bit`](reg::field::WoWoRegFieldBit::toggle_bit)  | one-bit   | write | write-only |
+//! | [`read`](reg::field::RRRegFieldBits::read)               | multi-bit | read  | read       |
+//! | [`read_bits`](reg::field::RRRegFieldBits::read_bits)     | multi-bit | read  | read       |
+//! | [`write`](reg::field::WWRegFieldBits::write)             | multi-bit | write | write      |
+//! | [`write_bits`](reg::field::WoWoRegFieldBits::write_bits) | multi-bit | write | write-only |
+//!
 //! ## Register Token
-#![doc = "
-|             | Read | Write | Read-Write | Atomic | Non-atomic |
-|-------------------------------------------|---|---|---|---|---|
-| [`into_unsync`](reg::Reg::into_unsync)    |   |   |   |   |   |
-| [`into_sync`](reg::Reg::into_sync)        |   |   |   |   |   |
-| [`into_copy`](reg::Reg::into_copy)        |   |   |   |   |   |
-| [`as_sync`](reg::Reg::as_sync)            |   |   |   |   |   |
-| [`default_val`](reg::Reg::default_val)    |   |   |   |   |   |
-| [`default`](reg::RegRef::default)         |   |   |   |   |   |
-| [`hold`](reg::RegRef::hold)               |   |   |   |   |   |
-| [`load_val`](reg::RReg::load_val)         | + |   |   |   |   |
-| [`load`](reg::RReg::load)                 | + |   |   |   |   |
-| [`to_ptr`](reg::RReg::to_ptr)             | + |   |   |   |   |
-| [`to_mut_ptr`](reg::WReg::to_mut_ptr)     |   | + |   |   |   |
-| [`store`](reg::WRegUnsync::store)         |   | + |   |   | + |
-| [`store`](reg::WRegAtomic::store)         |   | + |   | + |   |
-| [`store_val`](reg::WRegUnsync::store_val) |   | + |   |   | + |
-| [`store_val`](reg::WRegAtomic::store_val) |   | + |   | + |   |
-| [`reset`](reg::WRegUnsync::reset)         |   | + |   |   | + |
-| [`reset`](reg::WRegAtomic::reset)         |   | + |   | + |   |
-| [`modify`](reg::RwRegUnsync::modify)      |   |   | + |   | + |
-"]
+//!
+//! |                                           | Mode       | Tag      |
+//! |-------------------------------------------|------------|----------|
+//! | [`into_unsync`](reg::Reg::into_unsync)    |            |          |
+//! | [`into_sync`](reg::Reg::into_sync)        |            |          |
+//! | [`into_copy`](reg::Reg::into_copy)        |            |          |
+//! | [`as_sync`](reg::Reg::as_sync)            |            |          |
+//! | [`default_val`](reg::Reg::default_val)    |            |          |
+//! | [`default`](reg::RegRef::default)         |            |          |
+//! | [`hold`](reg::RegRef::hold)               |            |          |
+//! | [`load_val`](reg::RReg::load_val)         | read       |          |
+//! | [`load`](reg::RReg::load)                 | read       |          |
+//! | [`to_ptr`](reg::RReg::to_ptr)             | read       |          |
+//! | [`to_mut_ptr`](reg::WReg::to_mut_ptr)     | write      |          |
+//! | [`store`](reg::WRegUnsync::store)         | write      | Urt      |
+//! | [`store`](reg::WRegAtomic::store)         | write      | Srt, Crt |
+//! | [`store_val`](reg::WRegUnsync::store_val) | write      | Urt      |
+//! | [`store_val`](reg::WRegAtomic::store_val) | write      | Srt, Crt |
+//! | [`reset`](reg::WRegUnsync::reset)         | write      | Urt      |
+//! | [`reset`](reg::WRegAtomic::reset)         | write      | Srt, Crt |
+//! | [`modify`](reg::RwRegUnsync::modify)      | read-write | Urt      |
+//!
 //! ## Register Value
 //!
 //! Autogenerated field methods for [`RegHold`](reg::RegHold) (`foo` as an
 //! example field name):
-#![doc = "
-|                                      | Single-Bit | Multiple-Bits | Read | Write |
-|------------------------------------------------------------------|---|---|---|---|
-| `foo()` ([`read`](reg::field::RRRegFieldBit::read))              | + |   | + |   |
-| `foo()` ([`read`](reg::field::RRRegFieldBits::read))             |   | + | + |   |
-| `set_foo()` ([`set`](reg::field::WWRegFieldBit::set))            | + |   |   | + |
-| `clear_foo()` ([`clear`](reg::field::WWRegFieldBit::clear))      | + |   |   | + |
-| `toggle_foo()` ([`toggle`](reg::field::WWRegFieldBit::toggle))   | + |   |   | + |
-| `write_foo(bits)` ([`write`](reg::field::WWRegFieldBits::write)) |   | + |   | + |
-"]
+//!
+//! |                                                                 | Field Width | Mode |
+//! |------------------------------------------------------------------|-----------|-------|
+//! | `foo()` ([`read`](reg::field::RRRegFieldBit::read))              | one-bit   | read  |
+//! | `foo()` ([`read`](reg::field::RRRegFieldBits::read))             | multi-bit | read  |
+//! | `set_foo()` ([`set`](reg::field::WWRegFieldBit::set))            | one-bit   | write |
+//! | `clear_foo()` ([`clear`](reg::field::WWRegFieldBit::clear))      | one-bit   | write |
+//! | `toggle_foo()` ([`toggle`](reg::field::WWRegFieldBit::toggle))   | one-bit   | write |
+//! | `write_foo(bits)` ([`write`](reg::field::WWRegFieldBits::write)) | multi-bit | write |
+//!
 //! # Tags
 //!
 //! Each register or field token can have one of three flavors. They are encoded
@@ -219,11 +222,11 @@
 //! // is another macro, which can be used to define the final register token index
 //! // or to extend with another registers in downstream crates. It will become
 //! // clearer below.
-//! reg::unsafe_tokens! {
+//! reg::tokens! {
 //!     // The result of this macro is
-//!     // `macro_rules! unsafe_cortex_m_reg_tokens { ... }`.
+//!     // `macro_rules! cortex_m_reg_tokens { ... }`.
 //!     /// Defines an index of core ARM Cortex-M register tokens.
-//!     pub macro unsafe_cortex_m_reg_tokens;
+//!     pub macro cortex_m_reg_tokens;
 //!     // Path prefix to reach registers.
 //!     crate;
 //!     // Absolute path to the current module.
@@ -245,11 +248,11 @@
 //! // registers.
 //!
 //! // Same as above, except it will reuse the upstream macro, resulting in a
-//! // combined register tokens index. Note `use macro unsafe_cortex_m_reg_tokens`.
-//! reg::unsafe_tokens! {
+//! // combined register tokens index. Note `use macro cortex_m_reg_tokens`.
+//! reg::tokens! {
 //!     /// Defines an index of STM32F103 register tokens.
-//!     pub macro unsafe_stm32_reg_tokens;
-//!     use macro unsafe_cortex_m_reg_tokens;
+//!     pub macro stm32_reg_tokens;
+//!     use macro cortex_m_reg_tokens;
 //!     crate;
 //!     crate;
 //! }
@@ -259,7 +262,7 @@
 //! // This macro defines the concrete register tokens index for STM32 MCU. The
 //! // index is a sum of `drone_cortex_m` and `drone_stm32` registers. The result
 //! // of this macro is `pub struct Regs { ... }`.
-//! unsafe_stm32_reg_tokens! {
+//! stm32_reg_tokens! {
 //!     /// Register tokens.
 //!     pub struct Regs;
 //! }
@@ -288,15 +291,8 @@ pub mod tag;
 /// A macro to define a macro to define a set of register tokens.
 ///
 /// See [the module level documentation](self) for details.
-///
-/// # Safety
-///
-/// The registers must not be instantiated anywhere else.
-///
-/// # Safety for the generated macro
-///
-/// The generated macro must not be called multiple times.
-pub use drone_core_macros::unsafe_reg_tokens as unsafe_tokens;
+#[doc(inline)]
+pub use drone_core_macros::reg_tokens as tokens;
 
 use self::tag::{Crt, RegAtomic, RegOwned, RegTag, Srt, Urt};
 use crate::{bitfield::Bitfield, token::Token};
@@ -324,6 +320,16 @@ pub trait Reg<T: RegTag>: Token + Sync {
 
     /// The register address in memory.
     const ADDRESS: usize;
+
+    /// The register default value.
+    const RESET: <Self::Val as Bitfield>::Bits;
+
+    /// Creates a new instance of [`Reg::Val`] from raw `bits`.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it doesn't require a token.
+    unsafe fn val_from(bits: <Self::Val as Bitfield>::Bits) -> Self::Val;
 
     /// Converts into unsynchronized register token.
     #[inline]
@@ -364,7 +370,7 @@ pub trait Reg<T: RegTag>: Token + Sync {
     /// See also [`default`](RegRef::default).
     #[inline]
     fn default_val(&self) -> Self::Val {
-        unsafe { Self::Val::default() }
+        unsafe { Self::val_from(Self::RESET) }
     }
 }
 
@@ -412,7 +418,7 @@ pub trait RReg<T: RegTag>: Reg<T> {
     /// See also [`load`](RReg::load).
     #[inline]
     fn load_val(&self) -> Self::Val {
-        unsafe { Self::Val::from_bits(read_volatile(self.to_ptr())) }
+        unsafe { Self::val_from(read_volatile(self.to_ptr())) }
     }
 
     /// Reads the value from the register memory to the exposed value type.
@@ -512,9 +518,9 @@ pub trait RwRegUnsync<'a>: RReg<Urt> + WRegUnsync<'a> + RegRef<'a, Urt> {
         ) -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
 }
 
-impl<'a, T> WRegUnsync<'a> for T
+impl<'a, R> WRegUnsync<'a> for R
 where
-    T: WReg<Urt> + RegRef<'a, Urt>,
+    R: WReg<Urt> + RegRef<'a, Urt>,
 {
     #[inline]
     fn store<F>(&'a mut self, f: F)
@@ -539,12 +545,12 @@ where
     }
 }
 
-impl<'a, T, U> WRegAtomic<'a, T> for U
+impl<'a, T, R> WRegAtomic<'a, T> for R
 where
     T: RegAtomic,
-    U: WReg<T> + RegRef<'a, T>,
+    R: WReg<T> + RegRef<'a, T>,
     // Extra bound to make the dot operator checking `WRegUnsync` first.
-    U::Val: Bitfield,
+    R::Val: Bitfield,
 {
     #[inline]
     fn store<F>(&'a self, f: F)
@@ -567,9 +573,9 @@ where
     }
 }
 
-impl<'a, T> RwRegUnsync<'a> for T
+impl<'a, R> RwRegUnsync<'a> for R
 where
-    T: RReg<Urt> + WRegUnsync<'a> + RegRef<'a, Urt>,
+    R: RReg<Urt> + WRegUnsync<'a> + RegRef<'a, Urt>,
 {
     #[inline]
     fn modify<F>(&'a mut self, f: F)
@@ -689,5 +695,22 @@ mod compile_tests {
     //! fn main() {
     //!     assert_clone::<foo_bar::Reg<Crt>>();
     //! }
+    //! ```
+    //!
+    //! ```compile_fail
+    //! #![feature(proc_macro_hygiene)]
+    //! use drone_core::reg;
+    //! reg::tokens!(macro reg_tokens; crate; crate;);
+    //! reg_tokens!(struct Regs1;);
+    //! reg_tokens!(struct Regs2;);
+    //! ```
+    //!
+    //! ```compile_fail
+    //! #![feature(proc_macro_hygiene)]
+    //! use drone_core::reg;
+    //! reg::tokens!(macro reg_tokens1; crate; crate;);
+    //! reg::tokens!(macro reg_tokens2; crate; crate;);
+    //! reg_tokens1!(struct Regs1;);
+    //! reg_tokens2!(struct Regs2;);
     //! ```
 }

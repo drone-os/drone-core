@@ -4,7 +4,6 @@
 //! The following snippet is written with native `async`/`await` syntax:
 //!
 //! ```
-//! # #![feature(async_await)]
 //! # #![feature(never_type)]
 //! use drone_core::sync::spsc::oneshot;
 //!
@@ -38,6 +37,7 @@ pub use super::from_generator as asyn;
 /// A macro to await a future on an async call.
 ///
 /// `awt!(expr)` is an alternative for `expr.await`.
+#[doc(inline)]
 pub use crate::awt;
 
 #[doc(hidden)]

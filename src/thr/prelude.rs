@@ -6,11 +6,14 @@
 //!
 //! ```
 //! # #![allow(unused_imports)]
-//! use drone_core::reg::prelude::*;
+//! use drone_core::thr::prelude::*;
 //! ```
 
+#[doc(no_inline)]
 pub use crate::thr::ThrToken;
 
+#[doc(no_inline)]
 pub use crate::fib::{
-    ThrFiberFn as _, ThrFiberFuture as _, ThrFiberGen as _, ThrStreamPulse as _, ThrStreamRing as _,
+    ThrFiberFn as _, ThrFiberFuture as _, ThrFiberGen as _, ThrFiberStreamPulse as _,
+    ThrFiberStreamRing as _,
 };

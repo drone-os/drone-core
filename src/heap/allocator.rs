@@ -36,25 +36,6 @@ pub trait Allocator {
     where
         I: SliceIndex<[Pool]>;
 
-    /// Initializes the pools with `start` address.
-    ///
-    /// This method **must** be called before any use of the allocator.
-    ///
-    /// The time complexity of this method is
-    /// *O([`POOL_COUNT`](Allocator::POOL_COUNT))*. It is invariant to the
-    /// actual memory size.
-    ///
-    /// # Safety
-    ///
-    /// * Calling this method while live allocations exists may lead to data
-    ///   corruption.
-    /// * `start` must be word-aligned.
-    unsafe fn init(&mut self, start: &mut usize) {
-        for i in 0..Self::POOL_COUNT {
-            self.get_pool_unchecked_mut(i).init(start);
-        }
-    }
-
     /// Empty allocation hook. Can be re-defined by the implementation.
     #[inline]
     fn alloc_hook(_layout: Layout, _pool: &Pool) {}
@@ -244,7 +225,6 @@ impl<'a> WithPool<'a, &'a Pool> for Excess {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::mem;
 
     struct TestHeap {
         pools: [Pool; 10],
@@ -331,25 +311,24 @@ mod tests {
 
     #[test]
     fn allocations() {
-        let mut heap = TestHeap {
-            pools: [
-                Pool::new(0, 2, 10),
-                Pool::new(20, 5, 10),
-                Pool::new(70, 8, 10),
-                Pool::new(150, 12, 10),
-                Pool::new(270, 16, 10),
-                Pool::new(430, 23, 10),
-                Pool::new(660, 38, 10),
-                Pool::new(1040, 56, 10),
-                Pool::new(1600, 72, 10),
-                Pool::new(2320, 91, 10),
-            ],
-        };
         let mut m = [0u8; 3230];
         let o = &mut m as *mut _ as usize;
+        let heap = TestHeap {
+            pools: [
+                Pool::new(o + 0, 2, 10),
+                Pool::new(o + 20, 5, 10),
+                Pool::new(o + 70, 8, 10),
+                Pool::new(o + 150, 12, 10),
+                Pool::new(o + 270, 16, 10),
+                Pool::new(o + 430, 23, 10),
+                Pool::new(o + 660, 38, 10),
+                Pool::new(o + 1040, 56, 10),
+                Pool::new(o + 1600, 72, 10),
+                Pool::new(o + 2320, 91, 10),
+            ],
+        };
         let layout = Layout::from_size_align(32, 1).unwrap();
         unsafe {
-            heap.init(mem::transmute(o));
             heap.alloc_and_set(layout, 111);
             assert_eq!(m[660], 111);
             heap.alloc_and_set(layout, 222);

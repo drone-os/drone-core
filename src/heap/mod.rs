@@ -13,78 +13,50 @@
 //!
 //! # Usage
 //!
-//! There are multiple steps involved in heap usage:
+//! Add the heap configuration to the `Drone.toml`:
 //!
-//! 1. Map a memory region in the `layout.ld`:
-//!
-//! ```ld
-//! MEMORY
-//! {
-//!     /* ... */
-//!     /* Continuous memory region for the heap: */
-//!     HEAP (WX) : ORIGIN = 0x20000000, LENGTH = 256K
-//!     /* ... */
-//! }
-//!
-//! SECTIONS
-//! {
-//!     /* ... */
-//!     /* Reserve a region for the heap and define HEAP_START symbol: */
-//!     .heap : ALIGN(4)
-//!     {
-//!         HEAP_START = .;
-//!         /* The number should match the LENGTH at the MEMORY section. */
-//!         . += 0x40000;
-//!     } > HEAP
-//!     /* ... */
-//! }
+//! ```toml
+//! [heap]
+//! size = "10K"
+//! pools = [
+//!     { block = "4", capacity = 896 },
+//!     { block = "32", capacity = 80 },
+//!     { block = "256", capacity = 16 },
+//! ]
 //! ```
 //!
-//! 2. Configure memory pools layout:
+//! The `size` field should match the resulting size of the pools.
 //!
-//! ```
+//! Then in the application code:
+//!
+//! ```no_run
 //! # #![feature(allocator_api)]
+//! # drone_core_macros::config_override! { "
+//! # [memory]
+//! # flash = { size = \"128K\", origin = 0x08000000 }
+//! # ram = { size = \"20K\", origin = 0x20000000 }
+//! # [heap]
+//! # size = \"10K\"
+//! # pools = [
+//! #     { block = \"4\", capacity = 896 },
+//! #     { block = \"32\", capacity = 80 },
+//! #     { block = \"256\", capacity = 16 },
+//! # ]
+//! # " }
 //! # fn main() {}
 //! use drone_core::heap;
 //!
+//! // Define a concrete heap type with the layout defined in the Drone.toml
 //! heap! {
-//!   /// The heap structure.
-//!   pub struct Heap;
-//!
-//!   // The total size of the heap. Should match the layout.ld.
-//!   size = 0x40000;
-//!   // Declare the memory pools. The format is [BLOCK_SIZE; NUMBER_OF_BLOCKS]
-//!   pools = [
-//!     [0x4; 0x4000],
-//!     [0x20; 0x800],
-//!     [0x100; 0x100],
-//!     [0x800; 0x20],
-//!   ];
+//!     /// The heap structure.
+//!     pub struct Heap;
 //! }
-//! ```
 //!
-//! 3. Initialize the heap before the first use in the run-time.
-//!
-//! ```ignore
-//! use drone_core::heap::Allocator;
-//!
+//! // Create a static instance of the heap type and declare it as the global
+//! // allocator.
 //! /// The global allocator.
 //! #[global_allocator]
-//! pub static mut HEAP: Heap = Heap::new();
-//!
-//! extern "C" {
-//!     /// A value declared in the linker script at step 1.
-//!     static mut HEAP_START: usize;
-//! }
-//!
-//! // Your entry point.
-//! fn main() {
-//!     // ...
-//!     unsafe {
-//!         HEAP.init(&mut HEAP_START);
-//!     }
-//!     // ...
-//! }
+//! pub static HEAP: Heap = Heap::new();
 //! ```
 //!
 //! # Tuning

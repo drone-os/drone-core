@@ -1,10 +1,11 @@
 #![feature(proc_macro_hygiene)]
 
-use crate::test_block::{test_reg::Val, TestReg};
-use drone_core::{bitfield::Bitfield, reg::prelude::*};
+use drone_core::{bitfield::Bitfield, reg::prelude::*, token::Token};
 use std::mem::size_of;
 
 use drone_core::reg;
+
+use crate::test_block::{test_reg::Val, TestReg};
 
 reg! {
     /// Test reg doc attribute
@@ -17,10 +18,10 @@ reg! {
     TEST_BITS { 1 3 RRRegField WWRegField }
 }
 
-reg::unsafe_tokens! {
+reg::tokens! {
     /// Test index doc attribute
     #[doc = "test index attribute"]
-    pub macro unsafe_reg_tokens;
+    pub macro reg_tokens;
     crate;
     crate;
 
@@ -31,17 +32,18 @@ reg::unsafe_tokens! {
     }
 }
 
-unsafe_reg_tokens! {
+reg_tokens! {
     /// Test index doc attribute
     #[doc = "test index attribute"]
     pub struct Regs;
 }
 
 #[test]
-fn reg_val_default() {
-    unsafe {
-        assert_eq!(Val::default().bits(), 0xBEEF_CACE);
-    }
+fn reg_default_val() {
+    assert_eq!(
+        unsafe { TestReg::<Srt>::take() }.default_val().bits(),
+        0xBEEF_CACE
+    );
 }
 
 #[test]

@@ -51,8 +51,8 @@ reg! {
     ODR0 { 0 1 RRRegField WWRegField }
 }
 
-reg::unsafe_tokens! {
-    pub macro unsafe_reg_tokens;
+reg::tokens! {
+    pub macro reg_tokens;
     crate;
     crate;
 
@@ -62,7 +62,7 @@ reg::unsafe_tokens! {
     pub mod GPIOC { ODR; }
 }
 
-unsafe_reg_tokens! {
+reg_tokens! {
     pub struct Regs;
 }
 

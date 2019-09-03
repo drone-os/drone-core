@@ -6,7 +6,7 @@ use core::{marker::Unpin, pin::Pin};
 
 /// Fiber for [`FnOnce`] closure.
 ///
-/// Can be created with [`new_fn`].
+/// Can be created with [`fib::new_fn`](crate::fib::new_fn).
 pub struct FiberFn<F, R>(Option<F>)
 where
     F: FnOnce() -> R,
@@ -44,7 +44,8 @@ where
 
 /// Creates a fiber from the closure `f`.
 ///
-/// This type of fiber will busy its thread until completion.
+/// This type of fiber will never yield and will busy its thread until
+/// completion.
 #[inline]
 pub fn new_fn<F, R>(f: F) -> FiberFn<F, R>
 where
@@ -57,6 +58,7 @@ where
 /// Extends [`ThrToken`](crate::thr::ThrToken) types with `add_fn` method.
 pub trait ThrFiberFn: ThrToken {
     /// Adds a fiber for the closure `f` to the fiber chain.
+    #[inline]
     fn add_fn<F>(self, f: F)
     where
         F: FnOnce(),

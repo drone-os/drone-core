@@ -8,4 +8,3 @@ overflow_delimited_expr = true
 unstable_features = true
 use_field_init_shorthand = true
 version = "Two"
-wrap_comments = true

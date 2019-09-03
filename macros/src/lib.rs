@@ -14,6 +14,8 @@
 extern crate proc_macro;
 
 mod bitfield;
+mod bmp_uart_baudrate;
+mod config_override;
 mod heap;
 mod periph;
 mod periph_map;
@@ -30,6 +32,16 @@ use proc_macro::TokenStream;
 #[proc_macro_derive(Bitfield, attributes(bitfield))]
 pub fn derive_bitfield(input: TokenStream) -> TokenStream {
     bitfield::proc_macro_derive(input)
+}
+
+#[proc_macro]
+pub fn bmp_uart_baudrate(input: TokenStream) -> TokenStream {
+    bmp_uart_baudrate::proc_macro(input)
+}
+
+#[proc_macro]
+pub fn config_override(input: TokenStream) -> TokenStream {
+    config_override::proc_macro(input)
 }
 
 #[proc_macro]
@@ -58,7 +70,7 @@ pub fn reg(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn unsafe_reg_tokens(input: TokenStream) -> TokenStream {
+pub fn reg_tokens(input: TokenStream) -> TokenStream {
     reg_tokens::proc_macro(input)
 }
 

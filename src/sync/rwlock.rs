@@ -291,7 +291,6 @@ mod tests {
     use std::{
         sync::{
             atomic::{AtomicUsize, Ordering},
-            mpsc::channel,
             Arc,
         },
         thread,
@@ -299,44 +298,6 @@ mod tests {
 
     #[derive(Eq, PartialEq, Debug)]
     struct NonCopy(i32);
-
-    #[test]
-    fn rw_arc() {
-        let arc = Arc::new(RwLock::new(0));
-        let arc2 = arc.clone();
-        let (tx, rx) = channel();
-
-        thread::spawn(move || {
-            let mut lock = arc2.try_write().unwrap();
-            for _ in 0..10 {
-                let tmp = *lock;
-                *lock = -1;
-                thread::yield_now();
-                *lock = tmp + 1;
-            }
-            tx.send(()).unwrap();
-        });
-
-        // Readers try to catch the writer in the act
-        let mut children = Vec::new();
-        for _ in 0..5 {
-            let arc3 = arc.clone();
-            children.push(thread::spawn(move || {
-                let lock = arc3.try_read().unwrap();
-                assert!(*lock >= 0);
-            }));
-        }
-
-        // Wait for children to pass their asserts
-        for r in children {
-            assert!(r.join().is_ok());
-        }
-
-        // Wait for writer to finish
-        rx.recv().unwrap();
-        let lock = arc.try_read().unwrap();
-        assert_eq!(*lock, 10);
-    }
 
     #[test]
     fn rw_arc_access_in_unwind() {

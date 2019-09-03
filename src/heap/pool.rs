@@ -20,35 +20,17 @@ pub struct Pool {
     size: usize,
 }
 
+unsafe impl Sync for Pool {}
+
 impl Pool {
-    /// Creates an uninitialized `Pool`.
-    ///
-    /// The returned pool should be initialized in the run-time with
-    /// [`init`](Pool::init) method before use.
-    pub const fn new(offset: usize, size: usize, capacity: usize) -> Self {
+    /// Creates a new `Pool`.
+    pub const fn new(address: usize, size: usize, capacity: usize) -> Self {
         Self {
             free: AtomicPtr::new(ptr::null_mut()),
-            head: AtomicPtr::new(offset as *mut u8),
-            edge: (offset + size * capacity) as *mut u8,
+            head: AtomicPtr::new(address as *mut u8),
+            edge: (address + size * capacity) as *mut u8,
             size,
         }
-    }
-
-    /// Initializes the pool with `start` address.
-    ///
-    /// This method **must** be called before any use of the pool.
-    ///
-    /// The time complexity of this method is *O(1)*.
-    ///
-    /// # Safety
-    ///
-    /// * Calling this method while live allocations exists may lead to data
-    ///   corruption.
-    pub unsafe fn init(&mut self, start: &mut usize) {
-        let offset = start as *mut _ as usize;
-        let head = self.head.get_mut();
-        *head = head.add(offset);
-        self.edge = self.edge.add(offset);
     }
 
     /// Returns the block size.

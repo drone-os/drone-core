@@ -1,5 +1,6 @@
 //! Marker traits representing properties of memory-mapped registers.
 
+#[doc(inline)]
 pub use crate::reg::{
     field::{WoWoRegFieldBit, WoWoRegFieldBits},
     RoReg, WoReg,

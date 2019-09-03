@@ -12,6 +12,7 @@
 #![allow(non_camel_case_types)]
 #![no_std]
 
+#[doc(no_inline)]
 pub use core::ffi::c_void;
 
 /// Equivalent to C's `char` type.

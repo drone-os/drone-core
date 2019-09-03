@@ -13,7 +13,6 @@ use syn::{
 #[derive(Default)]
 struct Bitfield {
     fields: Vec<Field>,
-    default: Option<LitInt>,
 }
 
 struct Field {
@@ -35,24 +34,13 @@ impl Parse for Bitfield {
         let content;
         parenthesized!(content in input);
         let mut fields = Vec::new();
-        let mut default = None;
         let mut last_comma = true;
         while last_comma && !content.is_empty() {
-            if content.peek(Token![default]) {
-                content.parse::<Token![default]>()?;
-                content.parse::<Token![=]>()?;
-                if default.is_some() {
-                    return Err(content.error("`default` is already defined"));
-                }
-                default = Some(content.parse()?);
-            } else {
-                fields.push(content.parse()?);
-            }
+            fields.push(content.parse()?);
             last_comma = content.parse::<Option<Token![,]>>()?.is_some();
         }
         Ok(Self {
             fields: fields.into_iter().collect(),
-            default,
         })
     }
 }
@@ -132,14 +120,13 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
             then { x.ident == "bitfield" } else { false }
         }
     });
-    let Bitfield { fields, default } = match bitfield {
+    let Bitfield { fields } = match bitfield {
         Some(attr) => {
             let input = attr.tts.into();
             parse_macro_input!(input as Bitfield)
         }
         None => Bitfield::default(),
     };
-    let default = default.unwrap_or_else(|| LitInt::new(0, IntSuffix::None, Span::call_site()));
     let bits = if_chain! {
         if let Data::Struct(x) = data;
         if let Fields::Unnamed(x) = x.fields;
@@ -255,13 +242,6 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     let expanded = quote! {
         impl ::drone_core::bitfield::Bitfield for #ident {
             type Bits = #bits;
-
-            const DEFAULT: #bits = #default;
-
-            #[inline]
-            unsafe fn from_bits(bits: #bits) -> Self {
-                #ident(bits)
-            }
 
             #[inline]
             fn bits(&self) -> #bits {

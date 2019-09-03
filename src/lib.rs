@@ -1,31 +1,7 @@
-//! Drone is a Hard Real-Time Operating System Framework for writing
-//! embedded applications with [Rust].
-//!
-//! # Requirements
-//!
-//! * latest nightly [Rust];
-//! * [xargo];
-//! * [cargo-drone] host utility;
-//!
-//! Please also refer the installation notes of a corresponding Drone's
-//! [platform implementation](#platforms).
-//!
-//! # Platforms
-//!
-//! * [STM32](https://github.com/drone-os/drone-stm32)
-//!
-//! # Demo Applications
-//!
-//! * [STM32 Nucleo L496ZG-P](https://github.com/drone-os/demo-core-nucleo)
-//!
-//! [Rust]: https://www.rust-lang.org/
-//! [cargo-drone]: https://github.com/drone-os/cargo-drone
-//! [xargo]: https://github.com/japaric/xargo
+//! The core crate for Drone, an Embedded Operating System.
 
 #![feature(alloc_prelude)]
 #![feature(allocator_api)]
-#![feature(associated_type_defaults)]
-#![feature(const_fn)]
 #![feature(const_raw_ptr_deref)]
 #![feature(core_intrinsics)]
 #![feature(exhaustive_patterns)]
@@ -78,22 +54,30 @@ pub mod token;
 /// Defines dynamic memory structures.
 ///
 /// See [the module level documentation](heap) for details.
+#[doc(inline)]
 pub use drone_core_macros::heap;
 
 /// Defines a new generic peripheral.
 ///
 /// See [the module level documentation](periph) for details.
+#[doc(inline)]
 pub use drone_core_macros::periph;
 
 /// Defines a memory-mapped register.
 ///
 /// See [the module level documentation](reg) for details.
+#[doc(inline)]
 pub use drone_core_macros::reg;
 
 /// Defines the thread type.
 ///
 /// See [the module level documentation](thr) for details.
+#[doc(inline)]
 pub use drone_core_macros::thr;
+
+/// Expands to `bmp.uart_baudrate` from the `Drone.toml`.
+#[doc(inline)]
+pub use drone_core_macros::bmp_uart_baudrate;
 
 #[prelude_import]
 #[allow(unused_imports)]

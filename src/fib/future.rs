@@ -51,6 +51,7 @@ impl<T> Future for FiberFuture<T> {
 pub trait ThrFiberFuture: ThrToken {
     /// Adds the fiber `fib` to the fiber chain and returns a future, which
     /// resolves on completion of the fiber.
+    #[inline]
     fn add_future<F, Y, T>(self, fib: F) -> FiberFuture<T>
     where
         F: Fiber<Input = (), Yield = Y, Return = T>,

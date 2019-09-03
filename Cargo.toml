@@ -6,10 +6,29 @@ name = "drone-core"
 version = "0.9.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 edition = "2018"
-description = "The platform-independent foundation of Drone OS."
+repository = "https://github.com/drone-os/drone-core"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/drone-os/drone-core"
+keywords = [
+    "async",
+    "real-time",
+    "bare-metal",
+    "rtos",
+    "firmware",
+]
+categories = [
+    "embedded",
+    "asynchronous",
+    "concurrency",
+    "no-std",
+    "os",
+]
+description = """
+The core crate for Drone, an Embedded Operating System.
+"""
+
+[badges]
+maintenance = { status = "actively-developed" }
 
 [features]
 default = []

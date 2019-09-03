@@ -18,7 +18,7 @@
 //! 2. Without `drone-async-await`, attempting to use `.await` will result in
 //! the following errors:
 //!
-//! ```plain
+//! ```text
 //! error[E0433]: failed to resolve: could not find `poll_with_tls_context` in `future`
 //! error[E0433]: failed to resolve: could not find `from_generator` in `future`
 //! ```

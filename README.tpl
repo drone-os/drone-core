@@ -1,6 +1,6 @@
-# {{crate}}
+[![Crates.io](https://img.shields.io/crates/v/{{crate}}.svg)](https://crates.io/crates/{{crate}})
 
-## [Documentation](https://docs.rs/{{crate}})
+# {{crate}}
 
 {{readme}}
 

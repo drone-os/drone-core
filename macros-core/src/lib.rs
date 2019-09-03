@@ -1,4 +1,4 @@
-//! Core procedural macros crate for [Drone].
+//! Procedural macros base for [Drone], an Embedded Operating System.
 //!
 //! This crate provides shared functionality for all Drone procedural macro
 //! crates.

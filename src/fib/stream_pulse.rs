@@ -71,9 +71,10 @@ impl<E> Stream for TryFiberStreamPulse<E> {
 
 /// Extends [`ThrToken`](crate::thr::ThrToken) types with `add_stream_pulse`
 /// methods.
-pub trait ThrStreamPulse: ThrToken {
+pub trait ThrFiberStreamPulse: ThrToken {
     /// Adds the fiber `fib` to the fiber chain and returns a stream of pulses
     /// yielded from the fiber.
+    #[inline]
     fn add_stream_pulse_skip<F>(self, fib: F) -> FiberStreamPulse
     where
         F: Fiber<Input = (), Yield = Option<usize>, Return = Option<usize>>,
@@ -86,6 +87,7 @@ pub trait ThrStreamPulse: ThrToken {
 
     /// Adds the fiber `fib` to the fiber chain and returns a fallible stream of
     /// pulses yielded from the fiber.
+    #[inline]
     fn add_stream_pulse<O, F, E>(self, overflow: O, fib: F) -> TryFiberStreamPulse<E>
     where
         O: Fn() -> Result<(), E>,
@@ -158,4 +160,4 @@ where
     rx
 }
 
-impl<T: ThrToken> ThrStreamPulse for T {}
+impl<T: ThrToken> ThrFiberStreamPulse for T {}

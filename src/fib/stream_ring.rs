@@ -74,11 +74,12 @@ impl<T, E> Stream for TryFiberStreamRing<T, E> {
 
 /// Extends [`ThrToken`](crate::thr::ThrToken) types with `add_stream_ring`
 /// methods.
-pub trait ThrStreamRing: ThrToken {
+pub trait ThrFiberStreamRing: ThrToken {
     /// Adds the fiber `fib` to the fiber chain and returns a stream of `T`
     /// yielded from the fiber.
     ///
     /// When the underlying ring buffer overflows, new items will be skipped.
+    #[inline]
     fn add_stream_ring_skip<F, T>(self, capacity: usize, fib: F) -> FiberStreamRing<T>
     where
         F: Fiber<Input = (), Yield = Option<T>, Return = Option<T>>,
@@ -95,6 +96,7 @@ pub trait ThrStreamRing: ThrToken {
     ///
     /// When the underlying ring buffer overflows, new items will overwrite
     /// existing ones.
+    #[inline]
     fn add_stream_ring_overwrite<F, T>(self, capacity: usize, fib: F) -> FiberStreamRing<T>
     where
         F: Fiber<Input = (), Yield = Option<T>, Return = Option<T>>,
@@ -110,6 +112,7 @@ pub trait ThrStreamRing: ThrToken {
     /// `Result<T, E>` yielded from the fiber.
     ///
     /// When the underlying ring buffer overflows, new items will be skipped.
+    #[inline]
     fn add_stream_ring<O, F, T, E>(
         self,
         capacity: usize,
@@ -134,6 +137,7 @@ pub trait ThrStreamRing: ThrToken {
     ///
     /// When the underlying ring buffer overflows, new items will overwrite
     /// existing ones.
+    #[inline]
     fn add_try_stream_ring_overwrite<F, T, E>(
         self,
         capacity: usize,
@@ -268,4 +272,4 @@ where
     rx
 }
 
-impl<T: ThrToken> ThrStreamRing for T {}
+impl<T: ThrToken> ThrFiberStreamRing for T {}

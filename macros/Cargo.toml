@@ -3,20 +3,26 @@ name = "drone-core-macros"
 version = "0.9.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 edition = "2018"
-description = "Procedural macros for drone-core."
-license = "MIT OR Apache-2.0"
 repository = "https://github.com/drone-os/drone-core"
+license = "MIT OR Apache-2.0"
+description = """
+Procedural macros for drone-core.
+"""
 
 [lib]
 proc-macro = true
 
-[dependencies]
-if_chain = "1"
-Inflector = "0.11"
-proc-macro2 = { version = "0.4", features = ["nightly"] }
-quote = "0.6"
-syn = { version = "0.15", features = ["full"] }
-
 [dependencies.drone-macros-core]
 version = "=0.9.0"
 path = "../macros-core"
+
+[dependencies.drone-config]
+version = "0.9.0"
+path = "../../drone/config"
+
+[dependencies]
+Inflector = "0.11"
+if_chain = "1"
+proc-macro2 = { version = "0.4", features = ["nightly"] }
+quote = "0.6"
+syn = { version = "0.15", features = ["full"] }

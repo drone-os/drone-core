@@ -146,6 +146,7 @@
 /// Defines a new simple [`Token`].
 ///
 /// See [the module-level documentation](self) for details.
+#[doc(inline)]
 pub use drone_core_macros::simple_token;
 
 /// Defines a new token for the set of simple [`Token`]s.
@@ -155,6 +156,7 @@ pub use drone_core_macros::simple_token;
 /// # Safety
 ///
 /// The tokens must not be instantiated anywhere else.
+#[doc(inline)]
 pub use drone_core_macros::unsafe_simple_tokens;
 
 /// Defines a new token for the set of [`StaticToken`]s.
@@ -164,6 +166,7 @@ pub use drone_core_macros::unsafe_simple_tokens;
 /// # Safety
 ///
 /// The tokens must not be instantiated anywhere else.
+#[doc(inline)]
 pub use drone_core_macros::unsafe_static_tokens;
 
 /// A zero-sized affine type, at most one instance of which ever exists.

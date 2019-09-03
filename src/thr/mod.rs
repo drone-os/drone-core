@@ -1,5 +1,8 @@
 //! The Threads module.
 //!
+//! **NOTE** A Drone platform crate may re-export this module with its own
+//! additions under the same name, in which case it should be used instead.
+//!
 //! Drone is a hard real-time operating system.  It uses interrupt-based
 //! preemptive priority scheduling, where tasks with same priorities are
 //! executed cooperatively. A task unit, called Fiber in Drone, is a stack-less

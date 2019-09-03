@@ -186,6 +186,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     Self { #(#ctor_tokens)* $($ctor)* }
                 }
             }
+            #[no_mangle]
+            fn __reg_tokens_singularity_check() {}
         },
     };
     tokens.push(quote! {

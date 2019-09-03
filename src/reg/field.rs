@@ -85,7 +85,7 @@ where
     #[inline]
     fn load_val(&self) -> <Self::Reg as Reg<T>>::Val {
         unsafe {
-            <Self::Reg as Reg<T>>::Val::from_bits(read_volatile(
+            Self::Reg::val_from(read_volatile(
                 Self::Reg::ADDRESS as *const <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits,
             ))
         }
@@ -186,7 +186,7 @@ where
     fn toggle_bit(&self);
 }
 
-/// Readable multiple-bits field of readable register.
+/// Readable multiple-bit field of readable register.
 pub trait RRRegFieldBits<T: RegTag>
 where
     Self: RegFieldBits<T> + RRRegField<T>,
@@ -202,7 +202,7 @@ where
     fn read_bits(&self) -> <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits;
 }
 
-/// Writable multiple-bits field of writable register.
+/// Writable multiple-bit field of writable register.
 pub trait WWRegFieldBits<T: RegTag>
 where
     Self: RegFieldBits<T> + WWRegField<T>,
@@ -216,7 +216,7 @@ where
     );
 }
 
-/// Write-only multiple-bits field of write-only register.
+/// Write-only multiple-bit field of write-only register.
 pub trait WoWoRegFieldBits<T: RegTag>
 where
     Self: RegFieldBits<T> + WoWRegField<T>,
@@ -227,15 +227,15 @@ where
     fn write_bits(&self, bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits);
 }
 
-impl<T, U> WoWoRegField<T> for U
+impl<T, R> WoWoRegField<T> for R
 where
     T: RegTag,
-    U: WoWRegField<T>,
-    U::Reg: WoReg<T>,
+    R: WoWRegField<T>,
+    R::Reg: WoReg<T>,
 {
     #[inline]
     fn default_val(&self) -> <Self::Reg as Reg<T>>::Val {
-        unsafe { <Self::Reg as Reg<T>>::Val::default() }
+        unsafe { Self::Reg::val_from(<Self::Reg as Reg<T>>::RESET) }
     }
 
     #[inline]
@@ -259,11 +259,11 @@ where
     }
 }
 
-impl<T, U> RRRegFieldBit<T> for U
+impl<T, R> RRRegFieldBit<T> for R
 where
     T: RegTag,
-    U: RegFieldBit<T> + RRRegField<T>,
-    U::Reg: RReg<T>,
+    R: RegFieldBit<T> + RRRegField<T>,
+    R::Reg: RReg<T>,
 {
     #[inline]
     fn read(&self, val: &<Self::Reg as Reg<T>>::Val) -> bool {
@@ -280,11 +280,11 @@ where
     }
 }
 
-impl<T, U> WWRegFieldBit<T> for U
+impl<T, R> WWRegFieldBit<T> for R
 where
     T: RegTag,
-    U: RegFieldBit<T> + WWRegField<T>,
-    U::Reg: WReg<T>,
+    R: RegFieldBit<T> + WWRegField<T>,
+    R::Reg: WReg<T>,
 {
     #[inline]
     fn set(&self, val: &mut <Self::Reg as Reg<T>>::Val) {
@@ -314,11 +314,11 @@ where
     }
 }
 
-impl<T, U> WoWoRegFieldBit<T> for U
+impl<T, R> WoWoRegFieldBit<T> for R
 where
     T: RegTag,
-    U: RegFieldBit<T> + WoWRegField<T>,
-    U::Reg: WoReg<T>,
+    R: RegFieldBit<T> + WoWRegField<T>,
+    R::Reg: WoReg<T>,
 {
     #[inline]
     fn set_bit(&self) {
@@ -342,11 +342,11 @@ where
     }
 }
 
-impl<T, U> RRRegFieldBits<T> for U
+impl<T, R> RRRegFieldBits<T> for R
 where
     T: RegTag,
-    U: RegFieldBits<T> + RRRegField<T>,
-    U::Reg: RReg<T>,
+    R: RegFieldBits<T> + RRRegField<T>,
+    R::Reg: RReg<T>,
 {
     #[inline]
     fn read(
@@ -367,11 +367,11 @@ where
     }
 }
 
-impl<T, U> WWRegFieldBits<T> for U
+impl<T, R> WWRegFieldBits<T> for R
 where
     T: RegTag,
-    U: RegFieldBits<T> + WWRegField<T>,
-    U::Reg: WReg<T>,
+    R: RegFieldBits<T> + WWRegField<T>,
+    R::Reg: WReg<T>,
 {
     #[inline]
     fn write(
@@ -389,11 +389,11 @@ where
     }
 }
 
-impl<T, U> WoWoRegFieldBits<T> for U
+impl<T, R> WoWoRegFieldBits<T> for R
 where
     T: RegTag,
-    U: RegFieldBits<T> + WoWRegField<T>,
-    U::Reg: WoReg<T>,
+    R: RegFieldBits<T> + WoWRegField<T>,
+    R::Reg: WoReg<T>,
 {
     #[inline]
     fn write_bits(&self, bits: <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits) {
