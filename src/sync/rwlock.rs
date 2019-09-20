@@ -2,7 +2,7 @@ use core::{
     cell::UnsafeCell,
     fmt,
     ops::{Deref, DerefMut},
-    sync::atomic::{AtomicUsize, Ordering::*},
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
 const WRITE_LOCK: usize = usize::max_value();
@@ -123,11 +123,15 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     pub fn try_read(&self) -> Option<RwLockReadGuard<'_, T>> {
         loop {
-            let current = self.state.load(Relaxed);
+            let current = self.state.load(Ordering::Relaxed);
             if current >= WRITE_LOCK - 1 {
                 break None;
             }
-            if self.state.compare_and_swap(current, current + 1, Acquire) == current {
+            if self
+                .state
+                .compare_and_swap(current, current + 1, Ordering::Acquire)
+                == current
+            {
                 break Some(RwLockReadGuard { rw_lock: self });
             }
         }
@@ -157,7 +161,11 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     pub fn try_write(&self) -> Option<RwLockWriteGuard<'_, T>> {
-        if self.state.compare_and_swap(NO_LOCK, WRITE_LOCK, Acquire) == NO_LOCK {
+        if self
+            .state
+            .compare_and_swap(NO_LOCK, WRITE_LOCK, Ordering::Acquire)
+            == NO_LOCK
+        {
             Some(RwLockWriteGuard { rw_lock: self })
         } else {
             None
@@ -246,14 +254,14 @@ impl<T: ?Sized> DerefMut for RwLockWriteGuard<'_, T> {
 impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
-        self.rw_lock.state.fetch_sub(1, Release);
+        self.rw_lock.state.fetch_sub(1, Ordering::Release);
     }
 }
 
 impl<T: ?Sized> Drop for RwLockWriteGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
-        self.rw_lock.state.store(NO_LOCK, Release);
+        self.rw_lock.state.store(NO_LOCK, Ordering::Release);
     }
 }
 
@@ -288,38 +296,13 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RwLockWriteGuard<'_, T> {
 #[cfg(test)]
 mod tests {
     use crate::sync::RwLock;
-    use std::{
-        sync::{
-            atomic::{AtomicUsize, Ordering},
-            Arc,
-        },
-        thread,
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
     };
 
     #[derive(Eq, PartialEq, Debug)]
     struct NonCopy(i32);
-
-    #[test]
-    fn rw_arc_access_in_unwind() {
-        let arc = Arc::new(RwLock::new(1));
-        let arc2 = arc.clone();
-        let _ = thread::spawn(move || -> () {
-            struct Unwinder {
-                i: Arc<RwLock<isize>>,
-            }
-            impl Drop for Unwinder {
-                fn drop(&mut self) {
-                    let mut lock = self.i.try_write().unwrap();
-                    *lock += 1;
-                }
-            }
-            let _u = Unwinder { i: arc2 };
-            panic!();
-        })
-        .join();
-        let lock = arc.try_read().unwrap();
-        assert_eq!(*lock, 2);
-    }
 
     #[test]
     fn rwlock_unsized() {

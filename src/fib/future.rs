@@ -1,5 +1,5 @@
 use crate::{
-    fib::{Fiber, FiberState},
+    fib::{self, Fiber},
     sync::spsc::oneshot::{channel, Canceled, Receiver},
     thr::prelude::*,
 };
@@ -81,8 +81,8 @@ where
                 break;
             }
             match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-                FiberState::Yielded(_) => {}
-                FiberState::Complete(complete) => {
+                fib::Yielded(_) => {}
+                fib::Complete(complete) => {
                     drop(tx.send(complete));
                     break;
                 }

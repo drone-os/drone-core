@@ -16,29 +16,30 @@ use alloc::{raw_vec::RawVec, sync::Arc};
 use core::{
     cell::UnsafeCell,
     cmp,
-    mem::{self, MaybeUninit},
+    mem::{size_of, MaybeUninit},
     ptr, slice,
     sync::atomic::{AtomicUsize, Ordering},
     task::Waker,
 };
 
 /// Maximum capacity of the channel.
-pub const MAX_CAPACITY: usize = (1 << INDEX_BITS) - 1;
+pub const MAX_CAPACITY: usize = (1 << NUMBER_BITS) - 1;
 
-const INDEX_MASK: usize = (1 << INDEX_BITS) - 1;
-const INDEX_BITS: usize = (mem::size_of::<usize>() * 8 - LOCK_BITS) / 2;
-const LOCK_BITS: usize = 4;
-const _RESERVED: usize = 1 << mem::size_of::<usize>() * 8 - 1;
-const COMPLETE: usize = 1 << mem::size_of::<usize>() * 8 - 2;
-const RX_WAKER_STORED: usize = 1 << mem::size_of::<usize>() * 8 - 3;
-const TX_WAKER_STORED: usize = 1 << mem::size_of::<usize>() * 8 - 4;
+const NUMBER_MASK: usize = (1 << NUMBER_BITS) - 1;
+const NUMBER_BITS: u32 = (size_of::<usize>() as u32 * 8 - OPTION_BITS) / 2;
+
+const _RESERVED: usize = 1 << size_of::<usize>() * 8 - 1;
+const COMPLETE: usize = 1 << size_of::<usize>() * 8 - 2;
+const RX_WAKER_STORED: usize = 1 << size_of::<usize>() * 8 - 3;
+const TX_WAKER_STORED: usize = 1 << size_of::<usize>() * 8 - 4;
+const OPTION_BITS: u32 = 4;
 
 // Layout of the state field:
-//     LLLL_BBBB_CCCC
-// Where L is lock bits, B is begin bits, and C is count bits.
+//     OOOO_CCCC_LLLL
+// Where O are option bits, C are cursor bits, and L are lenght bits.
 //
-// Begin range: [0; MAX_CAPACITY - 1]
-// Count range: [0; MAX_CAPACITY]
+// Cursor range: [0; MAX_CAPACITY - 1]
+// Length range: [0; MAX_CAPACITY]
 struct Inner<T, E> {
     state: AtomicUsize,
     buffer: RawVec<T>,
@@ -82,12 +83,12 @@ impl<T, E> Inner<T, E> {
 impl<T, E> Drop for Inner<T, E> {
     fn drop(&mut self) {
         let state = self.state_load(Ordering::Acquire);
-        let count = state & INDEX_MASK;
-        let begin = state >> INDEX_BITS & INDEX_MASK;
-        let end = begin
-            .wrapping_add(count)
+        let length = state & NUMBER_MASK;
+        let cursor = state >> NUMBER_BITS & NUMBER_MASK;
+        let end = cursor
+            .wrapping_add(length)
             .wrapping_rem(self.buffer.capacity());
-        match begin.cmp(&end) {
+        match cursor.cmp(&end) {
             cmp::Ordering::Equal => unsafe {
                 ptr::drop_in_place(slice::from_raw_parts_mut(
                     self.buffer.ptr(),
@@ -96,15 +97,15 @@ impl<T, E> Drop for Inner<T, E> {
             },
             cmp::Ordering::Less => unsafe {
                 ptr::drop_in_place(slice::from_raw_parts_mut(
-                    self.buffer.ptr().add(begin),
-                    end - begin,
+                    self.buffer.ptr().add(cursor),
+                    end - cursor,
                 ));
             },
             cmp::Ordering::Greater => unsafe {
                 ptr::drop_in_place(slice::from_raw_parts_mut(self.buffer.ptr(), end));
                 ptr::drop_in_place(slice::from_raw_parts_mut(
-                    self.buffer.ptr().add(begin),
-                    self.buffer.capacity() - begin,
+                    self.buffer.ptr().add(cursor),
+                    self.buffer.capacity() - cursor,
                 ));
             },
         }

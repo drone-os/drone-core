@@ -2,7 +2,7 @@ use crate::fib::FiberRoot;
 use core::{
     pin::Pin,
     ptr,
-    sync::atomic::{AtomicPtr, Ordering::*},
+    sync::atomic::{AtomicPtr, Ordering},
 };
 
 /// A lock-free stack of fibers.
@@ -30,7 +30,7 @@ impl Chain {
 
     /// Returns `true` if the chain contains no fibers.
     pub fn is_empty(&self) -> bool {
-        self.head.load(Acquire).is_null()
+        self.head.load(Ordering::Acquire).is_null()
     }
 
     /// Advances fibers, removing completed ones.
@@ -41,14 +41,14 @@ impl Chain {
     #[inline(never)]
     pub unsafe fn drain(&self) {
         let mut prev = ptr::null_mut();
-        let mut curr = self.head.load(Acquire);
+        let mut curr = self.head.load(Ordering::Acquire);
         while !curr.is_null() {
             let next = (*curr).next;
             if (*curr).fib.as_mut().advance() {
                 prev = curr;
             } else {
                 if prev.is_null() {
-                    prev = self.head.compare_and_swap(curr, next, Relaxed);
+                    prev = self.head.compare_and_swap(curr, next, Ordering::Relaxed);
                     if prev == curr {
                         prev = ptr::null_mut();
                     } else {
@@ -72,9 +72,9 @@ impl Chain {
     fn push(&self, node: Node) {
         let node = Box::into_raw(Box::new(node));
         loop {
-            let head = self.head.load(Relaxed);
+            let head = self.head.load(Ordering::Relaxed);
             unsafe { (*node).next = head };
-            if self.head.compare_and_swap(head, node, Release) == head {
+            if self.head.compare_and_swap(head, node, Ordering::Release) == head {
                 break;
             }
         }

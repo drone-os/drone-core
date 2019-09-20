@@ -112,6 +112,7 @@ impl Parse for Reg {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
     let RegIndex {
         prev_macro,

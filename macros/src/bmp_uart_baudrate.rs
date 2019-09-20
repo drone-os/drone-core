@@ -26,7 +26,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         Ok(bmp) => {
             let value = LitInt::new(
                 u64::from(bmp.uart_baudrate),
-                IntSuffix::Usize,
+                IntSuffix::None,
                 Span::call_site(),
             );
             quote!(#value).into()

@@ -14,6 +14,6 @@ pub use crate::thr::ThrToken;
 
 #[doc(no_inline)]
 pub use crate::fib::{
-    ThrFiberFn as _, ThrFiberFuture as _, ThrFiberGen as _, ThrFiberStreamPulse as _,
+    ThrFiberClosure as _, ThrFiberFuture as _, ThrFiberGen as _, ThrFiberStreamPulse as _,
     ThrFiberStreamRing as _,
 };

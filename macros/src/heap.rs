@@ -57,6 +57,7 @@ impl Parse for Heap {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
     let Heap {
         heap_attrs,

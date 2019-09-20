@@ -106,6 +106,7 @@ impl Mode {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let DeriveInput {

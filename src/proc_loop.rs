@@ -5,7 +5,7 @@
 //! additions under the same name, in which case it should be used instead.
 
 use crate::{
-    fib::{Fiber, FiberState},
+    fib::{self, Fiber},
     future::fallback::*,
 };
 use core::{future::Future, pin::Pin};
@@ -16,7 +16,7 @@ type SessFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 ///
 /// This trait uses only associated items, thus it doesn't require the type to
 /// ever be instantiated.
-pub trait StackLoop: Send + 'static {
+pub trait ProcLoop: Send + 'static {
     /// Token type that allows suspending the task while waiting for a request
     /// result.
     type Context: Context<Self::Req, Self::ReqRes>;
@@ -33,15 +33,15 @@ pub trait StackLoop: Send + 'static {
     /// `union` of all possible request results.
     type ReqRes: Send + 'static;
 
-    /// The stack size in bytes.
+    /// Size of the process stack in bytes.
     const STACK_SIZE: usize;
 
     /// The commands runner.
     ///
-    /// See [`StackLoop`] for examples.
+    /// See [`ProcLoop`] for examples.
     fn run_cmd(cmd: Self::Cmd, context: Self::Context) -> Self::CmdRes;
 
-    /// Runs on stack creation.
+    /// Runs on the process creation.
     #[inline]
     fn on_create() {}
 
@@ -49,26 +49,23 @@ pub trait StackLoop: Send + 'static {
     #[inline]
     fn on_enter() {}
 
-    /// Runs on stack destruction.
+    /// Runs on the process destruction.
     #[inline]
     fn on_drop() {}
 }
 
-/// A session type for the synchronous command loop [`StackLoop`].
+/// A session type for the synchronous command loop [`ProcLoop`].
 ///
 /// A type that implements this trait should wrap the fiber for the command
 /// loop.
 pub trait Sess: Send {
     /// The command loop interface.
-    type StackLoop: StackLoop;
+    type ProcLoop: ProcLoop;
 
     /// Fiber that runs the command loop.
     type Fiber: Fiber<
-            Input = In<<Self::StackLoop as StackLoop>::Cmd, <Self::StackLoop as StackLoop>::ReqRes>,
-            Yield = Out<
-                <Self::StackLoop as StackLoop>::Req,
-                <Self::StackLoop as StackLoop>::CmdRes,
-            >,
+            Input = In<<Self::ProcLoop as ProcLoop>::Cmd, <Self::ProcLoop as ProcLoop>::ReqRes>,
+            Yield = Out<<Self::ProcLoop as ProcLoop>::Req, <Self::ProcLoop as ProcLoop>::CmdRes>,
             Return = !,
         > + Send;
 
@@ -81,18 +78,18 @@ pub trait Sess: Send {
     /// Returns a future that will return a result for the request `req`.
     fn run_req(
         &mut self,
-        req: <Self::StackLoop as StackLoop>::Req,
-    ) -> SessFuture<'_, Result<<Self::StackLoop as StackLoop>::ReqRes, Self::Error>>;
+        req: <Self::ProcLoop as ProcLoop>::Req,
+    ) -> SessFuture<'_, Result<<Self::ProcLoop as ProcLoop>::ReqRes, Self::Error>>;
 
     /// Returns a future that will return a result for the command `cmd`.
     fn cmd(
         &mut self,
-        cmd: <Self::StackLoop as StackLoop>::Cmd,
-    ) -> SessFuture<'_, Result<<Self::StackLoop as StackLoop>::CmdRes, Self::Error>> {
+        cmd: <Self::ProcLoop as ProcLoop>::Cmd,
+    ) -> SessFuture<'_, Result<<Self::ProcLoop as ProcLoop>::CmdRes, Self::Error>> {
         let mut input = In { cmd };
         Box::pin(asyn(move || {
             loop {
-                let FiberState::Yielded(output) = self.fib().resume(input);
+                let fib::Yielded(output) = self.fib().resume(input);
                 input = match output {
                     Out::Req(req) => In {
                         req_res: awt!(self.run_req(req))?,

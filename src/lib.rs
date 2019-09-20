@@ -1,4 +1,18 @@
 //! The core crate for Drone, an Embedded Operating System.
+//!
+//! # Documentation
+//!
+//! - [Drone Book](https://book.drone-os.com/)
+//! - [API documentation](https://docs.rs/drone-core/0.10.0)
+//!
+//! # Usage
+//!
+//! Place the following to the Cargo.toml:
+//!
+//! ```toml
+//! [dependencies]
+//! drone-core = { version = "0.10.0" }
+//! ```
 
 #![feature(alloc_prelude)]
 #![feature(allocator_api)]
@@ -25,7 +39,6 @@
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
     clippy::cast_sign_loss,
-    clippy::enum_glob_use,
     clippy::module_name_repetitions,
     clippy::precedence,
     clippy::type_repetition_in_bounds,
@@ -45,8 +58,8 @@ pub mod io;
 pub mod mem;
 pub mod periph;
 pub mod prelude;
+pub mod proc_loop;
 pub mod reg;
-pub mod stack_loop;
 pub mod sync;
 pub mod thr;
 pub mod token;

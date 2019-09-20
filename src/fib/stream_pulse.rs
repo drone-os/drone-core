@@ -1,5 +1,5 @@
 use crate::{
-    fib::{Fiber, FiberState},
+    fib::{self, Fiber},
     sync::spsc::pulse::{channel, Receiver, SendError},
     thr::prelude::*,
 };
@@ -121,8 +121,8 @@ where
                 break;
             }
             match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-                FiberState::Yielded(None) => {}
-                FiberState::Yielded(Some(pulses)) => match tx.send(pulses) {
+                fib::Yielded(None) => {}
+                fib::Yielded(Some(pulses)) => match tx.send(pulses) {
                     Ok(()) => {}
                     Err(SendError::Canceled) => {
                         break;
@@ -135,7 +135,7 @@ where
                         }
                     },
                 },
-                FiberState::Complete(value) => {
+                fib::Complete(value) => {
                     match convert(value) {
                         Ok(None) => {}
                         Ok(Some(pulses)) => match tx.send(pulses) {

@@ -1,4 +1,4 @@
-use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK};
+use super::{Inner, COMPLETE, OPTION_BITS};
 use crate::sync::spsc::{SpscInner, SpscInnerErr};
 use alloc::sync::Arc;
 use core::{
@@ -88,8 +88,8 @@ impl<E> Inner<E> {
     }
 
     fn take_try(&self, state: &mut usize) -> Option<Result<NonZeroUsize, ()>> {
-        let value = *state >> LOCK_BITS;
-        *state &= LOCK_MASK;
+        let value = *state >> OPTION_BITS;
+        *state ^= value << OPTION_BITS;
         if let Some(value) = NonZeroUsize::new(value) {
             Some(Ok(value))
         } else if *state & COMPLETE == 0 {

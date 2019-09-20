@@ -1,5 +1,5 @@
 use crate::{
-    fib::{Fiber, FiberState},
+    fib::{self, Fiber},
     sync::spsc::ring::{channel, Receiver, SendError, SendErrorKind},
     thr::prelude::*,
 };
@@ -181,8 +181,8 @@ where
                 break;
             }
             match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-                FiberState::Yielded(None) => {}
-                FiberState::Yielded(Some(value)) => match tx.send(value) {
+                fib::Yielded(None) => {}
+                fib::Yielded(Some(value)) => match tx.send(value) {
                     Ok(()) => {}
                     Err(SendError { value, kind }) => match kind {
                         SendErrorKind::Canceled => {
@@ -197,7 +197,7 @@ where
                         },
                     },
                 },
-                FiberState::Complete(value) => {
+                fib::Complete(value) => {
                     match convert(value) {
                         Ok(None) => {}
                         Ok(Some(value)) => match tx.send(value) {
@@ -248,12 +248,12 @@ where
                 break;
             }
             match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-                FiberState::Yielded(None) => {}
-                FiberState::Yielded(Some(value)) => match tx.send_overwrite(value) {
+                fib::Yielded(None) => {}
+                fib::Yielded(Some(value)) => match tx.send_overwrite(value) {
                     Ok(()) => (),
                     Err(_) => break,
                 },
-                FiberState::Complete(value) => {
+                fib::Complete(value) => {
                     match convert(value) {
                         Ok(None) => {}
                         Ok(Some(value)) => {

@@ -21,14 +21,13 @@ use core::{
 };
 
 /// Maximum capacity of the channel.
-pub const MAX_CAPACITY: usize = 1 << size_of::<usize>() * 8 - LOCK_BITS;
+pub const MAX_CAPACITY: usize = 1 << size_of::<usize>() as u32 * 8 - OPTION_BITS;
 
-const LOCK_MASK: usize = (1 << LOCK_BITS) - 1;
-const LOCK_BITS: usize = 3;
 #[allow(clippy::identity_op)]
 const TX_WAKER_STORED: usize = 1 << 0;
 const RX_WAKER_STORED: usize = 1 << 1;
 const COMPLETE: usize = 1 << 2;
+const OPTION_BITS: u32 = 3;
 
 struct Inner<E> {
     state: AtomicUsize,

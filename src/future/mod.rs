@@ -5,26 +5,26 @@
 //! should be initialized with [`future::init`]. There are two ways to use
 //! `async`/`await` in Drone applications:
 //!
-//! 1. The preferred way is to use `drone-async-await` crate as a dependency.
-//! Place the following to the Cargo.toml:
+//! 1. The preferred way is to use `libcore-drone` crate as a dependency. Place
+//!    the following to the Cargo.toml:
 //!
-//! ```toml
-//! [dependencies]
-//! core = { package = "drone-async-await", version = "0.9" }
-//! ```
+//!    ```toml
+//!    [dependencies]
+//!    core = { package = "libcore-drone", version = "0.10.0" }
+//!    ```
 //!
-//! This way you can use native Rust `async`/`await` syntax.
+//!    This way you can use native Rust `async`/`await` syntax.
 //!
-//! 2. Without `drone-async-await`, attempting to use `.await` will result in
-//! the following errors:
+//! 2. Without `libcore-drone`, attempting to use `.await` will result in the
+//!    following errors:
 //!
-//! ```text
-//! error[E0433]: failed to resolve: could not find `poll_with_tls_context` in `future`
-//! error[E0433]: failed to resolve: could not find `from_generator` in `future`
-//! ```
+//!    ```text
+//!    error[E0433]: failed to resolve: could not find `poll_with_tls_context` in `future`
+//!    error[E0433]: failed to resolve: could not find `from_generator` in `future`
+//!    ```
 //!
-//! You can use [`future::fallback`] module instead. Refer the module
-//! documentation for examples.
+//!    You can use [`future::fallback`] module instead. Refer the module
+//!    documentation for examples.
 
 pub mod fallback;
 
@@ -37,7 +37,7 @@ use core::{
     future::Future,
     mem::transmute,
     pin::Pin,
-    sync::atomic::{AtomicUsize, Ordering::*},
+    sync::atomic::{AtomicUsize, Ordering},
     task::Poll,
 };
 
@@ -47,7 +47,7 @@ static LOCAL_TASK_FN: AtomicUsize = AtomicUsize::new(0);
 ///
 /// This function should be called before polling any future.
 pub fn init<T: Thread>() {
-    LOCAL_TASK_FN.store(local_task_fn::<T> as usize, Relaxed);
+    LOCAL_TASK_FN.store(local_task_fn::<T> as usize, Ordering::Relaxed);
 }
 
 /// Polls a future in the current task context.
@@ -59,7 +59,7 @@ where
 }
 
 fn local_task() -> &'static TaskCell {
-    let ptr = LOCAL_TASK_FN.load(Relaxed);
+    let ptr = LOCAL_TASK_FN.load(Ordering::Relaxed);
     if ptr == 0 {
         panic!("drone_core::future::init not called");
     } else {

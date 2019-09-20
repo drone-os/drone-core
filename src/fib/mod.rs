@@ -13,12 +13,14 @@
 //!
 //! # Basic Fibers
 //!
-//! A basic fiber can be created with [`fib::new`] or [`fib::new_fn`]:
+//! A basic fiber can be created with [`fib::new`], [`fib::new_fn`], or
+//! [`fib::new_once`]:
 //!
 //! ```
 //! # #![feature(generators)]
 //! use drone_core::fib;
 //!
+//! // A fiber based on a generator.
 //! // This is `impl Fiber<Input = (), Yield = i32, Return = i32>`
 //! let a = fib::new(|| {
 //!     // do some work and yield
@@ -29,22 +31,37 @@
 //!     3
 //! });
 //!
-//! // Use `fib::new_fn` when there are no `yield`s.
-//! // This is `impl Fiber<Input = (), Yield = !, Return = i32>`
+//! // A fiber based on an `FnMut` closure.
+//! // This is `impl Fiber<Input = (), Yield = i32, Return = i32>`
 //! let b = fib::new_fn(|| {
+//!     // check some condition
+//!     if true {
+//!         // do some work and yield
+//!         fib::Yielded(1)
+//!     } else {
+//!         // do some work and return
+//!         fib::Complete(2)
+//!     }
+//! });
+//!
+//! // A fiber based on an `FnOnce` closure.
+//! // This is `impl Fiber<Input = (), Yield = !, Return = i32>`
+//! let c = fib::new_once(|| {
 //!     // do some work and immediately return
 //!     4
 //! });
 //! ```
 //!
 //! A basic fiber can be attached to a thread with
-//! [`token.add(...)`](fib::ThrFiberGen::add) or
-//! [`token.add_fn(...)`](fib::ThrFiberFn::add_fn). Note that fibers that are
-//! directly attached to threads can't have yield and return values other than
-//! `()`.
+//! [`token.add(...)`](fib::ThrFiberGen::add),
+//! [`token.add_fn(...)`](fib::ThrFiberClosure::add_fn), or
+//! [`token.add_once(...)`](fib::ThrFiberClosure::add_once). Note that fibers
+//! that are directly attached to threads can't have yield and return values
+//! other than `()` or `!`.
 //!
 //! ```
 //! # #![feature(generators)]
+//! # #![feature(never_type)]
 //! # use drone_core::token::Token;
 //! # static mut THREADS: [Thr; 1] = [Thr::new(0)];
 //! # drone_core::thr!(use THREADS; struct Thr {} struct ThrLocal {});
@@ -62,8 +79,9 @@
 //! # }
 //! # fn main() {
 //! #     let thr = unsafe { Thrs::take() };
-//! use drone_core::thr::prelude::*;
+//! use drone_core::{fib, thr::prelude::*};
 //!
+//! // A fiber based on a generator.
 //! // This is `impl Fiber<Input = (), Yield = (), Return = ()>`
 //! thr.sys_tick.add(|| {
 //!     // do some work and yield
@@ -73,9 +91,16 @@
 //!     // do some work and return
 //! });
 //!
-//! // Use `add_fn` when there are no `yield`s.
-//! // This is `impl Fiber<Input = (), Yield = !, Return = ()>`
+//! // A fiber based on an `FnMut` closure.
+//! // This is `impl Fiber<Input = (), Yield = (), Return = !>`
 //! thr.sys_tick.add_fn(|| {
+//!     // do some work and yield
+//!     fib::Yielded::<(), !>(())
+//! });
+//!
+//! // A fiber based on an `FnOnce` closure.
+//! // This is `impl Fiber<Input = (), Yield = !, Return = ()>`
+//! thr.sys_tick.add_once(|| {
 //!     // do some work and immediately return
 //! });
 //! # }
@@ -148,12 +173,13 @@ mod stream_ring;
 
 pub use self::{
     chain::Chain,
-    closure::{new_fn, FiberFn, ThrFiberFn},
+    closure::{new_fn, new_once, FiberFn, FiberOnce, ThrFiberClosure},
     future::{FiberFuture, ThrFiberFuture},
     generator::{new, FiberGen, ThrFiberGen},
     stream_pulse::{FiberStreamPulse, ThrFiberStreamPulse, TryFiberStreamPulse},
     stream_ring::{FiberStreamRing, ThrFiberStreamRing, TryFiberStreamRing},
 };
+pub use FiberState::*;
 
 use core::pin::Pin;
 
@@ -222,9 +248,30 @@ pub trait FiberRoot: Send + 'static {
 ///
 /// The enum is returned from the [`Fiber::resume`] method and indicates the
 /// possible return value of a fiber.
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum FiberState<Y, R> {
     /// The fiber suspended with a value.
     Yielded(Y),
     /// The fiber completed with a return value.
     Complete(R),
+}
+
+impl<Y, R> FiberState<Y, R> {
+    /// Returns `true` if this is [`FiberState::Yielded`].
+    #[inline]
+    pub fn is_yielded(&self) -> bool {
+        match self {
+            FiberState::Yielded(_) => true,
+            FiberState::Complete(_) => false,
+        }
+    }
+
+    /// Returns `true` if this is [`FiberState::Complete`].
+    #[inline]
+    pub fn is_complete(&self) -> bool {
+        match self {
+            FiberState::Yielded(_) => false,
+            FiberState::Complete(_) => true,
+        }
+    }
 }

@@ -23,7 +23,7 @@ where
     type Return = G::Return;
 
     #[inline]
-    fn resume(self: Pin<&mut Self>, _input: ()) -> FiberState<G::Yield, G::Return> {
+    fn resume(self: Pin<&mut Self>, (): ()) -> FiberState<G::Yield, G::Return> {
         let gen = unsafe { self.map_unchecked_mut(|x| &mut x.0) };
         gen.resume().into()
     }

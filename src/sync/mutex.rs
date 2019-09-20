@@ -2,7 +2,7 @@ use core::{
     cell::UnsafeCell,
     fmt,
     ops::{Deref, DerefMut},
-    sync::atomic::{AtomicBool, Ordering::*},
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 /// A mutual exclusion primitive useful for protecting shared data.
@@ -100,7 +100,7 @@ impl<T: ?Sized> Mutex<T> {
     /// ```
     #[inline]
     pub fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
-        if self.state.swap(true, Acquire) {
+        if self.state.swap(true, Ordering::Acquire) {
             None
         } else {
             Some(MutexGuard { mutex: self })
@@ -181,7 +181,7 @@ impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
 impl<T: ?Sized> Drop for MutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
-        self.mutex.state.store(false, Release);
+        self.mutex.state.store(false, Ordering::Release);
     }
 }
 
@@ -263,27 +263,6 @@ mod tests {
             tx.send(()).unwrap();
         });
         rx.recv().unwrap();
-    }
-
-    #[test]
-    fn mutex_arc_access_in_unwind() {
-        let arc = Arc::new(Mutex::new(1));
-        let arc2 = arc.clone();
-        let _ = thread::spawn(move || -> () {
-            struct Unwinder {
-                i: Arc<Mutex<i32>>,
-            }
-            impl Drop for Unwinder {
-                fn drop(&mut self) {
-                    *self.i.try_lock().unwrap() += 1;
-                }
-            }
-            let _u = Unwinder { i: arc2 };
-            panic!();
-        })
-        .join();
-        let lock = arc.try_lock().unwrap();
-        assert_eq!(*lock, 2);
     }
 
     #[test]

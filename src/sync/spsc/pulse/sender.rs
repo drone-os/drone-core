@@ -1,4 +1,4 @@
-use super::{Inner, COMPLETE, LOCK_BITS, LOCK_MASK, RX_WAKER_STORED};
+use super::{Inner, COMPLETE, OPTION_BITS, RX_WAKER_STORED};
 use crate::sync::spsc::{SpscInner, SpscInnerErr};
 use alloc::sync::Arc;
 use core::{
@@ -101,11 +101,8 @@ impl<E> Inner<E> {
             if *state & COMPLETE != 0 {
                 return Err(SendError::Canceled);
             }
-            let lock = *state & LOCK_MASK;
-            *state = (*state as isize >> LOCK_BITS) as usize;
+            let pulses = pulses.checked_shl(OPTION_BITS).ok_or(SendError::Overflow)?;
             *state = state.checked_add(pulses).ok_or(SendError::Overflow)?;
-            *state <<= LOCK_BITS;
-            *state |= lock;
             Ok(*state)
         })
         .map(|state| {

@@ -3,6 +3,7 @@
 #![feature(integer_atomics)]
 
 use drone_core::{
+    fib,
     thr::{prelude::*, Thread},
     token::Token,
 };
@@ -13,7 +14,7 @@ use std::sync::{
 
 use drone_core::thr;
 
-static mut THREADS: [Thr; 2] = [Thr::new(0), Thr::new(1)];
+static mut THREADS: [Thr; 3] = [Thr::new(0), Thr::new(1), Thr::new(2)];
 
 thr! {
     use THREADS;
@@ -54,6 +55,7 @@ macro_rules! thr_num {
 
 thr_num!(Thr0, 0);
 thr_num!(Thr1, 1);
+thr_num!(Thr2, 2);
 
 struct Counter(Arc<AtomicI8>);
 
@@ -93,6 +95,31 @@ fn fiber_fn() {
     unsafe {
         let thr = Thr1::take();
         thr.add_fn(move || {
+            if inner.0.fetch_add(1, Relaxed) < 2 {
+                fib::Yielded(())
+            } else {
+                fib::Complete(())
+            }
+        });
+        assert_eq!(counter.load(Relaxed), 0);
+        thr.to_thr().fib_chain().drain();
+        assert_eq!(counter.load(Relaxed), 1);
+        thr.to_thr().fib_chain().drain();
+        assert_eq!(counter.load(Relaxed), 2);
+        thr.to_thr().fib_chain().drain();
+        assert_eq!(counter.load(Relaxed), -4);
+        thr.to_thr().fib_chain().drain();
+        assert_eq!(counter.load(Relaxed), -4);
+    }
+}
+
+#[test]
+fn fiber_once() {
+    let counter = Arc::new(AtomicI8::new(0));
+    let inner = Counter(Arc::clone(&counter));
+    unsafe {
+        let thr = Thr2::take();
+        thr.add_once(move || {
             inner.0.fetch_add(1, Relaxed);
         });
         assert_eq!(counter.load(Relaxed), 0);

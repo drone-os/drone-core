@@ -1,7 +1,7 @@
 use core::{
     alloc::Layout,
     ptr::{self, NonNull},
-    sync::atomic::{AtomicPtr, Ordering::*},
+    sync::atomic::{AtomicPtr, Ordering},
 };
 
 /// The set of free memory blocks.
@@ -10,14 +10,15 @@ use core::{
 /// list, using the first word of each unallocated region as a pointer to the
 /// next.
 pub struct Pool {
+    /// Block size. Doesn't change in the run-time.
+    size: usize,
+    /// Address of the byte past the last element. Doesn't change in the
+    /// run-time.
+    edge: *mut u8,
     /// Free List of previously allocated blocks.
     free: AtomicPtr<u8>,
-    /// Growing pointer to the inclusive left edge of the uninitialized area.
-    head: AtomicPtr<u8>,
-    /// Non-inclusive right edge of the pool.
-    edge: *mut u8,
-    /// Block size.
-    size: usize,
+    /// Pointer growing from the starting address until it reaches the `edge`.
+    uninit: AtomicPtr<u8>,
 }
 
 unsafe impl Sync for Pool {}
@@ -26,10 +27,10 @@ impl Pool {
     /// Creates a new `Pool`.
     pub const fn new(address: usize, size: usize, capacity: usize) -> Self {
         Self {
-            free: AtomicPtr::new(ptr::null_mut()),
-            head: AtomicPtr::new(address as *mut u8),
-            edge: (address + size * capacity) as *mut u8,
             size,
+            edge: (address + size * capacity) as *mut u8,
+            free: AtomicPtr::new(ptr::null_mut()),
+            uninit: AtomicPtr::new(address as *mut u8),
         }
     }
 
@@ -47,7 +48,7 @@ impl Pool {
     ///
     /// This operation is lock-free and has *O(1)* time complexity.
     pub fn alloc(&self) -> Option<NonNull<u8>> {
-        unsafe { self.alloc_free().or_else(|| self.alloc_head()) }
+        unsafe { self.alloc_free().or_else(|| self.alloc_uninit()) }
     }
 
     /// Deallocates the block referenced by `ptr`.
@@ -62,10 +63,10 @@ impl Pool {
     #[allow(clippy::cast_ptr_alignment)]
     pub unsafe fn dealloc(&self, ptr: NonNull<u8>) {
         loop {
-            let head = self.free.load(Acquire);
-            ptr::write(ptr.as_ptr() as *mut *mut u8, head);
+            let curr = self.free.load(Ordering::Acquire);
+            ptr::write(ptr.as_ptr() as *mut *mut u8, curr);
             let next = ptr.as_ptr() as *mut u8;
-            if self.free.compare_and_swap(head, next, AcqRel) == head {
+            if self.free.compare_and_swap(curr, next, Ordering::AcqRel) == curr {
                 break;
             }
         }
@@ -74,26 +75,26 @@ impl Pool {
     #[allow(clippy::cast_ptr_alignment)]
     unsafe fn alloc_free(&self) -> Option<NonNull<u8>> {
         loop {
-            let head = self.free.load(Acquire);
-            if head.is_null() {
+            let curr = self.free.load(Ordering::Acquire);
+            if curr.is_null() {
                 break None;
             }
-            let next = ptr::read(head as *const *mut u8);
-            if self.free.compare_and_swap(head, next, AcqRel) == head {
-                break Some(NonNull::new_unchecked(head));
+            let next = ptr::read(curr as *const *mut u8);
+            if self.free.compare_and_swap(curr, next, Ordering::AcqRel) == curr {
+                break Some(NonNull::new_unchecked(curr));
             }
         }
     }
 
-    unsafe fn alloc_head(&self) -> Option<NonNull<u8>> {
+    unsafe fn alloc_uninit(&self) -> Option<NonNull<u8>> {
         loop {
-            let head = self.head.load(Relaxed);
-            if head == self.edge {
+            let curr = self.uninit.load(Ordering::Relaxed);
+            if curr == self.edge {
                 break None;
             }
-            let next = head.add(self.size);
-            if self.head.compare_and_swap(head, next, Relaxed) == head {
-                break Some(NonNull::new_unchecked(head));
+            let next = curr.add(self.size);
+            if self.uninit.compare_and_swap(curr, next, Ordering::Relaxed) == curr {
+                break Some(NonNull::new_unchecked(curr));
             }
         }
     }

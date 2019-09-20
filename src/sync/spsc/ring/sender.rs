@@ -1,4 +1,4 @@
-use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK, RX_WAKER_STORED};
+use super::{Inner, COMPLETE, NUMBER_BITS, NUMBER_MASK, RX_WAKER_STORED};
 use crate::sync::spsc::{SpscInner, SpscInnerErr};
 use alloc::sync::Arc;
 use core::{
@@ -139,12 +139,12 @@ impl<T, E> Inner<T, E> {
             if *state & COMPLETE != 0 {
                 return Err(None);
             }
-            let count = Self::get_count(*state);
-            if count == self.buffer.capacity() {
-                let index = self.take_index(state, count);
+            let length = Self::get_length(*state);
+            if length == self.buffer.capacity() {
+                let index = self.take_index(state, length);
                 Ok((*state, index))
             } else {
-                let index = self.put_index(*state, count);
+                let index = self.put_index(*state, length);
                 Err(Some((*state, index)))
             }
         }) {
@@ -177,18 +177,18 @@ impl<T, E> Inner<T, E> {
     }
 
     fn put_index_try(&self, state: usize) -> Option<usize> {
-        let count = Self::get_count(state);
-        if count == self.buffer.capacity() {
+        let length = Self::get_length(state);
+        if length == self.buffer.capacity() {
             None
         } else {
-            Some(self.put_index(state, count))
+            Some(self.put_index(state, length))
         }
     }
 
-    fn put_index(&self, state: usize, count: usize) -> usize {
-        let begin = state >> INDEX_BITS & INDEX_MASK;
-        begin
-            .wrapping_add(count)
+    fn put_index(&self, state: usize, length: usize) -> usize {
+        let cursor = state >> NUMBER_BITS & NUMBER_MASK;
+        cursor
+            .wrapping_add(length)
             .wrapping_rem(self.buffer.capacity())
     }
 }

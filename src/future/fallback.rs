@@ -1,4 +1,4 @@
-//! Fallback syntax for `async`/`await` when `drone-async-await` crate is not
+//! Fallback syntax for `async`/`await` when `libcore-drone` crate is not
 //! available.
 //!
 //! The following snippet is written with native `async`/`await` syntax:

@@ -1,4 +1,4 @@
-use super::{Inner, COMPLETE, INDEX_BITS, INDEX_MASK};
+use super::{Inner, COMPLETE, NUMBER_BITS, NUMBER_MASK};
 use crate::sync::spsc::{SpscInner, SpscInnerErr};
 use alloc::sync::Arc;
 use core::{
@@ -70,18 +70,18 @@ impl<T, E> Drop for Receiver<T, E> {
 }
 
 impl<T, E> Inner<T, E> {
-    pub(super) fn take_index(&self, state: &mut usize, count: usize) -> usize {
-        let begin = *state >> INDEX_BITS & INDEX_MASK;
-        *state >>= INDEX_BITS << 1;
-        *state <<= INDEX_BITS;
-        *state |= begin.wrapping_add(1).wrapping_rem(self.buffer.capacity());
-        *state <<= INDEX_BITS;
-        *state |= count.wrapping_sub(1);
-        begin
+    pub(super) fn take_index(&self, state: &mut usize, length: usize) -> usize {
+        let cursor = *state >> NUMBER_BITS & NUMBER_MASK;
+        *state >>= NUMBER_BITS << 1;
+        *state <<= NUMBER_BITS;
+        *state |= cursor.wrapping_add(1).wrapping_rem(self.buffer.capacity());
+        *state <<= NUMBER_BITS;
+        *state |= length.wrapping_sub(1);
+        cursor
     }
 
-    pub(super) fn get_count(state: usize) -> usize {
-        state & INDEX_MASK
+    pub(super) fn get_length(state: usize) -> usize {
+        state & NUMBER_MASK
     }
 
     fn try_recv(&self) -> Result<Option<T>, E> {
@@ -100,9 +100,9 @@ impl<T, E> Inner<T, E> {
     }
 
     fn take_index_try(&self, state: &mut usize) -> Option<Result<usize, ()>> {
-        let count = Self::get_count(*state);
-        if count != 0 {
-            Some(Ok(self.take_index(state, count)))
+        let length = Self::get_length(*state);
+        if length != 0 {
+            Some(Ok(self.take_index(state, length)))
         } else if *state & COMPLETE == 0 {
             None
         } else {
