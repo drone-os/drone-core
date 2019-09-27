@@ -32,7 +32,7 @@ readme:
 
 # Bump crate versions
 version-bump version drone-version libcore-drone-version:
-	sed -i 's/\(docs\.rs\/drone-core\/\)[0-9]\+\(\.[0-9]\+\)\+/\1{{version}}/' \
+	sed -i "s/\(api\.drone-os\.com\/drone-core\/\)[0-9]\+\(\.[0-9]\+\)\+/\1$(echo {{version}} | sed 's/\(.*\)\.[0-9]\+/\1/')/" \
 		Cargo.toml src/lib.rs
 	sed -i '/\[.*\]/h;/version = ".*"/{x;s/\[package\]/version = "{{version}}"/;t;x}' \
 		Cargo.toml ctypes/Cargo.toml macros/Cargo.toml macros-core/Cargo.toml
@@ -54,3 +54,11 @@ publish:
 	cd macros && cargo publish
 	sleep 5
 	cargo publish
+
+# Publish the docs to api.drone-os.com
+publish-doc: doc
+	cp -rT target/doc ../drone-api/$(sed -n 's/.*api\.drone-os\.com\/\(.*\)"/\1/;T;p' Cargo.toml)
+	echo '<!DOCTYPE html><meta http-equiv="refresh" content="0; URL=./drone_core">' > \
+		../drone-api/$(sed -n 's/.*api\.drone-os\.com\/\(.*\)"/\1/;T;p' Cargo.toml)/index.html
+	dir=$(sed -n 's/.*api\.drone-os\.com\/\(.*\)"/\1/;T;p' Cargo.toml) && cd ../drone-api \
+		&& git add $dir && git commit -m "Docs for $dir"

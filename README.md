@@ -1,5 +1,4 @@
 [![crates.io](https://img.shields.io/crates/v/drone-core.svg)](https://crates.io/crates/drone-core)
-[![docs.rs](https://docs.rs/drone-core/badge.svg)](https://docs.rs/drone-core)
 ![maintenance](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 
 # drone-core
@@ -9,7 +8,7 @@ The core crate for Drone, an Embedded Operating System.
 ## Documentation
 
 - [Drone Book](https://book.drone-os.com/)
-- [API documentation](https://docs.rs/drone-core/0.10.0)
+- [API documentation](https://api.drone-os.com/drone-core/0.10)
 
 ## Usage
 
@@ -17,7 +16,7 @@ Place the following to the Cargo.toml:
 
 ```toml
 [dependencies]
-drone-core = { version = "0.10.0" }
+drone-core = { version = "0.10.1" }
 ```
 
 ## License

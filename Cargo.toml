@@ -3,12 +3,12 @@ members = ["ctypes", "macros", "macros-core"]
 
 [package]
 name = "drone-core"
-version = "0.10.0"
+version = "0.10.1"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/drone-os/drone-core"
 homepage = "https://www.drone-os.com/"
-documentation = "https://docs.rs/drone-core/0.10.0"
+documentation = "https://api.drone-os.com/drone-core/0.10"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 keywords = [
@@ -37,15 +37,12 @@ default = []
 std = ["futures-preview/std"]
 
 [dependencies.drone-ctypes]
-version = "=0.10.0"
+version = "=0.10.1"
 path = "ctypes"
 
 [dependencies.drone-core-macros]
-version = "=0.10.0"
+version = "=0.10.1"
 path = "macros"
 
 [dependencies]
 futures-preview = { version = "0.3.0-alpha", default-features = false }
-
-[package.metadata.docs.rs]
-default-target = "thumbv7em-none-eabihf"

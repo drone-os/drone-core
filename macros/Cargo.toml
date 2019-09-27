@@ -1,6 +1,6 @@
 [package]
 name = "drone-core-macros"
-version = "0.10.0"
+version = "0.10.1"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/drone-os/drone-core"
@@ -14,7 +14,7 @@ Procedural macros for drone-core.
 proc-macro = true
 
 [dependencies.drone-macros-core]
-version = "=0.10.0"
+version = "=0.10.1"
 path = "../macros-core"
 
 [dependencies.drone-config]
