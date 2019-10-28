@@ -11,7 +11,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! drone-core = { version = "0.10.1" }
+//! drone-core = { version = "0.10.2" }
 //! ```
 
 #![feature(alloc_prelude)]

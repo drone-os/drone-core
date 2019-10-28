@@ -3,7 +3,7 @@ members = ["ctypes", "macros", "macros-core"]
 
 [package]
 name = "drone-core"
-version = "0.10.1"
+version = "0.10.2"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/drone-os/drone-core"
@@ -37,11 +37,11 @@ default = []
 std = ["futures-preview/std"]
 
 [dependencies.drone-ctypes]
-version = "=0.10.1"
+version = "=0.10.2"
 path = "ctypes"
 
 [dependencies.drone-core-macros]
-version = "=0.10.1"
+version = "=0.10.2"
 path = "macros"
 
 [dependencies]

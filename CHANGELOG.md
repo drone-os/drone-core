@@ -13,6 +13,8 @@ Possible log types:
 
 ### Unreleased
 
+- [fixed] Accept `VAL` as a field name in `reg!` macro
+
 ### v0.10.1 (2019-09-27)
 
 - [fixed] Fix API documentation by moving to self-hosted https://api.drone-os.com

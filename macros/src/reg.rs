@@ -115,7 +115,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     } in &fields
     {
         let field_snk = ident.to_string().to_snake_case();
-        let field_psc = new_ident!("{}", ident.to_string().to_pascal_case());
+        let mut field_psc = ident.to_string().to_pascal_case();
+        if field_psc == "Val" {
+            field_psc.push('_');
+        }
+        let field_psc = new_ident!("{}", field_psc);
         let field_ident = new_ident!("{}", unkeywordize(field_snk.as_str().into()));
         imports.extend(traits.iter().cloned());
         struct_tokens.push(quote! {
