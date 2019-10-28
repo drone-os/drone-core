@@ -8,7 +8,7 @@
 #![deny(elided_lifetimes_in_paths)]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::module_name_repetitions, clippy::must_use_candidate)]
 
 mod cfg_features;
 mod macros;

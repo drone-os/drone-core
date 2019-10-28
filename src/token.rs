@@ -181,6 +181,8 @@ pub use drone_core_macros::unsafe_static_tokens;
 pub unsafe trait Token: Sized + Send + 'static {
     /// Creates the token instance.
     ///
+    /// # Safety
+    ///
     /// At most one instance of the token must ever exist. This invariant can't
     /// be expressed with Rust type-system, therefore the method is marked
     /// `unsafe`, and it is the caller responsibility to keep the invariant.

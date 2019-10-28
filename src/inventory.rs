@@ -284,6 +284,7 @@ impl<T: Item> Inventory<T, Count0> {
     }
 }
 
+#[allow(clippy::unused_self)]
 impl<T: Item, C> Inventory<T, C> {
     /// Returns a reference to [`Token`]`<T>`. While the reference exists, the
     /// item is always in its active state.

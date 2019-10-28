@@ -30,7 +30,6 @@
 #![feature(raw_vec_internals)]
 #![feature(result_map_or_else)]
 #![feature(slice_internals)]
-#![feature(todo_macro)]
 #![feature(untagged_unions)]
 #![deny(elided_lifetimes_in_paths)]
 #![warn(missing_docs)]
@@ -40,6 +39,8 @@
     clippy::cast_possible_wrap,
     clippy::cast_sign_loss,
     clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::needless_doctest_main,
     clippy::precedence,
     clippy::type_repetition_in_bounds,
     clippy::use_self

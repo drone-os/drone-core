@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 use crate::ffi::{c_char, libc::strlen, CStr};
 use alloc::borrow::{Borrow, Cow};
 use core::{
@@ -56,7 +58,6 @@ use core::{
 /// # Examples
 ///
 /// ```
-/// # fn main() {
 /// use drone_core::ffi::{c_char, CString};
 ///
 /// extern "C" fn my_printer(s: *const c_char) {}
@@ -67,7 +68,6 @@ use core::{
 /// unsafe {
 ///     my_printer(c_to_print.as_ptr());
 /// }
-/// # }
 /// ```
 ///
 /// # Safety

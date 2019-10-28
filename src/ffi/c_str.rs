@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 use crate::ffi::{c_char, libc::strlen, CString};
 use alloc::{borrow::Cow, rc::Rc, sync::Arc};
 use core::{
@@ -128,7 +130,6 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// # fn main() {
     /// use drone_core::ffi::{c_char, CStr};
     ///
     /// extern "C" fn my_string() -> *const c_char {
@@ -139,7 +140,6 @@ impl CStr {
     ///     let slice = CStr::from_ptr(my_string());
     ///     println!("string returned: {}", slice.to_str().unwrap());
     /// }
-    /// # }
     /// ```
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a Self {
         let len = strlen(ptr);

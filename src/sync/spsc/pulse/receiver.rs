@@ -69,6 +69,7 @@ impl<E> Drop for Receiver<E> {
     }
 }
 
+#[allow(clippy::unused_self)]
 impl<E> Inner<E> {
     fn try_recv<T>(
         &self,
