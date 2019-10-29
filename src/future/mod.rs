@@ -10,7 +10,7 @@
 //!
 //!    ```toml
 //!    [dependencies]
-//!    core = { package = "libcore-drone", version = "0.10.0" }
+//!    core = { package = "libcore-drone", version = "0.11.0" }
 //!    ```
 //!
 //!    This way you can use native Rust `async`/`await` syntax.

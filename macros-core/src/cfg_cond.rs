@@ -7,17 +7,17 @@ use syn::{
     Ident, LitStr, Token,
 };
 
-/// List of features for conditional compilation.
+/// List of conditional compilation clauses.
 #[derive(Default, Clone, Debug)]
-pub struct CfgFeatures {
-    /// CNF of features.
-    features: Vec<Vec<LitStr>>,
+pub struct CfgCond {
+    /// CNF of clauses.
+    clauses: Vec<Vec<(Ident, LitStr)>>,
     inverse: bool,
 }
 
-impl Parse for CfgFeatures {
+impl Parse for CfgCond {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let mut features = Vec::new();
+        let mut clauses = Vec::new();
         if input.peek(Token![#]) {
             input.parse::<Token![#]>()?;
             let input2;
@@ -35,76 +35,67 @@ impl Parse for CfgFeatures {
                 let mut last_comma = true;
                 while last_comma && !input4.is_empty() {
                     let ident = input4.parse::<Ident>()?;
-                    if ident != "feature" {
-                        return Err(input4.error("Unsupported attribute"));
-                    }
                     input4.parse::<Token![=]>()?;
-                    features.push(input4.parse()?);
+                    clauses.push((ident, input4.parse()?));
                     last_comma = input4.parse::<Option<Token![,]>>()?.is_some();
                 }
             } else {
-                if ident != "feature" {
-                    return Err(input3.error("Unsupported attribute"));
-                }
                 input3.parse::<Token![=]>()?;
-                features.push(input3.parse()?);
+                clauses.push((ident, input3.parse()?));
                 if !input3.is_empty() {
                     return Err(input3.error("Unsupported attribute"));
                 }
             }
         }
         Ok(Self {
-            features: if features.is_empty() {
+            clauses: if clauses.is_empty() {
                 vec![]
             } else {
-                vec![features]
+                vec![clauses]
             },
             inverse: false,
         })
     }
 }
 
-impl CfgFeatures {
+impl CfgCond {
     /// Copies `rhs` clauses into `self`.
     ///
     /// # Panics
     ///
-    /// If `rhs` or `self` is a result of [`CfgFeaturesExt::transpose`].
+    /// If `rhs` or `self` is a result of [`CfgCondExt::transpose`].
     pub fn add_clause(&mut self, rhs: &Self) {
         assert!(!self.inverse);
         assert!(!rhs.inverse);
-        self.features.append(&mut rhs.features.clone());
+        self.clauses.append(&mut rhs.clauses.clone());
     }
 
     /// Returns a `TokenStream` for conditional compilation.
     pub fn attrs(&self) -> Option<TokenStream> {
-        let Self { features, inverse } = self;
-        if features.is_empty() {
+        let Self { clauses, inverse } = self;
+        let tokens = clauses
+            .iter()
+            .map(|clauses| {
+                clauses
+                    .iter()
+                    .map(|(key, value)| quote!(#key = #value))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        if tokens.is_empty() {
             None
         } else if *inverse {
-            Some(quote! {
-                #[cfg(not(any(
-                    #(
-                        all(#(feature = #features),*)
-                    ),*
-                )))]
-            })
+            Some(quote!(#[cfg(not(any(#(all(#(#tokens),*)),*)))]))
         } else {
-            Some(quote! {
-                #(
-                    #[cfg(any(
-                        #(feature = #features),*
-                    ))]
-                )*
-            })
+            Some(quote!(#(#[cfg(any(#(#tokens),*))])*))
         }
     }
 
     /// Converts to DNF.
-    fn to_dnf(&self) -> Vec<Vec<LitStr>> {
+    fn to_dnf(&self) -> Vec<Vec<(Ident, LitStr)>> {
         assert!(!self.inverse);
         match self
-            .features
+            .clauses
             .iter()
             .map(Vec::as_slice)
             .collect::<Vec<_>>()
@@ -126,45 +117,42 @@ impl CfgFeatures {
     }
 }
 
-/// [`CfgFeatures`] helper extension trait for slices.
-pub trait CfgFeaturesExt<T: Clone> {
+/// [`CfgCond`] helper extension trait for slices.
+pub trait CfgCondExt<T: Clone> {
     /// Converts a sequence of `T` into a sequence of combinations of `T` for
-    /// each possible feature.
-    fn transpose(self) -> Vec<(CfgFeatures, Vec<T>)>;
+    /// each possible condition.
+    fn transpose(self) -> Vec<(CfgCond, Vec<T>)>;
 }
 
-impl<T: Clone> CfgFeaturesExt<T> for &[(CfgFeatures, T)] {
-    fn transpose(self) -> Vec<(CfgFeatures, Vec<T>)> {
-        let mut map: HashMap<Vec<LitStr>, Vec<T>> = HashMap::new();
+impl<T: Clone> CfgCondExt<T> for &[(CfgCond, T)] {
+    fn transpose(self) -> Vec<(CfgCond, Vec<T>)> {
+        let mut map: HashMap<_, Vec<_>> = HashMap::new();
         let mut default = Vec::new();
-        for (features, item) in self {
-            let features = features.to_dnf();
-            if features.is_empty() {
+        for (clauses, item) in self {
+            let clauses = clauses.to_dnf();
+            if clauses.is_empty() {
                 default.push(item.clone());
             } else {
-                for feature in features {
-                    map.entry(feature).or_default().push(item.clone());
+                for cond in clauses {
+                    map.entry(cond).or_default().push(item.clone());
                 }
             }
         }
         let mut result = Vec::new();
-        for (features, mut items) in map {
-            let features = CfgFeatures {
-                features: vec![features],
+        for (clauses, mut items) in map {
+            let clauses = CfgCond {
+                clauses: vec![clauses],
                 inverse: false,
             };
             items.append(&mut default.clone());
-            result.push((features, items));
+            result.push((clauses, items));
         }
-        let features = result
-            .iter()
-            .flat_map(|(x, _)| x.features.clone())
-            .collect();
-        let features = CfgFeatures {
-            features,
+        let clauses = result.iter().flat_map(|(x, _)| x.clauses.clone()).collect();
+        let clauses = CfgCond {
+            clauses,
             inverse: true,
         };
-        result.push((features, default));
+        result.push((clauses, default));
         result
     }
 }

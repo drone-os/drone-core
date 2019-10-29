@@ -1,4 +1,4 @@
-use drone_macros_core::{new_ident, unkeywordize, CfgFeatures, CfgFeaturesExt};
+use drone_macros_core::{new_ident, unkeywordize, CfgCond, CfgCondExt};
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use quote::quote;
@@ -27,13 +27,13 @@ struct Block {
 }
 
 struct Reg {
-    features: CfgFeatures,
+    features: CfgCond,
     ident: Ident,
     fields: Vec<Field>,
 }
 
 struct Field {
-    features: CfgFeatures,
+    features: CfgCond,
     ident: Ident,
 }
 
@@ -184,7 +184,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     let field_psc = new_ident!("{}", field_ident.to_string().to_pascal_case());
                     let field_ident = new_ident!("{}", unkeywordize(field_snk.clone().into()));
                     let block_reg_field_snk = new_ident!("{}_{}_{}", block_snk, reg_snk, field_snk);
-                    let mut features = CfgFeatures::default();
+                    let mut features = CfgCond::default();
                     features.add_clause(&reg_features);
                     features.add_clause(&field_features);
                     let field_attrs = &features.attrs();

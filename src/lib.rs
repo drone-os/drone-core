@@ -3,7 +3,7 @@
 //! # Documentation
 //!
 //! - [Drone Book](https://book.drone-os.com/)
-//! - [API documentation](https://api.drone-os.com/drone-core/0.10/)
+//! - [API documentation](https://api.drone-os.com/drone-core/0.11/)
 //!
 //! # Usage
 //!
@@ -11,7 +11,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! drone-core = { version = "0.10.2" }
+//! drone-core = { version = "0.11.0" }
 //! ```
 
 #![feature(alloc_prelude)]

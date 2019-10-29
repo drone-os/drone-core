@@ -10,11 +10,11 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions, clippy::must_use_candidate)]
 
-mod cfg_features;
+mod cfg_cond;
 mod macros;
 mod unkeywordize;
 
 pub use self::{
-    cfg_features::{CfgFeatures, CfgFeaturesExt},
+    cfg_cond::{CfgCond, CfgCondExt},
     unkeywordize::unkeywordize,
 };

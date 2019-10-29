@@ -1,11 +1,11 @@
 [package]
 name = "drone-ctypes"
-version = "0.10.2"
+version = "0.11.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/drone-os/drone-core"
 homepage = "https://www.drone-os.com/"
-documentation = "https://api.drone-os.com/drone-core/0.10/drone_ctypes/"
+documentation = "https://api.drone-os.com/drone-core/0.11/drone_ctypes/"
 license = "MIT OR Apache-2.0"
 description = """
 Platform-specific C types for Drone apps.

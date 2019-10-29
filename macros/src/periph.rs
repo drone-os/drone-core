@@ -1,4 +1,4 @@
-use drone_macros_core::{compile_error, new_ident, unkeywordize, CfgFeatures, CfgFeaturesExt};
+use drone_macros_core::{compile_error, new_ident, unkeywordize, CfgCond, CfgCondExt};
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use quote::quote;
@@ -23,7 +23,7 @@ struct Block {
 }
 
 struct Reg {
-    features: CfgFeatures,
+    features: CfgCond,
     ident: Ident,
     size: u8,
     traits: Vec<Ident>,
@@ -31,7 +31,7 @@ struct Reg {
 }
 
 struct Field {
-    features: CfgFeatures,
+    features: CfgCond,
     ident: Ident,
     traits: Vec<Ident>,
 }
@@ -230,7 +230,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         c_traits.push(new_ident!("C{}", ident));
                     }
                 }
-                let mut features = CfgFeatures::default();
+                let mut features = CfgCond::default();
                 features.add_clause(&reg_features);
                 features.add_clause(&field_features);
                 let field_attrs = &features.attrs();
