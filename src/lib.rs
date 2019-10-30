@@ -89,10 +89,6 @@ pub use drone_core_macros::reg;
 #[doc(inline)]
 pub use drone_core_macros::thr;
 
-/// Expands to `bmp.uart_baudrate` from the `Drone.toml`.
-#[doc(inline)]
-pub use drone_core_macros::bmp_uart_baudrate;
-
 #[prelude_import]
 #[allow(unused_imports)]
 use crate::prelude::*;

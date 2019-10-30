@@ -13,6 +13,10 @@ Possible log types:
 
 ### Unreleased
 
+- [removed] `bmp_uart_baudrate!` macro removed in favor of
+  `drone_cortex_m::itm::update_prescaler!` macro
+- [added] `periph!`, `periph_map!`, `periph_singular!` now accept arbitrary
+  condition compilation flags
 - [fixed] Accept `VAL` as a field name in `reg!` macro
 
 ### v0.10.1 (2019-09-27)
