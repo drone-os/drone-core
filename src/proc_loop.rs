@@ -8,7 +8,7 @@ use crate::{
     fib::{self, Fiber},
     future::fallback::*,
 };
-use core::{future::Future, pin::Pin};
+use core::{future::Future, mem::ManuallyDrop, pin::Pin};
 
 type SessFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
@@ -86,13 +86,13 @@ pub trait Sess: Send {
         &mut self,
         cmd: <Self::ProcLoop as ProcLoop>::Cmd,
     ) -> SessFuture<'_, Result<<Self::ProcLoop as ProcLoop>::CmdRes, Self::Error>> {
-        let mut input = In { cmd };
+        let mut input = In { cmd: ManuallyDrop::new(cmd) };
         Box::pin(asyn(move || {
             loop {
                 let fib::Yielded(output) = self.fib().resume(input);
                 input = match output {
                     Out::Req(req) => In {
-                        req_res: awt!(self.run_req(req))?,
+                        req_res: ManuallyDrop::new(awt!(self.run_req(req))?),
                     },
                     Out::CmdRes(res) => break Ok(res),
                 }
@@ -120,12 +120,11 @@ pub trait Context<Req, ReqRes>: Copy + 'static {
 /// [`Sess::Fiber`] input.
 ///
 /// See also [`Out`].
-#[allow(unions_with_drop_fields)]
 pub union In<Cmd, ReqRes> {
     /// Command to run by the command loop.
-    cmd: Cmd,
+    cmd: ManuallyDrop<Cmd>,
     /// Result for the last request.
-    req_res: ReqRes,
+    req_res: ManuallyDrop<ReqRes>,
 }
 
 /// [`Sess::Fiber`] output.
@@ -145,7 +144,7 @@ impl<Cmd, ReqRes> In<Cmd, ReqRes> {
     ///
     /// Whether the input is really a command object is unchecked.
     pub unsafe fn into_cmd(self) -> Cmd {
-        self.cmd
+        ManuallyDrop::into_inner(self.cmd)
     }
 
     /// Interprets the input as a request result.
@@ -154,6 +153,6 @@ impl<Cmd, ReqRes> In<Cmd, ReqRes> {
     ///
     /// Whether the input is really a request result object is unchecked.
     pub unsafe fn into_req_res(self) -> ReqRes {
-        self.req_res
+        ManuallyDrop::into_inner(self.req_res)
     }
 }
