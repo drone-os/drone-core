@@ -108,8 +108,8 @@
 //! | [`hold`](reg::RegRef::hold)               |            |          |
 //! | [`load_val`](reg::RReg::load_val)         | read       |          |
 //! | [`load`](reg::RReg::load)                 | read       |          |
-//! | [`to_ptr`](reg::RReg::to_ptr)             | read       |          |
-//! | [`to_mut_ptr`](reg::WReg::to_mut_ptr)     | write      |          |
+//! | [`as_ptr`](reg::RReg::as_ptr)             | read       |          |
+//! | [`as_mut_ptr`](reg::WReg::as_mut_ptr)     | write      |          |
 //! | [`store`](reg::WRegUnsync::store)         | write      | Urt      |
 //! | [`store`](reg::WRegAtomic::store)         | write      | Srt, Crt |
 //! | [`store_val`](reg::WRegUnsync::store_val) | write      | Urt      |
@@ -418,7 +418,7 @@ pub trait RReg<T: RegTag>: Reg<T> {
     /// See also [`load`](RReg::load).
     #[inline]
     fn load_val(&self) -> Self::Val {
-        unsafe { Self::val_from(read_volatile(self.to_ptr())) }
+        unsafe { Self::val_from(read_volatile(self.as_ptr())) }
     }
 
     /// Reads the value from the register memory to the exposed value type.
@@ -434,9 +434,9 @@ pub trait RReg<T: RegTag>: Reg<T> {
 
     /// Returns a raw pointer to the register memory.
     ///
-    /// See also [`to_mut_ptr`](WReg::to_mut_ptr).
+    /// See also [`as_mut_ptr`](WReg::as_mut_ptr).
     #[inline]
-    fn to_ptr(&self) -> *const <Self::Val as Bitfield>::Bits {
+    fn as_ptr(&self) -> *const <Self::Val as Bitfield>::Bits {
         Self::ADDRESS as *const <Self::Val as Bitfield>::Bits
     }
 }
@@ -445,9 +445,9 @@ pub trait RReg<T: RegTag>: Reg<T> {
 pub trait WReg<T: RegTag>: Reg<T> {
     /// Returns a mutable raw pointer to the register memory.
     ///
-    /// See also [`to_ptr`](RReg::to_ptr).
+    /// See also [`as_ptr`](RReg::as_ptr).
     #[inline]
-    fn to_mut_ptr(&self) -> *mut <Self::Val as Bitfield>::Bits {
+    fn as_mut_ptr(&self) -> *mut <Self::Val as Bitfield>::Bits {
         Self::ADDRESS as *mut <Self::Val as Bitfield>::Bits
     }
 }
@@ -530,18 +530,18 @@ where
         ) -> &'b mut <Self as RegRef<'a, Urt>>::Hold,
     {
         unsafe {
-            write_volatile(self.to_mut_ptr(), f(&mut self.default()).val().bits());
+            write_volatile(self.as_mut_ptr(), f(&mut self.default()).val().bits());
         }
     }
 
     #[inline]
     fn store_val(&mut self, val: Self::Val) {
-        unsafe { write_volatile(self.to_mut_ptr(), val.bits()) };
+        unsafe { write_volatile(self.as_mut_ptr(), val.bits()) };
     }
 
     #[inline]
     fn reset(&'a mut self) {
-        unsafe { write_volatile(self.to_mut_ptr(), self.default_val().bits()) };
+        unsafe { write_volatile(self.as_mut_ptr(), self.default_val().bits()) };
     }
 }
 
@@ -564,7 +564,7 @@ where
 
     #[inline]
     fn store_val(&self, val: Self::Val) {
-        unsafe { write_volatile(self.to_mut_ptr(), val.bits()) };
+        unsafe { write_volatile(self.as_mut_ptr(), val.bits()) };
     }
 
     #[inline]
@@ -585,7 +585,7 @@ where
         ) -> &'b mut <Self as RegRef<'a, Urt>>::Hold,
     {
         unsafe {
-            write_volatile(self.to_mut_ptr(), f(&mut self.load()).val().bits());
+            write_volatile(self.as_mut_ptr(), f(&mut self.load()).val().bits());
         }
     }
 }

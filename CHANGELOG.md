@@ -13,6 +13,7 @@ Possible log types:
 
 ### Unreleased
 
+- [changed] Renamed `to_ptr`/`to_mut_ptr` to `as_ptr`/`as_mut_ptr`
 - [removed] `bmp_uart_baudrate!` macro removed in favor of
   `drone_cortex_m::itm::update_prescaler!` macro
 - [added] `periph!`, `periph_map!`, `periph_singular!` now accept arbitrary
