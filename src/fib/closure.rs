@@ -73,10 +73,11 @@ where
     type Return = R;
 
     fn resume(self: Pin<&mut Self>, (): ()) -> FiberState<!, R> {
-        FiberState::Complete(match self.get_mut().0.take() {
-            Some(f) => f(),
-            None => panic!("fiber resumed after completion"),
-        })
+        if let Some(f) = self.get_mut().0.take() {
+            FiberState::Complete(f())
+        } else {
+            panic!("fiber resumed after completion");
+        }
     }
 }
 

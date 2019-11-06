@@ -13,6 +13,8 @@ Possible log types:
 
 ### Unreleased
 
+### v0.11.0 (2019-11-06)
+
 - [changed] Renamed `to_ptr`/`to_mut_ptr` to `as_ptr`/`as_mut_ptr`
 - [removed] `bmp_uart_baudrate!` macro removed in favor of
   `drone_cortex_m::itm::update_prescaler!` macro
