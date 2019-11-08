@@ -34,7 +34,7 @@ maintenance = { status = "actively-developed" }
 
 [features]
 default = []
-std = ["futures-preview/std"]
+std = ["futures/std"]
 
 [dependencies.drone-ctypes]
 version = "=0.11.0"
@@ -45,4 +45,4 @@ version = "=0.11.0"
 path = "macros"
 
 [dependencies]
-futures-preview = { version = "0.3.0-alpha", default-features = false }
+futures = { version = "0.3.0", default-features = false }

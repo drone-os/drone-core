@@ -13,6 +13,9 @@ Possible log types:
 
 ### Unreleased
 
+- [changed] Using the newly released `futures` 0.3 instead of `futures-preview`
+  0.3-alpha
+
 ### v0.11.0 (2019-11-06)
 
 - [changed] Renamed `to_ptr`/`to_mut_ptr` to `as_ptr`/`as_mut_ptr`

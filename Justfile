@@ -56,7 +56,7 @@ publish:
 
 # Publish the docs to api.drone-os.com
 publish-doc: doc
-	dir=$(sed -n 's/.*api\.drone-os\.com\/\(.*\)"/\1/;T;p' Cargo.toml) \
+	dir=$(sed -n 's/.*api\.drone-os\.com\/\(.*\/.*\)\/.*\/"/\1/;T;p' Cargo.toml) \
 		&& rm -rf ../drone-api/$dir \
 		&& cp -rT target/doc ../drone-api/$dir \
 		&& echo '<!DOCTYPE html><meta http-equiv="refresh" content="0; URL=./drone_core">' > ../drone-api/$dir/index.html \
