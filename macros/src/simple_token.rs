@@ -1,7 +1,6 @@
-use drone_macros_core::new_ident;
 use inflector::Inflector;
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{
     parse::{Parse, ParseStream, Result},
     parse_macro_input, Attribute, Ident, Token, Visibility,
@@ -26,7 +25,7 @@ impl Parse for SimpleToken {
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
     let SimpleToken { attrs, vis, ident } = parse_macro_input!(input as SimpleToken);
-    let wrapper = new_ident!("__{}_simple_token", ident.to_string().to_snake_case());
+    let wrapper = format_ident!("__{}_simple_token", ident.to_string().to_snake_case());
     let expanded = quote! {
         mod #wrapper {
             use super::*;

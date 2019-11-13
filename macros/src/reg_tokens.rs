@@ -1,7 +1,7 @@
-use drone_macros_core::{new_ident, unkeywordize};
+use drone_macros_core::unkeywordize;
 use inflector::Inflector;
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{
     braced,
     parse::{Parse, ParseStream, Result},
@@ -112,7 +112,7 @@ impl Parse for Reg {
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
     let RegIndex {
         prev_macro,
@@ -135,13 +135,14 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     } in blocks
     {
         let block_snk = ident.to_string().to_snake_case();
-        let block_ident = new_ident!("{}", unkeywordize(block_snk.as_str().into()));
+        let block_ident = format_ident!("{}", unkeywordize(&block_snk));
         let mut block_tokens = Vec::new();
         for Reg { attrs, ident } in regs {
-            let reg_psc = new_ident!("{}", ident.to_string().to_pascal_case());
+            let reg_psc = format_ident!("{}", ident.to_string().to_pascal_case());
             let reg_snk = ident.to_string().to_snake_case();
-            let reg_long = new_ident!("{}_{}", block_snk, reg_snk);
-            let reg_short = new_ident!("{}", unkeywordize(reg_snk.as_str().into()));
+            let reg_long = format_ident!("{}_{}", block_snk, reg_snk);
+            let reg_short = format_ident!("{}", unkeywordize(&reg_snk));
+            let macro_root_path = macro_root_path.iter();
             block_tokens.push(quote! {
                 pub use #root_path::#reg_long as #reg_short;
                 pub use #root_path::#reg_long::Reg as #reg_psc;
@@ -208,7 +209,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 { $($def:tt)* }
                 { $($ctor:tt)* }
             ) => {
-                #(#macro_tokens)*
+                #macro_tokens
             };
         }
     });

@@ -25,6 +25,6 @@ path = "../../drone/config"
 [dependencies]
 Inflector = "0.11"
 if_chain = "1"
-proc-macro2 = { version = "0.4", features = ["nightly"] }
-quote = "0.6"
-syn = { version = "0.15", features = ["full"] }
+proc-macro2 = "1"
+quote = "1"
+syn = "1"

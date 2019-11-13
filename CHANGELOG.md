@@ -13,6 +13,7 @@ Possible log types:
 
 ### Unreleased
 
+- [changed] Upgraded to `syn` 1.0
 - [changed] Using the newly released `futures` 0.3 instead of `futures-preview`
   0.3-alpha
 

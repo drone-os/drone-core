@@ -1,7 +1,6 @@
-use drone_macros_core::new_ident;
 use inflector::Inflector;
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{
     braced,
     parse::{Parse, ParseStream, Result},
@@ -61,17 +60,17 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         ident,
         tokens,
     } = parse_macro_input!(input as StaticTokens);
-    let wrapper = new_ident!("__{}_static_tokens", ident.to_string().to_snake_case());
+    let wrapper = format_ident!("__{}_static_tokens", ident.to_string().to_snake_case());
     let mut outer_tokens = Vec::new();
     let mut def_tokens = Vec::new();
     let mut ctor_tokens = Vec::new();
     for Token { attrs, ident, ty } in tokens {
-        let wrapper = new_ident!(
+        let wrapper = format_ident!(
             "__{}_nested_static_tokens",
             ident.to_string().to_snake_case()
         );
-        let struct_ident = new_ident!("{}Token", ident.to_string().to_pascal_case());
-        let field_ident = new_ident!("{}", ident.to_string().to_snake_case());
+        let struct_ident = format_ident!("{}Token", ident.to_string().to_pascal_case());
+        let field_ident = format_ident!("{}", ident.to_string().to_snake_case());
         outer_tokens.push(quote! {
             mod #wrapper {
                 use super::*;

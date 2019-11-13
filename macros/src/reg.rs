@@ -1,7 +1,7 @@
-use drone_macros_core::{new_ident, unkeywordize};
+use drone_macros_core::unkeywordize;
 use inflector::Inflector;
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use std::collections::HashSet;
 use syn::{
     braced,
@@ -38,7 +38,7 @@ impl Parse for Reg {
         let ident = input.parse()?;
         input.parse::<Token![;]>()?;
         let address = input.parse()?;
-        let size = input.parse::<LitInt>()?.value() as u8;
+        let size = input.parse::<LitInt>()?.base10_parse()?;
         let reset = input.parse()?;
         let mut traits = Vec::new();
         while !input.peek(Token![;]) {
@@ -98,10 +98,10 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         traits,
         fields,
     } = parse_macro_input!(input as Reg);
-    let t = new_ident!("_T");
+    let t = format_ident!("_T");
 
     let attrs = &attrs;
-    let val_ty = new_ident!("u{}", size);
+    let val_ty = format_ident!("u{}", size);
     let mut imports = traits.iter().cloned().collect::<HashSet<_>>();
     let mut tokens = Vec::new();
     let mut struct_tokens = Vec::new();
@@ -119,8 +119,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         if field_psc == "Val" {
             field_psc.push('_');
         }
-        let field_psc = new_ident!("{}", field_psc);
-        let field_ident = new_ident!("{}", unkeywordize(field_snk.as_str().into()));
+        let field_psc = format_ident!("{}", field_psc);
+        let field_ident = format_ident!("{}", unkeywordize(&field_snk));
         imports.extend(traits.iter().cloned());
         struct_tokens.push(quote! {
             #(#attrs)*
@@ -162,7 +162,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 impl<#t: ::drone_core::reg::tag::RegTag> #ident<#t> for #field_psc<#t> {}
             });
         }
-        if width.value() == 1 {
+        if width.base10_digits() == "1" {
             tokens.push(quote! {
                 impl<#t> ::drone_core::reg::field::RegFieldBit<#t> for #field_psc<#t>
                 where
@@ -185,9 +185,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 });
             }
             if traits.iter().any(|name| name == "WWRegField") {
-                let set_field = new_ident!("set_{}", field_snk);
-                let clear_field = new_ident!("clear_{}", field_snk);
-                let toggle_field = new_ident!("toggle_{}", field_snk);
+                let set_field = format_ident!("set_{}", field_snk);
+                let clear_field = format_ident!("clear_{}", field_snk);
+                let toggle_field = format_ident!("toggle_{}", field_snk);
                 tokens.push(quote! {
                     impl<'a, #t: ::drone_core::reg::tag::RegTag> Hold<'a, #t> {
                         #(#attrs)*
@@ -245,7 +245,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 });
             }
             if traits.iter().any(|name| name == "WWRegField") {
-                let write_field = new_ident!("write_{}", field_snk);
+                let write_field = format_ident!("write_{}", field_snk);
                 tokens.push(quote! {
                     impl<'a, #t: ::drone_core::reg::tag::RegTag> Hold<'a, #t> {
                         #(#attrs)*
@@ -272,7 +272,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             impl<#t: ::drone_core::reg::tag::RegTag> #ident<#t> for Reg<#t> {}
         });
     }
-    let reg_full = new_ident!(
+    let reg_full = format_ident!(
         "{}_{}",
         block.to_string().to_snake_case(),
         ident.to_string().to_snake_case()
@@ -280,6 +280,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let imports = if imports.is_empty() {
         quote!()
     } else {
+        let imports = imports.iter();
         quote!(use super::{#(#imports),*};)
     };
 

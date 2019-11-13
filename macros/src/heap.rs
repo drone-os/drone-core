@@ -5,7 +5,7 @@ use proc_macro2::Span;
 use quote::quote;
 use syn::{
     parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, ExprPath, Ident, IntSuffix, LitInt, Token, Visibility,
+    parse_macro_input, Attribute, ExprPath, Ident, LitInt, Token, Visibility,
 };
 
 struct Heap {
@@ -74,9 +74,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let mut pools_tokens = Vec::new();
     let mut pointer = config.memory.ram.origin + config.memory.ram.size - config.heap.size;
     for pool in &pools {
-        let block = LitInt::new(pool.block.into(), IntSuffix::Usize, Span::call_site());
-        let capacity = LitInt::new(pool.capacity.into(), IntSuffix::Usize, Span::call_site());
-        let address = LitInt::new(pointer.into(), IntSuffix::Usize, Span::call_site());
+        let block = LitInt::new(&pool.block.to_string(), Span::call_site());
+        let capacity = LitInt::new(&pool.capacity.to_string(), Span::call_site());
+        let address = LitInt::new(&pointer.to_string(), Span::call_site());
         pools_tokens.push(quote! {
             ::drone_core::heap::Pool::new(#address, #block, #capacity)
         });
@@ -85,7 +85,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let hook_tokens = if let Some(hooks) = hooks {
         let [(alloc_attrs, alloc_path), (dealloc_attrs, dealloc_path), (grow_in_place_attrs, grow_in_place_path), (shrink_in_place_attrs, shrink_in_place_path)] =
             hooks;
-        Some(quote! {
+        vec![quote! {
             #(#alloc_attrs)*
             #[inline]
             fn alloc_hook(
@@ -121,9 +121,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             ) {
                 #shrink_in_place_path(layout, new_size)
             }
-        })
+        }]
     } else {
-        None
+        vec![]
     };
     let pools_len = pools.len();
 

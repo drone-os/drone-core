@@ -1,6 +1,5 @@
-use drone_macros_core::new_ident;
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{
     braced,
     parse::{Parse, ParseStream, Result},
@@ -98,7 +97,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         local_ident,
         local_fields,
     } = parse_macro_input!(input as Thr);
-    let local = new_ident!("Local");
+    let local = format_ident!("Local");
     let mut thr_tokens = Vec::new();
     let mut thr_ctor_tokens = Vec::new();
     let mut local_tokens = Vec::new();

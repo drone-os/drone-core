@@ -2,7 +2,6 @@
 //!
 //! [drone-core]: https://github.com/drone-os/drone-core
 
-#![recursion_limit = "512"]
 #![deny(elided_lifetimes_in_paths)]
 #![warn(clippy::pedantic)]
 #![allow(

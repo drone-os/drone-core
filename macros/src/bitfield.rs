@@ -1,13 +1,13 @@
-use drone_macros_core::{compile_error, new_ident};
+use drone_macros_core::compile_error;
 use if_chain::if_chain;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream, Result},
-    parse_macro_input, Data, DeriveInput, Fields, Ident, IntSuffix, LitInt, LitStr, PathArguments,
-    Token, Type,
+    parse_macro_input, Data, DeriveInput, Fields, Ident, LitInt, LitStr, PathArguments, Token,
+    Type,
 };
 
 #[derive(Default)]
@@ -123,7 +123,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     });
     let Bitfield { fields } = match bitfield {
         Some(attr) => {
-            let input = attr.tts.into();
+            let input = attr.tokens.into();
             parse_macro_input!(input as Bitfield)
         }
         None => Bitfield::default(),
@@ -152,15 +152,15 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
                 width,
                 doc,
             } = field;
-            let width = width.unwrap_or_else(|| LitInt::new(1, IntSuffix::None, Span::call_site()));
+            let width = width.unwrap_or_else(|| LitInt::new("1", Span::call_site()));
             let mut attrs = vec![quote!(#[inline])];
             if let Some(doc) = doc {
                 attrs.push(quote!(#[doc = #doc]));
             }
             let attrs = &attrs;
-            if width.value() == 1 {
+            if width.base10_digits() == "1" {
                 if mode.is_read() {
-                    let read_bit = new_ident!("{}", ident);
+                    let read_bit = format_ident!("{}", ident);
                     fields.push(quote! {
                         #(#attrs)*
                         pub fn #read_bit(&self) -> bool {
@@ -171,9 +171,9 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
                     });
                 }
                 if mode.is_write() {
-                    let set_bit = new_ident!("set_{}", ident);
-                    let clear_bit = new_ident!("clear_{}", ident);
-                    let toggle_bit = new_ident!("toggle_{}", ident);
+                    let set_bit = format_ident!("set_{}", ident);
+                    let clear_bit = format_ident!("clear_{}", ident);
+                    let toggle_bit = format_ident!("toggle_{}", ident);
                     fields.push(quote! {
                         #(#attrs)*
                         pub fn #set_bit(&mut self) -> &mut Self {
@@ -204,7 +204,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
                 }
             } else {
                 if mode.is_read() {
-                    let read_bits = new_ident!("{}", ident);
+                    let read_bits = format_ident!("{}", ident);
                     fields.push(quote! {
                         #(#attrs)*
                         pub fn #read_bits(&self) -> #bits {
@@ -219,7 +219,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
                     });
                 }
                 if mode.is_write() {
-                    let write_bits = new_ident!("write_{}", ident);
+                    let write_bits = format_ident!("write_{}", ident);
                     fields.push(quote! {
                         #(#attrs)*
                         pub fn #write_bits(&mut self, bits: #bits) -> &mut Self {

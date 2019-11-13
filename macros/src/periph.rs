@@ -1,7 +1,7 @@
-use drone_macros_core::{compile_error, new_ident, unkeywordize, CfgCond, CfgCondExt};
+use drone_macros_core::{compile_error, unkeywordize, CfgCond, CfgCondExt};
 use inflector::Inflector;
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{
     braced,
     parse::{Parse, ParseStream, Result},
@@ -87,7 +87,7 @@ impl Parse for Reg {
         let ident = input.parse()?;
         let content;
         braced!(content in input);
-        let size = content.parse::<LitInt>()?.value() as u8;
+        let size = content.parse::<LitInt>()?.base10_parse()?;
         let mut traits = Vec::new();
         while !content.peek(Token![;]) {
             traits.push(content.parse()?);
@@ -156,23 +156,23 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         } in regs
         {
             let reg_snk = reg_ident.to_string().to_snake_case();
-            let block_reg_snk = new_ident!("{}_{}", block_snk, reg_snk);
+            let block_reg_snk = format_ident!("{}_{}", block_snk, reg_snk);
             let reg_psc = reg_ident.to_string().to_pascal_case();
-            let val_ty = new_ident!("u{}", size);
-            let reg_trait = new_ident!("{}{}", block_psc, reg_psc);
-            let reg_trait_opt = new_ident!("{}{}Opt", block_psc, reg_psc);
-            let reg_trait_ext = new_ident!("{}{}Ext", block_psc, reg_psc);
-            let val = new_ident!("{}{}Val", block_psc, reg_psc);
-            let u_reg = new_ident!("U{}{}", block_psc, reg_psc);
-            let s_reg = new_ident!("S{}{}", block_psc, reg_psc);
-            let c_reg = new_ident!("C{}{}", block_psc, reg_psc);
-            let u_reg_opt = new_ident!("U{}{}Opt", block_psc, reg_psc);
-            let s_reg_opt = new_ident!("S{}{}Opt", block_psc, reg_psc);
-            let c_reg_opt = new_ident!("C{}{}Opt", block_psc, reg_psc);
-            let u_fields = new_ident!("U{}{}Fields", block_psc, reg_psc);
-            let s_fields = new_ident!("S{}{}Fields", block_psc, reg_psc);
-            let c_fields = new_ident!("C{}{}Fields", block_psc, reg_psc);
-            let reg_attrs = &reg_features.attrs();
+            let val_ty = format_ident!("u{}", size);
+            let reg_trait = format_ident!("{}{}", block_psc, reg_psc);
+            let reg_trait_opt = format_ident!("{}{}Opt", block_psc, reg_psc);
+            let reg_trait_ext = format_ident!("{}{}Ext", block_psc, reg_psc);
+            let val = format_ident!("{}{}Val", block_psc, reg_psc);
+            let u_reg = format_ident!("U{}{}", block_psc, reg_psc);
+            let s_reg = format_ident!("S{}{}", block_psc, reg_psc);
+            let c_reg = format_ident!("C{}{}", block_psc, reg_psc);
+            let u_reg_opt = format_ident!("U{}{}Opt", block_psc, reg_psc);
+            let s_reg_opt = format_ident!("S{}{}Opt", block_psc, reg_psc);
+            let c_reg_opt = format_ident!("C{}{}Opt", block_psc, reg_psc);
+            let u_fields = format_ident!("U{}{}Fields", block_psc, reg_psc);
+            let s_fields = format_ident!("S{}{}Fields", block_psc, reg_psc);
+            let c_fields = format_ident!("C{}{}Fields", block_psc, reg_psc);
+            let reg_attrs = reg_features.attrs();
             let mut u_traits = Vec::new();
             let mut s_traits = Vec::new();
             let mut c_traits = Vec::new();
@@ -183,9 +183,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 } else if ident == "Option" {
                     reg_option = true;
                 } else {
-                    u_traits.push(new_ident!("U{}", ident));
-                    s_traits.push(new_ident!("S{}", ident));
-                    c_traits.push(new_ident!("C{}", ident));
+                    u_traits.push(format_ident!("U{}", ident));
+                    s_traits.push(format_ident!("S{}", ident));
+                    c_traits.push(format_ident!("C{}", ident));
                 }
             }
             if reg_shared && reg_option {
@@ -206,17 +206,17 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             {
                 let field_snk = field_ident.to_string().to_snake_case();
                 let field_psc = field_ident.to_string().to_pascal_case();
-                let field_ident = new_ident!("{}", unkeywordize(field_snk.clone().into()));
-                let block_reg_field_snk = new_ident!("{}_{}_{}", block_snk, reg_snk, field_snk);
-                let field_trait = new_ident!("{}{}{}", block_psc, reg_psc, field_psc);
-                let field_trait_opt = new_ident!("{}{}{}Opt", block_psc, reg_psc, field_psc);
-                let field_trait_ext = new_ident!("{}{}{}Ext", block_psc, reg_psc, field_psc);
-                let u_field = new_ident!("U{}{}{}", block_psc, reg_psc, field_psc);
-                let s_field = new_ident!("S{}{}{}", block_psc, reg_psc, field_psc);
-                let c_field = new_ident!("C{}{}{}", block_psc, reg_psc, field_psc);
-                let u_field_opt = new_ident!("U{}{}{}Opt", block_psc, reg_psc, field_psc);
-                let s_field_opt = new_ident!("S{}{}{}Opt", block_psc, reg_psc, field_psc);
-                let c_field_opt = new_ident!("C{}{}{}Opt", block_psc, reg_psc, field_psc);
+                let field_ident = format_ident!("{}", unkeywordize(&field_snk));
+                let block_reg_field_snk = format_ident!("{}_{}_{}", block_snk, reg_snk, field_snk);
+                let field_trait = format_ident!("{}{}{}", block_psc, reg_psc, field_psc);
+                let field_trait_opt = format_ident!("{}{}{}Opt", block_psc, reg_psc, field_psc);
+                let field_trait_ext = format_ident!("{}{}{}Ext", block_psc, reg_psc, field_psc);
+                let u_field = format_ident!("U{}{}{}", block_psc, reg_psc, field_psc);
+                let s_field = format_ident!("S{}{}{}", block_psc, reg_psc, field_psc);
+                let c_field = format_ident!("C{}{}{}", block_psc, reg_psc, field_psc);
+                let u_field_opt = format_ident!("U{}{}{}Opt", block_psc, reg_psc, field_psc);
+                let s_field_opt = format_ident!("S{}{}{}Opt", block_psc, reg_psc, field_psc);
+                let c_field_opt = format_ident!("C{}{}{}Opt", block_psc, reg_psc, field_psc);
                 let mut u_traits = Vec::new();
                 let mut s_traits = Vec::new();
                 let mut c_traits = Vec::new();
@@ -225,16 +225,16 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     if ident == "Option" {
                         field_option = true;
                     } else {
-                        u_traits.push(new_ident!("U{}", ident));
-                        s_traits.push(new_ident!("S{}", ident));
-                        c_traits.push(new_ident!("C{}", ident));
+                        u_traits.push(format_ident!("U{}", ident));
+                        s_traits.push(format_ident!("S{}", ident));
+                        c_traits.push(format_ident!("C{}", ident));
                     }
                 }
                 let mut features = CfgCond::default();
                 features.add_clause(&reg_features);
                 features.add_clause(&field_features);
-                let field_attrs = &features.attrs();
-                let struct_attrs = &field_features.attrs();
+                let field_attrs = features.attrs();
+                let struct_attrs = field_features.attrs();
                 let field_trait_items = quote! {
                     type #u_field: ::drone_core::reg::field::RegField<
                         ::drone_core::reg::tag::Urt,
@@ -266,11 +266,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         reg_bounds.push((features, quote!(Self: #field_trait_opt)));
                         periph_fields.push(quote! {
                             #[allow(missing_docs)]
-                            #(#field_attrs)*
+                            #field_attrs
                             pub #block_reg_field_snk: T::#s_field_opt,
                         });
                         tokens.push(quote! {
-                            #(#field_attrs)*
+                            #field_attrs
                             #[allow(missing_docs)]
                             pub trait #field_trait_opt {
                                 type #u_field_opt: Sized + Send + Sync + 'static;
@@ -279,14 +279,14 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             }
                         });
                         tokens.push(quote! {
-                            #(#field_attrs)*
+                            #field_attrs
                             #[allow(missing_docs)]
                             pub trait #field_trait_ext: #reg_trait {
-                                #(#field_trait_items)*
+                                #field_trait_items
                             }
                         });
                         tokens.push(quote! {
-                            #(#field_attrs)*
+                            #field_attrs
                             #[allow(missing_docs)]
                             pub trait #field_trait
                             where
@@ -305,7 +305,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         if reg_option {
                             reg_bounds.push((features, quote!(Self: #field_trait_opt<Self>)));
                             tokens.push(quote! {
-                                #(#field_attrs)*
+                                #field_attrs
                                 #[allow(missing_docs)]
                                 pub trait #field_trait_opt<T: #reg_trait>: #reg_trait_ext<T> {
                                     type #u_field_opt: Sized + Send + Sync + 'static;
@@ -314,14 +314,14 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                                 }
                             });
                             tokens.push(quote! {
-                                #(#field_attrs)*
+                                #field_attrs
                                 #[allow(missing_docs)]
                                 pub trait #field_trait_ext<T: #reg_trait>: #reg_trait_ext<T> {
-                                    #(#field_trait_items)*
+                                    #field_trait_items
                                 }
                             });
                             tokens.push(quote! {
-                                #(#field_attrs)*
+                                #field_attrs
                                 #[allow(missing_docs)]
                                 pub trait #field_trait
                                 where
@@ -339,7 +339,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         } else {
                             reg_bounds.push((features, quote!(Self: #field_trait_opt<Self>)));
                             tokens.push(quote! {
-                                #(#field_attrs)*
+                                #field_attrs
                                 #[allow(missing_docs)]
                                 pub trait #field_trait_opt<T: #trait_ident>: #reg_trait<T> {
                                     type #u_field_opt: Sized + Send + Sync + 'static;
@@ -348,14 +348,14 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                                 }
                             });
                             tokens.push(quote! {
-                                #(#field_attrs)*
+                                #field_attrs
                                 #[allow(missing_docs)]
                                 pub trait #field_trait_ext<T: #trait_ident>: #reg_trait<T> {
-                                    #(#field_trait_items)*
+                                    #field_trait_items
                                 }
                             });
                             tokens.push(quote! {
-                                #(#field_attrs)*
+                                #field_attrs
                                 #[allow(missing_docs)]
                                 pub trait #field_trait
                                 where
@@ -373,27 +373,27 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             });
                         }
                         u_fields_tokens.push(quote! {
-                            #(#struct_attrs)*
+                            #struct_attrs
                             pub #field_ident: T::#u_field_opt,
                         });
                         s_fields_tokens.push(quote! {
-                            #(#struct_attrs)*
+                            #struct_attrs
                             pub #field_ident: T::#s_field_opt,
                         });
                         c_fields_tokens.push(quote! {
-                            #(#struct_attrs)*
+                            #struct_attrs
                             pub #field_ident: T::#c_field_opt,
                         });
                         u_methods.push(quote! {
-                            #(#struct_attrs)*
+                            #struct_attrs
                             fn #field_ident(&self) -> &T::#u_field_opt;
                         });
                         s_methods.push(quote! {
-                            #(#struct_attrs)*
+                            #struct_attrs
                             fn #field_ident(&self) -> &T::#s_field_opt;
                         });
                         c_methods.push(quote! {
-                            #(#struct_attrs)*
+                            #struct_attrs
                             fn #field_ident(&self) -> &T::#c_field_opt;
                         });
                     }
@@ -401,58 +401,58 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     reg_bounds.push((features, quote!(Self: #field_trait)));
                     periph_fields.push(quote! {
                         #[allow(missing_docs)]
-                        #(#field_attrs)*
+                        #field_attrs
                         pub #block_reg_field_snk: T::#s_field,
                     });
                     tokens.push(quote! {
-                        #(#field_attrs)*
+                        #field_attrs
                         #[allow(missing_docs)]
                         pub trait #field_trait: #reg_trait {
-                            #(#field_trait_items)*
+                            #field_trait_items
                         }
                     });
                 } else {
                     if reg_option {
                         reg_bounds.push((features, quote!(Self: #field_trait<Self>)));
                         tokens.push(quote! {
-                            #(#field_attrs)*
+                            #field_attrs
                             #[allow(missing_docs)]
                             pub trait #field_trait<T: #reg_trait>: #reg_trait_ext<T> {
-                                #(#field_trait_items)*
+                                #field_trait_items
                             }
                         });
                     } else {
                         reg_bounds.push((features, quote!(Self: #field_trait<Self>)));
                         tokens.push(quote! {
-                            #(#field_attrs)*
+                            #field_attrs
                             #[allow(missing_docs)]
                             pub trait #field_trait<T: #trait_ident>: #reg_trait<T> {
-                                #(#field_trait_items)*
+                                #field_trait_items
                             }
                         });
                     }
                     u_fields_tokens.push(quote! {
-                        #(#struct_attrs)*
+                        #struct_attrs
                         pub #field_ident: T::#u_field,
                     });
                     s_fields_tokens.push(quote! {
-                        #(#struct_attrs)*
+                        #struct_attrs
                         pub #field_ident: T::#s_field,
                     });
                     c_fields_tokens.push(quote! {
-                        #(#struct_attrs)*
+                        #struct_attrs
                         pub #field_ident: T::#c_field,
                     });
                     u_methods.push(quote! {
-                        #(#struct_attrs)*
+                        #struct_attrs
                         fn #field_ident(&self) -> &T::#u_field;
                     });
                     s_methods.push(quote! {
-                        #(#struct_attrs)*
+                        #struct_attrs
                         fn #field_ident(&self) -> &T::#s_field;
                     });
                     c_methods.push(quote! {
-                        #(#struct_attrs)*
+                        #struct_attrs
                         fn #field_ident(&self) -> &T::#c_field;
                     });
                 }
@@ -470,11 +470,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 periph_bounds.push((reg_features.clone(), quote!(Self: #reg_trait_opt)));
                 periph_fields.push(quote! {
                     #[allow(missing_docs)]
-                    #(#reg_attrs)*
+                    #reg_attrs
                     pub #block_reg_snk: T::#s_reg_opt,
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub trait #reg_trait_opt {
                         type #u_reg_opt: Sized + Send + Sync + 'static;
@@ -483,7 +483,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub trait #reg_trait_ext<T: #reg_trait> {
                         type #val: ::drone_core::bitfield::Bitfield<Bits = #val_ty>;
@@ -511,7 +511,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub trait #u_reg<T: #reg_trait>: #(#u_traits)+* {
                         fn from_fields(map: #u_fields<T>) -> Self;
@@ -520,7 +520,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub trait #s_reg<T: #reg_trait>: #(#s_traits)+* {
                         fn from_fields(map: #s_fields<T>) -> Self;
@@ -529,7 +529,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub trait #c_reg<T: #reg_trait>: #(#c_traits)+* {
                         fn from_fields(map: #c_fields<T>) -> Self;
@@ -538,31 +538,31 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub struct #u_fields<T: #reg_trait> {
                         #(#u_fields_tokens)*
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub struct #s_fields<T: #reg_trait> {
                         #(#s_fields_tokens)*
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub struct #c_fields<T: #reg_trait> {
                         #(#c_fields_tokens)*
                     }
                 });
                 for (features, bounds) in reg_bounds.as_slice().transpose() {
-                    let attrs = &features.attrs();
+                    let attrs = features.attrs();
                     tokens.push(quote! {
-                        #(#reg_attrs)*
-                        #(#attrs)*
+                        #reg_attrs
+                        #attrs
                         #[allow(missing_docs)]
                         pub trait #reg_trait: #trait_ident
                         where
@@ -580,7 +580,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             } else if reg_shared {
                 periph_bounds.append(&mut reg_bounds);
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub trait #reg_trait {
                         type #val: ::drone_core::bitfield::Bitfield<Bits = #val_ty>;
@@ -615,11 +615,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 periph_bounds.append(&mut reg_bounds);
                 periph_fields.push(quote! {
                     #[allow(missing_docs)]
-                    #(#reg_attrs)*
+                    #reg_attrs
                     pub #block_reg_snk: T::#s_reg,
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub trait #reg_trait<T: #trait_ident> {
                         type #val: ::drone_core::bitfield::Bitfield<Bits = #val_ty>;
@@ -647,7 +647,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub trait #u_reg<T: #trait_ident>: #(#u_traits)+* {
                         fn from_fields(map: #u_fields<T>) -> Self;
@@ -656,7 +656,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub trait #s_reg<T: #trait_ident>: #(#s_traits)+* {
                         fn from_fields(map: #s_fields<T>) -> Self;
@@ -665,7 +665,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub trait #c_reg<T: #trait_ident>: #(#c_traits)+* {
                         fn from_fields(map: #c_fields<T>) -> Self;
@@ -674,21 +674,21 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub struct #u_fields<T: #trait_ident> {
                         #(#u_fields_tokens)*
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub struct #s_fields<T: #trait_ident> {
                         #(#s_fields_tokens)*
                     }
                 });
                 tokens.push(quote! {
-                    #(#reg_attrs)*
+                    #reg_attrs
                     #[allow(missing_docs)]
                     pub struct #c_fields<T: #trait_ident> {
                         #(#c_fields_tokens)*
@@ -698,10 +698,10 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         }
     }
     for (features, bounds) in periph_bounds.as_slice().transpose() {
-        let attrs = &features.attrs();
+        let attrs = features.attrs();
         tokens.push(quote! {
             #(#trait_attrs)*
-            #(#attrs)*
+            #attrs
             pub trait #trait_ident
             where
                 Self: Sized + Send + Sync + 'static,
@@ -715,7 +715,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         .into_iter()
         .map(|(attrs, ident)| {
             quote! {
-                #(#attrs)*
+                #attrs
                 pub use super::#ident as _;
             }
         })

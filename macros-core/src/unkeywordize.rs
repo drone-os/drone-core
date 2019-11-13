@@ -1,6 +1,5 @@
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::borrow::Cow;
 
 lazy_static! {
     static ref KEYWORDS: Regex = Regex::new(
@@ -15,11 +14,12 @@ lazy_static! {
     .unwrap();
 }
 
-/// Inserts an underscore at the beginning of the string if the string is a
-/// reserved keyword.
-pub fn unkeywordize(mut ident: Cow<'_, str>) -> Cow<'_, str> {
-    if KEYWORDS.is_match(&ident) {
-        ident.to_mut().push('_');
+/// Inserts an underscore at the end of the string if the string is a reserved
+/// keyword.
+pub fn unkeywordize<T: AsRef<str>>(ident: T) -> String {
+    let mut ident = ident.as_ref().to_string();
+    if KEYWORDS.is_match(ident.as_ref()) {
+        ident.push('_');
     }
     ident
 }

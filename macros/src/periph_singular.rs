@@ -1,7 +1,7 @@
-use drone_macros_core::{new_ident, unkeywordize, CfgCond, CfgCondExt};
+use drone_macros_core::{unkeywordize, CfgCond, CfgCondExt};
 use inflector::Inflector;
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{
     braced,
     parse::{Parse, ParseStream, Result},
@@ -151,7 +151,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     } in blocks
     {
         let block_snk = block_ident.to_string().to_snake_case();
-        let block_ident = new_ident!("{}", unkeywordize(block_snk.to_string().into()));
+        let block_ident = format_ident!("{}", unkeywordize(&block_snk));
         for Reg {
             features: reg_features,
             ident: reg_ident,
@@ -159,13 +159,13 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         } in regs
         {
             let reg_snk = reg_ident.to_string().to_snake_case();
-            let reg_ident = new_ident!("{}", unkeywordize(reg_snk.to_string().into()));
-            let block_reg_snk = new_ident!("{}_{}", block_snk, reg_snk);
-            let reg_attrs = &reg_features.attrs();
+            let reg_ident = format_ident!("{}", unkeywordize(&reg_snk));
+            let block_reg_snk = format_ident!("{}_{}", block_snk, reg_snk);
+            let reg_attrs = reg_features.attrs();
             if fields.is_empty() {
                 periph_tokens.push(quote! {
                     #[allow(missing_docs)]
-                    #(#reg_attrs)*
+                    #reg_attrs
                     pub #block_reg_snk: #root_path::#block_ident::#reg_ident::Reg<
                         ::drone_core::reg::tag::Srt,
                     >
@@ -181,16 +181,17 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 } in fields
                 {
                     let field_snk = field_ident.to_string().to_snake_case();
-                    let field_psc = new_ident!("{}", field_ident.to_string().to_pascal_case());
-                    let field_ident = new_ident!("{}", unkeywordize(field_snk.clone().into()));
-                    let block_reg_field_snk = new_ident!("{}_{}_{}", block_snk, reg_snk, field_snk);
+                    let field_psc = format_ident!("{}", field_ident.to_string().to_pascal_case());
+                    let field_ident = format_ident!("{}", unkeywordize(&field_snk));
+                    let block_reg_field_snk =
+                        format_ident!("{}_{}_{}", block_snk, reg_snk, field_snk);
                     let mut features = CfgCond::default();
                     features.add_clause(&reg_features);
                     features.add_clause(&field_features);
-                    let field_attrs = &features.attrs();
+                    let field_attrs = features.attrs();
                     periph_tokens.push(quote! {
                         #[allow(missing_docs)]
-                        #(#field_attrs)*
+                        #field_attrs
                         pub #block_reg_field_snk: #root_path::#block_ident::#reg_ident::#field_psc<
                             ::drone_core::reg::tag::Srt,
                         >
@@ -204,9 +205,10 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         }
     }
     for (features, macro_tokens) in macro_tokens.as_slice().transpose() {
-        let attrs = &features.attrs();
+        let attrs = features.attrs();
+        let macro_root_path = macro_root_path.iter();
         tokens.push(quote! {
-            #(#attrs)*
+            #attrs
             #(#macro_attrs)*
             #[macro_export]
             macro_rules! #macro_ident {

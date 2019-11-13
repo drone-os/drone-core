@@ -71,7 +71,7 @@ impl CfgCond {
     }
 
     /// Returns a `TokenStream` for conditional compilation.
-    pub fn attrs(&self) -> Option<TokenStream> {
+    pub fn attrs(&self) -> TokenStream {
         let Self { clauses, inverse } = self;
         let tokens = clauses
             .iter()
@@ -83,11 +83,11 @@ impl CfgCond {
             })
             .collect::<Vec<_>>();
         if tokens.is_empty() {
-            None
+            quote!()
         } else if *inverse {
-            Some(quote!(#[cfg(not(any(#(all(#(#tokens),*)),*)))]))
+            quote!(#[cfg(not(any(#(all(#(#tokens),*)),*)))])
         } else {
-            Some(quote!(#(#[cfg(any(#(#tokens),*))])*))
+            quote!(#(#[cfg(any(#(#tokens),*))])*)
         }
     }
 
