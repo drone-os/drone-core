@@ -13,6 +13,9 @@ Possible log types:
 
 ### Unreleased
 
+### v0.11.1 (2019-11-27)
+
+- [added] Implement 11 `inventory` counters (was 9)
 - [changed] Upgraded to `syn` 1.0
 - [changed] Using the newly released `futures` 0.3 instead of `futures-preview`
   0.3-alpha

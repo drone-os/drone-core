@@ -423,6 +423,8 @@ define_counters! {
     Count7 Inventory7,
     Count8 Inventory8,
     Count9 Inventory9,
+    Count10 Inventory10,
+    Count11 Inventory11,
 }
 
 define_methods! {
@@ -437,6 +439,8 @@ define_methods! {
         (share6 Count7 T T T T T T)
         (share7 Count8 T T T T T T T)
         (share8 Count9 T T T T T T T T)
+        (share9 Count10 T T T T T T T T T)
+        (share10 Count11 T T T T T T T T T T)
         [merge1 Count0 a]
     Count2
         (share1 Count3 T)
@@ -446,6 +450,8 @@ define_methods! {
         (share5 Count7 T T T T T)
         (share6 Count8 T T T T T T)
         (share7 Count9 T T T T T T T)
+        (share8 Count10 T T T T T T T T)
+        (share9 Count11 T T T T T T T T T)
         [merge1 Count1 a]
     Count3
         (share1 Count4 T)
@@ -454,6 +460,8 @@ define_methods! {
         (share4 Count7 T T T T)
         (share5 Count8 T T T T T)
         (share6 Count9 T T T T T T)
+        (share7 Count10 T T T T T T T)
+        (share8 Count11 T T T T T T T T)
         [merge1 Count2 a]
         [merge2 Count1 a b]
     Count4
@@ -462,6 +470,8 @@ define_methods! {
         (share3 Count7 T T T)
         (share4 Count8 T T T T)
         (share5 Count9 T T T T T)
+        (share6 Count10 T T T T T T)
+        (share7 Count11 T T T T T T T)
         [merge1 Count3 a]
         [merge2 Count2 a b]
         [merge3 Count1 a b c]
@@ -470,6 +480,8 @@ define_methods! {
         (share2 Count7 T T)
         (share3 Count8 T T T)
         (share4 Count9 T T T T)
+        (share5 Count10 T T T T T)
+        (share6 Count11 T T T T T T)
         [merge1 Count4 a]
         [merge2 Count3 a b]
         [merge3 Count2 a b c]
@@ -478,6 +490,8 @@ define_methods! {
         (share1 Count7 T)
         (share2 Count8 T T)
         (share3 Count9 T T T)
+        (share4 Count10 T T T T)
+        (share5 Count11 T T T T T)
         [merge1 Count5 a]
         [merge2 Count4 a b]
         [merge3 Count3 a b c]
@@ -486,6 +500,8 @@ define_methods! {
     Count7
         (share1 Count8 T)
         (share2 Count9 T T)
+        (share3 Count10 T T T)
+        (share4 Count11 T T T T)
         [merge1 Count6 a]
         [merge2 Count5 a b]
         [merge3 Count4 a b c]
@@ -494,6 +510,8 @@ define_methods! {
         [merge6 Count1 a b c d e f]
     Count8
         (share1 Count9 T)
+        (share2 Count10 T T)
+        (share3 Count11 T T T)
         [merge1 Count7 a]
         [merge2 Count6 a b]
         [merge3 Count5 a b c]
@@ -502,6 +520,8 @@ define_methods! {
         [merge6 Count2 a b c d e f]
         [merge7 Count1 a b c d e f g]
     Count9
+        (share1 Count10 T)
+        (share2 Count11 T T)
         [merge1 Count8 a]
         [merge2 Count7 a b]
         [merge3 Count6 a b c]
@@ -510,4 +530,26 @@ define_methods! {
         [merge6 Count3 a b c d e f]
         [merge7 Count2 a b c d e f g]
         [merge8 Count1 a b c d e f g h]
+    Count10
+        (share1 Count11 T)
+        [merge1 Count9 a]
+        [merge2 Count8 a b]
+        [merge3 Count7 a b c]
+        [merge4 Count6 a b c d]
+        [merge5 Count5 a b c d e]
+        [merge6 Count4 a b c d e f]
+        [merge7 Count3 a b c d e f g]
+        [merge8 Count2 a b c d e f g h]
+        [merge9 Count1 a b c d e f g h i]
+    Count11
+        [merge1 Count10 a]
+        [merge2 Count9 a b]
+        [merge3 Count8 a b c]
+        [merge4 Count7 a b c d]
+        [merge5 Count6 a b c d e]
+        [merge6 Count5 a b c d e f]
+        [merge7 Count4 a b c d e f g]
+        [merge8 Count3 a b c d e f g h]
+        [merge9 Count2 a b c d e f g h i]
+        [merge10 Count1 a b c d e f g h i j]
 }
