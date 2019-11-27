@@ -13,6 +13,8 @@ Possible log types:
 
 ### Unreleased
 
+- [added] Add `load_bits`, `store_bits` methods for register tokens
+
 ### v0.11.1 (2019-11-27)
 
 - [added] Implement 11 `inventory` counters (was 9)
