@@ -40,10 +40,7 @@ reg_tokens! {
 
 #[test]
 fn reg_default_val() {
-    assert_eq!(
-        unsafe { TestReg::<Srt>::take() }.default_val().bits(),
-        0xBEEF_CACE
-    );
+    assert_eq!(unsafe { TestReg::<Srt>::take() }.default_val().bits(), 0xBEEF_CACE);
 }
 
 #[test]

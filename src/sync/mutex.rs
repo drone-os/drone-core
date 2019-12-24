@@ -48,10 +48,7 @@ impl<T> Mutex<T> {
     /// ```
     #[inline]
     pub const fn new(data: T) -> Self {
-        Self {
-            state: AtomicBool::new(false),
-            data: UnsafeCell::new(data),
-        }
+        Self { state: AtomicBool::new(false), data: UnsafeCell::new(data) }
     }
 
     /// Consumes this mutex, returning the underlying data.
@@ -155,9 +152,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
                     f.write_str("<locked>")
                 }
             }
-            f.debug_struct("Mutex")
-                .field("data", &LockedPlaceholder)
-                .finish()
+            f.debug_struct("Mutex").field("data", &LockedPlaceholder).finish()
         }
     }
 }
@@ -187,9 +182,7 @@ impl<T: ?Sized> Drop for MutexGuard<'_, T> {
 
 impl<T: ?Sized + fmt::Debug> fmt::Debug for MutexGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("MutexGuard")
-            .field("mutex", &self.mutex)
-            .finish()
+        f.debug_struct("MutexGuard").field("mutex", &self.mutex).finish()
     }
 }
 

@@ -252,10 +252,7 @@ impl<T: Item> Inventory<T, Count0> {
     /// `item` should contain some form of token.
     #[inline]
     pub fn new(item: T) -> Self {
-        Self {
-            item,
-            count: PhantomData,
-        }
+        Self { item, count: PhantomData }
     }
 
     /// Drops `inventory` and returns the stored item.

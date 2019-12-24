@@ -51,10 +51,9 @@ impl Parse for PeriphMap {
         input.parse::<Token![macro]>()?;
         let macro_ident = input.parse::<Ident>()?;
         if !macro_ident.to_string().starts_with(MACRO_PREFIX) {
-            return Err(input.error(format!(
-                "Expected an ident which starts with `{}`",
-                MACRO_PREFIX
-            )));
+            return Err(
+                input.error(format!("Expected an ident which starts with `{}`", MACRO_PREFIX))
+            );
         }
         input.parse::<Token![;]>()?;
         let struct_attrs = input.call(Attribute::parse_outer)?;
@@ -145,13 +144,7 @@ impl Parse for Reg {
             }
             Some(path)
         };
-        Ok(Self {
-            features,
-            ident,
-            path,
-            traits,
-            fields,
-        })
+        Ok(Self { features, ident, path, traits, fields })
     }
 }
 
@@ -171,12 +164,7 @@ impl Parse for Field {
             }
             Some(path)
         };
-        Ok(Self {
-            features,
-            ident,
-            path,
-            traits,
-        })
+        Ok(Self { features, ident, path, traits })
     }
 }
 
@@ -199,25 +187,14 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
     let mut tokens = Vec::new();
     let mut macro_tokens = Vec::new();
-    for Block {
-        ident: block_ident,
-        path: block_path,
-        regs,
-    } in blocks
-    {
+    for Block { ident: block_ident, path: block_path, regs } in blocks {
         let block_snk = block_ident.to_string().to_snake_case();
         let block_psc = block_ident.to_string().to_pascal_case();
         let block_path = block_path.as_ref().unwrap_or(block_ident);
         let block_path_snk = format_ident!("{}", block_path.to_string().to_snake_case());
         let block_path_ident =
             format_ident!("{}", unkeywordize(block_path_snk.to_string().as_str()));
-        for Reg {
-            features: reg_features,
-            ident: reg_ident,
-            path: reg_path,
-            traits,
-            fields,
-        } in regs
+        for Reg { features: reg_features, ident: reg_ident, path: reg_path, traits, fields } in regs
         {
             let reg_path_snk = reg_path
                 .as_ref()
@@ -265,21 +242,14 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             let mut u_methods = Vec::new();
             let mut s_methods = Vec::new();
             let mut c_methods = Vec::new();
-            for Field {
-                features: field_features,
-                ident: field_ident,
-                path: field_path,
-                traits,
-            } in fields
+            for Field { features: field_features, ident: field_ident, path: field_path, traits } in
+                fields
             {
                 let field_path_psc = field_path
                     .as_ref()
                     .map(|ident| format_ident!("{}", ident.to_string().to_pascal_case()));
                 let field_path_ident = field_path.as_ref().map(|ident| {
-                    format_ident!(
-                        "{}",
-                        unkeywordize(ident.to_string().to_snake_case().as_str())
-                    )
+                    format_ident!("{}", unkeywordize(ident.to_string().to_snake_case().as_str()))
                 });
                 let field_snk = field_ident.to_string().to_snake_case();
                 let field_psc = field_ident.to_string().to_pascal_case();
@@ -572,10 +542,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         #(#c_methods)*
                     }
                 });
-                macro_tokens.push((
-                    reg_features.clone(),
-                    quote!(#block_reg_snk: $reg.#block_reg_path_snk),
-                ));
+                macro_tokens
+                    .push((reg_features.clone(), quote!(#block_reg_snk: $reg.#block_reg_path_snk)));
             }
         }
     }

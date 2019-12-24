@@ -95,11 +95,7 @@ fn fiber_fn() {
     unsafe {
         let thr = Thr1::take();
         thr.add_fn(move || {
-            if inner.0.fetch_add(1, Relaxed) < 2 {
-                fib::Yielded(())
-            } else {
-                fib::Complete(())
-            }
+            if inner.0.fetch_add(1, Relaxed) < 2 { fib::Yielded(()) } else { fib::Complete(()) }
         });
         assert_eq!(counter.load(Relaxed), 0);
         thr.to_thr().fib_chain().drain();

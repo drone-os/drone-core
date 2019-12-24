@@ -64,11 +64,7 @@ where
     }
 
     fn take_cancel(&self, state: I) -> Poll<()> {
-        if state & Self::COMPLETE == Self::ZERO {
-            Poll::Pending
-        } else {
-            Poll::Ready(())
-        }
+        if state & Self::COMPLETE == Self::ZERO { Poll::Pending } else { Poll::Ready(()) }
     }
 
     fn poll_half<T>(
@@ -79,22 +75,14 @@ where
         cas_order: Ordering,
         take: fn(&Self, I) -> Poll<T>,
     ) -> Poll<T> {
-        let waker_stored = if is_tx_half {
-            Self::TX_WAKER_STORED
-        } else {
-            Self::RX_WAKER_STORED
-        };
+        let waker_stored = if is_tx_half { Self::TX_WAKER_STORED } else { Self::RX_WAKER_STORED };
         let state = self.state_load(read_order);
         let value = take(self, state);
         if value.is_ready() || state & waker_stored != Self::ZERO {
             return value;
         }
         unsafe {
-            let waker = if is_tx_half {
-                self.tx_waker_mut()
-            } else {
-                self.rx_waker_mut()
-            };
+            let waker = if is_tx_half { self.tx_waker_mut() } else { self.rx_waker_mut() };
             waker.write(cx.waker().clone());
         }
         let Ok(state) = self.transaction(state, cas_order, read_order, |state| {
@@ -113,31 +101,18 @@ where
         take_try: fn(&Self, &mut I) -> Option<Result<U, V>>,
         take_finalize: fn(&Self, Result<U, V>) -> T,
     ) -> Poll<T> {
-        let waker_stored = if is_tx_half {
-            Self::TX_WAKER_STORED
-        } else {
-            Self::RX_WAKER_STORED
-        };
+        let waker_stored = if is_tx_half { Self::TX_WAKER_STORED } else { Self::RX_WAKER_STORED };
         let state = self.state_load(read_order);
-        self.transaction(state, cas_order, read_order, |state| {
-            match take_try(self, state) {
-                Some(value) => value.map(Ok).map_err(Ok),
-                None => Err(Err(if *state & waker_stored == Self::ZERO {
-                    Ok(())
-                } else {
-                    Err(())
-                })),
-            }
+        self.transaction(state, cas_order, read_order, |state| match take_try(self, state) {
+            Some(value) => value.map(Ok).map_err(Ok),
+            None => Err(Err(if *state & waker_stored == Self::ZERO { Ok(()) } else { Err(()) })),
         })
         .or_else(|value| {
             value.map(Err).or_else(|no_waker| {
                 no_waker.and_then(|()| {
                     unsafe {
-                        let waker = if is_tx_half {
-                            self.tx_waker_mut()
-                        } else {
-                            self.rx_waker_mut()
-                        };
+                        let waker =
+                            if is_tx_half { self.tx_waker_mut() } else { self.rx_waker_mut() };
                         waker.write(cx.waker().clone());
                     }
                     let Ok(value) = self.transaction(state, cas_order, read_order, |state| {
@@ -148,18 +123,11 @@ where
                 })
             })
         })
-        .map_or_else(
-            |()| Poll::Pending,
-            |value| Poll::Ready(take_finalize(self, value)),
-        )
+        .map_or_else(|()| Poll::Pending, |value| Poll::Ready(take_finalize(self, value)))
     }
 
     fn close_half(&self, is_tx_half: bool) {
-        let waker_stored = if is_tx_half {
-            Self::RX_WAKER_STORED
-        } else {
-            Self::TX_WAKER_STORED
-        };
+        let waker_stored = if is_tx_half { Self::RX_WAKER_STORED } else { Self::TX_WAKER_STORED };
         let state = self.state_load(Ordering::Acquire);
         if let Ok((waker, complete)) =
             self.transaction(state, Ordering::Acquire, Ordering::Acquire, |state| {
@@ -175,20 +143,12 @@ where
                 } else {
                     false
                 };
-                if waker || complete {
-                    Ok((waker, complete))
-                } else {
-                    Err(())
-                }
+                if waker || complete { Ok((waker, complete)) } else { Err(()) }
             })
         {
             unsafe {
                 if waker {
-                    let waker = if is_tx_half {
-                        self.rx_waker_mut()
-                    } else {
-                        self.tx_waker_mut()
-                    };
+                    let waker = if is_tx_half { self.rx_waker_mut() } else { self.tx_waker_mut() };
                     let waker = waker.read();
                     if complete {
                         waker.wake();

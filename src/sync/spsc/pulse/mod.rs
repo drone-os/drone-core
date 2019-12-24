@@ -65,10 +65,10 @@ impl<E> Inner<E> {
 }
 
 impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
-    const ZERO: usize = 0;
+    const COMPLETE: usize = COMPLETE;
     const RX_WAKER_STORED: usize = RX_WAKER_STORED;
     const TX_WAKER_STORED: usize = TX_WAKER_STORED;
-    const COMPLETE: usize = COMPLETE;
+    const ZERO: usize = 0;
 
     #[inline]
     fn state_load(&self, order: Ordering) -> usize {
@@ -83,8 +83,7 @@ impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
         success: Ordering,
         failure: Ordering,
     ) -> Result<usize, usize> {
-        self.state
-            .compare_exchange_weak(current, new, success, failure)
+        self.state.compare_exchange_weak(current, new, success, failure)
     }
 
     #[inline]
@@ -125,9 +124,7 @@ mod tests {
                 RawWaker::new(counter, &VTABLE)
             }
             unsafe fn wake(counter: *const ()) {
-                (*(counter as *const Counter))
-                    .0
-                    .fetch_add(1, Ordering::SeqCst);
+                (*(counter as *const Counter)).0.fetch_add(1, Ordering::SeqCst);
             }
             static VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake, drop);
             unsafe { Waker::from_raw(RawWaker::new(self as *const _ as *const (), &VTABLE)) }
@@ -175,10 +172,7 @@ mod tests {
         assert_eq!(tx.send_err(()).unwrap(), ());
         let waker = COUNTER.to_waker();
         let mut cx = Context::from_waker(&waker);
-        assert_eq!(
-            Pin::new(&mut rx).poll_next(&mut cx),
-            Poll::Ready(Some(Err(())))
-        );
+        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(Some(Err(()))));
         assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
         assert_eq!(COUNTER.0.load(Ordering::SeqCst), 0);
     }

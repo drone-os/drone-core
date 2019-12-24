@@ -76,15 +76,12 @@ impl<E> Inner<E> {
         take_try: fn(&Self, &mut usize) -> Option<Result<T, ()>>,
     ) -> Result<Option<T>, E> {
         let state = self.state_load(Ordering::Acquire);
-        self.transaction(
-            state,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-            |state| match take_try(self, state) {
+        self.transaction(state, Ordering::AcqRel, Ordering::Acquire, |state| {
+            match take_try(self, state) {
                 Some(value) => value.map(Some).map_err(Ok),
                 None => Err(Err(())),
-            },
-        )
+            }
+        })
         .or_else(|value| value.map_or_else(|()| Ok(None), |()| self.take_err().transpose()))
     }
 

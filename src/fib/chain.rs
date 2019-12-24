@@ -18,9 +18,7 @@ struct Node {
 impl Chain {
     /// Creates an empty fiber chain.
     pub const fn new() -> Self {
-        Self {
-            head: AtomicPtr::new(ptr::null_mut()),
-        }
+        Self { head: AtomicPtr::new(ptr::null_mut()) }
     }
 
     /// Adds the fiber `fib` first to the chain.
@@ -83,9 +81,6 @@ impl Chain {
 
 impl Node {
     fn new<F: FiberRoot>(fib: F) -> Self {
-        Self {
-            fib: Box::pin(fib),
-            next: ptr::null_mut(),
-        }
+        Self { fib: Box::pin(fib), next: ptr::null_mut() }
     }
 }

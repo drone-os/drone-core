@@ -138,16 +138,12 @@ pub enum Out<Req, CmdRes> {
 impl<Cmd, ReqRes> In<Cmd, ReqRes> {
     /// Creates a new command input.
     pub fn from_cmd(cmd: Cmd) -> Self {
-        Self {
-            cmd: ManuallyDrop::new(cmd),
-        }
+        Self { cmd: ManuallyDrop::new(cmd) }
     }
 
     /// Creates a new request result input.
     pub fn from_req_res(req_res: ReqRes) -> Self {
-        Self {
-            req_res: ManuallyDrop::new(req_res),
-        }
+        Self { req_res: ManuallyDrop::new(req_res) }
     }
 
     /// Interprets the input as a command.

@@ -179,9 +179,7 @@ impl CString {
     pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> Self {
         v.reserve_exact(1);
         v.push(0);
-        Self {
-            inner: v.into_boxed_slice(),
-        }
+        Self { inner: v.into_boxed_slice() }
     }
 
     /// Retakes ownership of a `CString` that was transferred to C via
@@ -224,9 +222,7 @@ impl CString {
     pub unsafe fn from_raw(ptr: *mut c_char) -> Self {
         let len = strlen(ptr) + 1; // Including the NUL byte
         let slice = slice::from_raw_parts_mut(ptr, len as usize);
-        Self {
-            inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]),
-        }
+        Self { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
     }
 
     /// Consumes the `CString` and transfers ownership of the string to a C
@@ -275,17 +271,11 @@ impl CString {
     ///
     /// let valid_utf8 = vec![b'f', b'o', b'o'];
     /// let cstring = CString::new(valid_utf8).expect("CString::new failed");
-    /// assert_eq!(
-    ///     cstring.into_string().expect("into_string() call failed"),
-    ///     "foo"
-    /// );
+    /// assert_eq!(cstring.into_string().expect("into_string() call failed"), "foo");
     ///
     /// let invalid_utf8 = vec![b'f', 0xff, b'o', b'o'];
     /// let cstring = CString::new(invalid_utf8).expect("CString::new failed");
-    /// let err = cstring
-    ///     .into_string()
-    ///     .err()
-    ///     .expect("into_string().err() failed");
+    /// let err = cstring.into_string().err().expect("into_string().err() failed");
     /// assert_eq!(err.utf8_error().valid_up_to(), 1);
     /// ```
     pub fn into_string(self) -> Result<String, IntoStringError> {

@@ -75,13 +75,7 @@ impl Parse for Field {
         input.parse::<Token![=]>()?;
         let init = input.parse()?;
         input.parse::<Token![;]>()?;
-        Ok(Self {
-            attrs,
-            vis,
-            ident,
-            ty,
-            init,
-        })
+        Ok(Self { attrs, vis, ident, ty, init })
     }
 }
 
@@ -102,25 +96,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let mut thr_ctor_tokens = Vec::new();
     let mut local_tokens = Vec::new();
     let mut local_ctor_tokens = Vec::new();
-    for Field {
-        attrs,
-        vis,
-        ident,
-        ty,
-        init,
-    } in thr_fields
-    {
+    for Field { attrs, vis, ident, ty, init } in thr_fields {
         thr_tokens.push(quote!(#(#attrs)* #vis #ident: #ty));
         thr_ctor_tokens.push(quote!(#ident: #init));
     }
-    for Field {
-        attrs,
-        vis,
-        ident,
-        ty,
-        init,
-    } in local_fields
-    {
+    for Field { attrs, vis, ident, ty, init } in local_fields {
         local_tokens.push(quote!(#(#attrs)* #vis #ident: #ty));
         local_ctor_tokens.push(quote!(#ident: #init));
     }

@@ -44,10 +44,9 @@ impl Parse for PeriphSingular {
         input.parse::<Token![macro]>()?;
         let macro_ident = input.parse::<Ident>()?;
         if !macro_ident.to_string().starts_with(MACRO_PREFIX) {
-            return Err(input.error(format!(
-                "Expected an ident which starts with `{}`",
-                MACRO_PREFIX
-            )));
+            return Err(
+                input.error(format!("Expected an ident which starts with `{}`", MACRO_PREFIX))
+            );
         }
         input.parse::<Token![;]>()?;
         let struct_attrs = input.call(Attribute::parse_outer)?;
@@ -55,10 +54,9 @@ impl Parse for PeriphSingular {
         input.parse::<Token![struct]>()?;
         let struct_ident = input.parse::<Ident>()?;
         if !struct_ident.to_string().ends_with(STRUCT_SUFFIX) {
-            return Err(input.error(format!(
-                "Expected an ident which ends with `{}`",
-                STRUCT_SUFFIX
-            )));
+            return Err(
+                input.error(format!("Expected an ident which ends with `{}`", STRUCT_SUFFIX))
+            );
         }
         input.parse::<Token![;]>()?;
         let root_path = input.parse()?;
@@ -115,11 +113,7 @@ impl Parse for Reg {
                 fields.push(content.parse()?);
             }
         }
-        Ok(Self {
-            features,
-            ident,
-            fields,
-        })
+        Ok(Self { features, ident, fields })
     }
 }
 
@@ -145,19 +139,10 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let mut tokens = Vec::new();
     let mut periph_tokens = Vec::new();
     let mut macro_tokens = Vec::new();
-    for Block {
-        ident: block_ident,
-        regs,
-    } in blocks
-    {
+    for Block { ident: block_ident, regs } in blocks {
         let block_snk = block_ident.to_string().to_snake_case();
         let block_ident = format_ident!("{}", unkeywordize(&block_snk));
-        for Reg {
-            features: reg_features,
-            ident: reg_ident,
-            fields,
-        } in regs
-        {
+        for Reg { features: reg_features, ident: reg_ident, fields } in regs {
             let reg_snk = reg_ident.to_string().to_snake_case();
             let reg_ident = format_ident!("{}", unkeywordize(&reg_snk));
             let block_reg_snk = format_ident!("{}_{}", block_snk, reg_snk);
@@ -170,16 +155,10 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         ::drone_core::reg::tag::Srt,
                     >
                 });
-                macro_tokens.push((
-                    reg_features.clone(),
-                    quote!(#block_reg_snk: $reg.#block_reg_snk),
-                ));
+                macro_tokens
+                    .push((reg_features.clone(), quote!(#block_reg_snk: $reg.#block_reg_snk)));
             } else {
-                for Field {
-                    features: field_features,
-                    ident: field_ident,
-                } in fields
-                {
+                for Field { features: field_features, ident: field_ident } in fields {
                     let field_snk = field_ident.to_string().to_snake_case();
                     let field_psc = format_ident!("{}", field_ident.to_string().to_pascal_case());
                     let field_ident = format_ident!("{}", unkeywordize(&field_snk));

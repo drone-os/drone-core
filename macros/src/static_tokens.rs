@@ -30,16 +30,9 @@ impl Parse for StaticTokens {
         let ident = input.parse()?;
         let content;
         braced!(content in input);
-        let tokens = content
-            .call(Punctuated::<_, Token![,]>::parse_terminated)?
-            .into_iter()
-            .collect();
-        Ok(Self {
-            attrs,
-            vis,
-            ident,
-            tokens,
-        })
+        let tokens =
+            content.call(Punctuated::<_, Token![,]>::parse_terminated)?.into_iter().collect();
+        Ok(Self { attrs, vis, ident, tokens })
     }
 }
 
@@ -54,21 +47,13 @@ impl Parse for Token {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let StaticTokens {
-        attrs,
-        vis,
-        ident,
-        tokens,
-    } = parse_macro_input!(input as StaticTokens);
+    let StaticTokens { attrs, vis, ident, tokens } = parse_macro_input!(input as StaticTokens);
     let wrapper = format_ident!("__{}_static_tokens", ident.to_string().to_snake_case());
     let mut outer_tokens = Vec::new();
     let mut def_tokens = Vec::new();
     let mut ctor_tokens = Vec::new();
     for Token { attrs, ident, ty } in tokens {
-        let wrapper = format_ident!(
-            "__{}_nested_static_tokens",
-            ident.to_string().to_snake_case()
-        );
+        let wrapper = format_ident!("__{}_nested_static_tokens", ident.to_string().to_snake_case());
         let struct_ident = format_ident!("{}Token", ident.to_string().to_pascal_case());
         let field_ident = format_ident!("{}", ident.to_string().to_snake_case());
         outer_tokens.push(quote! {

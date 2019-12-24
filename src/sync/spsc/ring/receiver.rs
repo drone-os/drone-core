@@ -86,15 +86,12 @@ impl<T, E> Inner<T, E> {
 
     fn try_recv(&self) -> Result<Option<T>, E> {
         let state = self.state_load(Ordering::Acquire);
-        self.transaction(
-            state,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-            |state| match self.take_index_try(state) {
+        self.transaction(state, Ordering::AcqRel, Ordering::Acquire, |state| {
+            match self.take_index_try(state) {
                 Some(value) => value.map_err(Ok),
                 None => Err(Err(())),
-            },
-        )
+            }
+        })
         .map(|index| unsafe { Some(self.take_value(index)) })
         .or_else(|value| value.map_or_else(|()| Ok(None), |()| self.take_err().transpose()))
     }

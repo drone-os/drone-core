@@ -104,11 +104,7 @@ pub unsafe extern "C" fn calloc(nmemb: size_t, size: size_t) -> *mut c_void {
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn realloc(ptr: *mut c_void, size: size_t) -> *mut c_void {
-    alloc::realloc(
-        ptr as *mut u8,
-        Layout::from_size_align_unchecked(1, 1),
-        size,
-    ) as *mut c_void
+    alloc::realloc(ptr as *mut u8, Layout::from_size_align_unchecked(1, 1), size) as *mut c_void
 }
 
 /// Frees the memory space pointed to by `ptr`, which must have been returned by

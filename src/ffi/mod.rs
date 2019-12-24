@@ -91,10 +91,7 @@ mod tests {
         let ptr = data.as_ptr() as *const c_char;
         unsafe {
             assert!(CStr::from_ptr(ptr).to_str().is_err());
-            assert_eq!(
-                CStr::from_ptr(ptr).to_string_lossy(),
-                Owned::<str>(format!("123\u{FFFD}"))
-            );
+            assert_eq!(CStr::from_ptr(ptr).to_string_lossy(), Owned::<str>(format!("123\u{FFFD}")));
         }
     }
 

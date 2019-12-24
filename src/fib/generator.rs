@@ -19,8 +19,8 @@ where
     G: Generator,
 {
     type Input = ();
-    type Yield = G::Yield;
     type Return = G::Return;
+    type Yield = G::Yield;
 
     #[inline]
     fn resume(self: Pin<&mut Self>, (): ()) -> FiberState<G::Yield, G::Return> {

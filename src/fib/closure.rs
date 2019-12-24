@@ -30,8 +30,8 @@ where
     F: FnMut() -> FiberState<Y, R>,
 {
     type Input = ();
-    type Yield = Y;
     type Return = R;
+    type Yield = Y;
 
     fn resume(self: Pin<&mut Self>, (): ()) -> FiberState<Y, R> {
         let option = unsafe { &mut self.get_unchecked_mut().0 };
@@ -69,8 +69,8 @@ where
     F: Unpin,
 {
     type Input = ();
-    type Yield = !;
     type Return = R;
+    type Yield = !;
 
     fn resume(self: Pin<&mut Self>, (): ()) -> FiberState<!, R> {
         if let Some(f) = self.get_mut().0.take() {

@@ -57,14 +57,7 @@ impl Parse for Periph {
         while !input.is_empty() {
             blocks.push(input.parse()?);
         }
-        Ok(Self {
-            trait_attrs,
-            trait_ident,
-            trait_items,
-            struct_attrs,
-            struct_ident,
-            blocks,
-        })
+        Ok(Self { trait_attrs, trait_ident, trait_items, struct_attrs, struct_ident, blocks })
     }
 }
 
@@ -97,13 +90,7 @@ impl Parse for Reg {
         while !content.is_empty() {
             fields.push(content.parse()?);
         }
-        Ok(Self {
-            features,
-            ident,
-            size,
-            traits,
-            fields,
-        })
+        Ok(Self { features, ident, size, traits, fields })
     }
 }
 
@@ -117,44 +104,23 @@ impl Parse for Field {
         while !content.is_empty() {
             traits.push(content.parse()?);
         }
-        Ok(Self {
-            features,
-            ident,
-            traits,
-        })
+        Ok(Self { features, ident, traits })
     }
 }
 
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Periph {
-        trait_attrs,
-        trait_ident,
-        trait_items,
-        struct_attrs,
-        struct_ident,
-        blocks,
-    } = &parse_macro_input!(input as Periph);
+    let Periph { trait_attrs, trait_ident, trait_items, struct_attrs, struct_ident, blocks } =
+        &parse_macro_input!(input as Periph);
 
     let mut tokens = Vec::new();
     let mut periph_bounds = Vec::new();
     let mut periph_fields = Vec::new();
     let mut traits_export = Vec::new();
-    for Block {
-        ident: block_ident,
-        regs,
-    } in blocks
-    {
+    for Block { ident: block_ident, regs } in blocks {
         let block_snk = block_ident.to_string().to_snake_case();
         let block_psc = block_ident.to_string().to_pascal_case();
-        for Reg {
-            features: reg_features,
-            ident: reg_ident,
-            size,
-            traits,
-            fields,
-        } in regs
-        {
+        for Reg { features: reg_features, ident: reg_ident, size, traits, fields } in regs {
             let reg_snk = reg_ident.to_string().to_snake_case();
             let block_reg_snk = format_ident!("{}_{}", block_snk, reg_snk);
             let reg_psc = reg_ident.to_string().to_pascal_case();
@@ -198,12 +164,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             let mut s_methods = Vec::new();
             let mut c_methods = Vec::new();
             let mut reg_bounds = Vec::new();
-            for Field {
-                features: field_features,
-                ident: field_ident,
-                traits,
-            } in fields
-            {
+            for Field { features: field_features, ident: field_ident, traits } in fields {
                 let field_snk = field_ident.to_string().to_snake_case();
                 let field_psc = field_ident.to_string().to_pascal_case();
                 let field_ident = format_ident!("{}", unkeywordize(&field_snk));

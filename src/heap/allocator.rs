@@ -93,14 +93,12 @@ pub trait Allocator {
     ) -> Result<T, AllocErr> {
         if new_size < layout.size() {
             let _ = self.shrink_in_place(ptr, layout, new_size);
-            Ok(T::from(ptr, || {
-                U::from(self.get_pool_unchecked(self.binary_search(ptr)))
-            }))
+            Ok(T::from(ptr, || U::from(self.get_pool_unchecked(self.binary_search(ptr)))))
         } else if let Ok(pool) = self.grow_in_place(ptr, layout, new_size) {
             Ok(T::from(ptr, || pool))
         } else {
-            self.alloc(Layout::from_size_align_unchecked(new_size, layout.align()))
-                .map(|new_ptr: T| {
+            self.alloc(Layout::from_size_align_unchecked(new_size, layout.align())).map(
+                |new_ptr: T| {
                     ptr::copy_nonoverlapping(
                         ptr.as_ptr() as *const usize,
                         new_ptr.as_ptr() as *mut usize,
@@ -108,7 +106,8 @@ pub trait Allocator {
                     );
                     self.dealloc(ptr, layout);
                     new_ptr
-                })
+                },
+            )
         }
     }
 

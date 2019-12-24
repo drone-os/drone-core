@@ -71,10 +71,7 @@ impl<T> RwLock<T> {
     /// ```
     #[inline]
     pub const fn new(data: T) -> Self {
-        Self {
-            state: AtomicUsize::new(NO_LOCK),
-            data: UnsafeCell::new(data),
-        }
+        Self { state: AtomicUsize::new(NO_LOCK), data: UnsafeCell::new(data) }
     }
 
     /// Consumes this `RwLock`, returning the underlying data.
@@ -127,11 +124,7 @@ impl<T: ?Sized> RwLock<T> {
             if current >= WRITE_LOCK - 1 {
                 break None;
             }
-            if self
-                .state
-                .compare_and_swap(current, current + 1, Ordering::Acquire)
-                == current
-            {
+            if self.state.compare_and_swap(current, current + 1, Ordering::Acquire) == current {
                 break Some(RwLockReadGuard { rw_lock: self });
             }
         }
@@ -161,11 +154,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     pub fn try_write(&self) -> Option<RwLockWriteGuard<'_, T>> {
-        if self
-            .state
-            .compare_and_swap(NO_LOCK, WRITE_LOCK, Ordering::Acquire)
-            == NO_LOCK
-        {
+        if self.state.compare_and_swap(NO_LOCK, WRITE_LOCK, Ordering::Acquire) == NO_LOCK {
             Some(RwLockWriteGuard { rw_lock: self })
         } else {
             None
@@ -219,9 +208,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
                     f.write_str("<locked>")
                 }
             }
-            f.debug_struct("RwLock")
-                .field("data", &LockedPlaceholder)
-                .finish()
+            f.debug_struct("RwLock").field("data", &LockedPlaceholder).finish()
         }
     }
 }
@@ -267,9 +254,7 @@ impl<T: ?Sized> Drop for RwLockWriteGuard<'_, T> {
 
 impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLockReadGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RwLockReadGuard")
-            .field("rw_lock", &self.rw_lock)
-            .finish()
+        f.debug_struct("RwLockReadGuard").field("rw_lock", &self.rw_lock).finish()
     }
 }
 
@@ -281,9 +266,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RwLockReadGuard<'_, T> {
 
 impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLockWriteGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RwLockWriteGuard")
-            .field("rw_lock", &self.rw_lock)
-            .finish()
+        f.debug_struct("RwLockWriteGuard").field("rw_lock", &self.rw_lock).finish()
     }
 }
 
@@ -324,10 +307,7 @@ mod tests {
         let write_result = lock.try_write();
         match write_result {
             None => (),
-            Some(_) => assert!(
-                false,
-                "try_write should not succeed while read_guard is in scope"
-            ),
+            Some(_) => assert!(false, "try_write should not succeed while read_guard is in scope"),
         }
 
         drop(read_guard);

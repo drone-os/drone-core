@@ -86,9 +86,7 @@ pub trait ThrFiberStreamRing: ThrToken {
         F: Send + 'static,
         T: Send + 'static,
     {
-        FiberStreamRing {
-            rx: add_rx(self, capacity, |_| Ok(()), fib, Ok),
-        }
+        FiberStreamRing { rx: add_rx(self, capacity, |_| Ok(()), fib, Ok) }
     }
 
     /// Adds the fiber `fib` to the fiber chain and returns a stream of `T`
@@ -103,9 +101,7 @@ pub trait ThrFiberStreamRing: ThrToken {
         F: Send + 'static,
         T: Send + 'static,
     {
-        FiberStreamRing {
-            rx: add_rx_overwrite(self, capacity, fib, Ok),
-        }
+        FiberStreamRing { rx: add_rx_overwrite(self, capacity, fib, Ok) }
     }
 
     /// Adds the fiber `fib` to the fiber chain and returns a stream of
@@ -127,9 +123,7 @@ pub trait ThrFiberStreamRing: ThrToken {
         T: Send + 'static,
         E: Send + 'static,
     {
-        TryFiberStreamRing {
-            rx: add_rx(self, capacity, overflow, fib, identity),
-        }
+        TryFiberStreamRing { rx: add_rx(self, capacity, overflow, fib, identity) }
     }
 
     /// Adds the fiber `fib` to the fiber chain and returns a stream of
@@ -149,9 +143,7 @@ pub trait ThrFiberStreamRing: ThrToken {
         T: Send + 'static,
         E: Send + 'static,
     {
-        TryFiberStreamRing {
-            rx: add_rx_overwrite(self, capacity, fib, identity),
-        }
+        TryFiberStreamRing { rx: add_rx_overwrite(self, capacity, fib, identity) }
     }
 }
 

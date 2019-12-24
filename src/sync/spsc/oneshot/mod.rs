@@ -60,10 +60,10 @@ impl<T> Inner<T> {
 }
 
 impl<T> SpscInner<AtomicU8, u8> for Inner<T> {
-    const ZERO: u8 = 0;
+    const COMPLETE: u8 = COMPLETE;
     const RX_WAKER_STORED: u8 = RX_WAKER_STORED;
     const TX_WAKER_STORED: u8 = TX_WAKER_STORED;
-    const COMPLETE: u8 = COMPLETE;
+    const ZERO: u8 = 0;
 
     #[inline]
     fn state_load(&self, order: Ordering) -> u8 {
@@ -78,8 +78,7 @@ impl<T> SpscInner<AtomicU8, u8> for Inner<T> {
         success: Ordering,
         failure: Ordering,
     ) -> Result<u8, u8> {
-        self.state
-            .compare_exchange_weak(current, new, success, failure)
+        self.state.compare_exchange_weak(current, new, success, failure)
     }
 
     #[inline]
@@ -111,9 +110,7 @@ mod tests {
                 RawWaker::new(counter, &VTABLE)
             }
             unsafe fn wake(counter: *const ()) {
-                (*(counter as *const Counter))
-                    .0
-                    .fetch_add(1, Ordering::SeqCst);
+                (*(counter as *const Counter)).0.fetch_add(1, Ordering::SeqCst);
             }
             static VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake, drop);
             unsafe { Waker::from_raw(RawWaker::new(self as *const _ as *const (), &VTABLE)) }

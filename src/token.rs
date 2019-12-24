@@ -251,12 +251,7 @@ mod compile_tests {
     //!     }
     //! }
     //! fn main() {
-    //!     let foo = unsafe {
-    //!         Foo {
-    //!             foo: FooToken::take(),
-    //!             __priv: (),
-    //!         }
-    //!     };
+    //!     let foo = unsafe { Foo { foo: FooToken::take(), __priv: () } };
     //! }
     //! ```
 }

@@ -48,11 +48,7 @@ impl Parse for CfgCond {
             }
         }
         Ok(Self {
-            clauses: if clauses.is_empty() {
-                vec![]
-            } else {
-                vec![clauses]
-            },
+            clauses: if clauses.is_empty() { vec![] } else { vec![clauses] },
             inverse: false,
         })
     }
@@ -76,10 +72,7 @@ impl CfgCond {
         let tokens = clauses
             .iter()
             .map(|clauses| {
-                clauses
-                    .iter()
-                    .map(|(key, value)| quote!(#key = #value))
-                    .collect::<Vec<_>>()
+                clauses.iter().map(|(key, value)| quote!(#key = #value)).collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
         if tokens.is_empty() {
@@ -94,13 +87,7 @@ impl CfgCond {
     /// Converts to DNF.
     fn to_dnf(&self) -> Vec<Vec<(Ident, LitStr)>> {
         assert!(!self.inverse);
-        match self
-            .clauses
-            .iter()
-            .map(Vec::as_slice)
-            .collect::<Vec<_>>()
-            .as_slice()
-        {
+        match self.clauses.iter().map(Vec::as_slice).collect::<Vec<_>>().as_slice() {
             [] | [[]] | [[], []] => Vec::new(),
             [x] | [x, []] | [[], x] => x.iter().map(|x| vec![x.clone()]).collect(),
             [x, y] => {
@@ -140,18 +127,12 @@ impl<T: Clone> CfgCondExt<T> for &[(CfgCond, T)] {
         }
         let mut result = Vec::new();
         for (clauses, mut items) in map {
-            let clauses = CfgCond {
-                clauses: vec![clauses],
-                inverse: false,
-            };
+            let clauses = CfgCond { clauses: vec![clauses], inverse: false };
             items.append(&mut default.clone());
             result.push((clauses, items));
         }
         let clauses = result.iter().flat_map(|(x, _)| x.clauses.clone()).collect();
-        let clauses = CfgCond {
-            clauses,
-            inverse: true,
-        };
+        let clauses = CfgCond { clauses, inverse: true };
         result.push((clauses, default));
         result
     }

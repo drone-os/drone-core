@@ -4,11 +4,7 @@
 
 #![deny(elided_lifetimes_in_paths)]
 #![warn(clippy::pedantic)]
-#![allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::similar_names
-)]
+#![allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::similar_names)]
 
 extern crate proc_macro;
 

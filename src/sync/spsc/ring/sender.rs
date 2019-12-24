@@ -178,18 +178,12 @@ impl<T, E> Inner<T, E> {
 
     fn put_index_try(&self, state: usize) -> Option<usize> {
         let length = Self::get_length(state);
-        if length == self.buffer.capacity() {
-            None
-        } else {
-            Some(self.put_index(state, length))
-        }
+        if length == self.buffer.capacity() { None } else { Some(self.put_index(state, length)) }
     }
 
     fn put_index(&self, state: usize, length: usize) -> usize {
         let cursor = state >> NUMBER_BITS & NUMBER_MASK;
-        cursor
-            .wrapping_add(length)
-            .wrapping_rem(self.buffer.capacity())
+        cursor.wrapping_add(length).wrapping_rem(self.buffer.capacity())
     }
 }
 

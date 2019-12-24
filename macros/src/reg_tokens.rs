@@ -94,12 +94,7 @@ impl Parse for Block {
         while !content.is_empty() {
             regs.push(content.parse()?);
         }
-        Ok(Self {
-            attrs,
-            vis,
-            ident,
-            regs,
-        })
+        Ok(Self { attrs, vis, ident, regs })
     }
 }
 
@@ -127,13 +122,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let mut tokens = Vec::new();
     let mut def_tokens = Vec::new();
     let mut ctor_tokens = Vec::new();
-    for Block {
-        attrs,
-        vis,
-        ident,
-        regs,
-    } in blocks
-    {
+    for Block { attrs, vis, ident, regs } in blocks {
         let block_snk = ident.to_string().to_snake_case();
         let block_ident = format_ident!("{}", unkeywordize(&block_snk));
         let mut block_tokens = Vec::new();
@@ -165,11 +154,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
         });
     }
-    let next_macro_vis = if let Visibility::Public(_) = next_macro_vis {
-        quote!(#[macro_export])
-    } else {
-        quote!()
-    };
+    let next_macro_vis =
+        if let Visibility::Public(_) = next_macro_vis { quote!(#[macro_export]) } else { quote!() };
     let macro_tokens = match prev_macro {
         Some(prev_macro) => quote! {
             #prev_macro! {

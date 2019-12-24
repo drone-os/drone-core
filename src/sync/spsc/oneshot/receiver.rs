@@ -58,13 +58,7 @@ impl<T> Future for Receiver<T> {
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.inner.poll_half(
-            cx,
-            IS_TX_HALF,
-            Ordering::Acquire,
-            Ordering::AcqRel,
-            Inner::take,
-        )
+        self.inner.poll_half(cx, IS_TX_HALF, Ordering::Acquire, Ordering::AcqRel, Inner::take)
     }
 }
 
@@ -81,10 +75,7 @@ impl<T> Inner<T> {
         if state & COMPLETE == 0 {
             Ok(None)
         } else {
-            unsafe { &mut *self.data.get() }
-                .take()
-                .ok_or(Canceled)
-                .map(Some)
+            unsafe { &mut *self.data.get() }.take().ok_or(Canceled).map(Some)
         }
     }
 

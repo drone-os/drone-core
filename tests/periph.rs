@@ -191,12 +191,7 @@ fn periph_macros() {
 fn concrete() {
     let reg = unsafe { Regs::take() };
     let gpio_c = periph_gpio_c!(reg);
-    let GpioPeriph {
-        rcc_ahb2enr_gpioen,
-        rcc_ahb2enr_gpiorst: (),
-        gpio_odr,
-        gpio_idr: (),
-    } = gpio_c;
+    let GpioPeriph { rcc_ahb2enr_gpioen, rcc_ahb2enr_gpiorst: (), gpio_odr, gpio_idr: () } = gpio_c;
     let gpio_odr = gpio_odr.into_unsync();
     let gpio_odr = gpio_odr.into_sync();
     let SGpioOdrFields { odr0, odr1: () } = gpio_odr.into_fields();
@@ -215,12 +210,7 @@ fn concrete() {
 #[test]
 fn generic_without_holes() {
     fn f<T: GpioMap + GpioOdrOdr1 + GpioIdr + GpioIdrIdr1>(gpio: GpioPeriph<T>) {
-        let GpioPeriph {
-            rcc_ahb2enr_gpioen,
-            rcc_ahb2enr_gpiorst: _,
-            gpio_odr,
-            gpio_idr: _,
-        } = gpio;
+        let GpioPeriph { rcc_ahb2enr_gpioen, rcc_ahb2enr_gpiorst: _, gpio_odr, gpio_idr: _ } = gpio;
         let gpio_odr = gpio_odr.into_unsync();
         let gpio_odr = gpio_odr.into_sync();
         let SGpioOdrFields { odr0, odr1 } = gpio_odr.into_fields();
@@ -244,12 +234,7 @@ fn generic_without_holes() {
 #[test]
 fn generic_with_holes() {
     fn f<T: GpioMap>(gpio: GpioPeriph<T>) {
-        let GpioPeriph {
-            rcc_ahb2enr_gpioen,
-            rcc_ahb2enr_gpiorst: _,
-            gpio_odr,
-            gpio_idr: _,
-        } = gpio;
+        let GpioPeriph { rcc_ahb2enr_gpioen, rcc_ahb2enr_gpiorst: _, gpio_odr, gpio_idr: _ } = gpio;
         let gpio_odr = gpio_odr.into_unsync();
         let gpio_odr = gpio_odr.into_sync();
         let SGpioOdrFields { odr0, odr1 } = gpio_odr.into_fields();

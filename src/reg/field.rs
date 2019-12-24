@@ -268,9 +268,7 @@ where
     #[inline]
     fn read(&self, val: &<Self::Reg as Reg<T>>::Val) -> bool {
         unsafe {
-            val.read_bit(<<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
-                Self::OFFSET,
-            ))
+            val.read_bit(<<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(Self::OFFSET))
         }
     }
 
@@ -289,18 +287,14 @@ where
     #[inline]
     fn set(&self, val: &mut <Self::Reg as Reg<T>>::Val) {
         unsafe {
-            val.set_bit(<<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
-                Self::OFFSET,
-            ));
+            val.set_bit(<<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(Self::OFFSET));
         }
     }
 
     #[inline]
     fn clear(&self, val: &mut <Self::Reg as Reg<T>>::Val) {
         unsafe {
-            val.clear_bit(<<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(
-                Self::OFFSET,
-            ));
+            val.clear_bit(<<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(Self::OFFSET));
         }
     }
 

@@ -48,23 +48,13 @@ impl Parse for Heap {
                 (shrink_in_place_attrs, shrink_in_place_path),
             ])
         };
-        Ok(Self {
-            heap_attrs,
-            heap_vis,
-            heap_ident,
-            hooks,
-        })
+        Ok(Self { heap_attrs, heap_vis, heap_ident, hooks })
     }
 }
 
 #[allow(clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Heap {
-        heap_attrs,
-        heap_vis,
-        heap_ident,
-        hooks,
-    } = parse_macro_input!(input as Heap);
+    let Heap { heap_attrs, heap_vis, heap_ident, hooks } = parse_macro_input!(input as Heap);
     let config = match Config::read_from_cargo_manifest_dir() {
         Ok(config) => config,
         Err(err) => compile_error!("Drone.toml: {}", err),

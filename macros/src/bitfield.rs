@@ -39,9 +39,7 @@ impl Parse for Bitfield {
             fields.push(content.parse()?);
             last_comma = content.parse::<Option<Token![,]>>()?.is_some();
         }
-        Ok(Self {
-            fields: fields.into_iter().collect(),
-        })
+        Ok(Self { fields: fields.into_iter().collect() })
     }
 }
 
@@ -65,13 +63,7 @@ impl Parse for Field {
         } else {
             None
         };
-        Ok(Self {
-            ident,
-            mode,
-            offset,
-            width,
-            doc,
-        })
+        Ok(Self { ident, mode, offset, width, doc })
     }
 }
 
@@ -109,9 +101,7 @@ impl Mode {
 #[allow(clippy::too_many_lines)]
 pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let DeriveInput {
-        attrs, ident, data, ..
-    } = input;
+    let DeriveInput { attrs, ident, data, .. } = input;
     let bitfield = attrs.into_iter().find(|attr| {
         if_chain! {
             if attr.path.leading_colon.is_none();

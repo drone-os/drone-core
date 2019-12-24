@@ -49,17 +49,7 @@ impl Parse for Reg {
         while !input.is_empty() {
             fields.push(input.parse()?);
         }
-        Ok(Self {
-            attrs,
-            vis,
-            block,
-            ident,
-            address,
-            size,
-            reset,
-            traits,
-            fields,
-        })
+        Ok(Self { attrs, vis, block, ident, address, size, reset, traits, fields })
     }
 }
 
@@ -75,29 +65,14 @@ impl Parse for Field {
         while !content.is_empty() {
             traits.push(content.parse()?);
         }
-        Ok(Self {
-            attrs,
-            ident,
-            offset,
-            width,
-            traits,
-        })
+        Ok(Self { attrs, ident, offset, width, traits })
     }
 }
 
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Reg {
-        attrs,
-        vis,
-        block,
-        ident,
-        address,
-        size,
-        reset,
-        traits,
-        fields,
-    } = parse_macro_input!(input as Reg);
+    let Reg { attrs, vis, block, ident, address, size, reset, traits, fields } =
+        parse_macro_input!(input as Reg);
     let t = format_ident!("_T");
 
     let attrs = &attrs;
@@ -106,14 +81,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let mut tokens = Vec::new();
     let mut struct_tokens = Vec::new();
     let mut ctor_tokens = Vec::new();
-    for Field {
-        attrs,
-        ident,
-        offset,
-        width,
-        traits,
-    } in &fields
-    {
+    for Field { attrs, ident, offset, width, traits } in &fields {
         let field_snk = ident.to_string().to_snake_case();
         let mut field_psc = ident.to_string().to_pascal_case();
         if field_psc == "Val" {

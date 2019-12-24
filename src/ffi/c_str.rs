@@ -38,10 +38,7 @@ use core::{
 ///
 /// unsafe {
 ///     let slice = CStr::from_ptr(my_string());
-///     println!(
-///         "string buffer size without nul terminator: {}",
-///         slice.to_bytes().len(),
-///     );
+///     println!("string buffer size without nul terminator: {}", slice.to_bytes().len(),);
 /// }
 /// ```
 ///
@@ -374,10 +371,7 @@ impl CStr {
     ///
     /// let c_str = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0")
     ///     .expect("CStr::from_bytes_with_nul failed");
-    /// assert_eq!(
-    ///     c_str.to_string_lossy(),
-    ///     Cow::Owned(String::from("Hello �World")) as Cow<'_, str>
-    /// );
+    /// assert_eq!(c_str.to_string_lossy(), Cow::Owned(String::from("Hello �World")) as Cow<'_, str>);
     /// ```
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
         String::from_utf8_lossy(self.to_bytes())
@@ -393,42 +387,29 @@ impl CStr {
     ///
     /// let c_string = CString::new(b"foo".to_vec()).expect("CString::new failed");
     /// let boxed = c_string.into_boxed_c_str();
-    /// assert_eq!(
-    ///     boxed.into_c_string(),
-    ///     CString::new("foo").expect("CString::new failed")
-    /// );
+    /// assert_eq!(boxed.into_c_string(), CString::new("foo").expect("CString::new failed"));
     /// ```
     #[allow(clippy::wrong_self_convention)]
     pub fn into_c_string(self: Box<Self>) -> CString {
         let raw = Box::into_raw(self) as *mut [u8];
-        CString {
-            inner: unsafe { Box::from_raw(raw) },
-        }
+        CString { inner: unsafe { Box::from_raw(raw) } }
     }
 }
 
 impl FromBytesWithNulError {
     fn interior_nul(pos: usize) -> Self {
-        Self {
-            kind: FromBytesWithNulErrorKind::InteriorNul(pos),
-        }
+        Self { kind: FromBytesWithNulErrorKind::InteriorNul(pos) }
     }
 
     fn not_nul_terminated() -> Self {
-        Self {
-            kind: FromBytesWithNulErrorKind::NotNulTerminated,
-        }
+        Self { kind: FromBytesWithNulErrorKind::NotNulTerminated }
     }
 }
 
 impl fmt::Debug for CStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\"")?;
-        for byte in self
-            .to_bytes()
-            .iter()
-            .flat_map(|&b| ascii::escape_default(b))
-        {
+        for byte in self.to_bytes().iter().flat_map(|&b| ascii::escape_default(b)) {
             f.write_char(byte as char)?;
         }
         write!(f, "\"")
@@ -466,9 +447,7 @@ impl ToOwned for CStr {
     type Owned = CString;
 
     fn to_owned(&self) -> CString {
-        CString {
-            inner: self.to_bytes_with_nul().into(),
-        }
+        CString { inner: self.to_bytes_with_nul().into() }
     }
 }
 
@@ -575,11 +554,9 @@ impl fmt::Display for FromBytesWithNulError {
 impl fmt::Display for FromBytesWithNulErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FromBytesWithNulErrorKind::InteriorNul(pos) => write!(
-                f,
-                "data provided contains an interior nul byte at byte pos {}",
-                pos
-            ),
+            FromBytesWithNulErrorKind::InteriorNul(pos) => {
+                write!(f, "data provided contains an interior nul byte at byte pos {}", pos)
+            }
             FromBytesWithNulErrorKind::NotNulTerminated => {
                 write!(f, "data provided is not nul terminated")
             }

@@ -59,9 +59,7 @@ pub trait ThrFiberFuture: ThrToken {
         F: Send + 'static,
         T: Send + 'static,
     {
-        FiberFuture {
-            rx: add_rx(self, fib),
-        }
+        FiberFuture { rx: add_rx(self, fib) }
     }
 }
 

@@ -80,9 +80,7 @@ pub trait ThrFiberStreamPulse: ThrToken {
         F: Fiber<Input = (), Yield = Option<usize>, Return = Option<usize>>,
         F: Send + 'static,
     {
-        FiberStreamPulse {
-            rx: add_rx(self, || Ok(()), fib, Ok),
-        }
+        FiberStreamPulse { rx: add_rx(self, || Ok(()), fib, Ok) }
     }
 
     /// Adds the fiber `fib` to the fiber chain and returns a fallible stream of
@@ -96,9 +94,7 @@ pub trait ThrFiberStreamPulse: ThrToken {
         F: Send + 'static,
         E: Send + 'static,
     {
-        TryFiberStreamPulse {
-            rx: add_rx(self, overflow, fib, identity),
-        }
+        TryFiberStreamPulse { rx: add_rx(self, overflow, fib, identity) }
     }
 }
 
