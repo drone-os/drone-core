@@ -750,4 +750,25 @@ mod compile_tests {
     //! reg_tokens1!(struct Regs1;);
     //! reg_tokens2!(struct Regs2;);
     //! ```
+    //!
+    //! ```compile_fail
+    //! use drone_core::{reg::prelude::*, token::Token};
+    //! drone_core::reg! {
+    //!     pub mod TIM1 CCMR1_Input Input;
+    //!     0x4001_0018 0x20 0x0000_0000 RReg WReg;
+    //!     pub mod TIM1 CCMR1_Output Output;
+    //!     0x4001_0018 0x20 0x0000_0000 RReg WReg;
+    //! }
+    //! drone_core::reg::tokens! {
+    //!     macro reg_tokens; crate; crate;
+    //!     pub mod TIM1 { CCMR1_Input CCMR1_Output; }
+    //! }
+    //! reg_tokens! {
+    //!     struct Regs;
+    //! }
+    //! fn main() {
+    //!     let reg = unsafe { Regs::take() };
+    //!     reg.tim1_ccmr1_output;
+    //! }
+    //! ```
 }

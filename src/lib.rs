@@ -3,7 +3,7 @@
 //! # Documentation
 //!
 //! - [Drone Book](https://book.drone-os.com/)
-//! - [API documentation](https://api.drone-os.com/drone-core/0.11/)
+//! - [API documentation](https://api.drone-os.com/drone-core/0.12/)
 //!
 //! # Usage
 //!
@@ -11,7 +11,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! drone-core = { version = "0.11.1" }
+//! drone-core = { version = "0.12.0" }
 //! ```
 
 #![feature(alloc_prelude)]
@@ -25,10 +25,10 @@
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
 #![feature(never_type)]
+#![feature(never_type_fallback)]
 #![feature(optin_builtin_traits)]
 #![feature(prelude_import)]
 #![feature(raw_vec_internals)]
-#![feature(result_map_or_else)]
 #![feature(slice_internals)]
 #![feature(untagged_unions)]
 #![deny(elided_lifetimes_in_paths)]
@@ -38,6 +38,7 @@
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
     clippy::cast_sign_loss,
+    clippy::missing_errors_doc,
     clippy::module_name_repetitions,
     clippy::must_use_candidate,
     clippy::needless_doctest_main,

@@ -13,6 +13,7 @@ Possible log types:
 
 ### Unreleased
 
+- [added] Implement multi-variant registers
 - [added] Add `load_bits`, `store_bits` methods for register tokens
 
 ### v0.11.1 (2019-11-27)

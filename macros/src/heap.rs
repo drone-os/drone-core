@@ -154,7 +154,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             #(#hook_tokens)*
         }
 
-        unsafe impl ::core::alloc::Alloc for #heap_ident {
+        unsafe impl ::core::alloc::AllocRef for #heap_ident {
             unsafe fn alloc(
                 &mut self,
                 layout: ::core::alloc::Layout,
