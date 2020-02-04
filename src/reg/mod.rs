@@ -761,7 +761,7 @@ mod compile_tests {
     //! }
     //! drone_core::reg::tokens! {
     //!     macro reg_tokens; crate; crate;
-    //!     pub mod TIM1 { CCMR1_Input CCMR1_Output; }
+    //!     pub mod TIM1 { CCMR1_Input; !CCMR1_Output; }
     //! }
     //! reg_tokens! {
     //!     struct Regs;

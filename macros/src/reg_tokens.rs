@@ -29,7 +29,8 @@ struct Block {
 
 struct Reg {
     attrs: Vec<Attribute>,
-    variants: Vec<Ident>,
+    ident: Ident,
+    skip: bool,
 }
 
 impl Parse for RegIndex {
@@ -101,12 +102,10 @@ impl Parse for Block {
 impl Parse for Reg {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
-        let mut variants = Vec::new();
-        while !input.peek(Token![;]) {
-            variants.push(input.parse()?);
-        }
+        let skip = input.parse::<Option<Token![!]>>()?.is_some();
+        let ident = input.parse()?;
         input.parse::<Token![;]>()?;
-        Ok(Self { attrs, variants })
+        Ok(Self { attrs, ident, skip })
     }
 }
 
@@ -129,29 +128,27 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         let block_snk = ident.to_string().to_snake_case();
         let block_ident = format_ident!("{}", unkeywordize(&block_snk));
         let mut block_tokens = Vec::new();
-        for Reg { attrs, variants } in regs {
-            for (i, ident) in variants.iter().enumerate() {
-                let reg_psc = format_ident!("{}", ident.to_string().to_pascal_case());
-                let reg_snk = ident.to_string().to_snake_case();
-                let reg_long = format_ident!("{}_{}", block_snk, reg_snk);
-                let reg_short = format_ident!("{}", unkeywordize(&reg_snk));
-                block_tokens.push(quote! {
-                    pub use #root_path::#reg_long as #reg_short;
-                    pub use #root_path::#reg_long::Reg as #reg_psc;
+        for Reg { attrs, ident, skip } in regs {
+            let reg_psc = format_ident!("{}", ident.to_string().to_pascal_case());
+            let reg_snk = ident.to_string().to_snake_case();
+            let reg_long = format_ident!("{}_{}", block_snk, reg_snk);
+            let reg_short = format_ident!("{}", unkeywordize(&reg_snk));
+            block_tokens.push(quote! {
+                pub use #root_path::#reg_long as #reg_short;
+                pub use #root_path::#reg_long::Reg as #reg_psc;
+            });
+            if !skip {
+                let macro_root_path = macro_root_path.iter();
+                def_tokens.push(quote! {
+                    #(#attrs)*
+                    #[allow(missing_docs)]
+                    pub #reg_long: $crate#(#macro_root_path)*::#block_ident::#reg_psc<
+                        ::drone_core::reg::tag::Srt,
+                    >,
                 });
-                if i == 0 {
-                    let macro_root_path = macro_root_path.iter();
-                    def_tokens.push(quote! {
-                        #(#attrs)*
-                        #[allow(missing_docs)]
-                        pub #reg_long: $crate#(#macro_root_path)*::#block_ident::#reg_psc<
-                            ::drone_core::reg::tag::Srt,
-                        >,
-                    });
-                    ctor_tokens.push(quote! {
-                        #reg_long: ::drone_core::token::Token::take(),
-                    });
-                }
+                ctor_tokens.push(quote! {
+                    #reg_long: ::drone_core::token::Token::take(),
+                });
             }
         }
         tokens.push(quote! {

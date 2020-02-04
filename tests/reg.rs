@@ -71,7 +71,8 @@ reg::tokens! {
 
     /// Advanced-timer.
     pub mod TIM1 {
-        CCMR1_Input CCMR1_Output;
+        CCMR1_Input;
+        !CCMR1_Output;
     }
 }
 
