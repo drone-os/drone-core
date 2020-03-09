@@ -24,7 +24,7 @@ reg! {
 
 reg! {
     /// Capture/Compare mode register 1. (input mode)
-    pub mod TIM1 CCMR1_Input Input;
+    pub mod TIM1 CCMR1_Input;
     0x4001_0018 0x20 0x0000_0000
     RReg WReg;
     /// Input Capture 1 filter.
@@ -35,7 +35,7 @@ reg! {
     CC1S { 8 2 RRRegField WWRegField }
 
     /// Capture/Compare mode register 1. (output mode)
-    pub mod TIM1 CCMR1_Output Output;
+    pub mod TIM1 CCMR1_Output;
     0x4001_0018 0x20 0x0000_0000
     RReg WReg;
     /// Output Compare 1 clear enable.
@@ -105,6 +105,6 @@ fn tokens() {
 #[test]
 fn variants() {
     let input: tim1::Ccmr1Input<Srt> = unsafe { Token::take() };
-    let output: tim1::Ccmr1Output<Srt> = input.into_output();
-    let _input: tim1::Ccmr1Input<Srt> = output.into_input();
+    let output: tim1::Ccmr1Output<Srt> = input.into_tim1_ccmr1_output();
+    let _input: tim1::Ccmr1Input<Srt> = output.into_tim1_ccmr1_input();
 }

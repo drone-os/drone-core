@@ -1,4 +1,4 @@
-use drone_macros_core::{compile_error, unkeywordize};
+use drone_macros_core::unkeywordize;
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
@@ -19,7 +19,6 @@ struct Reg {
     vis: Visibility,
     block: Ident,
     ident: Ident,
-    variant: Option<Ident>,
     address: LitInt,
     size: u8,
     reset: LitInt,
@@ -52,7 +51,6 @@ impl Parse for Reg {
         input.parse::<Token![mod]>()?;
         let block = input.parse()?;
         let ident = input.parse()?;
-        let variant = input.parse()?;
         input.parse::<Token![;]>()?;
         let address = input.parse()?;
         let size = input.parse::<LitInt>()?.base10_parse()?;
@@ -66,7 +64,7 @@ impl Parse for Reg {
         while input.fork().parse::<Field>().is_ok() {
             fields.push(input.parse()?);
         }
-        Ok(Self { attrs, vis, block, ident, variant, address, size, reset, traits, fields })
+        Ok(Self { attrs, vis, block, ident, address, size, reset, traits, fields })
     }
 }
 
@@ -360,29 +358,15 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             let t = format_ident!("_T");
             let mod_src = reg_src.reg_full();
             let mod_dst = reg_dst.reg_full();
-            let variant_dst = if let Some(variant) = &reg_dst.variant {
-                variant
-            } else {
-                compile_error!(
-                    "The variant name for `{} {}` is not given",
-                    reg_dst.block,
-                    reg_dst.ident
-                );
-            };
-            let variant_src = if let Some(variant) = &reg_src.variant {
-                variant
-            } else {
-                compile_error!(
-                    "The variant name for `{} {}` is not given",
-                    reg_src.block,
-                    reg_src.ident
-                );
-            };
-            let into_variant = format_ident!("into_{}", variant_dst.to_string().to_snake_case());
+            let into_variant = format_ident!(
+                "into_{}_{}",
+                reg_dst.block.to_string().to_snake_case(),
+                reg_dst.ident.to_string().to_snake_case()
+            );
             let doc = LitStr::new(
                 &format!(
-                    "Converts the token of variant \"{}\", to a token of variant \"{}\".",
-                    variant_src, variant_dst
+                    "Converts the token of variant `{}`, to a token of variant `{}`.",
+                    mod_src, mod_dst
                 ),
                 Span::call_site(),
             );

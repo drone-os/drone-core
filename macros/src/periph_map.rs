@@ -3,9 +3,9 @@ use inflector::Inflector;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
-    braced,
+    braced, parenthesized,
     parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, Ident, ImplItem, Path, Token,
+    parse_macro_input, token, Attribute, Ident, ImplItem, Path, Token,
 };
 
 const MACRO_PREFIX: &str = "periph_";
@@ -33,6 +33,7 @@ struct Reg {
     features: CfgCond,
     ident: Ident,
     path: Option<Ident>,
+    variant: Option<(Ident, Ident)>,
     traits: Vec<Ident>,
     fields: Vec<Field>,
 }
@@ -131,10 +132,15 @@ impl Parse for Reg {
         braced!(content in input);
         let mut traits = Vec::new();
         let mut fields = Vec::new();
-        let path = if content.is_empty() {
-            None
-        } else {
-            let path = content.parse()?;
+        let mut path = None;
+        let mut variant = None;
+        if !content.is_empty() {
+            path = Some(content.parse()?);
+            if content.peek(token::Paren) {
+                let content2;
+                parenthesized!(content2 in content);
+                variant = Some((content2.parse()?, content2.parse()?));
+            }
             while !content.peek(Token![;]) {
                 traits.push(content.parse()?);
             }
@@ -142,9 +148,8 @@ impl Parse for Reg {
             while !content.is_empty() {
                 fields.push(content.parse()?);
             }
-            Some(path)
         };
-        Ok(Self { features, ident, path, traits, fields })
+        Ok(Self { features, ident, path, variant, traits, fields })
     }
 }
 
@@ -194,7 +199,14 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         let block_path_snk = format_ident!("{}", block_path.to_string().to_snake_case());
         let block_path_ident =
             format_ident!("{}", unkeywordize(block_path_snk.to_string().as_str()));
-        for Reg { features: reg_features, ident: reg_ident, path: reg_path, traits, fields } in regs
+        for Reg {
+            features: reg_features,
+            ident: reg_ident,
+            path: reg_path,
+            variant,
+            traits,
+            fields,
+        } in regs
         {
             let reg_path_snk = reg_path
                 .as_ref()
@@ -542,8 +554,20 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         #(#c_methods)*
                     }
                 });
-                macro_tokens
-                    .push((reg_features.clone(), quote!(#block_reg_snk: $reg.#block_reg_path_snk)));
+                let macro_token = if let Some((from_block_ident, from_reg_path_ident)) = variant {
+                    let from_variant = format_ident!(
+                        "{}_{}",
+                        from_block_ident.to_string().to_snake_case(),
+                        from_reg_path_ident.to_string().to_snake_case()
+                    );
+                    let into_variant = reg_path_snk.as_ref().map(|reg_path_snk| {
+                        format_ident!("into_{}_{}", block_path_snk, reg_path_snk)
+                    });
+                    quote!(#block_reg_snk: $reg.#from_variant.#into_variant())
+                } else {
+                    quote!(#block_reg_snk: $reg.#block_reg_path_snk)
+                };
+                macro_tokens.push((reg_features.clone(), macro_token));
             }
         }
     }
