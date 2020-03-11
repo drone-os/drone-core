@@ -6,7 +6,7 @@ use syn::{
     parse_macro_input, Attribute, Expr, ExprPath, Ident, Token, Type, Visibility,
 };
 
-struct Thr {
+struct Input {
     array: ExprPath,
     thr_attrs: Vec<Attribute>,
     thr_vis: Visibility,
@@ -26,7 +26,7 @@ struct Field {
     init: Expr,
 }
 
-impl Parse for Thr {
+impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         input.parse::<Token![use]>()?;
         let array = input.parse()?;
@@ -80,7 +80,7 @@ impl Parse for Field {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Thr {
+    let Input {
         array,
         thr_attrs,
         thr_vis,
@@ -90,7 +90,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         local_vis,
         local_ident,
         local_fields,
-    } = parse_macro_input!(input as Thr);
+    } = parse_macro_input!(input);
     let local = format_ident!("Local");
     let mut thr_tokens = Vec::new();
     let mut thr_ctor_tokens = Vec::new();

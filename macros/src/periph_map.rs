@@ -11,7 +11,7 @@ use syn::{
 const MACRO_PREFIX: &str = "periph_";
 const TRAIT_SUFFIX: &str = "Map";
 
-struct PeriphMap {
+struct Input {
     macro_attrs: Vec<Attribute>,
     macro_ident: Ident,
     struct_attrs: Vec<Attribute>,
@@ -45,7 +45,7 @@ struct Field {
     traits: Vec<Ident>,
 }
 
-impl Parse for PeriphMap {
+impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let macro_attrs = input.call(Attribute::parse_outer)?;
         input.parse::<Token![pub]>()?;
@@ -175,7 +175,7 @@ impl Parse for Field {
 
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let PeriphMap {
+    let Input {
         macro_attrs: periph_macro_attrs,
         macro_ident: periph_macro,
         struct_attrs: periph_ty_attrs,
@@ -185,7 +185,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         root_path,
         macro_root_path,
         blocks,
-    } = &parse_macro_input!(input as PeriphMap);
+    } = &parse_macro_input!(input);
     let core_urt = quote!(::drone_core::reg::tag::Urt);
     let core_srt = quote!(::drone_core::reg::tag::Srt);
     let core_crt = quote!(::drone_core::reg::tag::Crt);

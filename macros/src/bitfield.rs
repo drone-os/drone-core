@@ -11,7 +11,7 @@ use syn::{
 };
 
 #[derive(Default)]
-struct Bitfield {
+struct Input {
     fields: Vec<Field>,
 }
 
@@ -29,7 +29,7 @@ enum Mode {
     Write,
 }
 
-impl Parse for Bitfield {
+impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let content;
         parenthesized!(content in input);
@@ -100,8 +100,7 @@ impl Mode {
 
 #[allow(clippy::too_many_lines)]
 pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let DeriveInput { attrs, ident, data, .. } = input;
+    let DeriveInput { attrs, ident, data, .. } = parse_macro_input!(input);
     let bitfield = attrs.into_iter().find(|attr| {
         if_chain! {
             if attr.path.leading_colon.is_none();
@@ -111,12 +110,12 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
             then { x.ident == "bitfield" } else { false }
         }
     });
-    let Bitfield { fields } = match bitfield {
+    let Input { fields } = match bitfield {
         Some(attr) => {
             let input = attr.tokens.into();
-            parse_macro_input!(input as Bitfield)
+            parse_macro_input!(input)
         }
-        None => Bitfield::default(),
+        None => Input::default(),
     };
     let bits = if_chain! {
         if let Data::Struct(x) = data;

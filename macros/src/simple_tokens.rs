@@ -11,7 +11,7 @@ use syn::{
 
 const TOKEN_SUFFIX: &str = "Token";
 
-struct SimpleTokens {
+struct Input {
     attrs: Vec<Attribute>,
     vis: Visibility,
     ident: Ident,
@@ -22,7 +22,7 @@ struct Token {
     name: String,
 }
 
-impl Parse for SimpleTokens {
+impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
@@ -51,7 +51,7 @@ impl Parse for Token {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let SimpleTokens { attrs, vis, ident, tokens } = parse_macro_input!(input as SimpleTokens);
+    let Input { attrs, vis, ident, tokens } = parse_macro_input!(input);
     let wrapper = format_ident!("__{}_init_tokens", ident.to_string().to_snake_case());
     let mut def_tokens = Vec::new();
     let mut ctor_tokens = Vec::new();

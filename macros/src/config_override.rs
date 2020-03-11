@@ -6,11 +6,11 @@ use syn::{
     parse_macro_input, LitStr,
 };
 
-struct ConfigOverride {
+struct Input {
     contents: LitStr,
 }
 
-impl Parse for ConfigOverride {
+impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let contents = input.parse()?;
         Ok(Self { contents })
@@ -18,7 +18,7 @@ impl Parse for ConfigOverride {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let ConfigOverride { contents } = parse_macro_input!(input as ConfigOverride);
+    let Input { contents } = parse_macro_input!(input);
     env::set_var("CARGO_MANIFEST_DIR_OVERRIDE", contents.value());
     quote!().into()
 }

@@ -8,7 +8,7 @@ use syn::{
     parse_macro_input, Attribute, Ident, Path, Token, Visibility,
 };
 
-struct RegIndex {
+struct Input {
     prev_macro: Option<Path>,
     next_macro_attrs: Vec<Attribute>,
     next_macro_vis: Visibility,
@@ -33,7 +33,7 @@ struct Reg {
     skip: bool,
 }
 
-impl Parse for RegIndex {
+impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let next_macro_attrs = input.call(Attribute::parse_outer)?;
         let next_macro_vis = input.parse()?;
@@ -111,7 +111,7 @@ impl Parse for Reg {
 
 #[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let RegIndex {
+    let Input {
         prev_macro,
         next_macro_attrs,
         next_macro_vis,
@@ -119,7 +119,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         macro_root_path,
         root_path,
         blocks: Blocks(blocks),
-    } = &parse_macro_input!(input as RegIndex);
+    } = &parse_macro_input!(input);
 
     let mut tokens = Vec::new();
     let mut def_tokens = Vec::new();

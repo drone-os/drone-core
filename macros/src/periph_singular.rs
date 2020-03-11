@@ -11,7 +11,7 @@ use syn::{
 const MACRO_PREFIX: &str = "periph_";
 const STRUCT_SUFFIX: &str = "Periph";
 
-struct PeriphSingular {
+struct Input {
     macro_attrs: Vec<Attribute>,
     macro_ident: Ident,
     struct_attrs: Vec<Attribute>,
@@ -37,7 +37,7 @@ struct Field {
     ident: Ident,
 }
 
-impl Parse for PeriphSingular {
+impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let macro_attrs = input.call(Attribute::parse_outer)?;
         input.parse::<Token![pub]>()?;
@@ -127,7 +127,7 @@ impl Parse for Field {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let PeriphSingular {
+    let Input {
         macro_attrs,
         macro_ident,
         struct_attrs,
@@ -135,7 +135,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         root_path,
         macro_root_path,
         blocks,
-    } = &parse_macro_input!(input as PeriphSingular);
+    } = &parse_macro_input!(input);
     let mut tokens = Vec::new();
     let mut periph_tokens = Vec::new();
     let mut macro_tokens = Vec::new();

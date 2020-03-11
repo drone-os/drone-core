@@ -10,7 +10,7 @@ use syn::{
     parse_macro_input, Attribute, Ident, LitInt, LitStr, Token, Visibility,
 };
 
-struct Variants {
+struct Input {
     regs: Vec<Reg>,
 }
 
@@ -34,7 +34,7 @@ struct Field {
     traits: Vec<Ident>,
 }
 
-impl Parse for Variants {
+impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let mut regs = Vec::new();
         while !input.is_empty() {
@@ -347,7 +347,7 @@ impl Reg {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Variants { regs } = parse_macro_input!(input as Variants);
+    let Input { regs } = parse_macro_input!(input);
     let reg_tokens = regs.iter().map(Reg::generate).collect::<Vec<_>>();
     let mut variant_tokens = Vec::new();
     for (i, reg_src) in regs.iter().enumerate() {

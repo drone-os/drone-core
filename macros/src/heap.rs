@@ -8,14 +8,14 @@ use syn::{
     parse_macro_input, Attribute, ExprPath, Ident, LitInt, Token, Visibility,
 };
 
-struct Heap {
+struct Input {
     heap_attrs: Vec<Attribute>,
     heap_vis: Visibility,
     heap_ident: Ident,
     hooks: Option<[(Vec<Attribute>, ExprPath); 4]>,
 }
 
-impl Parse for Heap {
+impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let heap_attrs = input.call(Attribute::parse_outer)?;
         let heap_vis = input.parse()?;
@@ -54,7 +54,7 @@ impl Parse for Heap {
 
 #[allow(clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Heap { heap_attrs, heap_vis, heap_ident, hooks } = parse_macro_input!(input as Heap);
+    let Input { heap_attrs, heap_vis, heap_ident, hooks } = parse_macro_input!(input);
     let config = match Config::read_from_cargo_manifest_dir() {
         Ok(config) => config,
         Err(err) => compile_error!("Drone.toml: {}", err),

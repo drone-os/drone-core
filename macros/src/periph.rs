@@ -8,7 +8,7 @@ use syn::{
     parse_macro_input, Attribute, Ident, LitInt, Token, TraitItem,
 };
 
-struct Periph {
+struct Input {
     trait_attrs: Vec<Attribute>,
     trait_ident: Ident,
     trait_items: Vec<TraitItem>,
@@ -36,7 +36,7 @@ struct Field {
     traits: Vec<Ident>,
 }
 
-impl Parse for Periph {
+impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let trait_attrs = input.call(Attribute::parse_outer)?;
         input.parse::<Token![pub]>()?;
@@ -110,8 +110,8 @@ impl Parse for Field {
 
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Periph { trait_attrs, trait_ident, trait_items, struct_attrs, struct_ident, blocks } =
-        &parse_macro_input!(input as Periph);
+    let Input { trait_attrs, trait_ident, trait_items, struct_attrs, struct_ident, blocks } =
+        &parse_macro_input!(input);
 
     let mut tokens = Vec::new();
     let mut periph_bounds = Vec::new();
