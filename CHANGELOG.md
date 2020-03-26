@@ -15,6 +15,7 @@ Possible log types:
 
 - [added] Implement multi-variant registers
 - [added] Add `load_bits`, `store_bits` methods for register tokens
+- [removed] Remove `shrink_in_place` and `grow_in_place` hooks in `heap!`
 
 ### v0.11.1 (2019-11-27)
 

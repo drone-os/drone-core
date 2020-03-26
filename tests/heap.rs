@@ -34,14 +34,10 @@ heap! {
 
     use trace_alloc;
     use trace_dealloc;
-    use trace_grow_in_place;
-    use trace_shrink_in_place;
 }
 
 fn trace_alloc(_layout: Layout, _pool: &Pool) {}
 fn trace_dealloc(_layout: Layout, _pool: &Pool) {}
-fn trace_grow_in_place(_layout: Layout, _new_size: usize) {}
-fn trace_shrink_in_place(_layout: Layout, _new_size: usize) {}
 
 #[test]
 fn size() {

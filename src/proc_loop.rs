@@ -4,6 +4,8 @@
 //! **NOTE** A Drone platform crate may re-export this module with its own
 //! additions under the same name, in which case it should be used instead.
 
+#![allow(clippy::wildcard_imports)]
+
 use crate::{
     fib::{self, Fiber},
     future::fallback::*,

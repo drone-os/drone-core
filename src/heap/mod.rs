@@ -73,4 +73,7 @@
 mod allocator;
 mod pool;
 
-pub use self::{allocator::Allocator, pool::Pool};
+pub use self::{
+    allocator::{alloc, binary_search, dealloc, Allocator},
+    pool::Pool,
+};
