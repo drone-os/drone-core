@@ -297,6 +297,13 @@ pub mod tag;
 #[doc(inline)]
 pub use drone_core_macros::reg_tokens as tokens;
 
+/// Assert exclusive ownership of the register.
+#[doc(inline)]
+pub use drone_core_macros::reg_assert_taken as assert_taken;
+
+#[doc(hidden)]
+pub use drone_core_macros::reg_tokens_inner as tokens_inner;
+
 use self::tag::{Crt, RegAtomic, RegOwned, RegTag, Srt, Urt};
 use crate::{bitfield::Bitfield, token::Token};
 use core::ptr::{read_volatile, write_volatile};
@@ -736,27 +743,43 @@ mod compile_tests {
     //!
     //! ```compile_fail
     //! #![feature(proc_macro_hygiene)]
-    //! use drone_core::reg;
-    //! reg::tokens!(macro reg_tokens; crate; crate;);
+    //! use drone_core::token::Token;
+    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
+    //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
     //! reg_tokens!(struct Regs1;);
     //! reg_tokens!(struct Regs2;);
+    //! fn main() {
+    //!     unsafe { Regs1::take() };
+    //!     unsafe { Regs2::take() };
+    //! }
     //! ```
     //!
     //! ```compile_fail
     //! #![feature(proc_macro_hygiene)]
-    //! use drone_core::reg;
-    //! reg::tokens!(macro reg_tokens1; crate; crate;);
-    //! reg::tokens!(macro reg_tokens2; crate; crate;);
+    //! use drone_core::token::Token;
+    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
+    //! #[macro_use]
+    //! mod x {
+    //!     drone_core::reg::tokens!(macro reg_tokens1; crate; crate::x; pub mod FOO { BAR; });
+    //! }
+    //! #[macro_use]
+    //! mod y {
+    //!     drone_core::reg::tokens!(macro reg_tokens2; crate; crate::y; pub mod FOO { BAR; });
+    //! }
     //! reg_tokens1!(struct Regs1;);
     //! reg_tokens2!(struct Regs2;);
+    //! fn main() {
+    //!     unsafe { Regs1::take() };
+    //!     unsafe { Regs2::take() };
+    //! }
     //! ```
     //!
     //! ```compile_fail
     //! use drone_core::{reg::prelude::*, token::Token};
     //! drone_core::reg! {
-    //!     pub mod TIM1 CCMR1_Input Input;
+    //!     pub mod TIM1 CCMR1_Input;
     //!     0x4001_0018 0x20 0x0000_0000 RReg WReg;
-    //!     pub mod TIM1 CCMR1_Output Output;
+    //!     pub mod TIM1 CCMR1_Output;
     //!     0x4001_0018 0x20 0x0000_0000 RReg WReg;
     //! }
     //! drone_core::reg::tokens! {
@@ -770,5 +793,37 @@ mod compile_tests {
     //!     let reg = unsafe { Regs::take() };
     //!     reg.tim1_ccmr1_output;
     //! }
+    //! ```
+    //!
+    //! ```compile_fail
+    //! #![feature(proc_macro_hygiene)]
+    //! use drone_core::token::Token;
+    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
+    //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
+    //! reg_tokens!(struct Regs; !foo_bar;);
+    //! fn main() {
+    //!     let reg = unsafe { Regs::take() };
+    //!     reg.foo_bar;
+    //! }
+    //! ```
+    //!
+    //! ```compile_fail
+    //! #![feature(proc_macro_hygiene)]
+    //! use drone_core::token::Token;
+    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
+    //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
+    //! reg_tokens!(struct Regs;);
+    //! drone_core::reg::assert_taken!(foo_bar);
+    //! fn main() { unsafe { Regs::take() }; }
+    //! ```
+    //!
+    //! ```
+    //! #![feature(proc_macro_hygiene)]
+    //! use drone_core::token::Token;
+    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
+    //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
+    //! reg_tokens!(struct Regs; !foo_bar;);
+    //! drone_core::reg::assert_taken!(FOO);
+    //! fn main() { unsafe { Regs::take() }; }
     //! ```
 }

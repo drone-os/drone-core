@@ -15,7 +15,9 @@ mod periph;
 mod periph_map;
 mod periph_singular;
 mod reg;
+mod reg_assert_taken;
 mod reg_tokens;
+mod reg_tokens_inner;
 mod simple_token;
 mod simple_tokens;
 mod static_tokens;
@@ -59,8 +61,18 @@ pub fn reg(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
+pub fn reg_assert_taken(input: TokenStream) -> TokenStream {
+    reg_assert_taken::proc_macro(input)
+}
+
+#[proc_macro]
 pub fn reg_tokens(input: TokenStream) -> TokenStream {
     reg_tokens::proc_macro(input)
+}
+
+#[proc_macro]
+pub fn reg_tokens_inner(input: TokenStream) -> TokenStream {
+    reg_tokens_inner::proc_macro(input)
 }
 
 #[proc_macro]

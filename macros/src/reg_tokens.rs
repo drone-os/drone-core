@@ -15,10 +15,8 @@ struct Input {
     next_macro: Ident,
     macro_root_path: Option<Path>,
     root_path: Path,
-    blocks: Blocks,
+    blocks: Vec<Block>,
 }
-
-struct Blocks(Vec<Block>);
 
 struct Block {
     attrs: Vec<Attribute>,
@@ -60,7 +58,10 @@ impl Parse for Input {
             input.parse::<Token![;]>()?;
             Some(path)
         };
-        let blocks = input.parse()?;
+        let mut blocks = Vec::new();
+        while !input.is_empty() {
+            blocks.push(input.parse()?);
+        }
         Ok(Self {
             prev_macro,
             next_macro_attrs,
@@ -70,16 +71,6 @@ impl Parse for Input {
             root_path,
             blocks,
         })
-    }
-}
-
-impl Parse for Blocks {
-    fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let mut blocks = Vec::new();
-        while !input.is_empty() {
-            blocks.push(input.parse()?);
-        }
-        Ok(Self(blocks))
     }
 }
 
@@ -118,19 +109,17 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         next_macro,
         macro_root_path,
         root_path,
-        blocks: Blocks(blocks),
+        blocks,
     } = &parse_macro_input!(input);
-
     let mut tokens = Vec::new();
-    let mut def_tokens = Vec::new();
-    let mut ctor_tokens = Vec::new();
-    for Block { attrs, vis, ident, regs } in blocks {
-        let block_snk = ident.to_string().to_snake_case();
-        let block_ident = format_ident!("{}", unkeywordize(&block_snk));
+    let mut defs = Vec::new();
+    for Block { attrs: block_attrs, vis: block_vis, ident: block_ident, regs } in blocks {
+        let block_snk = block_ident.to_string().to_snake_case();
+        let block_name = format_ident!("{}", unkeywordize(&block_snk));
         let mut block_tokens = Vec::new();
-        for Reg { attrs, ident, skip } in regs {
-            let reg_psc = format_ident!("{}", ident.to_string().to_pascal_case());
-            let reg_snk = ident.to_string().to_snake_case();
+        for Reg { attrs: reg_attrs, ident: reg_ident, skip } in regs {
+            let reg_psc = format_ident!("{}", reg_ident.to_string().to_pascal_case());
+            let reg_snk = reg_ident.to_string().to_snake_case();
             let reg_long = format_ident!("{}_{}", block_snk, reg_snk);
             let reg_short = format_ident!("{}", unkeywordize(&reg_snk));
             block_tokens.push(quote! {
@@ -139,21 +128,15 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             });
             if !skip {
                 let macro_root_path = macro_root_path.iter();
-                def_tokens.push(quote! {
-                    #(#attrs)*
-                    #[allow(missing_docs)]
-                    pub #reg_long: $crate#(#macro_root_path)*::#block_ident::#reg_psc<
-                        ::drone_core::reg::tag::Srt,
-                    >,
-                });
-                ctor_tokens.push(quote! {
-                    #reg_long: ::drone_core::token::Token::take(),
+                defs.push(quote! {
+                    #(#block_attrs)* #(#reg_attrs)*
+                    #reg_long $crate#(#macro_root_path)*::#block_name::#reg_psc;
                 });
             }
         }
         tokens.push(quote! {
-            #(#attrs)*
-            #vis mod #block_ident {
+            #(#block_attrs)*
+            #block_vis mod #block_name {
                 #(#block_tokens)*
             }
         });
@@ -164,22 +147,16 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         Some(prev_macro) => quote! {
             #prev_macro! {
                 $(#[$attr])* $vis struct $ty;
-                { #(#def_tokens)* $($def)* }
-                { #(#ctor_tokens)* $($ctor)* }
+                $(!$undefs;)*
+                __extend { #(#defs)* $($defs)* }
             }
         },
         None => quote! {
-            $(#[$attr])* $vis struct $ty {
-                #(#def_tokens)* $($def)*
+            ::drone_core::reg::tokens_inner! {
+                $(#[$attr])* $vis struct $ty;
+                { #(#defs)* $($defs)* }
+                { $($undefs;)* }
             }
-            unsafe impl ::drone_core::token::Token for $ty {
-                #[inline]
-                unsafe fn take() -> Self {
-                    Self { #(#ctor_tokens)* $($ctor)* }
-                }
-            }
-            #[no_mangle]
-            fn __reg_tokens_singularity_check() {}
         },
     };
     tokens.push(quote! {
@@ -188,24 +165,22 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         macro_rules! #next_macro {
             (
                 $(#[$attr:meta])* $vis:vis struct $ty:ident;
+                $(!$undefs:ident;)*
             ) => {
                 #next_macro! {
                     $(#[$attr])* $vis struct $ty;
-                    {} {}
+                    $(!$undefs;)*
+                    __extend {}
                 }
             };
             (
                 $(#[$attr:meta])* $vis:vis struct $ty:ident;
-                { $($def:tt)* }
-                { $($ctor:tt)* }
+                $(!$undefs:ident;)*
+                __extend { $($defs:tt)* }
             ) => {
                 #macro_tokens
             };
         }
     });
-
-    let expanded = quote! {
-        #(#tokens)*
-    };
-    expanded.into()
+    quote!(#(#tokens)*).into()
 }
