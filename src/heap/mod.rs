@@ -77,3 +77,6 @@ pub use self::{
     allocator::{alloc, binary_search, dealloc, Allocator},
     pool::Pool,
 };
+
+/// XOR pattern for heap trace output.
+pub const HEAPTRACE_KEY: u32 = 0xC5AC_CE55;

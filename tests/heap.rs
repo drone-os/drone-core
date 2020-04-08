@@ -2,10 +2,8 @@
 #![feature(const_fn)]
 
 use crate::core::mem::size_of;
-use drone_core::heap::Pool;
 use drone_core_macros::config_override;
 use std as core;
-use std::alloc::Layout;
 
 use drone_core::heap;
 
@@ -31,13 +29,7 @@ heap! {
     /// Test doc attribute
     #[doc = "test attribute"]
     pub struct Heap;
-
-    use trace_alloc;
-    use trace_dealloc;
 }
-
-fn trace_alloc(_layout: Layout, _pool: &Pool) {}
-fn trace_dealloc(_layout: Layout, _pool: &Pool) {}
 
 #[test]
 fn size() {

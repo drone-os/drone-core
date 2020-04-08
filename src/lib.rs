@@ -21,6 +21,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(generator_trait)]
 #![feature(generators)]
+#![feature(lang_items)]
 #![feature(marker_trait_attr)]
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
@@ -57,6 +58,7 @@ pub mod future;
 pub mod heap;
 pub mod inventory;
 pub mod io;
+pub mod log;
 pub mod mem;
 pub mod periph;
 pub mod prelude;
@@ -65,6 +67,9 @@ pub mod reg;
 pub mod sync;
 pub mod thr;
 pub mod token;
+
+#[cfg(not(feature = "std"))]
+mod lang_items;
 
 /// Defines dynamic memory structures.
 ///

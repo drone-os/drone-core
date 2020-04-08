@@ -24,14 +24,6 @@ pub trait Allocator: Sized {
     unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
     where
         I: SliceIndex<[Pool]>;
-
-    /// A function called with each allocation.
-    #[inline]
-    fn alloc_hook(_layout: Layout, _pool: &Pool) {}
-
-    /// A function called with each de-allocation.
-    #[inline]
-    fn dealloc_hook(_layout: Layout, _pool: &Pool) {}
 }
 
 /// Does a binary search for the pool with the smallest block size to fit
@@ -55,18 +47,62 @@ pub fn alloc<A: Allocator>(heap: &A, layout: Layout) -> Result<(NonNull<u8>, usi
     for pool_idx in binary_search(heap, &layout)..A::POOL_COUNT {
         let pool = unsafe { heap.get_pool_unchecked(pool_idx) };
         if let Some(ptr) = pool.alloc() {
-            A::alloc_hook(layout, pool);
+            #[cfg(feature = "heaptrace")]
+            trace::alloc(layout);
             return Ok((ptr, pool.size()));
         }
     }
     Err(AllocErr)
 }
 
+#[allow(clippy::used_underscore_binding)]
 #[doc(hidden)]
-pub unsafe fn dealloc<A: Allocator>(heap: &A, ptr: NonNull<u8>, layout: Layout) {
+pub unsafe fn dealloc<A: Allocator>(heap: &A, ptr: NonNull<u8>, _layout: Layout) {
     let pool = heap.get_pool_unchecked(binary_search(heap, ptr));
-    A::dealloc_hook(layout, pool);
+    #[cfg(feature = "heaptrace")]
+    trace::dealloc(_layout);
     pool.dealloc(ptr);
+}
+
+#[cfg(feature = "heaptrace")]
+mod trace {
+    use crate::{
+        heap::HEAPTRACE_KEY,
+        log::{Port, HEAPTRACE_PORT},
+    };
+    use core::{alloc::Layout, slice};
+
+    #[inline(always)]
+    pub(super) fn alloc(layout: Layout) {
+        #[inline(never)]
+        fn trace(layout: Layout) {
+            #[cfg(feature = "std")]
+            return unimplemented!();
+            let packet = [0xABCD_u32.to_be(), (layout.size() as u32) ^ HEAPTRACE_KEY];
+            Port::exclusive(HEAPTRACE_PORT).write_bytes(unsafe {
+                slice::from_raw_parts((packet.as_ptr() as *const u8).add(2), 6)
+            });
+        }
+        if Port::new(HEAPTRACE_PORT).is_enabled() {
+            trace(layout);
+        }
+    }
+
+    #[inline(always)]
+    pub(super) fn dealloc(layout: Layout) {
+        #[inline(never)]
+        fn trace(layout: Layout) {
+            #[cfg(feature = "std")]
+            return unimplemented!();
+            let packet = [0xDCBA_u32.to_be(), (layout.size() as u32) ^ HEAPTRACE_KEY];
+            Port::exclusive(HEAPTRACE_PORT).write_bytes(unsafe {
+                slice::from_raw_parts((packet.as_ptr() as *const u8).add(2), 6)
+            });
+        }
+        if Port::new(HEAPTRACE_PORT).is_enabled() {
+            trace(layout);
+        }
+    }
 }
 
 #[cfg(test)]

@@ -5,14 +5,13 @@ use proc_macro2::Span;
 use quote::quote;
 use syn::{
     parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, ExprPath, Ident, LitInt, Token, Visibility,
+    parse_macro_input, Attribute, Ident, LitInt, Token, Visibility,
 };
 
 struct Input {
     heap_attrs: Vec<Attribute>,
     heap_vis: Visibility,
     heap_ident: Ident,
-    hooks: Option<[(Vec<Attribute>, ExprPath); 2]>,
 }
 
 impl Parse for Input {
@@ -22,26 +21,13 @@ impl Parse for Input {
         input.parse::<Token![struct]>()?;
         let heap_ident = input.parse()?;
         input.parse::<Token![;]>()?;
-        let hooks = if input.is_empty() {
-            None
-        } else {
-            let alloc_attrs = input.call(Attribute::parse_outer)?;
-            input.parse::<Token![use]>()?;
-            let alloc_path = input.parse()?;
-            input.parse::<Token![;]>()?;
-            let dealloc_attrs = input.call(Attribute::parse_outer)?;
-            input.parse::<Token![use]>()?;
-            let dealloc_path = input.parse()?;
-            input.parse::<Token![;]>()?;
-            Some([(alloc_attrs, alloc_path), (dealloc_attrs, dealloc_path)])
-        };
-        Ok(Self { heap_attrs, heap_vis, heap_ident, hooks })
+        Ok(Self { heap_attrs, heap_vis, heap_ident })
     }
 }
 
 #[allow(clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Input { heap_attrs, heap_vis, heap_ident, hooks } = parse_macro_input!(input);
+    let Input { heap_attrs, heap_vis, heap_ident } = parse_macro_input!(input);
     let config = match Config::read_from_cargo_manifest_dir() {
         Ok(config) => config,
         Err(err) => compile_error!("Drone.toml: {}", err),
@@ -59,30 +45,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         });
         pointer += pool.block * pool.capacity;
     }
-    let hook_tokens = if let Some(hooks) = hooks {
-        let [(alloc_attrs, alloc_path), (dealloc_attrs, dealloc_path)] = hooks;
-        vec![quote! {
-            #(#alloc_attrs)*
-            #[inline]
-            fn alloc_hook(
-                layout: ::core::alloc::Layout,
-                pool: &::drone_core::heap::Pool,
-            ) {
-                #alloc_path(layout, pool)
-            }
-
-            #(#dealloc_attrs)*
-            #[inline]
-            fn dealloc_hook(
-                layout: ::core::alloc::Layout,
-                pool: &::drone_core::heap::Pool,
-            ) {
-                #dealloc_path(layout, pool)
-            }
-        }]
-    } else {
-        vec![]
-    };
     let pools_len = pools.len();
 
     let expanded = quote! {
@@ -110,8 +72,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             {
                 self.pools.get_unchecked(index)
             }
-
-            #(#hook_tokens)*
         }
 
         unsafe impl ::core::alloc::AllocRef for #heap_ident {
