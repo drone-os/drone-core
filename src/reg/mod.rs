@@ -813,7 +813,7 @@ mod compile_tests {
     //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
     //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
     //! reg_tokens!(struct Regs;);
-    //! drone_core::reg::assert_taken!(foo_bar);
+    //! drone_core::reg::assert_taken!("foo_bar");
     //! fn main() { unsafe { Regs::take() }; }
     //! ```
     //!
@@ -823,7 +823,19 @@ mod compile_tests {
     //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
     //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
     //! reg_tokens!(struct Regs; !foo_bar;);
-    //! drone_core::reg::assert_taken!(FOO);
+    //! drone_core::reg::assert_taken!("foo_bar");
     //! fn main() { unsafe { Regs::take() }; }
+    //! ```
+    //!
+    //! ```compile_fail
+    //! #![feature(proc_macro_hygiene)]
+    //! drone_core::reg::assert_taken!("foo_bar");
+    //! drone_core::reg::assert_taken!(concat!("foo", "_bar"));
+    //! ```
+    //!
+    //! ```
+    //! #![feature(proc_macro_hygiene)]
+    //! drone_core::reg::assert_taken!("foo_bar");
+    //! drone_core::reg::assert_taken!(concat!("foo", "_baz"));
     //! ```
 }

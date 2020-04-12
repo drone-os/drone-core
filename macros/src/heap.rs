@@ -30,7 +30,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let Input { heap_attrs, heap_vis, heap_ident } = parse_macro_input!(input);
     let config = match Config::read_from_cargo_manifest_dir() {
         Ok(config) => config,
-        Err(err) => compile_error!("Drone.toml: {}", err),
+        Err(err) => compile_error!("{}: {}", drone_config::CONFIG_NAME, err),
     };
     let mut pools = config.heap.pools;
     pools.sort_by_key(|pool| pool.block);

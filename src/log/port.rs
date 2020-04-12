@@ -1,4 +1,4 @@
-use super::{drone_log_is_port_enabled, drone_log_port_write_bytes};
+use super::{drone_log_is_enabled, drone_log_write_bytes};
 use core::{fmt, fmt::Write};
 
 /// Logger port.
@@ -27,7 +27,7 @@ impl Port {
     pub fn is_enabled(self) -> bool {
         #[cfg(feature = "std")]
         return false;
-        unsafe { drone_log_is_port_enabled(self.port) }
+        unsafe { drone_log_is_enabled(self.port) }
     }
 
     /// Writes `bytes` to the port.
@@ -36,7 +36,7 @@ impl Port {
         #[cfg(feature = "std")]
         return;
         let Self { port, exclusive } = *self;
-        unsafe { drone_log_port_write_bytes(port, exclusive, bytes.as_ptr(), bytes.len()) };
+        unsafe { drone_log_write_bytes(port, exclusive, bytes.as_ptr(), bytes.len()) };
     }
 }
 

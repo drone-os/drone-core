@@ -95,6 +95,9 @@ pub use drone_core_macros::reg;
 #[doc(inline)]
 pub use drone_core_macros::thr;
 
+#[doc(hidden)]
+pub use drone_core_macros::config_override;
+
 #[prelude_import]
 #[allow(unused_imports)]
 use crate::prelude::*;

@@ -5,13 +5,39 @@
 mod macros;
 mod port;
 
+/// Returns log output baud rate defined in `Drone.toml`.
+///
+/// # Examples
+///
+/// ```
+/// # #![feature(proc_macro_hygiene)]
+/// # drone_core::config_override! { "
+/// # [memory]
+/// # flash = { size = \"128K\", origin = 0x08000000 }
+/// # ram = { size = \"20K\", origin = 0x20000000 }
+/// # [heap]
+/// # size = \"0\"
+/// # pools = []
+/// # [probe]
+/// # gdb-client-command = \"gdb-multiarch\"
+/// # [probe.uart]
+/// # baud-rate = 115200
+/// # endpoint = \"/dev/ttyACM0\"
+/// # " }
+/// use drone_core::log;
+///
+/// assert_eq!(log::baud_rate!(), 115_200);
+/// ```
+#[doc(inline)]
+pub use drone_core_macros::log_baud_rate as baud_rate;
+
 pub use self::port::Port;
 
 use core::{fmt, fmt::Write};
 
 extern "C" {
-    pub fn drone_log_is_port_enabled(port: u8) -> bool;
-    pub fn drone_log_port_write_bytes(port: u8, exclusive: bool, buffer: *const u8, count: usize);
+    pub fn drone_log_is_enabled(port: u8) -> bool;
+    pub fn drone_log_write_bytes(port: u8, exclusive: bool, buffer: *const u8, count: usize);
     pub fn drone_log_flush();
 }
 

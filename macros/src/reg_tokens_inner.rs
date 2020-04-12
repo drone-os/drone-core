@@ -1,10 +1,11 @@
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
 use std::collections::BTreeMap;
 use syn::{
     braced,
     parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, Ident, Path, Token, Visibility,
+    parse_macro_input, Attribute, Ident, LitStr, Path, Token, Visibility,
 };
 
 struct Input {
@@ -72,17 +73,19 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let mut ctor_tokens = BTreeMap::new();
     let mut assert_tokens = BTreeMap::new();
     for Def { attrs, ident, path } in defs {
-        def_tokens.insert(ident.to_string(), quote! {
+        let string = ident.to_string();
+        let lit_str = LitStr::new(&string, Span::call_site());
+        def_tokens.insert(string.clone(), quote! {
             #(#attrs)*
             #[allow(missing_docs)]
             pub #ident: #path<::drone_core::reg::tag::Srt>,
         });
-        ctor_tokens.insert(ident.to_string(), quote! {
+        ctor_tokens.insert(string.clone(), quote! {
             #(#attrs)*
             #ident: ::drone_core::token::Token::take(),
         });
-        assert_tokens.insert(ident.to_string(), quote! {
-            ::drone_core::reg::assert_taken!(#ident);
+        assert_tokens.insert(string, quote! {
+            ::drone_core::reg::assert_taken!(#lit_str);
         });
     }
     for Undef { ident } in undefs {

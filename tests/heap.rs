@@ -2,12 +2,11 @@
 #![feature(const_fn)]
 
 use crate::core::mem::size_of;
-use drone_core_macros::config_override;
 use std as core;
 
 use drone_core::heap;
 
-config_override! { "
+drone_core::config_override! { "
 [memory.flash]
 size = \"128K\"
 origin = 0x08000000

@@ -31,7 +31,7 @@
 //!
 //! ```no_run
 //! # #![feature(allocator_api)]
-//! # drone_core_macros::config_override! { "
+//! # drone_core::config_override! { "
 //! # [memory]
 //! # flash = { size = \"128K\", origin = 0x08000000 }
 //! # ram = { size = \"20K\", origin = 0x20000000 }
