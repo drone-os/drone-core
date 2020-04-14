@@ -1,4 +1,14 @@
-//! Logging support.
+//! Debug logging facade.
+//!
+//! This module implements standard output/error interface, which mimics Rust's
+//! standard library. This is a facade module. Concrete output implementation
+//! should be provided by downstream crates.
+//!
+//! Reserved ports:
+//!
+//! * `0` - standard output
+//! * `1` - standard error
+//! * `31` - heap trace
 
 #![cfg_attr(feature = "std", allow(unreachable_code, unused_variables))]
 
@@ -20,9 +30,9 @@ mod port;
 /// # pools = []
 /// # [probe]
 /// # gdb-client-command = \"gdb-multiarch\"
-/// # [probe.uart]
+/// # [probe.dso]
 /// # baud-rate = 115200
-/// # endpoint = \"/dev/ttyACM0\"
+/// # serial-endpoint = \"/dev/ttyACM0\"
 /// # " }
 /// use drone_core::log;
 ///
@@ -78,7 +88,7 @@ pub const fn stderr() -> Port {
 /// ```
 #[inline(never)]
 pub fn write_str(port: u8, string: &str) {
-    Port::new(port).write_str(string).unwrap_or(())
+    let _ = Port::new(port).write_str(string);
 }
 
 /// Writes `args` to the log port number `port`.
@@ -99,7 +109,7 @@ pub fn write_str(port: u8, string: &str) {
 /// ```
 #[inline(never)]
 pub fn write_fmt(port: u8, args: fmt::Arguments<'_>) {
-    Port::new(port).write_fmt(args).unwrap_or(())
+    let _ = Port::new(port).write_fmt(args);
 }
 
 /// Blocks until all pending packets are transmitted.

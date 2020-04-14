@@ -25,11 +25,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let baud_rate = if let Some(probe) = config.probe {
         if let Some(swo) = probe.swo {
             swo.baud_rate
-        } else if let Some(uart) = probe.uart {
-            uart.baud_rate
+        } else if let Some(dso) = probe.dso {
+            dso.baud_rate
         } else {
             compile_error!(
-                "Missing one of `probe.swo`, `probe.uart` sections in `{}`",
+                "Missing one of `probe.swo`, `probe.dso` sections in `{}`",
                 drone_config::CONFIG_NAME
             );
         }
