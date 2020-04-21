@@ -89,6 +89,24 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             ) {
                 ::drone_core::heap::dealloc(self, ptr, layout)
             }
+
+            unsafe fn grow_in_place(
+                &mut self,
+                ptr: ::core::ptr::NonNull<u8>,
+                layout: ::core::alloc::Layout,
+                new_size: usize
+            ) -> Result<usize, ::core::alloc::CannotReallocInPlace> {
+                ::drone_core::heap::grow_in_place(self, ptr, layout, new_size)
+            }
+
+            unsafe fn shrink_in_place(
+                &mut self,
+                ptr: ::core::ptr::NonNull<u8>,
+                layout: ::core::alloc::Layout,
+                new_size: usize
+            ) -> Result<usize, ::core::alloc::CannotReallocInPlace> {
+                ::drone_core::heap::shrink_in_place(self, ptr, layout, new_size)
+            }
         }
 
         unsafe impl ::core::alloc::GlobalAlloc for #heap_ident {

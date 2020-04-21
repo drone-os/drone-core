@@ -1,6 +1,6 @@
 use super::pool::{Fits, Pool};
 use core::{
-    alloc::{AllocErr, Layout},
+    alloc::{AllocErr, CannotReallocInPlace, Layout},
     ptr::NonNull,
     slice::SliceIndex,
 };
@@ -59,9 +59,40 @@ pub fn alloc<A: Allocator>(heap: &A, layout: Layout) -> Result<(NonNull<u8>, usi
 #[doc(hidden)]
 pub unsafe fn dealloc<A: Allocator>(heap: &A, ptr: NonNull<u8>, _layout: Layout) {
     let pool = heap.get_pool_unchecked(binary_search(heap, ptr));
+    pool.dealloc(ptr);
     #[cfg(feature = "heaptrace")]
     trace::dealloc(_layout);
-    pool.dealloc(ptr);
+}
+
+#[doc(hidden)]
+pub unsafe fn grow_in_place<A: Allocator>(
+    heap: &A,
+    ptr: NonNull<u8>,
+    layout: Layout,
+    new_size: usize,
+) -> Result<usize, CannotReallocInPlace> {
+    let pool = heap.get_pool_unchecked(binary_search(heap, ptr));
+    if Layout::from_size_align_unchecked(new_size, layout.align()).fits(pool) {
+        #[cfg(feature = "heaptrace")]
+        trace::grow_in_place(layout, new_size);
+        Ok(pool.size())
+    } else {
+        Err(CannotReallocInPlace)
+    }
+}
+
+#[allow(clippy::used_underscore_binding)]
+#[doc(hidden)]
+pub unsafe fn shrink_in_place<A: Allocator>(
+    heap: &A,
+    ptr: NonNull<u8>,
+    _layout: Layout,
+    _new_size: usize,
+) -> Result<usize, CannotReallocInPlace> {
+    let pool = heap.get_pool_unchecked(binary_search(heap, ptr));
+    #[cfg(feature = "heaptrace")]
+    trace::shrink_in_place(_layout, _new_size);
+    Ok(pool.size())
 }
 
 #[cfg(feature = "heaptrace")]
@@ -70,18 +101,15 @@ mod trace {
         heap::HEAPTRACE_KEY,
         log::{Port, HEAPTRACE_PORT},
     };
-    use core::{alloc::Layout, slice};
+    use core::alloc::Layout;
 
     #[inline(always)]
     pub(super) fn alloc(layout: Layout) {
         #[inline(never)]
         fn trace(layout: Layout) {
-            #[cfg(feature = "std")]
-            return unimplemented!();
-            let packet = [0xABCD_u32.to_be(), (layout.size() as u32) ^ HEAPTRACE_KEY];
-            Port::exclusive(HEAPTRACE_PORT).write_bytes(unsafe {
-                slice::from_raw_parts((packet.as_ptr() as *const u8).add(2), 6)
-            });
+            Port::new(HEAPTRACE_PORT)
+                .write::<u32>((0xA1 << 24 | layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
+                .write::<u32>((0xA2 << 24 | layout.size() as u32 & 0xFF) ^ HEAPTRACE_KEY);
         }
         if Port::new(HEAPTRACE_PORT).is_enabled() {
             trace(layout);
@@ -92,15 +120,46 @@ mod trace {
     pub(super) fn dealloc(layout: Layout) {
         #[inline(never)]
         fn trace(layout: Layout) {
-            #[cfg(feature = "std")]
-            return unimplemented!();
-            let packet = [0xDCBA_u32.to_be(), (layout.size() as u32) ^ HEAPTRACE_KEY];
-            Port::exclusive(HEAPTRACE_PORT).write_bytes(unsafe {
-                slice::from_raw_parts((packet.as_ptr() as *const u8).add(2), 6)
-            });
+            Port::new(HEAPTRACE_PORT)
+                .write::<u32>((0xD1 << 24 | layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
+                .write::<u32>((0xD2 << 24 | layout.size() as u32 & 0xFF) ^ HEAPTRACE_KEY);
         }
         if Port::new(HEAPTRACE_PORT).is_enabled() {
             trace(layout);
+        }
+    }
+
+    #[inline(always)]
+    pub(super) fn grow_in_place(layout: Layout, new_size: usize) {
+        #[inline(never)]
+        fn trace(layout: Layout, new_size: usize) {
+            Port::new(HEAPTRACE_PORT)
+                .write::<u32>((0xB1 << 24 | layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
+                .write::<u32>(
+                    (0xB2 << 24 | (layout.size() as u32 & 0xFF) << 16 | new_size as u32 >> 16)
+                        ^ HEAPTRACE_KEY,
+                )
+                .write::<u32>((0xB3 << 24 | new_size as u32 & 0xFFFF) ^ HEAPTRACE_KEY);
+        }
+        if Port::new(HEAPTRACE_PORT).is_enabled() {
+            trace(layout, new_size);
+        }
+    }
+
+    #[inline(always)]
+    pub(super) fn shrink_in_place(layout: Layout, new_size: usize) {
+        #[inline(never)]
+        fn trace(layout: Layout, new_size: usize) {
+            Port::new(HEAPTRACE_PORT)
+                .write::<u32>((0xC1 << 24 | layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
+                .write::<u32>(
+                    (0xC2 << 24 | (layout.size() as u32 & 0xFF) << 16 | new_size as u32 >> 16)
+                        ^ HEAPTRACE_KEY,
+                )
+                .write::<u32>((0xC3 << 24 | new_size as u32 & 0xFFFF) ^ HEAPTRACE_KEY);
+        }
+        if Port::new(HEAPTRACE_PORT).is_enabled() {
+            trace(layout, new_size);
         }
     }
 }
