@@ -3,7 +3,7 @@
 #![feature(integer_atomics)]
 
 use drone_core::{
-    fib,
+    fib, thr,
     thr::{prelude::*, Thread},
     token::Token,
 };
@@ -11,8 +11,6 @@ use std::sync::{
     atomic::{AtomicI8, Ordering::*},
     Arc,
 };
-
-use drone_core::thr;
 
 static mut THREADS: [Thr; 3] = [Thr::new(0), Thr::new(1), Thr::new(2)];
 

@@ -107,6 +107,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         mod __thr {
+            use super::*;
+
             #(#thr_attrs)*
             pub struct #thr_ident {
                 fib_chain: ::drone_core::fib::Chain,
