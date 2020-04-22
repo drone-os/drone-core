@@ -118,7 +118,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
             #(#local_attrs)*
             pub struct #local_ident {
-                task: ::drone_core::thr::TaskCell,
                 preempted: ::drone_core::thr::PreemptedCell,
                 #(#local_tokens,)*
             }
@@ -131,7 +130,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     Self {
                         fib_chain: ::drone_core::fib::Chain::new(),
                         local: #local(#local_ident {
-                            task: ::drone_core::thr::TaskCell::new(),
                             preempted: ::drone_core::thr::PreemptedCell::new(),
                             #(#local_ctor_tokens,)*
                         }),
@@ -160,11 +158,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
 
             impl ::drone_core::thr::ThreadLocal for #local_ident {
-                #[inline]
-                fn task(&self) -> &::drone_core::thr::TaskCell {
-                    &self.task
-                }
-
                 #[inline]
                 fn preempted(&self) -> &::drone_core::thr::PreemptedCell {
                     &self.preempted

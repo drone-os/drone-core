@@ -32,7 +32,7 @@ readme:
 	cargo {{cargo_features}} readme -o README.md
 
 # Bump crate versions
-version-bump version drone-version libcore-drone-version:
+version-bump version drone-version:
 	sed -i "s/\(api\.drone-os\.com\/drone-core\/\)[0-9]\+\(\.[0-9]\+\)\+/\1$(echo {{version}} | sed 's/\(.*\)\.[0-9]\+/\1/')/" \
 		Cargo.toml ctypes/Cargo.toml macros/Cargo.toml macros-core/Cargo.toml src/lib.rs
 	sed -i '/\[.*\]/h;/version = ".*"/{x;s/\[package\]/version = "{{version}}"/;t;x}' \
@@ -43,8 +43,6 @@ version-bump version drone-version libcore-drone-version:
 		macros/Cargo.toml
 	sed -i 's/\(drone-core.*\)version = "[^"]\+"/\1version = "{{version}}"/' \
 		src/lib.rs
-	sed -i 's/\(libcore-drone.*\)version = "[^"]\+"/\1version = "{{libcore-drone-version}}"/' \
-		src/future/mod.rs
 
 # Publish to crates.io
 publish:

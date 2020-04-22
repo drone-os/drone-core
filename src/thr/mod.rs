@@ -49,12 +49,8 @@
 pub mod prelude;
 
 mod preempted;
-mod task;
 
-pub use self::{
-    preempted::{local, PreemptedCell},
-    task::TaskCell,
-};
+pub use self::preempted::{local, PreemptedCell};
 
 use self::preempted::preempt;
 use crate::{
@@ -86,11 +82,6 @@ pub trait Thread: Sized + Sync + 'static {
 
 /// Generic thread-local storage.
 pub trait ThreadLocal: Sized + 'static {
-    /// Returns a reference to the task context cell.
-    ///
-    /// This method is safe because the type doesn't have public methods.
-    fn task(&self) -> &TaskCell;
-
     /// Returns a reference to the previous thread index cell.
     ///
     /// This method is safe because the type doesn't have public methods.

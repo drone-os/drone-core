@@ -12,11 +12,7 @@ use core::{
     sync::atomic::{AtomicUsize, Ordering::*},
     task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
 };
-use drone_core::{
-    future::{self, fallback::*},
-    sync::spsc::oneshot,
-    thr,
-};
+use drone_core::{sync::spsc::oneshot, thr};
 use futures::prelude::*;
 
 static mut THREADS: [Thr; 1] = [Thr::new(0)];
@@ -42,32 +38,36 @@ impl Counter {
     }
 }
 
-fn test_awt() {
+#[test]
+fn test_await() {
     static COUNTER: Counter = Counter(AtomicUsize::new(0));
     let waker = COUNTER.to_waker();
     let mut cx = Context::from_waker(&waker);
     let (tx, rx) = oneshot::channel::<usize>();
-    let mut fut = Box::pin(asyn(|| {
-        let number = awt!(rx)?;
+    let mut fut = Box::pin(async {
+        let number = rx.await?;
         Ok::<usize, oneshot::Canceled>(number + 1)
-    }));
+    });
     assert_eq!(tx.send(1), Ok(()));
     assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Ready(Ok(2)));
 }
 
+#[test]
 fn test_nested() {
     static COUNTER: Counter = Counter(AtomicUsize::new(0));
     let waker = COUNTER.to_waker();
     let mut cx = Context::from_waker(&waker);
     let (tx, rx) = oneshot::channel::<usize>();
-    let mut fut = Box::pin(asyn(|| {
-        awt!(Box::pin(asyn(|| {
-            awt!(asyn(|| {
-                let number = awt!(rx)?;
+    let mut fut = Box::pin(async {
+        Box::pin(async {
+            async {
+                let number = rx.await?;
                 Ok::<usize, oneshot::Canceled>(number + 1)
-            }))
-        })))
-    }));
+            }
+            .await
+        })
+        .await
+    });
     assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Pending);
     assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Pending);
     assert_eq!(COUNTER.0.load(Relaxed), 0);
@@ -75,13 +75,4 @@ fn test_nested() {
     assert_eq!(COUNTER.0.load(Relaxed), 1);
     assert_eq!(Pin::new(&mut fut).poll(&mut cx), Poll::Ready(Ok(2)));
     assert_eq!(COUNTER.0.load(Relaxed), 1);
-}
-
-// Tests that involves Drone threads shouldn't be run in parallel as the default
-// test runner does. Therefore we wrap all tests into one test case.
-#[test]
-fn thread_sequence() {
-    future::init::<Thr>();
-    test_awt();
-    test_nested();
 }

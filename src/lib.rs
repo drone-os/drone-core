@@ -46,7 +46,8 @@
     clippy::needless_doctest_main,
     clippy::precedence,
     clippy::type_repetition_in_bounds,
-    clippy::use_self
+    clippy::use_self,
+    clippy::used_underscore_binding
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -55,7 +56,6 @@ extern crate alloc;
 pub mod bitfield;
 pub mod ffi;
 pub mod fib;
-pub mod future;
 pub mod heap;
 pub mod inventory;
 pub mod io;

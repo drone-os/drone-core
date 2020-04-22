@@ -23,6 +23,7 @@ Possible log types:
 - [changed] `drone-core` is responsible for defining lang items now
 - [added] Introduce `log` facade
 - [added] Add `dbg`, `eprint`, `eprintln`, `print`, `println` to `prelude`
+- [removed] Remove `future::init` function and `future::fallback` module
 
 ### v0.11.1 (2019-11-27)
 

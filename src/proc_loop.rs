@@ -6,10 +6,7 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use crate::{
-    fib::{self, Fiber},
-    future::fallback::*,
-};
+use crate::{fib, fib::Fiber};
 use core::{future::Future, mem::ManuallyDrop, pin::Pin};
 
 type SessFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
@@ -89,15 +86,15 @@ pub trait Sess: Send {
         cmd: <Self::ProcLoop as ProcLoop>::Cmd,
     ) -> SessFuture<'_, Result<<Self::ProcLoop as ProcLoop>::CmdRes, Self::Error>> {
         let mut input = In::from_cmd(cmd);
-        Box::pin(asyn(move || {
+        Box::pin(async move {
             loop {
                 let fib::Yielded(output) = self.fib().resume(input);
                 input = match output {
-                    Out::Req(req) => In::from_req_res(awt!(self.run_req(req))?),
+                    Out::Req(req) => In::from_req_res(self.run_req(req).await?),
                     Out::CmdRes(res) => break Ok(res),
                 }
             }
-        }))
+        })
     }
 }
 
