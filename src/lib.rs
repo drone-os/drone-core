@@ -14,6 +14,7 @@
 //! drone-core = { version = "0.12.0" }
 //! ```
 
+#![feature(alloc_layout_extra)]
 #![feature(alloc_prelude)]
 #![feature(allocator_api)]
 #![feature(const_raw_ptr_deref)]
@@ -25,9 +26,9 @@
 #![feature(marker_trait_attr)]
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(never_type_fallback)]
-#![feature(optin_builtin_traits)]
 #![feature(prelude_import)]
 #![feature(raw_vec_internals)]
 #![feature(slice_internals)]

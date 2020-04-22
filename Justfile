@@ -1,3 +1,5 @@
+cargo_features := '-Z features=itarget,build_dep,dev_dep -Z package-features'
+
 # Install dependencies
 deps:
 	rustup component add clippy
@@ -6,28 +8,28 @@ deps:
 
 # Reformat the source code
 fmt:
-	cargo fmt
+	cargo {{cargo_features}} fmt
 
 # Check for mistakes
 lint:
-	cargo clippy --all
+	cargo {{cargo_features}} clippy --all
 
 # Generate the docs
 doc:
-	cargo doc --all
+	cargo {{cargo_features}} doc --all
 
 # Open the docs in a browser
 doc-open: doc
-	cargo doc --package drone-core --open
+	cargo {{cargo_features}} doc --package drone-core --open
 
 # Run the tests
 test:
-	cargo test --all --exclude drone-core
-	cargo test --features std --package drone-core
+	cargo {{cargo_features}} test --all --exclude drone-core
+	cargo {{cargo_features}} test --features std --package drone-core
 
 # Update README.md
 readme:
-	cargo readme -o README.md
+	cargo {{cargo_features}} readme -o README.md
 
 # Bump crate versions
 version-bump version drone-version libcore-drone-version:
@@ -46,13 +48,13 @@ version-bump version drone-version libcore-drone-version:
 
 # Publish to crates.io
 publish:
-	cd ctypes && cargo publish
+	cd ctypes && cargo {{cargo_features}} publish
 	sleep 5
-	cd macros-core && cargo publish
+	cd macros-core && cargo {{cargo_features}} publish
 	sleep 5
-	cd macros && cargo publish
+	cd macros && cargo {{cargo_features}} publish
 	sleep 5
-	cargo publish
+	cargo {{cargo_features}} publish
 
 # Publish the docs to api.drone-os.com
 publish-doc: doc

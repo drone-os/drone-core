@@ -1,6 +1,7 @@
 use super::pool::{Fits, Pool};
 use core::{
-    alloc::{AllocErr, CannotReallocInPlace, Layout},
+    alloc::{AllocErr, AllocInit, Layout, MemoryBlock, ReallocPlacement},
+    ptr,
     ptr::NonNull,
     slice::SliceIndex,
 };
@@ -43,56 +44,89 @@ pub fn binary_search<A: Allocator, T: Fits>(heap: &A, value: T) -> usize {
 }
 
 #[doc(hidden)]
-pub fn alloc<A: Allocator>(heap: &A, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+pub fn alloc<A: Allocator>(
+    heap: &A,
+    layout: Layout,
+    init: AllocInit,
+) -> Result<MemoryBlock, AllocErr> {
+    #[cfg(feature = "heaptrace")]
+    trace::alloc(layout);
+    if layout.size() == 0 {
+        return Ok(MemoryBlock { ptr: layout.dangling(), size: 0 });
+    }
     for pool_idx in binary_search(heap, &layout)..A::POOL_COUNT {
         let pool = unsafe { heap.get_pool_unchecked(pool_idx) };
         if let Some(ptr) = pool.alloc() {
-            #[cfg(feature = "heaptrace")]
-            trace::alloc(layout);
-            return Ok((ptr, pool.size()));
+            let memory = MemoryBlock { ptr, size: pool.size() };
+            unsafe { init.init(memory) };
+            return Ok(memory);
         }
     }
     Err(AllocErr)
 }
 
-#[allow(clippy::used_underscore_binding)]
 #[doc(hidden)]
-pub unsafe fn dealloc<A: Allocator>(heap: &A, ptr: NonNull<u8>, _layout: Layout) {
+pub unsafe fn dealloc<A: Allocator>(heap: &A, ptr: NonNull<u8>, layout: Layout) {
+    #[cfg(feature = "heaptrace")]
+    trace::dealloc(layout);
+    if layout.size() == 0 {
+        return;
+    }
     let pool = heap.get_pool_unchecked(binary_search(heap, ptr));
     pool.dealloc(ptr);
-    #[cfg(feature = "heaptrace")]
-    trace::dealloc(_layout);
 }
 
 #[doc(hidden)]
-pub unsafe fn grow_in_place<A: Allocator>(
+pub unsafe fn grow<A: Allocator>(
     heap: &A,
     ptr: NonNull<u8>,
     layout: Layout,
     new_size: usize,
-) -> Result<usize, CannotReallocInPlace> {
-    let pool = heap.get_pool_unchecked(binary_search(heap, ptr));
-    if Layout::from_size_align_unchecked(new_size, layout.align()).fits(pool) {
-        #[cfg(feature = "heaptrace")]
-        trace::grow_in_place(layout, new_size);
-        Ok(pool.size())
-    } else {
-        Err(CannotReallocInPlace)
+    placement: ReallocPlacement,
+    init: AllocInit,
+) -> Result<MemoryBlock, AllocErr> {
+    #[cfg(feature = "heaptrace")]
+    trace::grow(layout, new_size);
+    match placement {
+        ReallocPlacement::InPlace => Err(AllocErr),
+        ReallocPlacement::MayMove => {
+            let size = layout.size();
+            if new_size == size {
+                return Ok(MemoryBlock { ptr, size });
+            }
+            let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+            let new_memory = alloc(heap, new_layout, init)?;
+            ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), size);
+            dealloc(heap, ptr, layout);
+            Ok(new_memory)
+        }
     }
 }
 
-#[allow(clippy::used_underscore_binding)]
 #[doc(hidden)]
-pub unsafe fn shrink_in_place<A: Allocator>(
+pub unsafe fn shrink<A: Allocator>(
     heap: &A,
     ptr: NonNull<u8>,
-    _layout: Layout,
-    _new_size: usize,
-) -> Result<usize, CannotReallocInPlace> {
-    let pool = heap.get_pool_unchecked(binary_search(heap, ptr));
+    layout: Layout,
+    new_size: usize,
+    placement: ReallocPlacement,
+) -> Result<MemoryBlock, AllocErr> {
     #[cfg(feature = "heaptrace")]
-    trace::shrink_in_place(_layout, _new_size);
-    Ok(pool.size())
+    trace::shrink(layout, new_size);
+    match placement {
+        ReallocPlacement::InPlace => Err(AllocErr),
+        ReallocPlacement::MayMove => {
+            let size = layout.size();
+            if new_size == size {
+                return Ok(MemoryBlock { ptr, size });
+            }
+            let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+            let new_memory = alloc(heap, new_layout, AllocInit::Uninitialized)?;
+            ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), new_size);
+            dealloc(heap, ptr, layout);
+            Ok(new_memory)
+        }
+    }
 }
 
 #[cfg(feature = "heaptrace")]
@@ -130,7 +164,7 @@ mod trace {
     }
 
     #[inline(always)]
-    pub(super) fn grow_in_place(layout: Layout, new_size: usize) {
+    pub(super) fn grow(layout: Layout, new_size: usize) {
         #[inline(never)]
         fn trace(layout: Layout, new_size: usize) {
             Port::new(HEAPTRACE_PORT)
@@ -147,7 +181,7 @@ mod trace {
     }
 
     #[inline(always)]
-    pub(super) fn shrink_in_place(layout: Layout, new_size: usize) {
+    pub(super) fn shrink(layout: Layout, new_size: usize) {
         #[inline(never)]
         fn trace(layout: Layout, new_size: usize) {
             Port::new(HEAPTRACE_PORT)
@@ -239,7 +273,8 @@ mod tests {
     #[test]
     fn allocations() {
         unsafe fn alloc_and_set(heap: &TestHeap, layout: Layout, value: u8) {
-            *(alloc(heap, layout).unwrap().0.as_ptr() as *mut u8) = value;
+            *(alloc(heap, layout, AllocInit::Uninitialized).unwrap().ptr.as_ptr() as *mut u8) =
+                value;
         }
         let mut m = [0u8; 3230];
         let o = &mut m as *mut _ as usize;
