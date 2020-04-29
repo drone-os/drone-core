@@ -2,7 +2,6 @@
 //!
 //! [drone-core]: https://github.com/drone-os/drone-core
 
-#![deny(elided_lifetimes_in_paths)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::similar_names)]
 

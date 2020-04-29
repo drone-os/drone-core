@@ -8,15 +8,22 @@ The core crate for Drone, an Embedded Operating System.
 ## Documentation
 
 - [Drone Book](https://book.drone-os.com/)
-- [API documentation](https://api.drone-os.com/drone-core/0.11/)
+- [API documentation](https://api.drone-os.com/drone-core/0.12/)
 
 ## Usage
 
-Place the following to the Cargo.toml:
+Add the crate to your `Cargo.toml` dependencies:
 
 ```toml
 [dependencies]
-drone-core = { version = "0.11.0" }
+drone-core = { version = "0.12.0" }
+```
+
+Add or extend `std` feature as follows:
+
+```toml
+[features]
+std = ["drone-core/std"]
 ```
 
 ## License

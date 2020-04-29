@@ -7,11 +7,18 @@
 //!
 //! # Usage
 //!
-//! Place the following to the Cargo.toml:
+//! Add the crate to your `Cargo.toml` dependencies:
 //!
 //! ```toml
 //! [dependencies]
 //! drone-core = { version = "0.12.0" }
+//! ```
+//!
+//! Add or extend `std` feature as follows:
+//!
+//! ```toml
+//! [features]
+//! std = ["drone-core/std"]
 //! ```
 
 #![feature(alloc_layout_extra)]
@@ -33,7 +40,6 @@
 #![feature(raw_vec_internals)]
 #![feature(slice_internals)]
 #![feature(untagged_unions)]
-#![deny(elided_lifetimes_in_paths)]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(

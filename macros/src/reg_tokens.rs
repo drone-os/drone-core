@@ -1,11 +1,12 @@
 use drone_macros_core::unkeywordize;
 use inflector::Inflector;
 use proc_macro::TokenStream;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 use syn::{
     braced,
     parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, Ident, Path, Token, Visibility,
+    parse_macro_input, token, AttrStyle, Attribute, Ident, Path, Token, Visibility,
 };
 
 struct Input {
@@ -100,7 +101,6 @@ impl Parse for Reg {
     }
 }
 
-#[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
     let Input {
         prev_macro,
@@ -110,13 +110,67 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         macro_root_path,
         root_path,
         blocks,
-    } = &parse_macro_input!(input);
+    } = parse_macro_input!(input);
+    let mut tokens = Vec::new();
+    let mut prev_macro = prev_macro.map(|prev_macro| quote!(#prev_macro));
+    let macro_export = matches!(next_macro_vis, Visibility::Public(_));
+    let (conditional_blocks, regular_blocks) =
+        blocks.into_iter().partition::<Vec<_>, _>(|block| block.attrs.iter().any(is_cfg_attr));
+    for (i, block) in conditional_blocks.into_iter().enumerate() {
+        let mut cfg_attrs = block.attrs.iter().filter(|attr| is_cfg_attr(attr)).collect::<Vec<_>>();
+        let cfg_macro = format_ident!("__{}_cfg_{}", next_macro, i);
+        let doc_hidden_attr = doc_hidden_attr();
+        tokens.extend(make_macro(
+            macro_root_path.as_ref(),
+            &root_path,
+            prev_macro.as_ref(),
+            &[&doc_hidden_attr, &negate_cfg_attrs(&cfg_attrs)],
+            macro_export,
+            &cfg_macro,
+            &[],
+        ));
+        cfg_attrs.push(&doc_hidden_attr);
+        tokens.extend(make_macro(
+            macro_root_path.as_ref(),
+            &root_path,
+            prev_macro.as_ref(),
+            &cfg_attrs,
+            macro_export,
+            &cfg_macro,
+            &[&block],
+        ));
+        prev_macro =
+            Some(if macro_export { quote!($crate::#cfg_macro) } else { quote!(#cfg_macro) });
+    }
+    tokens.extend(make_macro(
+        macro_root_path.as_ref(),
+        &root_path,
+        prev_macro.as_ref(),
+        &next_macro_attrs.iter().collect::<Vec<_>>(),
+        macro_export,
+        &next_macro,
+        &regular_blocks.iter().collect::<Vec<_>>(),
+    ));
+    quote!(#(#tokens)*).into()
+}
+
+fn make_macro(
+    macro_root_path: Option<&Path>,
+    root_path: &Path,
+    prev_macro: Option<&TokenStream2>,
+    macro_attrs: &[&Attribute],
+    macro_export: bool,
+    macro_ident: &Ident,
+    blocks: &[&Block],
+) -> Vec<TokenStream2> {
     let mut tokens = Vec::new();
     let mut defs = Vec::new();
     for Block { attrs: block_attrs, vis: block_vis, ident: block_ident, regs } in blocks {
         let block_snk = block_ident.to_string().to_snake_case();
         let block_name = format_ident!("{}", unkeywordize(&block_snk));
         let mut block_tokens = Vec::new();
+        let block_attrs_non_cfg =
+            block_attrs.iter().filter(|attr| !is_cfg_attr(attr)).collect::<Vec<_>>();
         for Reg { attrs: reg_attrs, ident: reg_ident, skip } in regs {
             let reg_psc = format_ident!("{}", reg_ident.to_string().to_pascal_case());
             let reg_snk = reg_ident.to_string().to_snake_case();
@@ -129,7 +183,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             if !skip {
                 let macro_root_path = macro_root_path.iter();
                 defs.push(quote! {
-                    #(#block_attrs)* #(#reg_attrs)*
+                    #(#block_attrs_non_cfg)* #(#reg_attrs)*
                     #reg_long $crate#(#macro_root_path)*::#block_name::#reg_psc;
                 });
             }
@@ -141,33 +195,33 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
         });
     }
-    let next_macro_vis =
-        if let Visibility::Public(_) = next_macro_vis { quote!(#[macro_export]) } else { quote!() };
-    let macro_tokens = match prev_macro {
-        Some(prev_macro) => quote! {
+    let macro_vis = if macro_export { quote!(#[macro_export]) } else { quote!() };
+    let macro_tokens = if let Some(prev_macro) = prev_macro {
+        quote! {
             #prev_macro! {
                 $(#[$attr])* $vis struct $ty;
                 $(!$undefs;)*
                 __extend { #(#defs)* $($defs)* }
             }
-        },
-        None => quote! {
+        }
+    } else {
+        quote! {
             ::drone_core::reg::tokens_inner! {
                 $(#[$attr])* $vis struct $ty;
                 { #(#defs)* $($defs)* }
                 { $($undefs;)* }
             }
-        },
+        }
     };
     tokens.push(quote! {
-        #(#next_macro_attrs)*
-        #next_macro_vis
-        macro_rules! #next_macro {
+        #(#macro_attrs)*
+        #macro_vis
+        macro_rules! #macro_ident {
             (
                 $(#[$attr:meta])* $vis:vis struct $ty:ident;
                 $(!$undefs:ident;)*
             ) => {
-                #next_macro! {
+                #macro_ident! {
                     $(#[$attr])* $vis struct $ty;
                     $(!$undefs;)*
                     __extend {}
@@ -182,5 +236,32 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             };
         }
     });
-    quote!(#(#tokens)*).into()
+    tokens
+}
+
+fn negate_cfg_attrs(cfg_attrs: &[&Attribute]) -> Attribute {
+    let cfg_attrs = cfg_attrs.iter().map(|attr| &attr.tokens).collect::<Vec<_>>();
+    Attribute {
+        pound_token: Token![#](Span::call_site()),
+        style: AttrStyle::Outer,
+        bracket_token: token::Bracket(Span::call_site()),
+        path: format_ident!("cfg").into(),
+        tokens: quote!((not(all(#(all#cfg_attrs)*)))),
+    }
+}
+
+fn doc_hidden_attr() -> Attribute {
+    Attribute {
+        pound_token: Token![#](Span::call_site()),
+        style: AttrStyle::Outer,
+        bracket_token: token::Bracket(Span::call_site()),
+        path: format_ident!("doc").into(),
+        tokens: quote!((hidden)),
+    }
+}
+
+fn is_cfg_attr(attr: &Attribute) -> bool {
+    attr.path.leading_colon.is_none()
+        && attr.path.segments.len() == 1
+        && attr.path.segments.first().map_or(false, |x| x.ident == "cfg")
 }

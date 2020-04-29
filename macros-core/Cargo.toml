@@ -1,8 +1,11 @@
+cargo-features = ["resolver"]
+
 [package]
 name = "drone-macros-core"
 version = "0.12.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 edition = "2018"
+resolver = "2"
 repository = "https://github.com/drone-os/drone-core"
 homepage = "https://www.drone-os.com/"
 documentation = "https://api.drone-os.com/drone-core/0.12/drone_macros_core/"

@@ -5,7 +5,6 @@
 //!
 //! [Drone]: https://github.com/drone-os/drone
 
-#![deny(elided_lifetimes_in_paths)]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions, clippy::must_use_candidate)]

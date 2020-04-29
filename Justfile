@@ -1,5 +1,3 @@
-cargo_features := '-Z features=itarget,build_dep,dev_dep -Z package-features'
-
 # Install dependencies
 deps:
 	rustup component add clippy
@@ -8,30 +6,30 @@ deps:
 
 # Reformat the source code
 fmt:
-	cargo {{cargo_features}} fmt
+	cargo fmt
 
-# Check for mistakes
+# Check the source code for mistakes
 lint:
-	cargo {{cargo_features}} clippy --all
+	cargo clippy --all
 
-# Generate the docs
+# Build the documentation
 doc:
-	cargo {{cargo_features}} doc --all
+	cargo doc --all
 
-# Open the docs in a browser
+# Open the documentation in a browser
 doc-open: doc
-	cargo {{cargo_features}} doc --package drone-core --open
+	cargo doc --package drone-core --open
 
 # Run the tests
 test:
-	cargo {{cargo_features}} test --all --exclude drone-core
-	cargo {{cargo_features}} test --features std --package drone-core
+	cargo test --all --exclude drone-core
+	cargo test --features std --package drone-core
 
 # Update README.md
 readme:
-	cargo {{cargo_features}} readme -o README.md
+	cargo readme -o README.md
 
-# Bump crate versions
+# Bump the versions
 version-bump version drone-version:
 	sed -i "s/\(api\.drone-os\.com\/drone-core\/\)[0-9]\+\(\.[0-9]\+\)\+/\1$(echo {{version}} | sed 's/\(.*\)\.[0-9]\+/\1/')/" \
 		Cargo.toml ctypes/Cargo.toml macros/Cargo.toml macros-core/Cargo.toml src/lib.rs
@@ -46,13 +44,13 @@ version-bump version drone-version:
 
 # Publish to crates.io
 publish:
-	cd ctypes && cargo {{cargo_features}} publish
+	cd ctypes && cargo publish
 	sleep 5
-	cd macros-core && cargo {{cargo_features}} publish
+	cd macros-core && cargo publish
 	sleep 5
-	cd macros && cargo {{cargo_features}} publish
+	cd macros && cargo publish
 	sleep 5
-	cargo {{cargo_features}} publish
+	cargo publish
 
 # Publish the docs to api.drone-os.com
 publish-doc: doc

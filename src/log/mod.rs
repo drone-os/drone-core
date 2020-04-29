@@ -30,7 +30,7 @@ mod port;
 /// # pools = []
 /// # [probe]
 /// # gdb-client-command = \"gdb-multiarch\"
-/// # [probe.dso]
+/// # [log.dso]
 /// # baud-rate = 115200
 /// # serial-endpoint = \"/dev/ttyACM0\"
 /// # " }

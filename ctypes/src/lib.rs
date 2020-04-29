@@ -6,7 +6,6 @@
 //! [Drone]: https://github.com/drone-os/drone
 //! [`std::os::raw`]: https://doc.rust-lang.org/std/os/raw/
 
-#![deny(elided_lifetimes_in_paths)]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(non_camel_case_types)]
