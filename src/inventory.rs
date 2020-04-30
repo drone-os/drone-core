@@ -12,10 +12,7 @@
 //!
 //! ```
 //! use core::sync::atomic::{AtomicBool, Ordering};
-//! use drone_core::{
-//!     inventory::{self, Inventory0, Inventory1},
-//!     token::{simple_token, Token},
-//! };
+//! use drone_core::{inventory, inventory::Inventory, token::{simple_token, Token}};
 //!
 //! // Let it be our power switch, so we can easily observe its state.
 //! static DMA_EN: AtomicBool = AtomicBool::new(false);
@@ -26,33 +23,33 @@
 //!
 //! // We split the DMA driver in two types: one for disabled state, and the
 //! // other for enabled state.
-//! pub struct Dma(Inventory0<DmaEn>);
+//! pub struct Dma(Inventory<DmaEn, 0>);
 //! pub struct DmaEn(DmaReg);
 //!
 //! impl Dma {
 //!     // The constructor for the DMA driver. Note that `reg` is a token, so at most
 //!     // one instance of the driver could ever exist.
 //!     pub fn new(reg: DmaReg) -> Self {
-//!         Self(Inventory0::new(DmaEn(reg)))
+//!         Self(Inventory::new(DmaEn(reg)))
 //!     }
 //!
 //!     // It is always a good idea to provide a method to free the token passed to
 //!     // the `new()` method above.
 //!     pub fn free(self) -> DmaReg {
-//!         Inventory0::free(self.0).0
+//!         Inventory::free(self.0).0
 //!     }
 //!
 //!     // This method takes `self` by reference and returns a scoped guard object. It
 //!     // enables DMA, and the returned guard will automatically disable it on `drop`.
 //!     pub fn enable(&mut self) -> inventory::Guard<'_, DmaEn> {
 //!         self.setup();
-//!         Inventory0::guard(&mut self.0)
+//!         Inventory::guard(&mut self.0)
 //!     }
 //!
 //!     // This method takes `self` by value and returns the inventory object with one
 //!     // token taken. It enables DMA, and in order to disable it, one should
 //!     // explicitly call  `from_enabled()` method below.
-//!     pub fn into_enabled(self) -> Inventory1<DmaEn> {
+//!     pub fn into_enabled(self) -> Inventory<DmaEn, 1> {
 //!         self.setup();
 //!         let (enabled, token) = self.0.share1();
 //!         // To be recreated in `from_enabled()`.
@@ -62,11 +59,11 @@
 //!
 //!     // This method takes the inventory object with one token taken, restores the
 //!     // token, and disables DMA.
-//!     pub fn from_enabled(enabled: Inventory1<DmaEn>) -> Self {
+//!     pub fn from_enabled(enabled: Inventory<DmaEn, 1>) -> Self {
 //!         // Restoring the token dropped in `into_enabled()`.
 //!         let token = unsafe { inventory::Token::new() };
 //!         let mut enabled = enabled.merge1(token);
-//!         Inventory0::teardown(&mut enabled);
+//!         Inventory::teardown(&mut enabled);
 //!         Self(enabled)
 //!     }
 //!
@@ -81,7 +78,7 @@
 //!
 //! impl inventory::Item for DmaEn {
 //!     // A method that disables DMA. Due to its signature it can't be called directly.
-//!     // It is called only by `Guard::drop` or `Inventory0::teardown`.
+//!     // It is called only by `Guard::drop` or `Inventory::teardown`.
 //!     fn teardown(&mut self, _token: &mut inventory::GuardToken<DmaEn>) {
 //!         DMA_EN.store(false, Ordering::Relaxed);
 //!     }
@@ -219,9 +216,8 @@ use core::{
 ///
 /// See [the module-level documentation](self) for details.
 #[repr(transparent)]
-pub struct Inventory<T: Item, C> {
+pub struct Inventory<T: Item, const C: usize> {
     item: T,
-    count: PhantomData<C>,
 }
 
 /// An RAII scoped guard for the inventory item `T`. Will call
@@ -246,14 +242,14 @@ pub trait Item: Sized {
     fn teardown(&mut self, _token: &mut GuardToken<Self>);
 }
 
-impl<T: Item> Inventory<T, Count0> {
+impl<T: Item> Inventory<T, 0> {
     /// Creates a new [`Inventory`] in the inactive state with zero tokens
     /// emitted.
     ///
     /// `item` should contain some form of token.
     #[inline]
     pub fn new(item: T) -> Self {
-        Self { item, count: PhantomData }
+        Self { item }
     }
 
     /// Drops `inventory` and returns the stored item.
@@ -282,17 +278,64 @@ impl<T: Item> Inventory<T, Count0> {
     }
 }
 
-#[allow(clippy::unused_self)]
-impl<T: Item, C> Inventory<T, C> {
+impl<T: Item, const C: usize> Inventory<T, C> {
     /// Returns a reference to [`Token`]`<T>`. While the reference exists, the
     /// item is always in its active state.
+    #[allow(clippy::unused_self)]
     #[inline]
     pub fn inventory_token(&self) -> &Token<T> {
         &Token(PhantomData)
     }
 }
 
-impl<T: Item, C> Deref for Inventory<T, C> {
+macro_rules! define_methods {
+    (
+        $($share:ident $inc:expr => $($share_token:ident)*;)*
+        ;
+        $($merge:ident $dec:expr => $($merge_token:ident)*;)*
+    ) => {
+        impl<T: Item, const C: usize> Inventory<T, C> {
+            $(
+                /// Returns a token and a new inventory object with increased
+                /// counter in its type.
+                pub fn $share(self) -> (Inventory<T, { C + $inc }>, $(Token<$share_token>),*) {
+                    (Inventory { item: self.item }, $(Token(PhantomData::<$share_token>),)*)
+                }
+            )*
+            $(
+                /// Consumes a token and returns a new inventory object with
+                /// decreased counter in its type.
+                #[allow(clippy::too_many_arguments)]
+                pub fn $merge(self, $($merge_token: Token<T>,)*) -> Inventory<T, { C - $dec }> {
+                    $(drop($merge_token);)*
+                    Inventory { item: self.item }
+                }
+            )*
+        }
+    };
+}
+
+define_methods! {
+    share1 1 => T;
+    share2 2 => T T;
+    share3 3 => T T T;
+    share4 4 => T T T T;
+    share5 5 => T T T T T;
+    share6 6 => T T T T T T;
+    share7 7 => T T T T T T T;
+    share8 8 => T T T T T T T T;
+    ;
+    merge1 1 => a;
+    merge2 2 => a b;
+    merge3 3 => a b c;
+    merge4 4 => a b c d;
+    merge5 5 => a b c d e;
+    merge6 6 => a b c d e f;
+    merge7 7 => a b c d e f g;
+    merge8 8 => a b c d e f g h;
+}
+
+impl<T: Item, const C: usize> Deref for Inventory<T, C> {
     type Target = T;
 
     #[inline]
@@ -301,7 +344,7 @@ impl<T: Item, C> Deref for Inventory<T, C> {
     }
 }
 
-impl<T: Item, C> DerefMut for Inventory<T, C> {
+impl<T: Item, const C: usize> DerefMut for Inventory<T, C> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
         &mut self.item
@@ -351,203 +394,4 @@ impl<T: Item> Drop for Guard<'_, T> {
     fn drop(&mut self) {
         self.borrow.teardown(&mut self.guard_token);
     }
-}
-
-macro_rules! define_counters {
-    ($($count:ident $alias:ident,)*) => {
-        $(
-            /// A token counter.
-            pub struct $count;
-
-            /// [`Inventory`] with bounded count.
-            pub type $alias<T> = Inventory<T, $count>;
-        )*
-    };
-}
-
-macro_rules! define_methods {
-    (
-        $(
-            $subject:ident
-            $(($share:ident $share_to:ident $($share_token:ident)*))*
-            $([$merge:ident $merge_to:ident $($merge_token:ident)*])*
-        )*
-    ) => {
-        $(
-            impl<T: Item> Inventory<T, $subject> {
-                $(
-                    /// Returns a token and a new inventory object with
-                    /// increased counter in its type.
-                    pub fn $share(
-                        self,
-                    ) -> (Inventory<T, $share_to>, $(Token<$share_token>),*) {
-                        (
-                            Inventory {
-                                item: self.item,
-                                count: PhantomData,
-                            },
-                            $(Token(PhantomData::<$share_token>),)*
-                        )
-                    }
-                )*
-                $(
-                    /// Consumes a token and returns a new inventory object with
-                    /// decreased counter in its type.
-                    #[allow(clippy::too_many_arguments)]
-                    pub fn $merge(
-                        self,
-                        $($merge_token: Token<T>,)*
-                    ) -> Inventory<T, $merge_to> {
-                        $(drop($merge_token);)*
-                        Inventory {
-                            item: self.item,
-                            count: PhantomData,
-                        }
-                    }
-                )*
-            }
-        )*
-    };
-}
-
-define_counters! {
-    Count0 Inventory0,
-    Count1 Inventory1,
-    Count2 Inventory2,
-    Count3 Inventory3,
-    Count4 Inventory4,
-    Count5 Inventory5,
-    Count6 Inventory6,
-    Count7 Inventory7,
-    Count8 Inventory8,
-    Count9 Inventory9,
-    Count10 Inventory10,
-    Count11 Inventory11,
-}
-
-define_methods! {
-    Count0
-        (share1 Count1 T)
-    Count1
-        (share1 Count2 T)
-        (share2 Count3 T T)
-        (share3 Count4 T T T)
-        (share4 Count5 T T T T)
-        (share5 Count6 T T T T T)
-        (share6 Count7 T T T T T T)
-        (share7 Count8 T T T T T T T)
-        (share8 Count9 T T T T T T T T)
-        (share9 Count10 T T T T T T T T T)
-        (share10 Count11 T T T T T T T T T T)
-        [merge1 Count0 a]
-    Count2
-        (share1 Count3 T)
-        (share2 Count4 T T)
-        (share3 Count5 T T T)
-        (share4 Count6 T T T T)
-        (share5 Count7 T T T T T)
-        (share6 Count8 T T T T T T)
-        (share7 Count9 T T T T T T T)
-        (share8 Count10 T T T T T T T T)
-        (share9 Count11 T T T T T T T T T)
-        [merge1 Count1 a]
-    Count3
-        (share1 Count4 T)
-        (share2 Count5 T T)
-        (share3 Count6 T T T)
-        (share4 Count7 T T T T)
-        (share5 Count8 T T T T T)
-        (share6 Count9 T T T T T T)
-        (share7 Count10 T T T T T T T)
-        (share8 Count11 T T T T T T T T)
-        [merge1 Count2 a]
-        [merge2 Count1 a b]
-    Count4
-        (share1 Count5 T)
-        (share2 Count6 T T)
-        (share3 Count7 T T T)
-        (share4 Count8 T T T T)
-        (share5 Count9 T T T T T)
-        (share6 Count10 T T T T T T)
-        (share7 Count11 T T T T T T T)
-        [merge1 Count3 a]
-        [merge2 Count2 a b]
-        [merge3 Count1 a b c]
-    Count5
-        (share1 Count6 T)
-        (share2 Count7 T T)
-        (share3 Count8 T T T)
-        (share4 Count9 T T T T)
-        (share5 Count10 T T T T T)
-        (share6 Count11 T T T T T T)
-        [merge1 Count4 a]
-        [merge2 Count3 a b]
-        [merge3 Count2 a b c]
-        [merge4 Count1 a b c d]
-    Count6
-        (share1 Count7 T)
-        (share2 Count8 T T)
-        (share3 Count9 T T T)
-        (share4 Count10 T T T T)
-        (share5 Count11 T T T T T)
-        [merge1 Count5 a]
-        [merge2 Count4 a b]
-        [merge3 Count3 a b c]
-        [merge4 Count2 a b c d]
-        [merge5 Count1 a b c d e]
-    Count7
-        (share1 Count8 T)
-        (share2 Count9 T T)
-        (share3 Count10 T T T)
-        (share4 Count11 T T T T)
-        [merge1 Count6 a]
-        [merge2 Count5 a b]
-        [merge3 Count4 a b c]
-        [merge4 Count3 a b c d]
-        [merge5 Count2 a b c d e]
-        [merge6 Count1 a b c d e f]
-    Count8
-        (share1 Count9 T)
-        (share2 Count10 T T)
-        (share3 Count11 T T T)
-        [merge1 Count7 a]
-        [merge2 Count6 a b]
-        [merge3 Count5 a b c]
-        [merge4 Count4 a b c d]
-        [merge5 Count3 a b c d e]
-        [merge6 Count2 a b c d e f]
-        [merge7 Count1 a b c d e f g]
-    Count9
-        (share1 Count10 T)
-        (share2 Count11 T T)
-        [merge1 Count8 a]
-        [merge2 Count7 a b]
-        [merge3 Count6 a b c]
-        [merge4 Count5 a b c d]
-        [merge5 Count4 a b c d e]
-        [merge6 Count3 a b c d e f]
-        [merge7 Count2 a b c d e f g]
-        [merge8 Count1 a b c d e f g h]
-    Count10
-        (share1 Count11 T)
-        [merge1 Count9 a]
-        [merge2 Count8 a b]
-        [merge3 Count7 a b c]
-        [merge4 Count6 a b c d]
-        [merge5 Count5 a b c d e]
-        [merge6 Count4 a b c d e f]
-        [merge7 Count3 a b c d e f g]
-        [merge8 Count2 a b c d e f g h]
-        [merge9 Count1 a b c d e f g h i]
-    Count11
-        [merge1 Count10 a]
-        [merge2 Count9 a b]
-        [merge3 Count8 a b c]
-        [merge4 Count7 a b c d]
-        [merge5 Count6 a b c d e]
-        [merge6 Count5 a b c d e f]
-        [merge7 Count4 a b c d e f g]
-        [merge8 Count3 a b c d e f g h]
-        [merge9 Count2 a b c d e f g h i]
-        [merge10 Count1 a b c d e f g h i j]
 }

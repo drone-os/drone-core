@@ -24,6 +24,7 @@
 #![feature(alloc_layout_extra)]
 #![feature(alloc_prelude)]
 #![feature(allocator_api)]
+#![feature(const_generics)]
 #![feature(const_raw_ptr_deref)]
 #![feature(core_intrinsics)]
 #![feature(exhaustive_patterns)]
@@ -43,6 +44,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(
+    incomplete_features,
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
     clippy::cast_sign_loss,

@@ -28,6 +28,7 @@ Possible log types:
   `poll_canceled`
 - [changed] Rename `drone_core::sync::spsc::{pulse,ring}::Sender::try_recv` to
   `try_next`
+- [changed] Redesign `inventory` to use consts_generics feature
 
 ### v0.11.1 (2019-11-27)
 
