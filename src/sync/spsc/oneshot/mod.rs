@@ -1,6 +1,6 @@
 //! A channel for sending a single message between asynchronous tasks.
 //!
-//! See [`channel`](oneshot::channel) constructor for more.
+//! See [`channel`] constructor for more.
 
 mod receiver;
 mod sender;

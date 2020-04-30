@@ -13,8 +13,8 @@
 //!
 //! # Basic Fibers
 //!
-//! A basic fiber can be created with [`fib::new`], [`fib::new_fn`], or
-//! [`fib::new_once`]:
+//! A basic fiber can be created with [`fib::new`](new),
+//! [`fib::new_fn`](new_fn), or [`fib::new_once`](new_once):
 //!
 //! ```
 //! # #![feature(generators)]
@@ -53,11 +53,11 @@
 //! ```
 //!
 //! A basic fiber can be attached to a thread with
-//! [`token.add(...)`](fib::ThrFiberGen::add),
-//! [`token.add_fn(...)`](fib::ThrFiberClosure::add_fn), or
-//! [`token.add_once(...)`](fib::ThrFiberClosure::add_once). Note that fibers
-//! that are directly attached to threads can't have yield and return values
-//! other than `()` or `!`.
+//! [`token.add(...)`](ThrFiberGen::add),
+//! [`token.add_fn(...)`](ThrFiberClosure::add_fn), or
+//! [`token.add_once(...)`](ThrFiberClosure::add_once). Note that fibers that
+//! are directly attached to threads can't have yield and return values other
+//! than `()` or `!`.
 //!
 //! ```
 //! # #![feature(generators)]
@@ -110,22 +110,22 @@
 //!
 //! There is a number of useful compound fibers implemented in this module:
 //!
-//! | Method                                                                                               | Input / Output                                                                |
-//! |------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
-//! | [`token.add_future(...)`](fib::ThrFiberFuture::add_future)                                           | `Fiber<Input = (), Yield = ()/!, Return = T>`                                 |
-//! | `->`                                                                                                 | `Future<Output = T>`                                                          |
-//! | [`token.add_stream_pulse(...)`](fib::ThrFiberStreamPulse::add_stream_pulse)                          | `Fiber<Input = (), Yield = Option<usize>, Return = Result<Option<usize>, E>>` |
-//! | `->`                                                                                                 | `Stream<Item = Result<NonZeroUsize, E>>`                                      |
-//! | [`token.add_stream_pulse_skip(...)`](fib::ThrFiberStreamPulse::add_stream_pulse_skip)                | `Fiber<Input = (), Yield = Option<usize>, Return = Option<usize>>`            |
-//! | `->`                                                                                                 | `Stream<Item = NonZeroUsize>`                                                 |
-//! | [`token.add_stream_ring(...)`](fib::ThrFiberStreamRing::add_stream_ring)                             | `Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>`         |
-//! | `->`                                                                                                 | `Stream<Item = Result<T, E>>`                                                 |
-//! | [`token.add_stream_ring_skip(...)`](fib::ThrFiberStreamRing::add_stream_ring_skip)                   | `Fiber<Input = (), Yield = Option<T>, Return = Option<T>>`                    |
-//! | `->`                                                                                                 | `Stream<Item = T>`                                                            |
-//! | [`token.add_stream_ring_overwrite(...)`](fib::ThrFiberStreamRing::add_stream_ring_overwrite)         | `Fiber<Input = (), Yield = Option<T>, Return = Option<T>>`                    |
-//! | `->`                                                                                                 | `Stream<Item = T>`                                                            |
-//! | [`token.add_try_stream_ring_overwrite(...)`](fib::ThrFiberStreamRing::add_try_stream_ring_overwrite) | `Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>`         |
-//! | `->`                                                                                                 | `Stream<Item = Result<T, E>>`                                                 |
+//! | Method                                                                                          | Input / Output                                                                |
+//! |-------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+//! | [`token.add_future(...)`](ThrFiberFuture::add_future)                                           | `Fiber<Input = (), Yield = ()/!, Return = T>`                                 |
+//! | `->`                                                                                            | `Future<Output = T>`                                                          |
+//! | [`token.add_stream_pulse(...)`](ThrFiberStreamPulse::add_stream_pulse)                          | `Fiber<Input = (), Yield = Option<usize>, Return = Result<Option<usize>, E>>` |
+//! | `->`                                                                                            | `Stream<Item = Result<NonZeroUsize, E>>`                                      |
+//! | [`token.add_stream_pulse_skip(...)`](ThrFiberStreamPulse::add_stream_pulse_skip)                | `Fiber<Input = (), Yield = Option<usize>, Return = Option<usize>>`            |
+//! | `->`                                                                                            | `Stream<Item = NonZeroUsize>`                                                 |
+//! | [`token.add_stream_ring(...)`](ThrFiberStreamRing::add_stream_ring)                             | `Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>`         |
+//! | `->`                                                                                            | `Stream<Item = Result<T, E>>`                                                 |
+//! | [`token.add_stream_ring_skip(...)`](ThrFiberStreamRing::add_stream_ring_skip)                   | `Fiber<Input = (), Yield = Option<T>, Return = Option<T>>`                    |
+//! | `->`                                                                                            | `Stream<Item = T>`                                                            |
+//! | [`token.add_stream_ring_overwrite(...)`](ThrFiberStreamRing::add_stream_ring_overwrite)         | `Fiber<Input = (), Yield = Option<T>, Return = Option<T>>`                    |
+//! | `->`                                                                                            | `Stream<Item = T>`                                                            |
+//! | [`token.add_try_stream_ring_overwrite(...)`](ThrFiberStreamRing::add_try_stream_ring_overwrite) | `Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>`         |
+//! | `->`                                                                                            | `Stream<Item = Result<T, E>>`                                                 |
 //!
 //! ## Examples
 //!

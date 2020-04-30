@@ -41,8 +41,8 @@ impl<T, E> Receiver<T, E> {
     /// A return value of `Ok(None)` must be considered immediately stale (out
     /// of date) unless [`close`](Receiver::close) has been called first.
     #[inline]
-    pub fn try_recv(&mut self) -> Result<Option<T>, E> {
-        self.inner.try_recv()
+    pub fn try_next(&mut self) -> Result<Option<T>, E> {
+        self.inner.try_next()
     }
 }
 
@@ -84,7 +84,7 @@ impl<T, E> Inner<T, E> {
         state & NUMBER_MASK
     }
 
-    fn try_recv(&self) -> Result<Option<T>, E> {
+    fn try_next(&self) -> Result<Option<T>, E> {
         let state = self.state_load(Ordering::Acquire);
         self.transaction(state, Ordering::AcqRel, Ordering::Acquire, |state| {
             match self.take_index_try(state) {

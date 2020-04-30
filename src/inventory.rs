@@ -1,13 +1,14 @@
 //! A zero-cost abstraction to track various resource states with the
 //! type-system.
 //!
-//! Lets describe the pattern by example. (Familiarity with [`token`] module may
-//! be required.) Imagine that we need to implement a DMA driver. The DMA
-//! peripheral consists of the common functionality, which includes the power
-//! switch for the whole peripheral, and separate DMA channels. The channels can
-//! be used independently in different threads. We want to avoid situations
-//! where one thread holding the switch breaks the other thread holding a
-//! channel. Lets see an example of the pattern:
+//! Lets describe the pattern by example. (Familiarity with
+//! [`token`](crate::token) module may be required.) Imagine that we need to
+//! implement a DMA driver. The DMA peripheral consists of the common
+//! functionality, which includes the power switch for the whole peripheral, and
+//! separate DMA channels. The channels can be used independently in different
+//! threads. We want to avoid situations where one thread holding the switch
+//! breaks the other thread holding a channel. Lets see an example of the
+//! pattern:
 //!
 //! ```
 //! use core::sync::atomic::{AtomicBool, Ordering};

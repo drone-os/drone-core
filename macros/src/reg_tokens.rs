@@ -246,7 +246,7 @@ fn negate_cfg_attrs(cfg_attrs: &[&Attribute]) -> Attribute {
         style: AttrStyle::Outer,
         bracket_token: token::Bracket(Span::call_site()),
         path: format_ident!("cfg").into(),
-        tokens: quote!((not(all(#(all#cfg_attrs)*)))),
+        tokens: quote!((not(all(#(all#cfg_attrs),*)))),
     }
 }
 

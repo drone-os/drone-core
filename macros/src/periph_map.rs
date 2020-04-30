@@ -1,4 +1,4 @@
-use drone_macros_core::{compile_error, unkeywordize, CfgCond, CfgCondExt};
+use drone_macros_core::{compile_error, parse_ident, unkeywordize, CfgCond, CfgCondExt};
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
@@ -71,10 +71,7 @@ impl Parse for Input {
         input.parse::<Token![impl]>()?;
         let trait_ident = input.parse()?;
         input.parse::<Token![for]>()?;
-        let ident = input.parse::<Ident>()?;
-        if ident != struct_ident {
-            return Err(input.error(format!("Should be `{}`", struct_ident)));
-        }
+        parse_ident!(input, struct_ident);
         let content;
         braced!(content in input);
         let mut items = Vec::new();

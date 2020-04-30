@@ -24,6 +24,10 @@ Possible log types:
 - [added] Introduce `log` facade
 - [added] Add `dbg`, `eprint`, `eprintln`, `print`, `println` to `prelude`
 - [removed] Remove `future::init` function and `future::fallback` module
+- [changed] Rename `drone_core::sync::spsc::*::Sender::poll_cancel` to
+  `poll_canceled`
+- [changed] Rename `drone_core::sync::spsc::{pulse,ring}::Sender::try_recv` to
+  `try_next`
 
 ### v0.11.1 (2019-11-27)
 

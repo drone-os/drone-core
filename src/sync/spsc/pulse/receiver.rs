@@ -41,8 +41,8 @@ impl<E> Receiver<E> {
     /// A return value of `Ok(None)` must be considered immediately stale (out
     /// of date) unless [`close`](Receiver::close) has been called first.
     #[inline]
-    pub fn try_recv(&mut self) -> Result<Option<NonZeroUsize>, E> {
-        self.inner.try_recv(Inner::<E>::take_try)
+    pub fn try_next(&mut self) -> Result<Option<NonZeroUsize>, E> {
+        self.inner.try_next(Inner::<E>::take_try)
     }
 }
 
@@ -71,7 +71,7 @@ impl<E> Drop for Receiver<E> {
 
 #[allow(clippy::unused_self)]
 impl<E> Inner<E> {
-    fn try_recv<T>(
+    fn try_next<T>(
         &self,
         take_try: fn(&Self, &mut usize) -> Option<Result<T, ()>>,
     ) -> Result<Option<T>, E> {

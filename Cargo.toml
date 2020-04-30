@@ -49,4 +49,4 @@ version = "=0.12.0"
 path = "macros"
 
 [dependencies]
-futures = { version = "0.3.0", default-features = false }
+futures = { version = "0.3.0", default-features = false, features = ["alloc", "async-await"] }

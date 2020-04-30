@@ -1,3 +1,4 @@
+use drone_macros_core::parse_ident;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
@@ -5,7 +6,7 @@ use syn::{
     parse::{Parse, ParseStream, Result},
     parse_macro_input,
     punctuated::Punctuated,
-    Ident, LitStr, Token,
+    LitStr, Token,
 };
 
 #[allow(dead_code)]
@@ -20,10 +21,7 @@ impl Parse for Input {
             let string = input.parse()?;
             Ok(Self::Lit { string })
         } else {
-            let ident = input.parse::<Ident>()?;
-            if ident != "concat" {
-                input.error("invalid identifier");
-            }
+            parse_ident!(input, "concat");
             input.parse::<Token![!]>()?;
             let content;
             parenthesized!(content in input);

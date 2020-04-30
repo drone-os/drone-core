@@ -1,7 +1,7 @@
 //! A single-producer, single-consumer queue for sending pulses across
 //! asynchronous tasks.
 //!
-//! See [`channel`](pulse::channel) constructor for more.
+//! See [`channel`] constructor for more.
 
 mod receiver;
 mod sender;

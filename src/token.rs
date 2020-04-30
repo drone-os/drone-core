@@ -1,4 +1,4 @@
-//! The [`Token`](token::Token) trait and its common patterns.
+//! The [`Token`] trait and its common patterns.
 //!
 //! A token is a zero-sized type, at most one instance of which ever exists.
 //! This concept is ubiquitous in Drone. It is used for representing
@@ -11,23 +11,19 @@
 //! responsibility to ensure the following:
 //!
 //!     * The type must not implement [`Clone`].
-//!     * The type must be instantiated only inside
-//!       [`Token::take`](token::Token::take) method.
+//!     * The type must be instantiated only inside [`Token::take`] method.
 //!     * The type must be zero-sized.
 //!
-//! 2. *Calling* [`Token::take`](token::Token::take) is `unsafe`, and it is the
-//! caller responsibility to ensure that at most one instance of the type ever
-//! exists.
+//! 2. *Calling* [`Token::take`] is `unsafe`, and it is the caller
+//! responsibility to ensure that at most one instance of the type ever exists.
 //!
-//! Tokens are often nested to minimize the usage of `unsafe`
-//! [`Token::take`](token::Token::take) constructor. It is supposed to
-//! instantiate all needed tokens at the very beginning of the program and pass
-//! the instances further to the code.
+//! Tokens are often nested to minimize the usage of `unsafe` [`Token::take`]
+//! constructor. It is supposed to instantiate all needed tokens at the very
+//! beginning of the program and pass the instances further to the code.
 //!
-//! Since tokens are zero-sized, [`Token::take`](token::Token::take) is no-op
-//! from the assembly perspective. Likewise passing the instance around doesn't
-//! consume the stack, and storing the instance inside other types doesn't
-//! consume the memory.
+//! Since tokens are zero-sized, [`Token::take`] is no-op from the assembly
+//! perspective. Likewise passing the instance around doesn't consume the stack,
+//! and storing the instance inside other types doesn't consume the memory.
 //!
 //! # Simple Tokens
 //!

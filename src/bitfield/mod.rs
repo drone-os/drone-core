@@ -1,5 +1,5 @@
-//! A [`Bitfield`](bitfield::Bitfield) is an integer value treated as a sequence
-//! of bits, which can be toggled individually.
+//! A [`Bitfield`] is an integer value treated as a sequence of bits, which can
+//! be toggled individually.
 //!
 //! A type with named bit-fields can be defined with the attribute macro:
 //!

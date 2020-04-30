@@ -10,9 +10,9 @@
 //!
 //! A Drone application maps available prioritized interrupts to Drone threads.
 //! The number of threads is always static but configurable. Any number of
-//! fibers can be attached to particular threads, see [`fib`] for details. The
-//! Drone application configures its own thread type, which implements
-//! [`Thread`](thr::Thread), and creates a continuous array of this type.
+//! fibers can be attached to particular threads, see [`fib`](crate::fib) for
+//! details. The Drone application configures its own thread type, which
+//! implements [`Thread`], and creates a continuous array of this type.
 //!
 //! ```
 //! # fn main() {}

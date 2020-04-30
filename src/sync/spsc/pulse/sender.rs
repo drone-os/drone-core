@@ -3,7 +3,6 @@ use crate::sync::spsc::{SpscInner, SpscInnerErr};
 use alloc::sync::Arc;
 use core::{
     fmt,
-    pin::Pin,
     sync::atomic::Ordering,
     task::{Context, Poll},
 };
@@ -65,7 +64,7 @@ impl<E> Sender<E> {
     /// however, is scheduled to receive a notification if the corresponding
     /// `Receiver` goes away.
     #[inline]
-    pub fn poll_cancel(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+    pub fn poll_canceled(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         self.inner.poll_half(
             cx,
             IS_TX_HALF,
@@ -78,7 +77,7 @@ impl<E> Sender<E> {
     /// Tests to see whether this `Sender`'s corresponding `Receiver` has been
     /// dropped.
     ///
-    /// Unlike [`poll_cancel`](Sender::poll_cancel), this function does not
+    /// Unlike [`poll_canceled`](Sender::poll_canceled), this function does not
     /// enqueue a task for wakeup upon cancellation, but merely reports the
     /// current state, which may be subject to concurrent modification.
     #[inline]

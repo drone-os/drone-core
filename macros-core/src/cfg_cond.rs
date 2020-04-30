@@ -1,3 +1,4 @@
+use crate::parse_ident;
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::collections::HashMap;
@@ -22,10 +23,7 @@ impl Parse for CfgCond {
             input.parse::<Token![#]>()?;
             let input2;
             bracketed!(input2 in input);
-            let ident = input2.parse::<Ident>()?;
-            if ident != "cfg" {
-                return Err(input2.error("Unsupported attribute"));
-            }
+            parse_ident!(input2, "cfg");
             let input3;
             parenthesized!(input3 in input2);
             let ident = input3.parse::<Ident>()?;
