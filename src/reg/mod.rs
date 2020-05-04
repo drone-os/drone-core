@@ -98,29 +98,32 @@
 //!
 //! ## Register Token
 //!
-//! |                                        | Mode       | Tag      |
-//! |----------------------------------------|------------|----------|
-//! | [`into_unsync`](Reg::into_unsync)      |            |          |
-//! | [`into_sync`](Reg::into_sync)          |            |          |
-//! | [`into_copy`](Reg::into_copy)          |            |          |
-//! | [`as_sync`](Reg::as_sync)              |            |          |
-//! | [`default_val`](Reg::default_val)      |            |          |
-//! | [`default`](RegRef::default)           |            |          |
-//! | [`hold`](RegRef::hold)                 |            |          |
-//! | [`load`](RReg::load)                   | read       |          |
-//! | [`load_val`](RReg::load_val)           | read       |          |
-//! | [`load_bits`](RReg::load_bits)         | read       |          |
-//! | [`as_ptr`](RReg::as_ptr)               | read       |          |
-//! | [`as_mut_ptr`](WReg::as_mut_ptr)       | write      |          |
-//! | [`store`](WRegUnsync::store)           | write      | Urt      |
-//! | [`store`](WRegAtomic::store)           | write      | Srt, Crt |
-//! | [`store_val`](WRegUnsync::store_val)   | write      | Urt      |
-//! | [`store_val`](WRegAtomic::store_val)   | write      | Srt, Crt |
-//! | [`store_bits`](WRegUnsync::store_bits) | write      | Urt      |
-//! | [`store_bits`](WRegAtomic::store_bits) | write      | Srt, Crt |
-//! | [`reset`](WRegUnsync::reset)           | write      | Urt      |
-//! | [`reset`](WRegAtomic::reset)           | write      | Srt, Crt |
-//! | [`modify`](RwRegUnsync::modify)        | read-write | Urt      |
+//! |                                         | Mode       | Tag      |
+//! |-----------------------------------------|------------|----------|
+//! | [`into_unsync`](Reg::into_unsync)       |            |          |
+//! | [`into_sync`](Reg::into_sync)           |            |          |
+//! | [`into_copy`](Reg::into_copy)           |            |          |
+//! | [`as_sync`](Reg::as_sync)               |            |          |
+//! | [`default_val`](Reg::default_val)       |            |          |
+//! | [`default`](RegRef::default)            |            |          |
+//! | [`hold`](RegRef::hold)                  |            |          |
+//! | [`load`](RReg::load)                    | read       |          |
+//! | [`load_val`](RReg::load_val)            | read       |          |
+//! | [`load_bits`](RReg::load_bits)          | read       |          |
+//! | [`as_ptr`](RReg::as_ptr)                | read       |          |
+//! | [`as_mut_ptr`](WReg::as_mut_ptr)        | write      |          |
+//! | [`store`](WRegUnsync::store)            | write      | Urt      |
+//! | [`store`](WRegAtomic::store)            | write      | Srt, Crt |
+//! | [`store_reg`](WRegUnsync::store_reg)    | write      | Urt      |
+//! | [`store_reg`](WRegAtomic::store_reg)    | write      | Srt, Crt |
+//! | [`store_val`](WRegUnsync::store_val)    | write      | Urt      |
+//! | [`store_val`](WRegAtomic::store_val)    | write      | Srt, Crt |
+//! | [`store_bits`](WRegUnsync::store_bits)  | write      | Urt      |
+//! | [`store_bits`](WRegAtomic::store_bits)  | write      | Srt, Crt |
+//! | [`reset`](WRegUnsync::reset)            | write      | Urt      |
+//! | [`reset`](WRegAtomic::reset)            | write      | Srt, Crt |
+//! | [`modify`](RwRegUnsync::modify)         | read-write | Urt      |
+//! | [`modify_reg`](RwRegUnsync::modify_reg) | read-write | Urt      |
 //!
 //! ## Register Value
 //!
@@ -482,13 +485,24 @@ pub trait WRegUnsync<'a>: WReg<Urt> + RegRef<'a, Urt> {
     /// Passes the reset value to the closure `f`, then writes the result of the
     /// closure into the register memory.
     ///
-    /// See also [`store_val`](WRegUnsync::store_val),
+    /// See also [`store_reg`](WRegUnsync::store_reg),
+    /// [`store_val`](WRegUnsync::store_val),
     /// [`store_bits`](WRegUnsync::store_bits).
     fn store<F>(&'a mut self, f: F)
     where
         F: for<'b> FnOnce(
             &'b mut <Self as RegRef<'a, Urt>>::Hold,
         ) -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
+
+    /// Passes a reference to this register token and the reset value to the
+    /// closure `f`, then writes the modified value into the register memory.
+    ///
+    /// See also [`store`](WRegUnsync::store),
+    /// [`store_val`](WRegUnsync::store_val),
+    /// [`store_bits`](WRegUnsync::store_bits).
+    fn store_reg<F>(&'a mut self, f: F)
+    where
+        F: for<'b> FnOnce(&'b Self, &'b mut Self::Val);
 
     /// Writes an opaque value `val` into the register memory.
     ///
@@ -512,13 +526,24 @@ pub trait WRegAtomic<'a, T: RegAtomic>: WReg<T> + RegRef<'a, T> {
     /// Passes the reset value to the closure `f`, then writes the result of the
     /// closure into the register memory.
     ///
-    /// See also [`store_val`](WRegAtomic::store_val),
+    /// See also [`store_reg`](WRegAtomic::store_reg),
+    /// [`store_val`](WRegAtomic::store_val),
     /// [`store_bits`](WRegAtomic::store_bits).
     fn store<F>(&'a self, f: F)
     where
         F: for<'b> FnOnce(
             &'b mut <Self as RegRef<'a, T>>::Hold,
         ) -> &'b mut <Self as RegRef<'a, T>>::Hold;
+
+    /// Passes a reference to this register token and the reset value to the
+    /// closure `f`, then writes the modified value into the register memory.
+    ///
+    /// See also [`store`](WRegAtomic::store),
+    /// [`store_val`](WRegAtomic::store_val),
+    /// [`store_bits`](WRegAtomic::store_bits).
+    fn store_reg<F>(&'a self, f: F)
+    where
+        F: for<'b> FnOnce(&'b Self, &'b mut Self::Val);
 
     /// Writes an opaque value `val` into the register memory.
     ///
@@ -545,11 +570,25 @@ pub trait RwRegUnsync<'a>: RReg<Urt> + WRegUnsync<'a> + RegRef<'a, Urt> {
     ///
     /// This operation is non-atomic, thus it requires a mutable reference to
     /// the token.
+    ///
+    /// See also [`modify_reg`](RwRegUnsync::modify_reg).
     fn modify<F>(&'a mut self, f: F)
     where
         F: for<'b> FnOnce(
             &'b mut <Self as RegRef<'a, Urt>>::Hold,
         ) -> &'b mut <Self as RegRef<'a, Urt>>::Hold;
+
+    /// Reads the value from the register memory, then passes a reference to
+    /// this register token and the value to the closure `f`, then writes the
+    /// modified value into the register memory.
+    ///
+    /// This operation is non-atomic, thus it requires a mutable reference to
+    /// the token.
+    ///
+    /// See also [`modify`](RwRegUnsync::modify).
+    fn modify_reg<F>(&'a mut self, f: F)
+    where
+        F: for<'b> FnOnce(&'b Self, &'b mut Self::Val);
 }
 
 impl<'a, R> WRegUnsync<'a> for R
@@ -566,6 +605,16 @@ where
         unsafe {
             write_volatile(self.as_mut_ptr(), f(&mut self.default()).val().bits());
         }
+    }
+
+    #[inline]
+    fn store_reg<F>(&'a mut self, f: F)
+    where
+        F: for<'b> FnOnce(&'b Self, &'b mut Self::Val),
+    {
+        let mut val = self.default_val();
+        f(self, &mut val);
+        self.store_val(val);
     }
 
     #[inline]
@@ -602,6 +651,16 @@ where
     }
 
     #[inline]
+    fn store_reg<F>(&'a self, f: F)
+    where
+        F: for<'b> FnOnce(&'b Self, &'b mut Self::Val),
+    {
+        let mut val = self.default_val();
+        f(self, &mut val);
+        self.store_val(val);
+    }
+
+    #[inline]
     fn store_val(&self, val: Self::Val) {
         self.store_bits(val.bits());
     }
@@ -631,6 +690,16 @@ where
         unsafe {
             write_volatile(self.as_mut_ptr(), f(&mut self.load()).val().bits());
         }
+    }
+
+    #[inline]
+    fn modify_reg<F>(&'a mut self, f: F)
+    where
+        F: for<'b> FnOnce(&'b Self, &'b mut Self::Val),
+    {
+        let mut val = self.load_val();
+        f(self, &mut val);
+        self.store_val(val);
     }
 }
 

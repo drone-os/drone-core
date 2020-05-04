@@ -11,6 +11,10 @@ Possible log types:
 - `[fixed]` for any bug fixes.
 - `[security]` to invite users to upgrade in case of vulnerabilities.
 
+### Unreleased
+
+- [added] Added `store_reg` and `modify_reg` methods for register tokens
+
 ### v0.12.0 (2020-05-01)
 
 - [added] Implemented multi-variant registers
