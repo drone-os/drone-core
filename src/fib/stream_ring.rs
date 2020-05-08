@@ -72,15 +72,14 @@ impl<T, E> Stream for TryFiberStreamRing<T, E> {
     }
 }
 
-/// Extends [`ThrToken`](crate::thr::ThrToken) types with `add_stream_ring`
-/// methods.
+/// Extends [`ThrToken`](crate::thr::ThrToken) types with ring stream methods.
 pub trait ThrFiberStreamRing: ThrToken {
     /// Adds the fiber `fib` to the fiber chain and returns a stream of `T`
     /// yielded from the fiber.
     ///
     /// When the underlying ring buffer overflows, new items will be skipped.
     #[inline]
-    fn add_stream_ring_skip<F, T>(self, capacity: usize, fib: F) -> FiberStreamRing<T>
+    fn add_saturating_stream<F, T>(self, capacity: usize, fib: F) -> FiberStreamRing<T>
     where
         F: Fiber<Input = (), Yield = Option<T>, Return = Option<T>>,
         F: Send + 'static,
@@ -95,7 +94,7 @@ pub trait ThrFiberStreamRing: ThrToken {
     /// When the underlying ring buffer overflows, new items will overwrite
     /// existing ones.
     #[inline]
-    fn add_stream_ring_overwrite<F, T>(self, capacity: usize, fib: F) -> FiberStreamRing<T>
+    fn add_overwriting_stream<F, T>(self, capacity: usize, fib: F) -> FiberStreamRing<T>
     where
         F: Fiber<Input = (), Yield = Option<T>, Return = Option<T>>,
         F: Send + 'static,
@@ -109,7 +108,7 @@ pub trait ThrFiberStreamRing: ThrToken {
     ///
     /// When the underlying ring buffer overflows, new items will be skipped.
     #[inline]
-    fn add_stream_ring<O, F, T, E>(
+    fn add_try_stream<O, F, T, E>(
         self,
         capacity: usize,
         overflow: O,
@@ -132,7 +131,7 @@ pub trait ThrFiberStreamRing: ThrToken {
     /// When the underlying ring buffer overflows, new items will overwrite
     /// existing ones.
     #[inline]
-    fn add_try_stream_ring_overwrite<F, T, E>(
+    fn add_overwriting_try_stream<F, T, E>(
         self,
         capacity: usize,
         fib: F,
@@ -144,6 +143,81 @@ pub trait ThrFiberStreamRing: ThrToken {
         E: Send + 'static,
     {
         TryFiberStreamRing { rx: add_rx_overwrite(self, capacity, fib, identity) }
+    }
+
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of `T`
+    /// yielded from the fiber.
+    ///
+    /// When the underlying ring buffer overflows, new items will be skipped.
+    #[deprecated = "please use 'add_saturating_stream' instead"]
+    #[inline]
+    fn add_stream_ring_skip<F, T>(self, capacity: usize, fib: F) -> FiberStreamRing<T>
+    where
+        F: Fiber<Input = (), Yield = Option<T>, Return = Option<T>>,
+        F: Send + 'static,
+        T: Send + 'static,
+    {
+        self.add_saturating_stream(capacity, fib)
+    }
+
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of `T`
+    /// yielded from the fiber.
+    ///
+    /// When the underlying ring buffer overflows, new items will overwrite
+    /// existing ones.
+    #[deprecated = "please use 'add_overwriting_stream' instead"]
+    #[inline]
+    fn add_stream_ring_overwrite<F, T>(self, capacity: usize, fib: F) -> FiberStreamRing<T>
+    where
+        F: Fiber<Input = (), Yield = Option<T>, Return = Option<T>>,
+        F: Send + 'static,
+        T: Send + 'static,
+    {
+        self.add_overwriting_stream(capacity, fib)
+    }
+
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of
+    /// `Result<T, E>` yielded from the fiber.
+    ///
+    /// When the underlying ring buffer overflows, new items will be skipped.
+    #[deprecated = "please use 'add_try_stream' instead"]
+    #[inline]
+    fn add_stream_ring<O, F, T, E>(
+        self,
+        capacity: usize,
+        overflow: O,
+        fib: F,
+    ) -> TryFiberStreamRing<T, E>
+    where
+        O: Fn(T) -> Result<(), E>,
+        F: Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>,
+        O: Send + 'static,
+        F: Send + 'static,
+        T: Send + 'static,
+        E: Send + 'static,
+    {
+        self.add_try_stream(capacity, overflow, fib)
+    }
+
+    /// Adds the fiber `fib` to the fiber chain and returns a stream of
+    /// `Result<T, E>` yielded from the fiber.
+    ///
+    /// When the underlying ring buffer overflows, new items will overwrite
+    /// existing ones.
+    #[deprecated = "please use 'add_overwriting_try_stream' instead"]
+    #[inline]
+    fn add_try_stream_ring_overwrite<F, T, E>(
+        self,
+        capacity: usize,
+        fib: F,
+    ) -> TryFiberStreamRing<T, E>
+    where
+        F: Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>,
+        F: Send + 'static,
+        T: Send + 'static,
+        E: Send + 'static,
+    {
+        self.add_overwriting_try_stream(capacity, fib)
     }
 }
 
