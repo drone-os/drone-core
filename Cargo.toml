@@ -5,7 +5,7 @@ members = ["ctypes", "macros", "macros-core"]
 
 [package]
 name = "drone-core"
-version = "0.12.0"
+version = "0.12.1"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 edition = "2018"
 resolver = "2"
@@ -41,11 +41,11 @@ std = ["futures/std"]
 heaptrace = []
 
 [dependencies.drone-ctypes]
-version = "=0.12.0"
+version = "=0.12.1"
 path = "ctypes"
 
 [dependencies.drone-core-macros]
-version = "=0.12.0"
+version = "=0.12.1"
 path = "macros"
 
 [dependencies]

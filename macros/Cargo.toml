@@ -2,7 +2,7 @@ cargo-features = ["resolver"]
 
 [package]
 name = "drone-core-macros"
-version = "0.12.0"
+version = "0.12.1"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 edition = "2018"
 resolver = "2"
@@ -18,11 +18,11 @@ Procedural macros for drone-core.
 proc-macro = true
 
 [dependencies.drone-macros-core]
-version = "=0.12.0"
+version = "=0.12.1"
 path = "../macros-core"
 
 [dependencies.drone-config]
-version = "0.12.0"
+version = "0.12.1"
 path = "../../drone/config"
 
 [dependencies]

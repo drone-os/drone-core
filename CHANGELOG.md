@@ -11,7 +11,7 @@ Possible log types:
 - `[fixed]` for any bug fixes.
 - `[security]` to invite users to upgrade in case of vulnerabilities.
 
-### Unreleased
+### v0.12.1 (2020-05-13)
 
 - [changed] Rename streams methods on thread tokens
 - [added] Added `store_reg` and `modify_reg` methods for register tokens
