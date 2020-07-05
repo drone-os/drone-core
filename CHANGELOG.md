@@ -11,6 +11,10 @@ Possible log types:
 - `[fixed]` for any bug fixes.
 - `[security]` to invite users to upgrade in case of vulnerabilities.
 
+### Unreleased
+
+- [changed] Use `typenum` crate instead of `const_generics` feature for
+  `inventory` module
 ### v0.12.1 (2020-05-13)
 
 - [changed] Rename streams methods on thread tokens

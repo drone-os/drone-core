@@ -13,6 +13,7 @@
 //! ```
 //! use core::sync::atomic::{AtomicBool, Ordering};
 //! use drone_core::{inventory, inventory::Inventory, token::{simple_token, Token}};
+//! use typenum::{U0, U1};
 //!
 //! // Let it be our power switch, so we can easily observe its state.
 //! static DMA_EN: AtomicBool = AtomicBool::new(false);
@@ -23,7 +24,7 @@
 //!
 //! // We split the DMA driver in two types: one for disabled state, and the
 //! // other for enabled state.
-//! pub struct Dma(Inventory<DmaEn, 0>);
+//! pub struct Dma(Inventory<DmaEn, U0>);
 //! pub struct DmaEn(DmaReg);
 //!
 //! impl Dma {
@@ -49,7 +50,7 @@
 //!     // This method takes `self` by value and returns the inventory object with one
 //!     // token taken. It enables DMA, and in order to disable it, one should
 //!     // explicitly call  `from_enabled()` method below.
-//!     pub fn into_enabled(self) -> Inventory<DmaEn, 1> {
+//!     pub fn into_enabled(self) -> Inventory<DmaEn, U1> {
 //!         self.setup();
 //!         let (enabled, token) = self.0.share1();
 //!         // To be recreated in `from_enabled()`.
@@ -59,7 +60,7 @@
 //!
 //!     // This method takes the inventory object with one token taken, restores the
 //!     // token, and disables DMA.
-//!     pub fn from_enabled(enabled: Inventory<DmaEn, 1>) -> Self {
+//!     pub fn from_enabled(enabled: Inventory<DmaEn, U1>) -> Self {
 //!         // Restoring the token dropped in `into_enabled()`.
 //!         let token = unsafe { inventory::Token::new() };
 //!         let mut enabled = enabled.merge1(token);
@@ -208,16 +209,18 @@
 
 use core::{
     marker::PhantomData,
-    ops::{Deref, DerefMut},
+    ops::{Add, Deref, DerefMut, Sub},
 };
+use typenum::{Diff, Sum, Unsigned, U0, U1, U2, U3, U4, U5, U6, U7, U8};
 
 /// The inventory wrapper for `T`. Parameter `C` encodes the number of emitted
 /// tokens.
 ///
 /// See [the module-level documentation](self) for details.
 #[repr(transparent)]
-pub struct Inventory<T: Item, const C: usize> {
+pub struct Inventory<T: Item, C: Unsigned> {
     item: T,
+    _marker: PhantomData<C>,
 }
 
 /// An RAII scoped guard for the inventory item `T`. Will call
@@ -242,14 +245,14 @@ pub trait Item: Sized {
     fn teardown(&mut self, _token: &mut GuardToken<Self>);
 }
 
-impl<T: Item> Inventory<T, 0> {
+impl<T: Item> Inventory<T, U0> {
     /// Creates a new [`Inventory`] in the inactive state with zero tokens
     /// emitted.
     ///
     /// `item` should contain some form of token.
     #[inline]
     pub fn new(item: T) -> Self {
-        Self { item }
+        Self { item, _marker: PhantomData }
     }
 
     /// Drops `inventory` and returns the stored item.
@@ -278,7 +281,7 @@ impl<T: Item> Inventory<T, 0> {
     }
 }
 
-impl<T: Item, const C: usize> Inventory<T, C> {
+impl<T: Item, C: Unsigned> Inventory<T, C> {
     /// Returns a reference to [`Token`]`<T>`. While the reference exists, the
     /// item is always in its active state.
     #[allow(clippy::unused_self)]
@@ -290,25 +293,36 @@ impl<T: Item, const C: usize> Inventory<T, C> {
 
 macro_rules! define_methods {
     (
-        $($share:ident $inc:expr => $($share_token:ident)*;)*
+        $($share:ident $inc:ty => $($share_token:ident)*;)*
         ;
-        $($merge:ident $dec:expr => $($merge_token:ident)*;)*
+        $($merge:ident $dec:ty => $($merge_token:ident)*;)*
     ) => {
-        impl<T: Item, const C: usize> Inventory<T, C> {
+        impl<T: Item, C: Unsigned> Inventory<T, C> {
             $(
                 /// Returns a token and a new inventory object with increased
                 /// counter in its type.
-                pub fn $share(self) -> (Inventory<T, { C + $inc }>, $(Token<$share_token>),*) {
-                    (Inventory { item: self.item }, $(Token(PhantomData::<$share_token>),)*)
+                pub fn $share(self) -> (Inventory<T, Sum<C, $inc>>, $(Token<$share_token>),*)
+                where
+                    C: Add<$inc>,
+                    Sum<C, $inc>: Unsigned,
+                {
+                    (
+                        Inventory { item: self.item, _marker: PhantomData },
+                        $(Token(PhantomData::<$share_token>),)*
+                    )
                 }
             )*
             $(
                 /// Consumes a token and returns a new inventory object with
                 /// decreased counter in its type.
                 #[allow(clippy::too_many_arguments)]
-                pub fn $merge(self, $($merge_token: Token<T>,)*) -> Inventory<T, { C - $dec }> {
+                pub fn $merge(self, $($merge_token: Token<T>,)*) -> Inventory<T, Diff<C, $dec>>
+                where
+                    C: Sub<$dec>,
+                    Diff<C, $dec>: Unsigned,
+                {
                     $(drop($merge_token);)*
-                    Inventory { item: self.item }
+                    Inventory { item: self.item, _marker: PhantomData }
                 }
             )*
         }
@@ -316,26 +330,26 @@ macro_rules! define_methods {
 }
 
 define_methods! {
-    share1 1 => T;
-    share2 2 => T T;
-    share3 3 => T T T;
-    share4 4 => T T T T;
-    share5 5 => T T T T T;
-    share6 6 => T T T T T T;
-    share7 7 => T T T T T T T;
-    share8 8 => T T T T T T T T;
+    share1 U1 => T;
+    share2 U2 => T T;
+    share3 U3 => T T T;
+    share4 U4 => T T T T;
+    share5 U5 => T T T T T;
+    share6 U6 => T T T T T T;
+    share7 U7 => T T T T T T T;
+    share8 U8 => T T T T T T T T;
     ;
-    merge1 1 => a;
-    merge2 2 => a b;
-    merge3 3 => a b c;
-    merge4 4 => a b c d;
-    merge5 5 => a b c d e;
-    merge6 6 => a b c d e f;
-    merge7 7 => a b c d e f g;
-    merge8 8 => a b c d e f g h;
+    merge1 U1 => a;
+    merge2 U2 => a b;
+    merge3 U3 => a b c;
+    merge4 U4 => a b c d;
+    merge5 U5 => a b c d e;
+    merge6 U6 => a b c d e f;
+    merge7 U7 => a b c d e f g;
+    merge8 U8 => a b c d e f g h;
 }
 
-impl<T: Item, const C: usize> Deref for Inventory<T, C> {
+impl<T: Item, C: Unsigned> Deref for Inventory<T, C> {
     type Target = T;
 
     #[inline]
@@ -344,7 +358,7 @@ impl<T: Item, const C: usize> Deref for Inventory<T, C> {
     }
 }
 
-impl<T: Item, const C: usize> DerefMut for Inventory<T, C> {
+impl<T: Item, C: Unsigned> DerefMut for Inventory<T, C> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
         &mut self.item

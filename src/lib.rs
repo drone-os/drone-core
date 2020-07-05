@@ -3,7 +3,7 @@
 //! # Documentation
 //!
 //! - [Drone Book](https://book.drone-os.com/)
-//! - [API documentation](https://api.drone-os.com/drone-core/0.12/)
+//! - [API documentation](https://api.drone-os.com/drone-core/0.13/)
 //!
 //! # Usage
 //!
@@ -11,7 +11,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! drone-core = { version = "0.12.1" }
+//! drone-core = { version = "0.13.0" }
 //! ```
 //!
 //! Add or extend `std` feature as follows:
@@ -24,7 +24,6 @@
 #![feature(alloc_layout_extra)]
 #![feature(alloc_prelude)]
 #![feature(allocator_api)]
-#![feature(const_generics)]
 #![feature(const_raw_ptr_deref)]
 #![feature(core_intrinsics)]
 #![feature(exhaustive_patterns)]
