@@ -15,9 +15,11 @@ Possible log types:
 
 - [changed] Use `typenum` crate instead of `const_generics` feature for
   `inventory` module
+- [removed] Removed deprecated stream methods on thread tokens
+
 ### v0.12.1 (2020-05-13)
 
-- [changed] Rename streams methods on thread tokens
+- [changed] Renamed streams methods on thread tokens
 - [added] Added `store_reg` and `modify_reg` methods for register tokens
 
 ### v0.12.0 (2020-05-01)
