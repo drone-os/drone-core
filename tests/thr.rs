@@ -1,6 +1,4 @@
-#![feature(const_fn)]
 #![feature(generators)]
-#![feature(integer_atomics)]
 
 use drone_core::{
     fib, thr,

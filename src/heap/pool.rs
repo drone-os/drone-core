@@ -64,7 +64,7 @@ impl Pool {
     pub unsafe fn dealloc(&self, ptr: NonNull<u8>) {
         loop {
             let curr = self.free.load(Ordering::Acquire);
-            ptr::write(ptr.as_ptr() as *mut *mut u8, curr);
+            unsafe { ptr::write(ptr.as_ptr() as *mut *mut u8, curr) };
             let next = ptr.as_ptr() as *mut u8;
             if self.free.compare_and_swap(curr, next, Ordering::AcqRel) == curr {
                 break;
@@ -79,9 +79,9 @@ impl Pool {
             if curr.is_null() {
                 break None;
             }
-            let next = ptr::read(curr as *const *mut u8);
+            let next = unsafe { ptr::read(curr as *const *mut u8) };
             if self.free.compare_and_swap(curr, next, Ordering::AcqRel) == curr {
-                break Some(NonNull::new_unchecked(curr));
+                break Some(unsafe { NonNull::new_unchecked(curr) });
             }
         }
     }
@@ -92,9 +92,9 @@ impl Pool {
             if curr == self.edge {
                 break None;
             }
-            let next = curr.add(self.size);
+            let next = unsafe { curr.add(self.size) };
             if self.uninit.compare_and_swap(curr, next, Ordering::Relaxed) == curr {
-                break Some(NonNull::new_unchecked(curr));
+                break Some(unsafe { NonNull::new_unchecked(curr) });
             }
         }
     }

@@ -132,12 +132,14 @@ where
 ///
 /// The function is not reentrant.
 pub unsafe fn thread_resume<T: ThrToken>() {
-    let thr = get_thr::<T>();
-    preempt(thr.local().preempted(), T::THR_NUM, || {
-        thr.fib_chain().drain();
-    })
+    unsafe {
+        let thr = get_thr::<T>();
+        preempt(thr.local().preempted(), T::THR_NUM, || {
+            thr.fib_chain().drain();
+        })
+    }
 }
 
 unsafe fn get_thr<T: ThrToken>() -> &'static T::Thr {
-    &*T::Thr::first().add(T::THR_NUM)
+    unsafe { &*T::Thr::first().add(T::THR_NUM) }
 }

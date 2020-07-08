@@ -72,8 +72,10 @@ pub unsafe fn dealloc<A: Allocator>(heap: &A, ptr: NonNull<u8>, layout: Layout) 
     if layout.size() == 0 {
         return;
     }
-    let pool = heap.get_pool_unchecked(binary_search(heap, ptr));
-    pool.dealloc(ptr);
+    unsafe {
+        let pool = heap.get_pool_unchecked(binary_search(heap, ptr));
+        pool.dealloc(ptr);
+    }
 }
 
 #[doc(hidden)]
@@ -94,11 +96,13 @@ pub unsafe fn grow<A: Allocator>(
             if new_size == size {
                 return Ok(MemoryBlock { ptr, size });
             }
-            let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
-            let new_memory = alloc(heap, new_layout, init)?;
-            ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), size);
-            dealloc(heap, ptr, layout);
-            Ok(new_memory)
+            unsafe {
+                let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+                let new_memory = alloc(heap, new_layout, init)?;
+                ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), size);
+                dealloc(heap, ptr, layout);
+                Ok(new_memory)
+            }
         }
     }
 }
@@ -120,11 +124,13 @@ pub unsafe fn shrink<A: Allocator>(
             if new_size == size {
                 return Ok(MemoryBlock { ptr, size });
             }
-            let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
-            let new_memory = alloc(heap, new_layout, AllocInit::Uninitialized)?;
-            ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), new_size);
-            dealloc(heap, ptr, layout);
-            Ok(new_memory)
+            unsafe {
+                let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+                let new_memory = alloc(heap, new_layout, AllocInit::Uninitialized)?;
+                ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), new_size);
+                dealloc(heap, ptr, layout);
+                Ok(new_memory)
+            }
         }
     }
 }
@@ -213,7 +219,7 @@ mod tests {
         where
             I: SliceIndex<[Pool]>,
         {
-            self.pools.get_unchecked(index)
+            unsafe { self.pools.get_unchecked(index) }
         }
     }
 
@@ -273,8 +279,10 @@ mod tests {
     #[test]
     fn allocations() {
         unsafe fn alloc_and_set(heap: &TestHeap, layout: Layout, value: u8) {
-            *(alloc(heap, layout, AllocInit::Uninitialized).unwrap().ptr.as_ptr() as *mut u8) =
-                value;
+            unsafe {
+                *(alloc(heap, layout, AllocInit::Uninitialized).unwrap().ptr.as_ptr() as *mut u8) =
+                    value;
+            }
         }
         let mut m = [0u8; 3230];
         let o = &mut m as *mut _ as usize;

@@ -220,9 +220,11 @@ impl CString {
     /// }
     /// ```
     pub unsafe fn from_raw(ptr: *mut c_char) -> Self {
-        let len = strlen(ptr) + 1; // Including the NUL byte
-        let slice = slice::from_raw_parts_mut(ptr, len as usize);
-        Self { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
+        unsafe {
+            let len = strlen(ptr) + 1; // Including the NUL byte
+            let slice = slice::from_raw_parts_mut(ptr, len as usize);
+            Self { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
+        }
     }
 
     /// Consumes the `CString` and transfers ownership of the string to a C

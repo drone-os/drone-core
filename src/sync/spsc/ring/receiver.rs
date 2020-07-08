@@ -115,6 +115,6 @@ impl<T, E> Inner<T, E> {
     }
 
     unsafe fn take_value(&self, index: usize) -> T {
-        ptr::read(self.buffer.ptr().add(index))
+        unsafe { ptr::read(self.buffer.ptr().add(index)) }
     }
 }

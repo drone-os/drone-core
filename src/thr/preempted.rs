@@ -23,8 +23,12 @@ pub fn local<T: Thread>() -> &'static T::Local {
 }
 
 pub(crate) unsafe fn preempt(preempted: &PreemptedCell, thr_num: usize, f: impl FnOnce()) {
-    preempted.0.set(CURRENT);
-    CURRENT = thr_num;
+    unsafe {
+        preempted.0.set(CURRENT);
+        CURRENT = thr_num;
+    }
     f();
-    CURRENT = preempted.0.get();
+    unsafe {
+        CURRENT = preempted.0.get();
+    }
 }

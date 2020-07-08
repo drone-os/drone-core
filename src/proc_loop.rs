@@ -151,7 +151,7 @@ impl<Cmd, ReqRes> In<Cmd, ReqRes> {
     ///
     /// Whether the input is really a command object is unchecked.
     pub unsafe fn into_cmd(self) -> Cmd {
-        ManuallyDrop::into_inner(self.cmd)
+        ManuallyDrop::into_inner(unsafe { self.cmd })
     }
 
     /// Interprets the input as a request result.
@@ -160,6 +160,6 @@ impl<Cmd, ReqRes> In<Cmd, ReqRes> {
     ///
     /// Whether the input is really a request result object is unchecked.
     pub unsafe fn into_req_res(self) -> ReqRes {
-        ManuallyDrop::into_inner(self.req_res)
+        ManuallyDrop::into_inner(unsafe { self.req_res })
     }
 }

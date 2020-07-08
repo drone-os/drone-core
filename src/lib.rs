@@ -39,8 +39,9 @@
 #![feature(prelude_import)]
 #![feature(raw_vec_internals)]
 #![feature(slice_internals)]
+#![feature(unsafe_block_in_unsafe_fn)]
 #![feature(untagged_unions)]
-#![warn(missing_docs)]
+#![warn(missing_docs, unsafe_op_in_unsafe_fn)]
 #![warn(clippy::pedantic)]
 #![allow(
     incomplete_features,
