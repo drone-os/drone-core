@@ -21,6 +21,9 @@ pools = [
     { block = \"32\", capacity = 80 },
     { block = \"256\", capacity = 16 },
 ]
+
+[linker]
+platform = \"arm\"
 " }
 
 heap! {

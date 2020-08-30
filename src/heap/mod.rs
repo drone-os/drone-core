@@ -42,6 +42,8 @@
 //! #     { block = \"32\", capacity = 80 },
 //! #     { block = \"256\", capacity = 16 },
 //! # ]
+//! # [linker]
+//! # platform = \"arm\"
 //! # " }
 //! # fn main() {}
 //! use drone_core::heap;
