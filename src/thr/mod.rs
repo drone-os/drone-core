@@ -20,25 +20,25 @@
 //!
 //! thr! {
 //!     // Path to the array of threads.
-//!     use THREADS;
+//!     array => THREADS;
 //!
 //!     /// The thread object.
-//!     pub struct Thr {
+//!     thread => pub Thr {
 //!         // You can add your own fields to the thread object. These fields will be
 //!         // accessible through `to_thr` method of thread tokens. The types of
 //!         // these fields should be `Sync`.
 //!         pub foo: bool = false;
-//!     }
+//!     };
 //!
 //!     // This is a part of `Thr` that can be accessed with `thr::local` function.
 //!     /// The thread-local storage.
-//!     pub struct ThrLocal {
+//!     local => pub ThrLocal {
 //!         // You can add your own fields here with the same syntax as above.
 //!         // Note that the initializer uses the special `index` variable, that
 //!         // has the value of the position of the thread within the threads array.
 //!         // The types of these fields shouldn't necessarily be `Sync`.
 //!         pub bar: usize = index;
-//!     }
+//!     };
 //! }
 //!
 //! // This is for example only. Platform crates should provide macros to

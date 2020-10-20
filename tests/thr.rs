@@ -13,21 +13,21 @@ use std::sync::{
 static mut THREADS: [Thr; 3] = [Thr::new(0), Thr::new(1), Thr::new(2)];
 
 thr! {
-    use THREADS;
+    array => THREADS;
 
     /// Test doc attribute
     #[doc = "test attribute"]
-    pub struct Thr {
+    thread => pub Thr {
         #[allow(dead_code)]
         pub bar: isize = 1 - 2;
-    }
+    };
 
     /// Test doc attribute
     #[doc = "test attribute"]
-    pub struct ThrLocal {
+    local => pub ThrLocal {
         #[allow(dead_code)]
         pub foo: usize = 0;
-    }
+    };
 }
 
 macro_rules! thr_num {

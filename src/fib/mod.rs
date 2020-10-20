@@ -64,7 +64,7 @@
 //! # #![feature(never_type)]
 //! # use drone_core::token::Token;
 //! # static mut THREADS: [Thr; 1] = [Thr::new(0)];
-//! # drone_core::thr!(use THREADS; struct Thr {} struct ThrLocal {});
+//! # drone_core::thr!(array => THREADS; thread => pub Thr {}; local => pub ThrLocal {});
 //! # #[derive(Clone, Copy)] struct SysTick;
 //! # struct Thrs { sys_tick: SysTick }
 //! # unsafe impl Token for Thrs {
@@ -133,7 +133,7 @@
 //! # #![feature(generators)]
 //! # use drone_core::token::Token;
 //! # static mut THREADS: [Thr; 1] = [Thr::new(0)];
-//! # drone_core::thr!(use THREADS; struct Thr {} struct ThrLocal {});
+//! # drone_core::thr!(array => THREADS; thread => pub Thr {}; local => pub ThrLocal {});
 //! # #[derive(Clone, Copy)] struct SysTick;
 //! # struct Thrs { sys_tick: SysTick }
 //! # unsafe impl Token for Thrs {

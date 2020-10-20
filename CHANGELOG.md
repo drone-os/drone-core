@@ -16,6 +16,7 @@ Possible log types:
 - [changed] Use `typenum` crate instead of `const_generics` feature for
   `inventory` module
 - [removed] Removed deprecated stream methods on thread tokens
+- [changed] Changed syntax of `thr!` macro
 
 ### v0.12.1 (2020-05-13)
 

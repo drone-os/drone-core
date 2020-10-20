@@ -19,9 +19,9 @@ use futures::prelude::*;
 static mut THREADS: [Thr; 1] = [Thr::new(0)];
 
 thr! {
-    use THREADS;
-    struct Thr {}
-    struct ThrLocal {}
+    array => THREADS;
+    thread => pub Thr {};
+    local => pub ThrLocal {};
 }
 
 struct Counter(AtomicUsize);
