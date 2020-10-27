@@ -1,4 +1,4 @@
-use drone_macros_core::{compile_error, unkeywordize, CfgCond, CfgCondExt};
+use drone_macros_core::{parse_error, unkeywordize, CfgCond, CfgCondExt};
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
@@ -184,13 +184,13 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     }
                 }
                 if reg_shared && reg_option {
-                    compile_error!("`Option` and `Shared` can't be used simultaneously");
+                    parse_error!("`Option` and `Shared` can't be used simultaneously");
                 }
                 if variants.len() > 1 && reg_shared {
-                    compile_error!("`Shared` can't be used with multiple variants");
+                    parse_error!("`Shared` can't be used with multiple variants");
                 }
                 if reg_option && !variants.iter().all(|v| v.traits.iter().any(|t| t == "Option")) {
-                    compile_error!("`Option` should be defined for all variants");
+                    parse_error!("`Option` should be defined for all variants");
                 }
                 let mut u_fields_tokens = Vec::new();
                 let mut s_fields_tokens = Vec::new();

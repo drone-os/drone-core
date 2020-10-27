@@ -1,4 +1,3 @@
-use drone_macros_core::parse_ident;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
@@ -42,32 +41,53 @@ struct Field {
 
 impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let array = input.parse()?;
-        input.parse::<Token![;]>()?;
-        let thr = input.parse()?;
-        input.parse::<Token![;]>()?;
-        let local = input.parse()?;
-        if !input.is_empty() {
-            input.parse::<Token![;]>()?;
+        let mut array = None;
+        let mut thr = None;
+        let mut local = None;
+        while !input.is_empty() {
+            let attrs = input.call(Attribute::parse_outer)?;
+            let ident = input.parse::<Ident>()?;
+            input.parse::<Token![=>]>()?;
+            if attrs.is_empty() && ident == "array" {
+                if array.is_none() {
+                    array = Some(input.parse()?);
+                } else {
+                    return Err(input.error("multiple `array` specifications"));
+                }
+            } else if ident == "thread" {
+                if thr.is_none() {
+                    thr = Some(Thr::parse(input, attrs)?);
+                } else {
+                    return Err(input.error("multiple `thread` specifications"));
+                }
+            } else if ident == "local" {
+                if local.is_none() {
+                    local = Some(Local::parse(input, attrs)?);
+                } else {
+                    return Err(input.error("multiple `local` specifications"));
+                }
+            }
+            if !input.is_empty() {
+                input.parse::<Token![;]>()?;
+            }
         }
-        Ok(Self { array, thr, local })
+        Ok(Self {
+            array: array.ok_or_else(|| input.error("missing `array` specification"))?,
+            thr: thr.ok_or_else(|| input.error("missing `thread` specification"))?,
+            local: local.ok_or_else(|| input.error("missing `local` specification"))?,
+        })
     }
 }
 
 impl Parse for Array {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        parse_ident!(input, "array");
-        input.parse::<Token![=>]>()?;
         let path = input.parse()?;
         Ok(Self { path })
     }
 }
 
-impl Parse for Thr {
-    fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
-        parse_ident!(input, "thread");
-        input.parse::<Token![=>]>()?;
+impl Thr {
+    fn parse(input: ParseStream<'_>, attrs: Vec<Attribute>) -> Result<Self> {
         let vis = input.parse()?;
         let ident = input.parse()?;
         let content;
@@ -83,11 +103,8 @@ impl Parse for Thr {
     }
 }
 
-impl Parse for Local {
-    fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
-        parse_ident!(input, "local");
-        input.parse::<Token![=>]>()?;
+impl Local {
+    fn parse(input: ParseStream<'_>, attrs: Vec<Attribute>) -> Result<Self> {
         let vis = input.parse()?;
         let ident = input.parse()?;
         let content;
@@ -118,26 +135,21 @@ impl Parse for Field {
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
     let Input { array, thr, local } = parse_macro_input!(input);
-    let def_thr = def_thr(&array, &thr, &local);
-    let def_local = def_local(&local);
+    let Local { ident: local_ident, .. } = &local;
+    let local_wrapper = format_ident!("{}Wrapper", local_ident);
+    let def_thr = def_thr(&array, &thr, &local, &local_wrapper);
+    let def_local = def_local(&local, &local_wrapper);
     let expanded = quote! {
-        mod __thr {
-            #[allow(unused_imports)]
-            use super::*;
-            #def_thr
-            #def_local
-        }
-        #[allow(unused_imports)]
-        pub use self::__thr::*;
+        #def_thr
+        #def_local
     };
     expanded.into()
 }
 
-fn def_thr(array: &Array, thr: &Thr, local: &Local) -> TokenStream2 {
+fn def_thr(array: &Array, thr: &Thr, local: &Local, local_wrapper: &Ident) -> TokenStream2 {
     let Array { path: array } = array;
     let Thr { vis: thr_vis, attrs: thr_attrs, ident: thr_ident, fields: thr_fields } = thr;
     let Local { ident: local_ident, .. } = local;
-    let local = format_ident!("Local");
     let mut thr_tokens = Vec::new();
     let mut thr_ctor_tokens = Vec::new();
     for Field { attrs, vis, ident, ty, init } in thr_fields {
@@ -148,7 +160,7 @@ fn def_thr(array: &Array, thr: &Thr, local: &Local) -> TokenStream2 {
         #(#thr_attrs)*
         #thr_vis struct #thr_ident {
             fib_chain: ::drone_core::fib::Chain,
-            local: #local,
+            local: #local_wrapper,
             #(#thr_tokens,)*
         }
 
@@ -157,7 +169,7 @@ fn def_thr(array: &Array, thr: &Thr, local: &Local) -> TokenStream2 {
             pub const fn new(index: usize) -> Self {
                 Self {
                     fib_chain: ::drone_core::fib::Chain::new(),
-                    local: #local(#local_ident::new(index)),
+                    local: #local_wrapper(#local_ident::new(index)),
                     #(#thr_ctor_tokens,)*
                 }
             }
@@ -168,7 +180,7 @@ fn def_thr(array: &Array, thr: &Thr, local: &Local) -> TokenStream2 {
 
             #[inline]
             fn first() -> *const Self {
-                unsafe { super::#array.as_ptr() }
+                unsafe { #array.as_ptr() }
             }
 
             #[inline]
@@ -184,10 +196,9 @@ fn def_thr(array: &Array, thr: &Thr, local: &Local) -> TokenStream2 {
     }
 }
 
-fn def_local(local: &Local) -> TokenStream2 {
+fn def_local(local: &Local, local_wrapper: &Ident) -> TokenStream2 {
     let Local { vis: local_vis, attrs: local_attrs, ident: local_ident, fields: local_fields } =
         &local;
-    let local = format_ident!("Local");
     let mut local_tokens = Vec::new();
     let mut local_ctor_tokens = Vec::new();
     for Field { attrs, vis, ident, ty, init } in local_fields {
@@ -201,7 +212,7 @@ fn def_local(local: &Local) -> TokenStream2 {
             #(#local_tokens,)*
         }
 
-        struct #local(#local_ident);
+        struct #local_wrapper(#local_ident);
 
         impl #local_ident {
             const fn new(index: usize) -> Self {
@@ -219,6 +230,6 @@ fn def_local(local: &Local) -> TokenStream2 {
             }
         }
 
-        unsafe impl Sync for #local {}
+        unsafe impl Sync for #local_wrapper {}
     }
 }

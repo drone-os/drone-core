@@ -20,8 +20,8 @@ static mut THREADS: [Thr; 1] = [Thr::new(0)];
 
 thr! {
     array => THREADS;
-    thread => pub Thr {};
-    local => pub ThrLocal {};
+    thread => Thr {};
+    local => ThrLocal {};
 }
 
 struct Counter(AtomicUsize);

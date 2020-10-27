@@ -17,6 +17,13 @@ Possible log types:
   `inventory` module
 - [removed] Removed deprecated stream methods on thread tokens
 - [changed] Changed syntax of `thr!` macro
+- [changed] Renamed `drone_macros_core::compile_error` macro to
+  `drone_macros_core::parse_error`
+- [changed] Renamed `ThrToken::THR_NUM` associated constant to
+  ``ThrToken::THR_IDX``
+- [changed] Changed signature of `thr::thread_resume` function to work on thread
+  types instead of thread token types
+- [added] Added `thr::thread_call` function
 
 ### v0.12.1 (2020-05-13)
 
