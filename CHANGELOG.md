@@ -24,6 +24,7 @@ Possible log types:
 - [changed] Changed signature of `thr::thread_resume` function to work on thread
   types instead of thread token types
 - [added] Added `thr::thread_call` function
+- [changed] Changed syntax of `heap!` macro
 
 ### v0.12.1 (2020-05-13)
 

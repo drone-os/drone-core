@@ -52,7 +52,7 @@
 //! // Define a concrete heap type with the layout defined in the Drone.toml
 //! heap! {
 //!     /// The heap structure.
-//!     pub struct Heap;
+//!     heap => pub Heap;
 //! }
 //!
 //! // Create a static instance of the heap type and declare it as the global

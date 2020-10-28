@@ -30,7 +30,7 @@ platform = \"arm\"
 heap! {
     /// Test doc attribute
     #[doc = "test attribute"]
-    pub struct Heap;
+    heap => pub Heap;
 }
 
 #[test]
