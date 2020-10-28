@@ -1,6 +1,6 @@
 use super::pool::{Fits, Pool};
 use core::{
-    alloc::{AllocErr, AllocInit, Layout, MemoryBlock, ReallocPlacement},
+    alloc::{AllocError, Layout},
     ptr,
     ptr::NonNull,
     slice::SliceIndex,
@@ -44,25 +44,26 @@ pub fn binary_search<A: Allocator, T: Fits>(heap: &A, value: T) -> usize {
 }
 
 #[doc(hidden)]
-pub fn alloc<A: Allocator>(
-    heap: &A,
-    layout: Layout,
-    init: AllocInit,
-) -> Result<MemoryBlock, AllocErr> {
+pub fn alloc<A: Allocator>(heap: &A, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
     #[cfg(feature = "heaptrace")]
     trace::alloc(layout);
     if layout.size() == 0 {
-        return Ok(MemoryBlock { ptr: layout.dangling(), size: 0 });
+        return Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0));
     }
     for pool_idx in binary_search(heap, &layout)..A::POOL_COUNT {
         let pool = unsafe { heap.get_pool_unchecked(pool_idx) };
         if let Some(ptr) = pool.alloc() {
-            let memory = MemoryBlock { ptr, size: pool.size() };
-            unsafe { init.init(memory) };
-            return Ok(memory);
+            return Ok(NonNull::slice_from_raw_parts(ptr, pool.size()));
         }
     }
-    Err(AllocErr)
+    Err(AllocError)
+}
+
+#[doc(hidden)]
+pub fn alloc_zeroed<A: Allocator>(heap: &A, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    let ptr = alloc(heap, layout)?;
+    unsafe { ptr.as_non_null_ptr().as_ptr().write_bytes(0, ptr.len()) }
+    Ok(ptr)
 }
 
 #[doc(hidden)]
@@ -82,28 +83,33 @@ pub unsafe fn dealloc<A: Allocator>(heap: &A, ptr: NonNull<u8>, layout: Layout) 
 pub unsafe fn grow<A: Allocator>(
     heap: &A,
     ptr: NonNull<u8>,
-    layout: Layout,
-    new_size: usize,
-    placement: ReallocPlacement,
-    init: AllocInit,
-) -> Result<MemoryBlock, AllocErr> {
+    old_layout: Layout,
+    new_layout: Layout,
+) -> Result<NonNull<[u8]>, AllocError> {
     #[cfg(feature = "heaptrace")]
     trace::grow(layout, new_size);
-    match placement {
-        ReallocPlacement::InPlace => Err(AllocErr),
-        ReallocPlacement::MayMove => {
-            let size = layout.size();
-            if new_size == size {
-                return Ok(MemoryBlock { ptr, size });
-            }
-            unsafe {
-                let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
-                let new_memory = alloc(heap, new_layout, init)?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), size);
-                dealloc(heap, ptr, layout);
-                Ok(new_memory)
-            }
-        }
+    unsafe {
+        let new_ptr = alloc(heap, new_layout)?;
+        ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_layout.size());
+        dealloc(heap, ptr, old_layout);
+        Ok(new_ptr)
+    }
+}
+
+#[doc(hidden)]
+pub unsafe fn grow_zeroed<A: Allocator>(
+    heap: &A,
+    ptr: NonNull<u8>,
+    old_layout: Layout,
+    new_layout: Layout,
+) -> Result<NonNull<[u8]>, AllocError> {
+    #[cfg(feature = "heaptrace")]
+    trace::grow(layout, new_size);
+    unsafe {
+        let new_ptr = alloc_zeroed(heap, new_layout)?;
+        ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_layout.size());
+        dealloc(heap, ptr, old_layout);
+        Ok(new_ptr)
     }
 }
 
@@ -111,27 +117,16 @@ pub unsafe fn grow<A: Allocator>(
 pub unsafe fn shrink<A: Allocator>(
     heap: &A,
     ptr: NonNull<u8>,
-    layout: Layout,
-    new_size: usize,
-    placement: ReallocPlacement,
-) -> Result<MemoryBlock, AllocErr> {
+    old_layout: Layout,
+    new_layout: Layout,
+) -> Result<NonNull<[u8]>, AllocError> {
     #[cfg(feature = "heaptrace")]
     trace::shrink(layout, new_size);
-    match placement {
-        ReallocPlacement::InPlace => Err(AllocErr),
-        ReallocPlacement::MayMove => {
-            let size = layout.size();
-            if new_size == size {
-                return Ok(MemoryBlock { ptr, size });
-            }
-            unsafe {
-                let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
-                let new_memory = alloc(heap, new_layout, AllocInit::Uninitialized)?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), new_size);
-                dealloc(heap, ptr, layout);
-                Ok(new_memory)
-            }
-        }
+    unsafe {
+        let new_ptr = alloc(heap, new_layout)?;
+        ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), new_layout.size());
+        dealloc(heap, ptr, old_layout);
+        Ok(new_ptr)
     }
 }
 
@@ -280,8 +275,7 @@ mod tests {
     fn allocations() {
         unsafe fn alloc_and_set(heap: &TestHeap, layout: Layout, value: u8) {
             unsafe {
-                *(alloc(heap, layout, AllocInit::Uninitialized).unwrap().ptr.as_ptr() as *mut u8) =
-                    value;
+                *alloc(heap, layout).unwrap().as_mut_ptr() = value;
             }
         }
         let mut m = [0u8; 3230];

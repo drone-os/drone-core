@@ -1,4 +1,5 @@
 #![feature(allocator_api)]
+#![feature(slice_ptr_get)]
 
 use crate::core::mem::size_of;
 use std as core;

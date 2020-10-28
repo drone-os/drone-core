@@ -76,15 +76,27 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
         unsafe impl ::core::alloc::AllocRef for #heap_ident {
             fn alloc(
-                &mut self,
+                &self,
                 layout: ::core::alloc::Layout,
-                init: ::core::alloc::AllocInit,
-            ) -> Result<::core::alloc::MemoryBlock, ::core::alloc::AllocErr> {
-                ::drone_core::heap::alloc(self, layout, init)
+            ) -> ::core::result::Result<
+                ::core::ptr::NonNull<[u8]>,
+                ::core::alloc::AllocError,
+            > {
+                ::drone_core::heap::alloc(self, layout)
+            }
+
+            fn alloc_zeroed(
+                &self,
+                layout: ::core::alloc::Layout,
+            ) -> ::core::result::Result<
+                ::core::ptr::NonNull<[u8]>,
+                ::core::alloc::AllocError,
+            > {
+                ::drone_core::heap::alloc_zeroed(self, layout)
             }
 
             unsafe fn dealloc(
-                &mut self,
+                &self,
                 ptr: ::core::ptr::NonNull<u8>,
                 layout: ::core::alloc::Layout,
             ) {
@@ -92,36 +104,47 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
 
             unsafe fn grow(
-                &mut self,
+                &self,
                 ptr: ::core::ptr::NonNull<u8>,
-                layout: ::core::alloc::Layout,
-                new_size: usize,
-                placement: ::core::alloc::ReallocPlacement,
-                init: ::core::alloc::AllocInit,
-            ) -> Result<::core::alloc::MemoryBlock, ::core::alloc::AllocErr> {
-                ::drone_core::heap::grow(self, ptr, layout, new_size, placement, init)
+                old_layout: ::core::alloc::Layout,
+                new_layout: ::core::alloc::Layout,
+            ) -> ::core::result::Result<
+                ::core::ptr::NonNull<[u8]>,
+                ::core::alloc::AllocError,
+            > {
+                ::drone_core::heap::grow(self, ptr, old_layout, new_layout)
+            }
+
+            unsafe fn grow_zeroed(
+                &self,
+                ptr: ::core::ptr::NonNull<u8>,
+                old_layout: ::core::alloc::Layout,
+                new_layout: ::core::alloc::Layout,
+            ) -> ::core::result::Result<
+                ::core::ptr::NonNull<[u8]>,
+                ::core::alloc::AllocError,
+            > {
+                ::drone_core::heap::grow_zeroed(self, ptr, old_layout, new_layout)
             }
 
             unsafe fn shrink(
-                &mut self,
+                &self,
                 ptr: ::core::ptr::NonNull<u8>,
-                layout: ::core::alloc::Layout,
-                new_size: usize,
-                placement: ::core::alloc::ReallocPlacement,
-            ) -> Result<::core::alloc::MemoryBlock, ::core::alloc::AllocErr> {
-                ::drone_core::heap::shrink(self, ptr, layout, new_size, placement)
+                old_layout: ::core::alloc::Layout,
+                new_layout: ::core::alloc::Layout,
+            ) -> ::core::result::Result<
+                ::core::ptr::NonNull<[u8]>,
+                ::core::alloc::AllocError,
+            > {
+                ::drone_core::heap::shrink(self, ptr, old_layout, new_layout)
             }
         }
 
         unsafe impl ::core::alloc::GlobalAlloc for #heap_ident {
             unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
-                ::drone_core::heap::alloc(
-                    self,
-                    layout,
-                    ::core::alloc::AllocInit::Uninitialized,
-                )
-                .map(|memory| memory.ptr.as_ptr())
-                .unwrap_or(::core::ptr::null_mut())
+                ::drone_core::heap::alloc(self, layout)
+                    .map(|ptr| ptr.as_mut_ptr())
+                    .unwrap_or(::core::ptr::null_mut())
             }
 
             unsafe fn dealloc(&self, ptr: *mut u8, layout: ::core::alloc::Layout) {

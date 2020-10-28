@@ -31,6 +31,7 @@
 //!
 //! ```no_run
 //! # #![feature(allocator_api)]
+//! # #![feature(slice_ptr_get)]
 //! # drone_core::config_override! { "
 //! # [memory]
 //! # flash = { size = \"128K\", origin = 0x08000000 }
@@ -76,7 +77,9 @@ mod allocator;
 mod pool;
 
 pub use self::{
-    allocator::{alloc, binary_search, dealloc, grow, shrink, Allocator},
+    allocator::{
+        alloc, alloc_zeroed, binary_search, dealloc, grow, grow_zeroed, shrink, Allocator,
+    },
     pool::Pool,
 };
 

@@ -48,12 +48,12 @@ pub use self::port::Port;
 use core::{fmt, fmt::Write};
 
 extern "C" {
-    pub fn drone_log_is_enabled(port: u8) -> bool;
-    pub fn drone_log_write_bytes(port: u8, buffer: *const u8, count: usize);
-    pub fn drone_log_write_u8(port: u8, value: u8);
-    pub fn drone_log_write_u16(port: u8, value: u16);
-    pub fn drone_log_write_u32(port: u8, value: u32);
-    pub fn drone_log_flush();
+    pub(crate) fn drone_log_is_enabled(port: u8) -> bool;
+    pub(crate) fn drone_log_write_bytes(port: u8, buffer: *const u8, count: usize);
+    pub(crate) fn drone_log_write_u8(port: u8, value: u8);
+    pub(crate) fn drone_log_write_u16(port: u8, value: u16);
+    pub(crate) fn drone_log_write_u32(port: u8, value: u32);
+    pub(crate) fn drone_log_flush();
 }
 
 /// Number of ports.
