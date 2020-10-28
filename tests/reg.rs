@@ -78,7 +78,7 @@ reg::tokens! {
 
 reg_tokens! {
     /// Register tokens.
-    pub struct Regs;
+    index => pub Regs;
 }
 
 #[test]

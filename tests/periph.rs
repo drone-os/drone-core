@@ -119,7 +119,7 @@ reg::tokens! {
 }
 
 reg_tokens! {
-    pub struct Regs;
+    index => pub Regs;
 }
 
 pub mod gpio {

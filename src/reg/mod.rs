@@ -270,7 +270,7 @@
 //! // of this macro is `pub struct Regs { ... }`.
 //! stm32_reg_tokens! {
 //!     /// Register tokens.
-//!     pub struct Regs;
+//!     index => pub Regs;
 //! }
 //!
 //! // Your entry point.
@@ -815,8 +815,8 @@ mod compile_tests {
     //! use drone_core::token::Token;
     //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
     //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
-    //! reg_tokens!(struct Regs1;);
-    //! reg_tokens!(struct Regs2;);
+    //! reg_tokens!(index => Regs1;);
+    //! reg_tokens!(index => Regs2;);
     //! fn main() {
     //!     unsafe { Regs1::take() };
     //!     unsafe { Regs2::take() };
@@ -835,8 +835,8 @@ mod compile_tests {
     //! mod y {
     //!     drone_core::reg::tokens!(macro reg_tokens2; crate; crate::y; pub mod FOO { BAR; });
     //! }
-    //! reg_tokens1!(struct Regs1;);
-    //! reg_tokens2!(struct Regs2;);
+    //! reg_tokens1!(index => Regs1;);
+    //! reg_tokens2!(index => Regs2;);
     //! fn main() {
     //!     unsafe { Regs1::take() };
     //!     unsafe { Regs2::take() };
@@ -856,7 +856,7 @@ mod compile_tests {
     //!     pub mod TIM1 { CCMR1_Input; !CCMR1_Output; }
     //! }
     //! reg_tokens! {
-    //!     struct Regs;
+    //!     index => Regs;
     //! }
     //! fn main() {
     //!     let reg = unsafe { Regs::take() };
@@ -869,7 +869,7 @@ mod compile_tests {
     //! use drone_core::token::Token;
     //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
     //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
-    //! reg_tokens!(struct Regs; !foo_bar;);
+    //! reg_tokens!(index => Regs; !foo_bar;);
     //! fn main() {
     //!     let reg = unsafe { Regs::take() };
     //!     reg.foo_bar;
@@ -881,7 +881,7 @@ mod compile_tests {
     //! use drone_core::token::Token;
     //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
     //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
-    //! reg_tokens!(struct Regs;);
+    //! reg_tokens!(index => Regs;);
     //! drone_core::reg::assert_taken!("foo_bar");
     //! fn main() { unsafe { Regs::take() }; }
     //! ```
@@ -891,7 +891,7 @@ mod compile_tests {
     //! use drone_core::token::Token;
     //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
     //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
-    //! reg_tokens!(struct Regs; !foo_bar;);
+    //! reg_tokens!(index => Regs; exclude => { foo_bar });
     //! drone_core::reg::assert_taken!("foo_bar");
     //! fn main() { unsafe { Regs::take() }; }
     //! ```

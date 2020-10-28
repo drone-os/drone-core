@@ -19,7 +19,7 @@
 //! #     mod RCC { APB1ENR1; }
 //! #     mod RTC { TR; DR; CR; }
 //! # }
-//! # reg_tokens!(struct Regs;);
+//! # reg_tokens!(index => Regs;);
 //! use core::mem::size_of_val;
 //! use drone_core::periph;
 //!
@@ -111,7 +111,7 @@
 //! #     mod RCC { APB1ENR1; }
 //! #     mod UART4 { CR1; RTOR; }
 //! # }
-//! # reg_tokens!(struct Regs;);
+//! # reg_tokens!(index => Regs;);
 //! # fn main() {}
 //! use drone_core::{periph, reg::marker::*};
 //!
