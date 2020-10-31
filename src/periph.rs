@@ -10,16 +10,21 @@
 //! # #![feature(proc_macro_hygiene)]
 //! # use drone_core::reg;
 //! # use drone_core::reg::prelude::*;
-//! # reg!(pub mod RCC APB1ENR1; 0 32 0; RTCAPBEN { 0 1 });
-//! # reg!(pub mod RTC TR; 0 32 0;);
-//! # reg!(pub mod RTC DR; 0 32 0;);
-//! # reg!(pub mod RTC CR; 0 32 0;);
+//! # reg! {
+//! #     pub RCC APB1ENR1 => {
+//! #         address => 0; size => 32; reset => 0;
+//! #         fields => { RTCAPBEN => { offset => 0; width => 1 } };
+//! #     };
+//! # }
+//! # reg!(pub RTC TR => { address => 0; size => 32; reset => 0 });
+//! # reg!(pub RTC DR => { address => 0; size => 32; reset => 0 });
+//! # reg!(pub RTC CR => { address => 0; size => 32; reset => 0 });
 //! # reg::tokens! {
 //! #     macro reg_tokens; crate; crate;
 //! #     mod RCC { APB1ENR1; }
 //! #     mod RTC { TR; DR; CR; }
 //! # }
-//! # reg_tokens!(index => Regs;);
+//! # reg_tokens!(index => Regs);
 //! use core::mem::size_of_val;
 //! use drone_core::periph;
 //!
@@ -102,16 +107,33 @@
 //! # #![feature(proc_macro_hygiene)]
 //! # use drone_core::reg;
 //! # use drone_core::reg::prelude::*;
-//! # reg!(pub mod RCC APB1ENR1; 0 32 0 RReg WReg; UART4EN { 0 1 RRRegField WWRegField }
-//! #                                              UARTRST { 0 1 RRRegField WWRegField });
-//! # reg!(pub mod UART4 CR1; 0 32 0 RReg WReg; CMIE { 0 1 RRRegField WWRegField });
-//! # reg!(pub mod UART4 RTOR; 0 32 0 RReg WReg; BLEN { 0 2 RRRegField WWRegField });
+//! # reg! {
+//! #     pub RCC APB1ENR1 => {
+//! #         address => 0; size => 32; reset => 0; traits => { RReg WReg };
+//! #         fields => {
+//! #             UART4EN => { offset => 0; width => 1; traits => { RRRegField WWRegField } };
+//! #             UARTRST => { offset => 0; width => 1; traits => { RRRegField WWRegField } };
+//! #         };
+//! #     };
+//! # }
+//! # reg! {
+//! #     pub UART4 CR1 => {
+//! #         address => 0; size => 32; reset => 0; traits => { RReg WReg };
+//! #         fields => { CMIE => { offset => 0; width => 1; traits => { RRRegField WWRegField } } };
+//! #     };
+//! # }
+//! # reg! {
+//! #     pub UART4 RTOR => {
+//! #         address => 0; size => 32; reset => 0; traits => { RReg WReg };
+//! #         fields => { BLEN => { offset => 0; width => 2; traits => { RRRegField WWRegField } } };
+//! #     };
+//! # }
 //! # reg::tokens! {
 //! #     macro reg_tokens; crate; crate;
 //! #     mod RCC { APB1ENR1; }
 //! #     mod UART4 { CR1; RTOR; }
 //! # }
-//! # reg_tokens!(index => Regs;);
+//! # reg_tokens!(index => Regs);
 //! # fn main() {}
 //! use drone_core::{periph, reg::marker::*};
 //!

@@ -11,10 +11,10 @@ use syn::{
 };
 
 struct Input {
-    regs: Vec<Reg>,
+    variants: Vec<Variant>,
 }
 
-struct Reg {
+struct Variant {
     attrs: Vec<Attribute>,
     vis: Visibility,
     block: Ident,
@@ -36,35 +36,100 @@ struct Field {
 
 impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let mut regs = Vec::new();
-        while !input.is_empty() {
-            regs.push(input.parse()?);
+        let mut variants = Vec::new();
+        if input.fork().parse::<Ident>().map_or(false, |ident| ident == "variants") {
+            input.parse::<Ident>()?;
+            input.parse::<Token![=>]>()?;
+            let input2;
+            braced!(input2 in input);
+            while !input2.is_empty() {
+                variants.push(input2.parse()?);
+                if !input2.is_empty() {
+                    input2.parse::<Token![;]>()?;
+                }
+            }
+        } else {
+            variants.push(input.parse()?);
         }
-        Ok(Self { regs })
+        if !input.is_empty() {
+            input.parse::<Token![;]>()?;
+        }
+        Ok(Self { variants })
     }
 }
 
-impl Parse for Reg {
+impl Parse for Variant {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
-        input.parse::<Token![mod]>()?;
         let block = input.parse()?;
         let ident = input.parse()?;
-        input.parse::<Token![;]>()?;
-        let address = input.parse()?;
-        let size = input.parse::<LitInt>()?.base10_parse()?;
-        let reset = input.parse()?;
+        input.parse::<Token![=>]>()?;
+        let input2;
+        braced!(input2 in input);
+        let mut address = None;
+        let mut size = None;
+        let mut reset = None;
         let mut traits = Vec::new();
-        while !input.peek(Token![;]) {
-            traits.push(input.parse()?);
-        }
-        input.parse::<Token![;]>()?;
         let mut fields = Vec::new();
-        while input.fork().parse::<Field>().is_ok() {
-            fields.push(input.parse()?);
+        while !input2.is_empty() {
+            let ident = input2.parse::<Ident>()?;
+            input2.parse::<Token![=>]>()?;
+            if ident == "address" {
+                if address.is_none() {
+                    address = Some(input2.parse()?);
+                } else {
+                    return Err(input2.error("multiple `address` specifications"));
+                }
+            } else if ident == "size" {
+                if size.is_none() {
+                    size = Some(input2.parse::<LitInt>()?.base10_parse()?);
+                } else {
+                    return Err(input2.error("multiple `size` specifications"));
+                }
+            } else if ident == "reset" {
+                if reset.is_none() {
+                    reset = Some(input2.parse()?);
+                } else {
+                    return Err(input2.error("multiple `reset` specifications"));
+                }
+            } else if ident == "traits" {
+                traits.extend(parse_traits(&input2)?);
+            } else if ident == "fields" {
+                fields.extend(Field::parse_list(&input2)?);
+            } else {
+                return Err(input2.error(format!("unknown key: `{}`", ident)));
+            }
+            if !input2.is_empty() {
+                input2.parse::<Token![;]>()?;
+            }
         }
-        Ok(Self { attrs, vis, block, ident, address, size, reset, traits, fields })
+        Ok(Self {
+            attrs,
+            vis,
+            block,
+            ident,
+            address: address.ok_or_else(|| input2.error("missing `address` specification"))?,
+            size: size.ok_or_else(|| input2.error("missing `size` specification"))?,
+            reset: reset.ok_or_else(|| input2.error("missing `reset` specification"))?,
+            traits,
+            fields,
+        })
+    }
+}
+
+impl Field {
+    fn parse_list(input: ParseStream<'_>) -> Result<Vec<Self>> {
+        let mut fields = Vec::new();
+        let input2;
+        braced!(input2 in input);
+        while !input2.is_empty() {
+            fields.push(input2.parse()?);
+            if !input2.is_empty() {
+                input2.parse::<Token![;]>()?;
+            }
+        }
+        Ok(fields)
     }
 }
 
@@ -72,19 +137,47 @@ impl Parse for Field {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let ident = input.parse()?;
-        let content;
-        braced!(content in input);
-        let offset = content.parse()?;
-        let width = content.parse()?;
+        input.parse::<Token![=>]>()?;
+        let input2;
+        braced!(input2 in input);
+        let mut offset = None;
+        let mut width = None;
         let mut traits = Vec::new();
-        while !content.is_empty() {
-            traits.push(content.parse()?);
+        while !input2.is_empty() {
+            let ident = input2.parse::<Ident>()?;
+            input2.parse::<Token![=>]>()?;
+            if ident == "offset" {
+                if offset.is_none() {
+                    offset = Some(input2.parse()?);
+                } else {
+                    return Err(input2.error("multiple `offset` specifications"));
+                }
+            } else if ident == "width" {
+                if width.is_none() {
+                    width = Some(input2.parse()?);
+                } else {
+                    return Err(input2.error("multiple `width` specifications"));
+                }
+            } else if ident == "traits" {
+                traits.extend(parse_traits(&input2)?);
+            } else {
+                return Err(input2.error(format!("unknown key: `{}`", ident)));
+            }
+            if !input2.is_empty() {
+                input2.parse::<Token![;]>()?;
+            }
         }
-        Ok(Self { attrs, ident, offset, width, traits })
+        Ok(Self {
+            attrs,
+            ident,
+            offset: offset.ok_or_else(|| input2.error("missing `offset` specification"))?,
+            width: width.ok_or_else(|| input2.error("missing `width` specification"))?,
+            traits,
+        })
     }
 }
 
-impl Reg {
+impl Variant {
     #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
     fn generate(&self) -> TokenStream2 {
         let t = format_ident!("_T");
@@ -258,7 +351,7 @@ impl Reg {
             let imports = imports.iter();
             quote!(use super::{#(#imports),*};)
         };
-        let Reg { attrs, vis, address, reset, .. } = self;
+        let Variant { attrs, vis, address, reset, .. } = self;
         let reg_full = self.reg_full();
 
         quote! {
@@ -346,12 +439,22 @@ impl Reg {
     }
 }
 
+fn parse_traits(input: ParseStream<'_>) -> Result<Vec<Ident>> {
+    let mut traits = Vec::new();
+    let input2;
+    braced!(input2 in input);
+    while !input2.is_empty() {
+        traits.push(input2.parse()?);
+    }
+    Ok(traits)
+}
+
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Input { regs } = parse_macro_input!(input);
-    let reg_tokens = regs.iter().map(Reg::generate).collect::<Vec<_>>();
+    let Input { variants } = parse_macro_input!(input);
+    let reg_tokens = variants.iter().map(Variant::generate).collect::<Vec<_>>();
     let mut variant_tokens = Vec::new();
-    for (i, reg_src) in regs.iter().enumerate() {
-        for (j, reg_dst) in regs.iter().enumerate() {
+    for (i, reg_src) in variants.iter().enumerate() {
+        for (j, reg_dst) in variants.iter().enumerate() {
             if i == j {
                 continue;
             }

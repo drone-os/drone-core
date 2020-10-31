@@ -218,12 +218,12 @@ fn make_macro(
         #macro_vis
         macro_rules! #macro_ident {
             (
-                $(#[$attr:meta])* index => $vis:vis $ty:ident;
-                $(exclude => { $($undefs:ident),* $(,)? })? $(;)?
+                $(#[$attr:meta])* index => $vis:vis $ty:ident
+                $(; $(exclude => { $($undefs:ident),* $(,)? })? $(;)?)?
             ) => {
                 #macro_ident! {
                     $(#[$attr])* index => $vis $ty;
-                    exclude => { $($($undefs,)*)? };
+                    exclude => { $($($($undefs,)*)?)? };
                     __extend => {};
                 }
             };

@@ -66,6 +66,8 @@ impl Parse for Input {
                 } else {
                     return Err(input.error("multiple `local` specifications"));
                 }
+            } else {
+                return Err(input.error(format!("unknown key: `{}`", ident)));
             }
             if !input.is_empty() {
                 input.parse::<Token![;]>()?;

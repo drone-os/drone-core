@@ -43,8 +43,10 @@
 //! ```no_run
 //! # use drone_core::{reg::prelude::*, token::Token};
 //! # drone_core::reg! {
-//! #     mod GPIOA CRL; 0x4001_0800 0x20 0 RReg WReg;
-//! #     MODE2 { 8 2 RRRegField WWRegField }
+//! #     GPIOA CRL => {
+//! #         address => 0x4001_0800; size => 0x20; reset => 0; traits => { RReg WReg };
+//! #         fields => { MODE2 => { offset => 8; width => 2; traits => { RRRegField WWRegField } } };
+//! #     };
 //! # }
 //! # fn main() {
 //! #   let mut gpioa_crl = unsafe { gpioa_crl::Reg::<Urt>::take() };
@@ -199,29 +201,32 @@
 //!
 //! // Registers belong to blocks. Here we declare CTRL register in STK block.
 //! reg! {
-//!     // The output of this macro is `pub mod stk_ctrl { ... }`.
+//!     // This macro will expand to a module: `pub mod stk_ctrl { ... }`.
 //!     /// SysTick control and status register.
-//!     pub mod STK CTRL;
-//!     0xE000_E010 // the register address in memory
-//!     0x20        // size of the register in bits
-//!     0x0000_0000 // reset value of the register
-//!     // Traits to implement for the register token. The most common sets are:
-//!     //     RReg RoReg - read-only register
-//!     //     RReg WReg  - read-write register
-//!     //     WReg WoReg - write-only register
-//!     RReg WReg;
+//!     pub STK CTRL => {
+//!         address => 0xE000_E010; // the register address in memory
+//!         size => 0x20;           // size of the register in bits
+//!         reset => 0x0000_0000;   // reset value of the register
+//!         // Traits to implement for the register token. The most common sets are:
+//!         //     RReg RoReg - read-only register
+//!         //     RReg WReg  - read-write register
+//!         //     WReg WoReg - write-only register
+//!         traits => { RReg WReg };
 //!
-//!     // Here we define register fields.
-//!     /// Counter enable.
-//!     ENABLE {
-//!         0 // the offset of the field
-//!         1 // the width of the field
-//!         // Traits to implement for the field token. The most common sets are:
-//!         //     RRRegField RoRRegField - read-only field
-//!         //     RRRegField WWRegField  - read-write field
-//!         //     WWRegField WoWRegField - read-write field
-//!         RRRegField WWRegField
-//!     }
+//!         // Register fields.
+//!         fields => {
+//!             /// Counter enable.
+//!             ENABLE => {
+//!                 offset => 0; // offset of the field
+//!                 width => 1;  // width of the field
+//!                 // Traits to implement for the field token. The most common sets are:
+//!                 //     RRRegField RoRRegField - read-only field
+//!                 //     RRRegField WWRegField  - read-write field
+//!                 //     WWRegField WoWRegField - read-write field
+//!                 traits => { RRRegField WWRegField };
+//!             };
+//!         };
+//!     };
 //! }
 //!
 //! // Here we define the register tokens index. Actually the result of this macro
@@ -707,9 +712,10 @@ mod compile_tests {
     //! ```compile_fail
     //! use drone_core::reg::prelude::*;
     //! drone_core::reg! {
-    //!     pub mod TST TST_RW_REG;
-    //!     0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg;
-    //!     TST_BIT { 0 1 RRRegField WWRegField }
+    //!     pub TST TST_RW_REG => {
+    //!         address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE; traits => { RReg WReg };
+    //!         fields => { TST_BIT => { offset => 0; width => 1; traits => { RRRegField WWRegField } } }
+    //!     };
     //! }
     //! fn assert_rw_reg_unsync<'a, T: drone_core::reg::RwRegUnsync<'a>>() {}
     //! fn main() {
@@ -720,9 +726,10 @@ mod compile_tests {
     //! ```compile_fail
     //! use drone_core::reg::prelude::*;
     //! drone_core::reg! {
-    //!     pub mod TST TST_RO_REG;
-    //!     0xDEAD_BEEF 0x20 0xBEEF_CACE RReg RoReg;
-    //!     TST_BIT { 0 1 RRRegField RoRRegField }
+    //!     pub TST TST_RO_REG => {
+    //!         address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE; traits => { RReg RoReg };
+    //!         fields => { TST_BIT => { offset => 0; width => 1; traits => { RRRegField RoRRegField } } }
+    //!     };
     //! }
     //! fn assert_rw_reg_unsync<'a, T: drone_core::reg::RwRegUnsync<'a>>() {}
     //! fn main() {
@@ -733,9 +740,10 @@ mod compile_tests {
     //! ```compile_fail
     //! use drone_core::reg::prelude::*;
     //! drone_core::reg! {
-    //!     pub mod TST TST_WO_REG;
-    //!     0xDEAD_BEEF 0x20 0xBEEF_CACE WReg WoReg;
-    //!     TST_BIT { 0 1 WWRegField WoWRegField }
+    //!     pub TST TST_WO_REG => {
+    //!         address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE; traits => { WReg WoReg };
+    //!         fields => { TST_BIT => { offset => 0; width => 1; traits => { WWRegField WoWRegField } } }
+    //!     };
     //! }
     //! fn assert_rw_reg_unsync<'a, T: drone_core::reg::RwRegUnsync<'a>>() {}
     //! fn main() {
@@ -746,9 +754,10 @@ mod compile_tests {
     //! ```
     //! use drone_core::reg::prelude::*;
     //! drone_core::reg! {
-    //!     pub mod FOO BAR;
-    //!     0xDEAD_BEEF 0x20 0xBEEF_CACE RReg WReg;
-    //!     BAZ { 0 1 RRRegField WWRegField }
+    //!     pub FOO BAR => {
+    //!         address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE; traits => { RReg WReg };
+    //!         fields => { BAZ => { offset => 0; width => 1; traits => { RRRegField WWRegField } } }
+    //!     };
     //! }
     //! fn assert_rw_reg_unsync<'a, T: drone_core::reg::RwRegUnsync<'a>>() {}
     //! fn main() {
@@ -758,7 +767,12 @@ mod compile_tests {
     //!
     //! ```compile_fail
     //! use drone_core::reg::prelude::*;
-    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE; BAZ { 0 1 });
+    //! drone_core::reg! {
+    //!     pub FOO BAR => {
+    //!         address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE;
+    //!         fields => { BAZ => { offset => 0; width => 1 } };
+    //!     };
+    //! }
     //! fn assert_copy<T: Copy>() {}
     //! fn main() {
     //!     assert_copy::<foo_bar::Reg<Urt>>();
@@ -767,7 +781,12 @@ mod compile_tests {
     //!
     //! ```compile_fail
     //! use drone_core::reg::prelude::*;
-    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE; BAZ { 0 1 });
+    //! drone_core::reg! {
+    //!     pub FOO BAR => {
+    //!         address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE;
+    //!         fields => { BAZ => { offset => 0; width => 1 } };
+    //!     };
+    //! }
     //! fn assert_clone<T: Clone>() {}
     //! fn main() {
     //!     assert_clone::<foo_bar::Reg<Urt>>();
@@ -776,7 +795,12 @@ mod compile_tests {
     //!
     //! ```compile_fail
     //! use drone_core::reg::prelude::*;
-    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE; BAZ { 0 1 });
+    //! drone_core::reg! {
+    //!     pub FOO BAR => {
+    //!         address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE;
+    //!         fields => { BAZ => { offset => 0; width => 1 } };
+    //!     };
+    //! }
     //! fn assert_copy<T: Copy>() {}
     //! fn main() {
     //!     assert_copy::<foo_bar::Reg<Srt>>();
@@ -785,7 +809,12 @@ mod compile_tests {
     //!
     //! ```compile_fail
     //! use drone_core::reg::prelude::*;
-    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE; BAZ { 0 1 });
+    //! drone_core::reg! {
+    //!     pub FOO BAR => {
+    //!         address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE;
+    //!         fields => { BAZ => { offset => 0; width => 1 } };
+    //!     };
+    //! }
     //! fn assert_clone<T: Clone>() {}
     //! fn main() {
     //!     assert_clone::<foo_bar::Reg<Srt>>();
@@ -794,7 +823,12 @@ mod compile_tests {
     //!
     //! ```
     //! use drone_core::reg::prelude::*;
-    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE; BAZ { 0 1 });
+    //! drone_core::reg! {
+    //!     pub FOO BAR => {
+    //!         address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE;
+    //!         fields => { BAZ => { offset => 0; width => 1 } };
+    //!     };
+    //! }
     //! fn assert_copy<T: Copy>() {}
     //! fn main() {
     //!     assert_copy::<foo_bar::Reg<Crt>>();
@@ -803,7 +837,12 @@ mod compile_tests {
     //!
     //! ```
     //! use drone_core::reg::prelude::*;
-    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE; BAZ { 0 1 });
+    //! drone_core::reg! {
+    //!     pub FOO BAR => {
+    //!         address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE;
+    //!         fields => { BAZ => { offset => 0; width => 1 } };
+    //!     };
+    //! }
     //! fn assert_clone<T: Clone>() {}
     //! fn main() {
     //!     assert_clone::<foo_bar::Reg<Crt>>();
@@ -813,10 +852,10 @@ mod compile_tests {
     //! ```compile_fail
     //! #![feature(proc_macro_hygiene)]
     //! use drone_core::token::Token;
-    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
+    //! drone_core::reg!(pub FOO BAR => { address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE });
     //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
-    //! reg_tokens!(index => Regs1;);
-    //! reg_tokens!(index => Regs2;);
+    //! reg_tokens!(index => Regs1);
+    //! reg_tokens!(index => Regs2);
     //! fn main() {
     //!     unsafe { Regs1::take() };
     //!     unsafe { Regs2::take() };
@@ -826,7 +865,7 @@ mod compile_tests {
     //! ```compile_fail
     //! #![feature(proc_macro_hygiene)]
     //! use drone_core::token::Token;
-    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
+    //! drone_core::reg!(pub FOO BAR => { address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE });
     //! #[macro_use]
     //! mod x {
     //!     drone_core::reg::tokens!(macro reg_tokens1; crate; crate::x; pub mod FOO { BAR; });
@@ -835,8 +874,8 @@ mod compile_tests {
     //! mod y {
     //!     drone_core::reg::tokens!(macro reg_tokens2; crate; crate::y; pub mod FOO { BAR; });
     //! }
-    //! reg_tokens1!(index => Regs1;);
-    //! reg_tokens2!(index => Regs2;);
+    //! reg_tokens1!(index => Regs1);
+    //! reg_tokens2!(index => Regs2);
     //! fn main() {
     //!     unsafe { Regs1::take() };
     //!     unsafe { Regs2::take() };
@@ -846,18 +885,22 @@ mod compile_tests {
     //! ```compile_fail
     //! use drone_core::{reg::prelude::*, token::Token};
     //! drone_core::reg! {
-    //!     pub mod TIM1 CCMR1_Input;
-    //!     0x4001_0018 0x20 0x0000_0000 RReg WReg;
-    //!     pub mod TIM1 CCMR1_Output;
-    //!     0x4001_0018 0x20 0x0000_0000 RReg WReg;
+    //!     variants => {
+    //!         pub TIM1 CCMR1_Input => {
+    //!             address => 0x4001_0018; size => 0x20; reset => 0x0000_0000;
+    //!             traits => { RReg WReg };
+    //!         };
+    //!         pub TIM1 CCMR1_Output => {
+    //!             address => 0x4001_0018; size => 0x20; reset => 0x0000_0000;
+    //!             traits => { RReg WReg };
+    //!         };
+    //!     };
     //! }
     //! drone_core::reg::tokens! {
     //!     macro reg_tokens; crate; crate;
     //!     pub mod TIM1 { CCMR1_Input; !CCMR1_Output; }
     //! }
-    //! reg_tokens! {
-    //!     index => Regs;
-    //! }
+    //! reg_tokens!(index => Regs);
     //! fn main() {
     //!     let reg = unsafe { Regs::take() };
     //!     reg.tim1_ccmr1_output;
@@ -867,9 +910,9 @@ mod compile_tests {
     //! ```compile_fail
     //! #![feature(proc_macro_hygiene)]
     //! use drone_core::token::Token;
-    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
+    //! drone_core::reg!(pub FOO BAR => { address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE });
     //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
-    //! reg_tokens!(index => Regs; !foo_bar;);
+    //! reg_tokens!(index => Regs; exclude => { foo_bar });
     //! fn main() {
     //!     let reg = unsafe { Regs::take() };
     //!     reg.foo_bar;
@@ -879,9 +922,9 @@ mod compile_tests {
     //! ```compile_fail
     //! #![feature(proc_macro_hygiene)]
     //! use drone_core::token::Token;
-    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
+    //! drone_core::reg!(pub FOO BAR => { address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE });
     //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
-    //! reg_tokens!(index => Regs;);
+    //! reg_tokens!(index => Regs);
     //! drone_core::reg::assert_taken!("foo_bar");
     //! fn main() { unsafe { Regs::take() }; }
     //! ```
@@ -889,7 +932,7 @@ mod compile_tests {
     //! ```
     //! #![feature(proc_macro_hygiene)]
     //! use drone_core::token::Token;
-    //! drone_core::reg!(pub mod FOO BAR; 0xDEAD_BEEF 0x20 0xBEEF_CACE;);
+    //! drone_core::reg!(pub FOO BAR => { address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE });
     //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
     //! reg_tokens!(index => Regs; exclude => { foo_bar });
     //! drone_core::reg::assert_taken!("foo_bar");

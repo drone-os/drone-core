@@ -26,6 +26,7 @@ Possible log types:
 - [added] Added `thr::thread_call` function
 - [changed] Changed syntax of `heap!` macro
 - [changed] Changed syntax of `reg_tokens!` macro
+- [changed] Changed syntax of `reg!` macro
 
 ### v0.12.1 (2020-05-13)
 
