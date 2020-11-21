@@ -86,111 +86,103 @@ reg! {
 }
 
 reg! {
-    variants => {
-        pub TIM1 CCMR1_Output => {
-            address => 0;
-            size => 32;
-            reset => 0;
-            traits => { RReg WReg };
-            fields => {
-                OC1CE => { offset => 7; width => 1; traits => { RRRegField WWRegField } };
-                OC1M => { offset => 4; width => 3; traits => { RRRegField WWRegField } };
-                OC1PE => { offset => 3; width => 1; traits => { RRRegField WWRegField } };
-                OC1FE => { offset => 2; width => 1; traits => { RRRegField WWRegField } };
-                CC1S => { offset => 0; width => 2; traits => { RRRegField WWRegField } };
-            };
+    pub TIM1 CCMR1_Output => {
+        address => 0;
+        size => 32;
+        reset => 0;
+        traits => { RReg WReg };
+        fields => {
+            OC1CE => { offset => 7; width => 1; traits => { RRRegField WWRegField } };
+            OC1M => { offset => 4; width => 3; traits => { RRRegField WWRegField } };
+            OC1PE => { offset => 3; width => 1; traits => { RRRegField WWRegField } };
+            OC1FE => { offset => 2; width => 1; traits => { RRRegField WWRegField } };
+            CC1S => { offset => 0; width => 2; traits => { RRRegField WWRegField } };
         };
-        pub TIM1 CCMR1_Input => {
-            address => 0;
-            size => 32;
-            reset => 0;
-            traits => { RReg WReg };
-            fields => {
-                IC1F => { offset => 4; width => 4; traits => { RRRegField WWRegField } };
-                IC1PSC => { offset => 2; width => 2; traits => { RRRegField WWRegField } };
-                CC1S => { offset => 0; width => 2; traits => { RRRegField WWRegField } };
-            };
+    };
+    pub TIM1 CCMR1_Input => {
+        address => 0;
+        size => 32;
+        reset => 0;
+        traits => { RReg WReg };
+        fields => {
+            IC1F => { offset => 4; width => 4; traits => { RRRegField WWRegField } };
+            IC1PSC => { offset => 2; width => 2; traits => { RRRegField WWRegField } };
+            CC1S => { offset => 0; width => 2; traits => { RRRegField WWRegField } };
         };
     };
 }
 
 reg! {
-    variants => {
-        pub TIM1 CCMR2_Output => {
-            address => 0;
-            size => 32;
-            reset => 0;
-            traits => { RReg WReg };
-            fields => {
-                OC1CE => { offset => 7; width => 1; traits => { RRRegField WWRegField } };
-                OC1M => { offset => 4; width => 3; traits => { RRRegField WWRegField } };
-                OC1PE => { offset => 3; width => 1; traits => { RRRegField WWRegField } };
-                OC1FE => { offset => 2; width => 1; traits => { RRRegField WWRegField } };
-                CC1S => { offset => 0; width => 2; traits => { RRRegField WWRegField } };
-            };
+    pub TIM1 CCMR2_Output => {
+        address => 0;
+        size => 32;
+        reset => 0;
+        traits => { RReg WReg };
+        fields => {
+            OC1CE => { offset => 7; width => 1; traits => { RRRegField WWRegField } };
+            OC1M => { offset => 4; width => 3; traits => { RRRegField WWRegField } };
+            OC1PE => { offset => 3; width => 1; traits => { RRRegField WWRegField } };
+            OC1FE => { offset => 2; width => 1; traits => { RRRegField WWRegField } };
+            CC1S => { offset => 0; width => 2; traits => { RRRegField WWRegField } };
         };
-        pub TIM1 CCMR2_Input => {
-            address => 0;
-            size => 32;
-            reset => 0;
-            traits => { RReg WReg };
-            fields => {
-                IC1F => { offset => 4; width => 4; traits => { RRRegField WWRegField } };
-                IC1PSC => { offset => 2; width => 2; traits => { RRRegField WWRegField } };
-                CC1S => { offset => 0; width => 2; traits => { RRRegField WWRegField } };
-            };
+    };
+    pub TIM1 CCMR2_Input => {
+        address => 0;
+        size => 32;
+        reset => 0;
+        traits => { RReg WReg };
+        fields => {
+            IC1F => { offset => 4; width => 4; traits => { RRRegField WWRegField } };
+            IC1PSC => { offset => 2; width => 2; traits => { RRRegField WWRegField } };
+            CC1S => { offset => 0; width => 2; traits => { RRRegField WWRegField } };
         };
     };
 }
 
 reg! {
-    variants => {
-        pub TIM2 CCMR1_Output => {
-            address => 0;
-            size => 32;
-            reset => 0;
-            traits => { RReg WReg };
-            fields => {
-                OC1CE => { offset => 7; width => 1; traits => { RRRegField WWRegField } };
-                OC1M => { offset => 4; width => 3; traits => { RRRegField WWRegField } };
-                OC1PE => { offset => 3; width => 1; traits => { RRRegField WWRegField } };
-                OC1FE => { offset => 2; width => 1; traits => { RRRegField WWRegField } };
-                CC1S => { offset => 0; width => 2; traits => { RRRegField WWRegField } };
-            };
+    pub TIM2 CCMR1_Output => {
+        address => 0;
+        size => 32;
+        reset => 0;
+        traits => { RReg WReg };
+        fields => {
+            OC1CE => { offset => 7; width => 1; traits => { RRRegField WWRegField } };
+            OC1M => { offset => 4; width => 3; traits => { RRRegField WWRegField } };
+            OC1PE => { offset => 3; width => 1; traits => { RRRegField WWRegField } };
+            OC1FE => { offset => 2; width => 1; traits => { RRRegField WWRegField } };
+            CC1S => { offset => 0; width => 2; traits => { RRRegField WWRegField } };
         };
-        pub TIM2 CCMR1_Input => {
-            address => 0;
-            size => 32;
-            reset => 0;
-            traits => { RReg WReg };
-            fields => {
-                IC1F => { offset => 4; width => 4; traits => { RRRegField WWRegField } };
-                IC1PSC => { offset => 2; width => 2; traits => { RRRegField WWRegField } };
-                CC1S => { offset => 0; width => 2; traits => { RRRegField WWRegField } };
-            };
+    };
+    pub TIM2 CCMR1_Input => {
+        address => 0;
+        size => 32;
+        reset => 0;
+        traits => { RReg WReg };
+        fields => {
+            IC1F => { offset => 4; width => 4; traits => { RRRegField WWRegField } };
+            IC1PSC => { offset => 2; width => 2; traits => { RRRegField WWRegField } };
+            CC1S => { offset => 0; width => 2; traits => { RRRegField WWRegField } };
         };
     };
 }
 
 reg! {
-    variants => {
-        pub TWIM0_NS TASKS_STARTTX => {
-            address => 0;
-            size => 32;
-            reset => 0;
-            traits => { WReg WoReg };
-            fields => {
-                TASKS_STARTTX => { offset => 0; width => 1; traits => { WWRegField WoWRegField } };
-            };
+    pub TWIM0_NS TASKS_STARTTX => {
+        address => 0;
+        size => 32;
+        reset => 0;
+        traits => { WReg WoReg };
+        fields => {
+            TASKS_STARTTX => { offset => 0; width => 1; traits => { WWRegField WoWRegField } };
         };
-        pub UARTE0_NS TASKS_STARTTX => {
-            address => 0;
-            size => 32;
-            reset => 0;
-            traits => { WReg WoReg };
-            fields => {
-                TASKS_STARTTX => { offset => 0; width => 1; traits => { WWRegField WoWRegField } };
-            };
+    };
+    pub UARTE0_NS TASKS_STARTTX => {
+        address => 0;
+        size => 32;
+        reset => 0;
+        traits => { WReg WoReg };
+        fields => {
+            TASKS_STARTTX => { offset => 0; width => 1; traits => { WWRegField WoWRegField } };
         };
     };
 }

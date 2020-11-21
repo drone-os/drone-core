@@ -48,72 +48,70 @@ reg! {
 }
 
 reg! {
-    variants => {
-        /// Capture/Compare mode register 1. (input mode)
-        pub TIM1 CCMR1_Input => {
-            address => 0x4001_0018;
-            size => 0x20;
-            reset => 0x0000_0000;
-            traits => { RReg WReg };
-            fields => {
-                /// Input Capture 1 filter.
-                IC1F => {
-                    offset => 12;
-                    width => 4;
-                    traits => { RRRegField WWRegField };
-                };
-                /// Input Capture 1 prescaler.
-                IC1PSC => {
-                    offset => 10;
-                    width => 2;
-                    traits => { RRRegField WWRegField };
-                };
-                /// Capture/Compare 1 selection.
-                CC1S => {
-                    offset => 8;
-                    width => 2;
-                    traits => { RRRegField WWRegField };
-                };
+    /// Capture/Compare mode register 1. (input mode)
+    pub TIM1 CCMR1_Input => {
+        address => 0x4001_0018;
+        size => 0x20;
+        reset => 0x0000_0000;
+        traits => { RReg WReg };
+        fields => {
+            /// Input Capture 1 filter.
+            IC1F => {
+                offset => 12;
+                width => 4;
+                traits => { RRRegField WWRegField };
+            };
+            /// Input Capture 1 prescaler.
+            IC1PSC => {
+                offset => 10;
+                width => 2;
+                traits => { RRRegField WWRegField };
+            };
+            /// Capture/Compare 1 selection.
+            CC1S => {
+                offset => 8;
+                width => 2;
+                traits => { RRRegField WWRegField };
             };
         };
+    };
 
-        /// Capture/Compare mode register 1. (output mode)
-        pub TIM1 CCMR1_Output => {
-            address => 0x4001_0018;
-            size => 0x20;
-            reset => 0x0000_0000;
-            traits => { RReg WReg };
-            fields => {
-                /// Output Compare 1 clear enable.
-                OC1CE => {
-                    offset => 15;
-                    width => 1;
-                    traits => { RRRegField WWRegField };
-                };
-                /// Output Compare 1 mode.
-                OC1M => {
-                    offset => 12;
-                    width => 3;
-                    traits => { RRRegField WWRegField };
-                };
-                /// Output Compare 1 preload enable.
-                OC1PE => {
-                    offset => 11;
-                    width => 1;
-                    traits => { RRRegField WWRegField };
-                };
-                /// Output Compare 1 fast enable.
-                OC1FE => {
-                    offset => 10;
-                    width => 1;
-                    traits => { RRRegField WWRegField };
-                };
-                /// Capture/Compare 1 selection.
-                CC1S => {
-                    offset => 8;
-                    width => 2;
-                    traits => { RRRegField WWRegField };
-                };
+    /// Capture/Compare mode register 1. (output mode)
+    pub TIM1 CCMR1_Output => {
+        address => 0x4001_0018;
+        size => 0x20;
+        reset => 0x0000_0000;
+        traits => { RReg WReg };
+        fields => {
+            /// Output Compare 1 clear enable.
+            OC1CE => {
+                offset => 15;
+                width => 1;
+                traits => { RRRegField WWRegField };
+            };
+            /// Output Compare 1 mode.
+            OC1M => {
+                offset => 12;
+                width => 3;
+                traits => { RRRegField WWRegField };
+            };
+            /// Output Compare 1 preload enable.
+            OC1PE => {
+                offset => 11;
+                width => 1;
+                traits => { RRRegField WWRegField };
+            };
+            /// Output Compare 1 fast enable.
+            OC1FE => {
+                offset => 10;
+                width => 1;
+                traits => { RRRegField WWRegField };
+            };
+            /// Capture/Compare 1 selection.
+            CC1S => {
+                offset => 8;
+                width => 2;
+                traits => { RRRegField WWRegField };
             };
         };
     };

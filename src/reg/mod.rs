@@ -885,15 +885,13 @@ mod compile_tests {
     //! ```compile_fail
     //! use drone_core::{reg::prelude::*, token::Token};
     //! drone_core::reg! {
-    //!     variants => {
-    //!         pub TIM1 CCMR1_Input => {
-    //!             address => 0x4001_0018; size => 0x20; reset => 0x0000_0000;
-    //!             traits => { RReg WReg };
-    //!         };
-    //!         pub TIM1 CCMR1_Output => {
-    //!             address => 0x4001_0018; size => 0x20; reset => 0x0000_0000;
-    //!             traits => { RReg WReg };
-    //!         };
+    //!     pub TIM1 CCMR1_Input => {
+    //!         address => 0x4001_0018; size => 0x20; reset => 0x0000_0000;
+    //!         traits => { RReg WReg };
+    //!     };
+    //!     pub TIM1 CCMR1_Output => {
+    //!         address => 0x4001_0018; size => 0x20; reset => 0x0000_0000;
+    //!         traits => { RReg WReg };
     //!     };
     //! }
     //! drone_core::reg::tokens! {

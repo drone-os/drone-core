@@ -37,22 +37,11 @@ struct Field {
 impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let mut variants = Vec::new();
-        if input.fork().parse::<Ident>().map_or(false, |ident| ident == "variants") {
-            input.parse::<Ident>()?;
-            input.parse::<Token![=>]>()?;
-            let input2;
-            braced!(input2 in input);
-            while !input2.is_empty() {
-                variants.push(input2.parse()?);
-                if !input2.is_empty() {
-                    input2.parse::<Token![;]>()?;
-                }
-            }
-        } else {
+        while !input.is_empty() {
             variants.push(input.parse()?);
-        }
-        if !input.is_empty() {
-            input.parse::<Token![;]>()?;
+            if !input.is_empty() {
+                input.parse::<Token![;]>()?;
+            }
         }
         Ok(Self { variants })
     }
