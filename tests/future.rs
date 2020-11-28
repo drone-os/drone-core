@@ -1,7 +1,8 @@
-#![feature(const_fn)]
 #![feature(generators)]
 #![feature(never_type)]
 #![feature(prelude_import)]
+#![feature(unsafe_block_in_unsafe_fn)]
+#![warn(unsafe_op_in_unsafe_fn)]
 
 #[prelude_import]
 #[allow(unused_imports)]
@@ -18,9 +19,9 @@ use futures::prelude::*;
 static mut THREADS: [Thr; 1] = [Thr::new(0)];
 
 thr! {
-    use THREADS;
-    struct Thr {}
-    struct ThrLocal {}
+    array => THREADS;
+    thread => Thr {};
+    local => ThrLocal {};
 }
 
 struct Counter(AtomicUsize);
@@ -31,7 +32,7 @@ impl Counter {
             RawWaker::new(counter, &VTABLE)
         }
         unsafe fn wake(counter: *const ()) {
-            (*(counter as *const Counter)).0.fetch_add(1, Relaxed);
+            unsafe { (*(counter as *const Counter)).0.fetch_add(1, Relaxed) };
         }
         static VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake, drop);
         unsafe { Waker::from_raw(RawWaker::new(self as *const _ as *const (), &VTABLE)) }

@@ -1,4 +1,4 @@
-use drone_macros_core::{compile_error, parse_ident, unkeywordize, CfgCond, CfgCondExt};
+use drone_macros_core::{parse_error, parse_ident, unkeywordize, CfgCond, CfgCondExt};
 use inflector::Inflector;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
@@ -263,21 +263,21 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     } else if ident == "Option" {
                         reg_option = true;
                     } else {
-                        compile_error!("Unknown option `{}`", ident);
+                        parse_error!("Unknown option `{}`", ident);
                     }
                 }
                 if reg_shared && reg_option {
-                    compile_error!("`Option` and `Shared` can't be used simultaneously");
+                    parse_error!("`Option` and `Shared` can't be used simultaneously");
                 }
                 if variants.len() > 1 && reg_shared {
-                    compile_error!("`Shared` can't be used with multiple variants");
+                    parse_error!("`Shared` can't be used with multiple variants");
                 }
                 if reg_option
                     && !variants
                         .iter()
                         .all(|v| v.path.is_none() || v.traits.iter().any(|t| t == "Option"))
                 {
-                    compile_error!("`Option` should be defined for all variants");
+                    parse_error!("`Option` should be defined for all variants");
                 }
                 let reg_root = &quote!(#root_path::#block_path_ident::#var_path_ident);
                 let mut reg_fields_tokens = Vec::new();
@@ -321,7 +321,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         if ident == "Option" {
                             field_option = true;
                         } else {
-                            compile_error!("Unknown option `{}`", ident);
+                            parse_error!("Unknown option `{}`", ident);
                         }
                     }
                     let mut features = CfgCond::default();

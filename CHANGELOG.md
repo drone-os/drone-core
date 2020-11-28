@@ -11,9 +11,26 @@ Possible log types:
 - `[fixed]` for any bug fixes.
 - `[security]` to invite users to upgrade in case of vulnerabilities.
 
+### v0.13.0 (2020-11-28)
+
+- [changed] Use `typenum` crate instead of `const_generics` feature for
+  `inventory` module
+- [removed] Removed deprecated stream methods on thread tokens
+- [changed] Changed syntax of `thr!` macro
+- [changed] Renamed `drone_macros_core::compile_error` macro to
+  `drone_macros_core::parse_error`
+- [changed] Renamed `ThrToken::THR_NUM` associated constant to
+  ``ThrToken::THR_IDX``
+- [changed] Changed signature of `thr::thread_resume` function to work on thread
+  types instead of thread token types
+- [added] Added `thr::thread_call` function
+- [changed] Changed syntax of `heap!` macro
+- [changed] Changed syntax of `reg_tokens!` macro
+- [changed] Changed syntax of `reg!` macro
+
 ### v0.12.1 (2020-05-13)
 
-- [changed] Rename streams methods on thread tokens
+- [changed] Renamed streams methods on thread tokens
 - [added] Added `store_reg` and `modify_reg` methods for register tokens
 
 ### v0.12.0 (2020-05-01)

@@ -41,29 +41,31 @@ impl Chain {
         let mut prev = ptr::null_mut();
         let mut curr = self.head.load(Ordering::Acquire);
         while !curr.is_null() {
-            let next = (*curr).next;
-            if (*curr).fib.as_mut().advance() {
-                prev = curr;
-            } else {
-                if prev.is_null() {
-                    prev = self.head.compare_and_swap(curr, next, Ordering::Relaxed);
-                    if prev == curr {
-                        prev = ptr::null_mut();
-                    } else {
-                        loop {
-                            prev = (*prev).next;
-                            if prev == curr {
-                                (*prev).next = next;
-                                break;
+            unsafe {
+                let next = (*curr).next;
+                if (*curr).fib.as_mut().advance() {
+                    prev = curr;
+                } else {
+                    if prev.is_null() {
+                        prev = self.head.compare_and_swap(curr, next, Ordering::Relaxed);
+                        if prev == curr {
+                            prev = ptr::null_mut();
+                        } else {
+                            loop {
+                                prev = (*prev).next;
+                                if prev == curr {
+                                    (*prev).next = next;
+                                    break;
+                                }
                             }
                         }
+                    } else {
+                        (*prev).next = next;
                     }
-                } else {
-                    (*prev).next = next;
+                    drop(Box::from_raw(curr));
                 }
-                drop(Box::from_raw(curr));
+                curr = next;
             }
-            curr = next;
         }
     }
 

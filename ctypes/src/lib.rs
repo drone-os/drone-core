@@ -6,7 +6,8 @@
 //! [Drone]: https://github.com/drone-os/drone
 //! [`std::os::raw`]: https://doc.rust-lang.org/std/os/raw/
 
-#![warn(missing_docs)]
+#![feature(unsafe_block_in_unsafe_fn)]
+#![warn(missing_docs, unsafe_op_in_unsafe_fn)]
 #![warn(clippy::pedantic)]
 #![allow(non_camel_case_types)]
 #![no_std]

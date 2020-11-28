@@ -20,25 +20,25 @@
 //!
 //! thr! {
 //!     // Path to the array of threads.
-//!     use THREADS;
+//!     array => THREADS;
 //!
 //!     /// The thread object.
-//!     pub struct Thr {
+//!     thread => pub Thr {
 //!         // You can add your own fields to the thread object. These fields will be
 //!         // accessible through `to_thr` method of thread tokens. The types of
 //!         // these fields should be `Sync`.
 //!         pub foo: bool = false;
-//!     }
+//!     };
 //!
 //!     // This is a part of `Thr` that can be accessed with `thr::local` function.
 //!     /// The thread-local storage.
-//!     pub struct ThrLocal {
+//!     local => pub ThrLocal {
 //!         // You can add your own fields here with the same syntax as above.
 //!         // Note that the initializer uses the special `index` variable, that
 //!         // has the value of the position of the thread within the threads array.
 //!         // The types of these fields shouldn't necessarily be `Sync`.
 //!         pub bar: usize = index;
-//!     }
+//!     };
 //! }
 //!
 //! // This is for example only. Platform crates should provide macros to
@@ -48,15 +48,16 @@
 
 pub mod prelude;
 
-mod preempted;
-
-pub use self::preempted::{local, PreemptedCell};
-
-use self::preempted::preempt;
 use crate::{
     fib::{Chain, FiberRoot},
     token::Token,
 };
+use core::cell::Cell;
+
+static mut CURRENT: usize = 0;
+
+/// Thread-local previous thread index cell.
+pub struct PreemptedCell(Cell<usize>);
 
 /// Generic thread.
 pub trait Thread: Sized + Sync + 'static {
@@ -92,7 +93,7 @@ pub trait ThreadLocal: Sized + 'static {
 ///
 /// # Safety
 ///
-/// [`ThrToken::THR_NUM`] must be a valid index in [`ThrToken::Thr`]'s array
+/// [`ThrToken::THR_IDX`] must be a valid index in [`ThrToken::Thr`]'s array
 /// returned by [`Thread::first`] method.
 pub unsafe trait ThrToken
 where
@@ -105,12 +106,12 @@ where
 
     /// Position of the thread inside [`ThrToken::Thr`]'s array returned by
     /// [`Thread::first`] method.
-    const THR_NUM: usize;
+    const THR_IDX: usize;
 
     /// Returns a reference to the thread object.
     #[inline]
     fn to_thr(self) -> &'static Self::Thr {
-        unsafe { get_thr::<Self>() }
+        unsafe { get_thr(Self::THR_IDX) }
     }
 
     /// Adds the fiber `fib` to the fiber chain.
@@ -126,18 +127,56 @@ where
     }
 }
 
-/// The thread handler function.
+impl PreemptedCell {
+    /// Creates a new `PreemptedCell`.
+    pub const fn new() -> Self {
+        Self(Cell::new(0))
+    }
+}
+
+/// Returns a reference to the thread-local storage of the current thread.
+///
+/// The contents of this object can be customized with `thr!` macro. See [`the
+/// module-level documentation`](crate::thr) for details.
+#[inline]
+pub fn local<T: Thread>() -> &'static T::Local {
+    unsafe { get_thr::<T>(CURRENT).local() }
+}
+
+/// Runs the fiber chain of the thread number `thr_hum`.
 ///
 /// # Safety
 ///
 /// The function is not reentrant.
-pub unsafe fn thread_resume<T: ThrToken>() {
-    let thr = get_thr::<T>();
-    preempt(thr.local().preempted(), T::THR_NUM, || {
-        thr.fib_chain().drain();
-    })
+pub unsafe fn thread_resume<T: Thread>(thr_idx: usize) {
+    unsafe {
+        thread_run::<T, _>(thr_idx, |thr| {
+            thr.fib_chain().drain();
+        });
+    }
 }
 
-unsafe fn get_thr<T: ThrToken>() -> &'static T::Thr {
-    &*T::Thr::first().add(T::THR_NUM)
+/// Runs the function `f` inside the thread number `thr_idx`.
+///
+/// # Safety
+///
+/// The function is not reentrant.
+pub unsafe fn thread_call<T: Thread>(thr_idx: usize, f: unsafe extern "C" fn()) {
+    unsafe {
+        thread_run::<T, _>(thr_idx, |_| f());
+    }
+}
+
+unsafe fn thread_run<T: Thread, F: FnOnce(&'static T)>(thr_idx: usize, f: F) {
+    unsafe {
+        let thr = get_thr::<T>(thr_idx);
+        thr.local().preempted().0.set(CURRENT);
+        CURRENT = thr_idx;
+        f(thr);
+        CURRENT = thr.local().preempted().0.get();
+    }
+}
+
+unsafe fn get_thr<T: Thread>(thr_idx: usize) -> &'static T {
+    unsafe { &*T::first().add(thr_idx) }
 }

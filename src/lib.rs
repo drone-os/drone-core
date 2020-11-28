@@ -3,7 +3,7 @@
 //! # Documentation
 //!
 //! - [Drone Book](https://book.drone-os.com/)
-//! - [API documentation](https://api.drone-os.com/drone-core/0.12/)
+//! - [API documentation](https://api.drone-os.com/drone-core/0.13/)
 //!
 //! # Usage
 //!
@@ -11,7 +11,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! drone-core = { version = "0.12.1" }
+//! drone-core = { version = "0.13.0" }
 //! ```
 //!
 //! Add or extend `std` feature as follows:
@@ -24,7 +24,6 @@
 #![feature(alloc_layout_extra)]
 #![feature(alloc_prelude)]
 #![feature(allocator_api)]
-#![feature(const_generics)]
 #![feature(const_raw_ptr_deref)]
 #![feature(core_intrinsics)]
 #![feature(exhaustive_patterns)]
@@ -37,11 +36,15 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(never_type_fallback)]
+#![feature(nonnull_slice_from_raw_parts)]
 #![feature(prelude_import)]
 #![feature(raw_vec_internals)]
 #![feature(slice_internals)]
+#![feature(slice_ptr_get)]
+#![feature(slice_ptr_len)]
+#![feature(unsafe_block_in_unsafe_fn)]
 #![feature(untagged_unions)]
-#![warn(missing_docs)]
+#![warn(missing_docs, unsafe_op_in_unsafe_fn)]
 #![warn(clippy::pedantic)]
 #![allow(
     incomplete_features,
@@ -98,7 +101,7 @@ pub use drone_core_macros::periph;
 #[doc(inline)]
 pub use drone_core_macros::reg;
 
-/// Defines the thread type.
+/// Defines threads.
 ///
 /// See [the module level documentation](thr) for details.
 #[doc(inline)]

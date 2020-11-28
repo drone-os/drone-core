@@ -30,9 +30,7 @@ impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
-        input.parse::<Token![struct]>()?;
         let ident = input.parse()?;
-        input.parse::<Token![;]>()?;
         let content;
         braced!(content in input);
         let mut defs = Vec::new();

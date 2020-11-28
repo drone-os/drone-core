@@ -1,4 +1,4 @@
-use drone_macros_core::compile_error;
+use drone_macros_core::parse_error;
 use if_chain::if_chain;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -126,7 +126,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         then {
             x
         } else {
-            compile_error!("Bitfield can be derived only from a tuple struct with one field");
+            parse_error!("Bitfield can be derived only from a tuple struct with one field");
         }
     };
 

@@ -106,7 +106,7 @@ impl<E> Inner<E> {
         })
         .map(|state| {
             if state & RX_WAKER_STORED != 0 {
-                unsafe { (*self.rx_waker.get()).get_ref().wake_by_ref() };
+                unsafe { (*self.rx_waker.get()).assume_init_ref().wake_by_ref() };
             }
         })
     }

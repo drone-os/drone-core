@@ -20,8 +20,10 @@ extern "C" {
 ///
 /// This function reverts the state of initially zeroed mutable statics.
 pub unsafe fn bss_init() {
-    let length = BSS_END.get() as usize - BSS_START.get() as usize;
-    ptr::write_bytes(BSS_START.get(), 0, length >> 2);
+    unsafe {
+        let length = BSS_END.get() as usize - BSS_START.get() as usize;
+        ptr::write_bytes(BSS_START.get(), 0, length >> 2);
+    }
 }
 
 /// Initializes the DATA mutable memory segment.
@@ -34,6 +36,8 @@ pub unsafe fn bss_init() {
 ///
 /// This function reverts the state of initially non-zeroed mutable statics.
 pub unsafe fn data_init() {
-    let length = DATA_END.get() as usize - DATA_START.get() as usize;
-    ptr::copy_nonoverlapping(DATA_LOAD.get(), DATA_START.get(), length >> 2);
+    unsafe {
+        let length = DATA_END.get() as usize - DATA_START.get() as usize;
+        ptr::copy_nonoverlapping(DATA_LOAD.get(), DATA_START.get(), length >> 2);
+    }
 }

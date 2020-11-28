@@ -1,6 +1,4 @@
-#![feature(const_fn)]
 #![feature(generators)]
-#![feature(integer_atomics)]
 
 use drone_core::{
     fib, thr,
@@ -15,24 +13,24 @@ use std::sync::{
 static mut THREADS: [Thr; 3] = [Thr::new(0), Thr::new(1), Thr::new(2)];
 
 thr! {
-    use THREADS;
+    array => THREADS;
 
     /// Test doc attribute
     #[doc = "test attribute"]
-    pub struct Thr {
+    thread => Thr {
         #[allow(dead_code)]
         pub bar: isize = 1 - 2;
-    }
+    };
 
     /// Test doc attribute
     #[doc = "test attribute"]
-    pub struct ThrLocal {
+    local => ThrLocal {
         #[allow(dead_code)]
         pub foo: usize = 0;
-    }
+    };
 }
 
-macro_rules! thr_num {
+macro_rules! thr_idx {
     ($name:ident, $position:expr) => {
         #[derive(Clone, Copy)]
         struct $name;
@@ -46,14 +44,14 @@ macro_rules! thr_num {
         unsafe impl ThrToken for $name {
             type Thr = Thr;
 
-            const THR_NUM: usize = $position;
+            const THR_IDX: usize = $position;
         }
     };
 }
 
-thr_num!(Thr0, 0);
-thr_num!(Thr1, 1);
-thr_num!(Thr2, 2);
+thr_idx!(Thr0, 0);
+thr_idx!(Thr1, 1);
+thr_idx!(Thr2, 2);
 
 struct Counter(Arc<AtomicI8>);
 

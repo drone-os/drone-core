@@ -31,6 +31,7 @@
 //!
 //! ```no_run
 //! # #![feature(allocator_api)]
+//! # #![feature(slice_ptr_get)]
 //! # drone_core::config_override! { "
 //! # [memory]
 //! # flash = { size = \"128K\", origin = 0x08000000 }
@@ -42,6 +43,8 @@
 //! #     { block = \"32\", capacity = 80 },
 //! #     { block = \"256\", capacity = 16 },
 //! # ]
+//! # [linker]
+//! # platform = \"arm\"
 //! # " }
 //! # fn main() {}
 //! use drone_core::heap;
@@ -49,7 +52,7 @@
 //! // Define a concrete heap type with the layout defined in the Drone.toml
 //! heap! {
 //!     /// The heap structure.
-//!     pub struct Heap;
+//!     heap => pub Heap;
 //! }
 //!
 //! // Create a static instance of the heap type and declare it as the global
@@ -74,7 +77,9 @@ mod allocator;
 mod pool;
 
 pub use self::{
-    allocator::{alloc, binary_search, dealloc, grow, shrink, Allocator},
+    allocator::{
+        alloc, alloc_zeroed, binary_search, dealloc, grow, grow_zeroed, shrink, Allocator,
+    },
     pool::Pool,
 };
 

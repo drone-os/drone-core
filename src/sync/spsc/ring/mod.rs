@@ -134,12 +134,12 @@ impl<T, E> SpscInner<AtomicUsize, usize> for Inner<T, E> {
 
     #[inline]
     unsafe fn rx_waker_mut(&self) -> &mut MaybeUninit<Waker> {
-        &mut *self.rx_waker.get()
+        unsafe { &mut *self.rx_waker.get() }
     }
 
     #[inline]
     unsafe fn tx_waker_mut(&self) -> &mut MaybeUninit<Waker> {
-        &mut *self.tx_waker.get()
+        unsafe { &mut *self.tx_waker.get() }
     }
 }
 
@@ -147,7 +147,7 @@ impl<T, E> SpscInnerErr<AtomicUsize, usize> for Inner<T, E> {
     type Error = E;
 
     unsafe fn err_mut(&self) -> &mut Option<Self::Error> {
-        &mut *self.err.get()
+        unsafe { &mut *self.err.get() }
     }
 }
 
@@ -169,7 +169,7 @@ mod tests {
                 RawWaker::new(counter, &VTABLE)
             }
             unsafe fn wake(counter: *const ()) {
-                (*(counter as *const Counter)).0.fetch_add(1, Ordering::SeqCst);
+                unsafe { (*(counter as *const Counter)).0.fetch_add(1, Ordering::SeqCst) };
             }
             static VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake, drop);
             unsafe { Waker::from_raw(RawWaker::new(self as *const _ as *const (), &VTABLE)) }

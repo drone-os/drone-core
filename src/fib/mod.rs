@@ -64,7 +64,7 @@
 //! # #![feature(never_type)]
 //! # use drone_core::token::Token;
 //! # static mut THREADS: [Thr; 1] = [Thr::new(0)];
-//! # drone_core::thr!(use THREADS; struct Thr {} struct ThrLocal {});
+//! # drone_core::thr!(array => THREADS; thread => Thr {}; local => ThrLocal {});
 //! # #[derive(Clone, Copy)] struct SysTick;
 //! # struct Thrs { sys_tick: SysTick }
 //! # unsafe impl Token for Thrs {
@@ -75,7 +75,7 @@
 //! # }
 //! # unsafe impl drone_core::thr::ThrToken for SysTick {
 //! #     type Thr = Thr;
-//! #     const THR_NUM: usize = 0;
+//! #     const THR_IDX: usize = 0;
 //! # }
 //! # fn main() {
 //! #     let thr = unsafe { Thrs::take() };
@@ -133,7 +133,7 @@
 //! # #![feature(generators)]
 //! # use drone_core::token::Token;
 //! # static mut THREADS: [Thr; 1] = [Thr::new(0)];
-//! # drone_core::thr!(use THREADS; struct Thr {} struct ThrLocal {});
+//! # drone_core::thr!(array => THREADS; thread => Thr {}; local => Local {});
 //! # #[derive(Clone, Copy)] struct SysTick;
 //! # struct Thrs { sys_tick: SysTick }
 //! # unsafe impl Token for Thrs {
@@ -144,7 +144,7 @@
 //! # }
 //! # unsafe impl drone_core::thr::ThrToken for SysTick {
 //! #     type Thr = Thr;
-//! #     const THR_NUM: usize = 0;
+//! #     const THR_IDX: usize = 0;
 //! # }
 //! # fn main() {
 //! #     let thr = unsafe { Thrs::take() };

@@ -95,33 +95,6 @@ pub trait ThrFiberStreamPulse: ThrToken {
     {
         TryFiberStreamPulse { rx: add_rx(self, overflow, fib, identity) }
     }
-
-    /// Adds the fiber `fib` to the fiber chain and returns a stream of pulses
-    /// yielded from the fiber.
-    #[deprecated = "please use 'add_saturating_pulse_stream' instead"]
-    #[inline]
-    fn add_stream_pulse_skip<F>(self, fib: F) -> FiberStreamPulse
-    where
-        F: Fiber<Input = (), Yield = Option<usize>, Return = Option<usize>>,
-        F: Send + 'static,
-    {
-        self.add_saturating_pulse_stream(fib)
-    }
-
-    /// Adds the fiber `fib` to the fiber chain and returns a fallible stream of
-    /// pulses yielded from the fiber.
-    #[deprecated = "please use 'add_pulse_try_stream' instead"]
-    #[inline]
-    fn add_stream_pulse<O, F, E>(self, overflow: O, fib: F) -> TryFiberStreamPulse<E>
-    where
-        O: Fn() -> Result<(), E>,
-        F: Fiber<Input = (), Yield = Option<usize>, Return = Result<Option<usize>, E>>,
-        O: Send + 'static,
-        F: Send + 'static,
-        E: Send + 'static,
-    {
-        self.add_pulse_try_stream(overflow, fib)
-    }
 }
 
 #[inline]

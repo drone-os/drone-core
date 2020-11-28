@@ -139,9 +139,11 @@ impl CStr {
     /// }
     /// ```
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a Self {
-        let len = strlen(ptr);
-        let ptr = ptr as *const u8;
-        Self::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
+        unsafe {
+            let len = strlen(ptr);
+            let ptr = ptr as *const u8;
+            Self::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
+        }
     }
 
     /// Creates a C string wrapper from a byte slice.
@@ -205,6 +207,7 @@ impl CStr {
     ///     assert_eq!(cstr, &*cstring);
     /// }
     /// ```
+    #[allow(unsafe_op_in_unsafe_fn)] // FIXME https://github.com/rust-lang/rust/issues/74156
     #[inline]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &Self {
         &*(bytes as *const [u8] as *const Self)

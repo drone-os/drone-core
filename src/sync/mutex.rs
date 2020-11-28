@@ -142,6 +142,7 @@ impl<T: ?Sized + Default> Default for Mutex<T> {
 }
 
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
+    #[allow(clippy::option_if_let_else)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(guard) = self.try_lock() {
             f.debug_struct("Mutex").field("data", &&*guard).finish()

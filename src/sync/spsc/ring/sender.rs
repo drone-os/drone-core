@@ -118,6 +118,7 @@ impl<T, E> Drop for Sender<T, E> {
 }
 
 impl<T, E> Inner<T, E> {
+    #[allow(clippy::option_if_let_else)]
     fn send(&self, value: T) -> Result<(), SendError<T>> {
         let state = self.state_load(Ordering::Acquire);
         if let Some(index) = self.put_index_try(state) {
@@ -168,7 +169,7 @@ impl<T, E> Inner<T, E> {
         })
         .map(|state| {
             if state & RX_WAKER_STORED != 0 {
-                unsafe { (*self.rx_waker.get()).get_ref().wake_by_ref() };
+                unsafe { (*self.rx_waker.get()).assume_init_ref().wake_by_ref() };
             }
         })
         .map_err(|()| unsafe { ptr::read(buffer_ptr) })

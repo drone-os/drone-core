@@ -1,5 +1,5 @@
 #![feature(allocator_api)]
-#![feature(const_fn)]
+#![feature(slice_ptr_get)]
 
 use crate::core::mem::size_of;
 use std as core;
@@ -22,12 +22,15 @@ pools = [
     { block = \"32\", capacity = 80 },
     { block = \"256\", capacity = 16 },
 ]
+
+[linker]
+platform = \"arm\"
 " }
 
 heap! {
     /// Test doc attribute
     #[doc = "test attribute"]
-    pub struct Heap;
+    heap => pub Heap;
 }
 
 #[test]

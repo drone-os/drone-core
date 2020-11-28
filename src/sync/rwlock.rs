@@ -198,6 +198,7 @@ impl<T: ?Sized + Default> Default for RwLock<T> {
 }
 
 impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
+    #[allow(clippy::option_if_let_else)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(guard) = self.try_read() {
             f.debug_struct("RwLock").field("data", &&*guard).finish()

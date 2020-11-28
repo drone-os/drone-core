@@ -199,15 +199,15 @@ fn make_macro(
     let macro_tokens = if let Some(prev_macro) = prev_macro {
         quote! {
             #prev_macro! {
-                $(#[$attr])* $vis struct $ty;
-                $(!$undefs;)*
-                __extend { #(#defs)* $($defs)* }
+                $(#[$attr])* index => $vis $ty;
+                exclude => { $($undefs,)* };
+                __extend => { #(#defs)* $($defs)* };
             }
         }
     } else {
         quote! {
             ::drone_core::reg::tokens_inner! {
-                $(#[$attr])* $vis struct $ty;
+                $(#[$attr])* $vis $ty
                 { #(#defs)* $($defs)* }
                 { $($undefs;)* }
             }
@@ -218,19 +218,19 @@ fn make_macro(
         #macro_vis
         macro_rules! #macro_ident {
             (
-                $(#[$attr:meta])* $vis:vis struct $ty:ident;
-                $(!$undefs:ident;)*
+                $(#[$attr:meta])* index => $vis:vis $ty:ident
+                $(; $(exclude => { $($undefs:ident),* $(,)? })? $(;)?)?
             ) => {
                 #macro_ident! {
-                    $(#[$attr])* $vis struct $ty;
-                    $(!$undefs;)*
-                    __extend {}
+                    $(#[$attr])* index => $vis $ty;
+                    exclude => { $($($($undefs,)*)?)? };
+                    __extend => {};
                 }
             };
             (
-                $(#[$attr:meta])* $vis:vis struct $ty:ident;
-                $(!$undefs:ident;)*
-                __extend { $($defs:tt)* }
+                $(#[$attr:meta])* index => $vis:vis $ty:ident;
+                exclude => { $($undefs:ident,)* };
+                __extend => { $($defs:tt)* };
             ) => {
                 #macro_tokens
             };

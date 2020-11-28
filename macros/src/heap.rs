@@ -1,5 +1,5 @@
 use drone_config::Config;
-use drone_macros_core::compile_error;
+use drone_macros_core::parse_error;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
@@ -9,28 +9,54 @@ use syn::{
 };
 
 struct Input {
-    heap_attrs: Vec<Attribute>,
-    heap_vis: Visibility,
-    heap_ident: Ident,
+    heap: Heap,
+}
+
+struct Heap {
+    attrs: Vec<Attribute>,
+    vis: Visibility,
+    ident: Ident,
 }
 
 impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let heap_attrs = input.call(Attribute::parse_outer)?;
-        let heap_vis = input.parse()?;
-        input.parse::<Token![struct]>()?;
-        let heap_ident = input.parse()?;
-        input.parse::<Token![;]>()?;
-        Ok(Self { heap_attrs, heap_vis, heap_ident })
+        let mut heap = None;
+        while !input.is_empty() {
+            let attrs = input.call(Attribute::parse_outer)?;
+            let ident = input.parse::<Ident>()?;
+            input.parse::<Token![=>]>()?;
+            if ident == "heap" {
+                if heap.is_none() {
+                    heap = Some(Heap::parse(input, attrs)?);
+                } else {
+                    return Err(input.error("multiple `heap` specifications"));
+                }
+            } else {
+                return Err(input.error(format!("unknown key: `{}`", ident)));
+            }
+            if !input.is_empty() {
+                input.parse::<Token![;]>()?;
+            }
+        }
+        Ok(Self { heap: heap.ok_or_else(|| input.error("missing `heap` specification"))? })
+    }
+}
+
+impl Heap {
+    fn parse(input: ParseStream<'_>, attrs: Vec<Attribute>) -> Result<Self> {
+        let vis = input.parse()?;
+        let ident = input.parse()?;
+        Ok(Self { attrs, vis, ident })
     }
 }
 
 #[allow(clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Input { heap_attrs, heap_vis, heap_ident } = parse_macro_input!(input);
+    let Input { heap } = parse_macro_input!(input);
+    let Heap { attrs: heap_attrs, vis: heap_vis, ident: heap_ident } = heap;
     let config = match Config::read_from_cargo_manifest_dir() {
         Ok(config) => config,
-        Err(err) => compile_error!("{}: {}", drone_config::CONFIG_NAME, err),
+        Err(err) => parse_error!("{}: {}", drone_config::CONFIG_NAME, err),
     };
     let mut pools = config.heap.pools;
     pools.sort_by_key(|pool| pool.block);
@@ -76,15 +102,27 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
         unsafe impl ::core::alloc::AllocRef for #heap_ident {
             fn alloc(
-                &mut self,
+                &self,
                 layout: ::core::alloc::Layout,
-                init: ::core::alloc::AllocInit,
-            ) -> Result<::core::alloc::MemoryBlock, ::core::alloc::AllocErr> {
-                ::drone_core::heap::alloc(self, layout, init)
+            ) -> ::core::result::Result<
+                ::core::ptr::NonNull<[u8]>,
+                ::core::alloc::AllocError,
+            > {
+                ::drone_core::heap::alloc(self, layout)
+            }
+
+            fn alloc_zeroed(
+                &self,
+                layout: ::core::alloc::Layout,
+            ) -> ::core::result::Result<
+                ::core::ptr::NonNull<[u8]>,
+                ::core::alloc::AllocError,
+            > {
+                ::drone_core::heap::alloc_zeroed(self, layout)
             }
 
             unsafe fn dealloc(
-                &mut self,
+                &self,
                 ptr: ::core::ptr::NonNull<u8>,
                 layout: ::core::alloc::Layout,
             ) {
@@ -92,36 +130,47 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
 
             unsafe fn grow(
-                &mut self,
+                &self,
                 ptr: ::core::ptr::NonNull<u8>,
-                layout: ::core::alloc::Layout,
-                new_size: usize,
-                placement: ::core::alloc::ReallocPlacement,
-                init: ::core::alloc::AllocInit,
-            ) -> Result<::core::alloc::MemoryBlock, ::core::alloc::AllocErr> {
-                ::drone_core::heap::grow(self, ptr, layout, new_size, placement, init)
+                old_layout: ::core::alloc::Layout,
+                new_layout: ::core::alloc::Layout,
+            ) -> ::core::result::Result<
+                ::core::ptr::NonNull<[u8]>,
+                ::core::alloc::AllocError,
+            > {
+                ::drone_core::heap::grow(self, ptr, old_layout, new_layout)
+            }
+
+            unsafe fn grow_zeroed(
+                &self,
+                ptr: ::core::ptr::NonNull<u8>,
+                old_layout: ::core::alloc::Layout,
+                new_layout: ::core::alloc::Layout,
+            ) -> ::core::result::Result<
+                ::core::ptr::NonNull<[u8]>,
+                ::core::alloc::AllocError,
+            > {
+                ::drone_core::heap::grow_zeroed(self, ptr, old_layout, new_layout)
             }
 
             unsafe fn shrink(
-                &mut self,
+                &self,
                 ptr: ::core::ptr::NonNull<u8>,
-                layout: ::core::alloc::Layout,
-                new_size: usize,
-                placement: ::core::alloc::ReallocPlacement,
-            ) -> Result<::core::alloc::MemoryBlock, ::core::alloc::AllocErr> {
-                ::drone_core::heap::shrink(self, ptr, layout, new_size, placement)
+                old_layout: ::core::alloc::Layout,
+                new_layout: ::core::alloc::Layout,
+            ) -> ::core::result::Result<
+                ::core::ptr::NonNull<[u8]>,
+                ::core::alloc::AllocError,
+            > {
+                ::drone_core::heap::shrink(self, ptr, old_layout, new_layout)
             }
         }
 
         unsafe impl ::core::alloc::GlobalAlloc for #heap_ident {
             unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
-                ::drone_core::heap::alloc(
-                    self,
-                    layout,
-                    ::core::alloc::AllocInit::Uninitialized,
-                )
-                .map(|memory| memory.ptr.as_ptr())
-                .unwrap_or(::core::ptr::null_mut())
+                ::drone_core::heap::alloc(self, layout)
+                    .map(|ptr| ptr.as_mut_ptr())
+                    .unwrap_or(::core::ptr::null_mut())
             }
 
             unsafe fn dealloc(&self, ptr: *mut u8, layout: ::core::alloc::Layout) {

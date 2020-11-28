@@ -2,6 +2,8 @@
 //!
 //! [drone-core]: https://github.com/drone-os/drone-core
 
+#![feature(unsafe_block_in_unsafe_fn)]
+#![warn(unsafe_op_in_unsafe_fn)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::similar_names)]
 

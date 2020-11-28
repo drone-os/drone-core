@@ -149,7 +149,7 @@ where
             unsafe {
                 if waker {
                     let waker = if is_tx_half { self.rx_waker_mut() } else { self.tx_waker_mut() };
-                    let waker = waker.read();
+                    let waker = waker.assume_init_read();
                     if complete {
                         waker.wake();
                     }
