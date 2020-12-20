@@ -9,6 +9,7 @@ use syn::{
 };
 
 struct Input {
+    config: Ident,
     metadata: Metadata,
     global: Option<LitBool>,
 }
@@ -21,13 +22,20 @@ struct Metadata {
 
 impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
+        let mut config = None;
         let mut metadata = None;
         let mut global = None;
         while !input.is_empty() {
             let attrs = input.call(Attribute::parse_outer)?;
             let ident = input.parse::<Ident>()?;
             input.parse::<Token![=>]>()?;
-            if ident == "metadata" {
+            if attrs.is_empty() && ident == "config" {
+                if config.is_none() {
+                    config = Some(input.parse()?);
+                } else {
+                    return Err(input.error("multiple `config` specifications"));
+                }
+            } else if ident == "metadata" {
                 if metadata.is_none() {
                     metadata = Some(Metadata::parse(input, attrs)?);
                 } else {
@@ -47,6 +55,7 @@ impl Parse for Input {
             }
         }
         Ok(Self {
+            config: config.ok_or_else(|| input.error("missing `config` specification"))?,
             metadata: metadata.ok_or_else(|| input.error("missing `metadata` specification"))?,
             global,
         })
@@ -63,17 +72,34 @@ impl Metadata {
 
 #[allow(clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Input { metadata, global } = parse_macro_input!(input);
+    let Input { config: heap_config, metadata, global } = parse_macro_input!(input);
     let Metadata { attrs: metadata_attrs, vis: metadata_vis, ident: metadata_ident } = &metadata;
-    let config = match Config::read_from_cargo_manifest_dir() {
+    let mut config = match Config::read_from_cargo_manifest_dir() {
         Ok(config) => config,
         Err(err) => parse_error!("{}: {}", drone_config::CONFIG_NAME, err),
     };
-    let mut pools = config.heap.pools;
+
+    let (mut pointer, pools) = if heap_config == "main" {
+        (
+            config.memory.ram.origin + config.memory.ram.size - config.heap.main.size,
+            &mut config.heap.main.pools,
+        )
+    } else {
+        match config.heap.extra.get_mut(&heap_config.to_string()) {
+            Some(heap) => (heap.origin, &mut heap.block.pools),
+            None => {
+                parse_error!(
+                    "Missing `{}` heap configuration in {}",
+                    heap_config,
+                    drone_config::CONFIG_NAME
+                )
+            }
+        }
+    };
+
     pools.sort_by_key(|pool| pool.block);
     let mut pools_tokens = Vec::new();
-    let mut pointer = config.memory.ram.origin + config.memory.ram.size - config.heap.size;
-    for pool in &pools {
+    for pool in pools.iter() {
         let block = LitInt::new(&pool.block.to_string(), Span::call_site());
         let capacity = LitInt::new(&pool.capacity.to_string(), Span::call_site());
         let address = LitInt::new(&pointer.to_string(), Span::call_site());

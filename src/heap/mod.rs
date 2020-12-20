@@ -36,7 +36,7 @@
 //! # [memory]
 //! # flash = { size = \"128K\", origin = 0x08000000 }
 //! # ram = { size = \"20K\", origin = 0x20000000 }
-//! # [heap]
+//! # [heap.main]
 //! # size = \"10K\"
 //! # pools = [
 //! #     { block = \"4\", capacity = 896 },
@@ -51,7 +51,9 @@
 //!
 //! // Define a concrete heap type with the layout defined in the Drone.toml
 //! heap! {
-//!     /// Structure for storing this heap metadata.
+//!     // Heap configuration key in `Drone.toml`.
+//!     config => main;
+//!     /// The main heap allocator generated from the `Drone.toml`.
 //!     metadata => pub Heap;
 //!     // Use this heap as the global allocator.
 //!     global => true;

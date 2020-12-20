@@ -13,6 +13,10 @@ Possible log types:
 
 ### Unreleased
 
+- [added] Added support for multiple heaps
+- [added] `heap` option for `heap!` macro has been renamed to `metadata`
+- [added] Added `global` option to `heap!` macro
+
 ### v0.13.0 (2020-11-28)
 
 - [changed] Use `typenum` crate instead of `const_generics` feature for
