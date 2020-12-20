@@ -47,6 +47,7 @@ heap! {
     config => secondary;
     metadata => pub HeapSecondary;
     global => false;
+    trace_port => 5;
 }
 
 #[test]

@@ -65,9 +65,6 @@ pub const STDOUT_PORT: u8 = 0;
 /// Port number of the standard error stream.
 pub const STDERR_PORT: u8 = 1;
 
-/// Port number of the heap trace stream.
-pub const HEAPTRACE_PORT: u8 = 31;
-
 /// Returns port for standard output.
 #[inline]
 pub fn stdout() -> Port {

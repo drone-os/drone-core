@@ -38,7 +38,6 @@ maintenance = { status = "actively-developed" }
 [features]
 default = []
 std = ["futures/std"]
-heaptrace = []
 
 [dependencies.drone-ctypes]
 version = "=0.14.0"

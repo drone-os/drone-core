@@ -11,6 +11,7 @@ use syn::{
 struct Input {
     config: Ident,
     metadata: Metadata,
+    trace_port: Option<LitInt>,
     global: Option<LitBool>,
 }
 
@@ -24,6 +25,7 @@ impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let mut config = None;
         let mut metadata = None;
+        let mut trace_port = None;
         let mut global = None;
         while !input.is_empty() {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -41,6 +43,12 @@ impl Parse for Input {
                 } else {
                     return Err(input.error("multiple `metadata` specifications"));
                 }
+            } else if attrs.is_empty() && ident == "trace_port" {
+                if trace_port.is_none() {
+                    trace_port = Some(input.parse()?);
+                } else {
+                    return Err(input.error("multiple `trace_port` specifications"));
+                }
             } else if attrs.is_empty() && ident == "global" {
                 if global.is_none() {
                     global = Some(input.parse()?);
@@ -57,6 +65,7 @@ impl Parse for Input {
         Ok(Self {
             config: config.ok_or_else(|| input.error("missing `config` specification"))?,
             metadata: metadata.ok_or_else(|| input.error("missing `metadata` specification"))?,
+            trace_port,
             global,
         })
     }
@@ -72,7 +81,7 @@ impl Metadata {
 
 #[allow(clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Input { config: heap_config, metadata, global } = parse_macro_input!(input);
+    let Input { config: heap_config, metadata, trace_port, global } = parse_macro_input!(input);
     let Metadata { attrs: metadata_attrs, vis: metadata_vis, ident: metadata_ident } = &metadata;
     let mut config = match Config::read_from_cargo_manifest_dir() {
         Ok(config) => config,
@@ -110,12 +119,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
     let pools_len = pools.len();
 
+    let allocator = def_allocator(&metadata, trace_port, pools_len);
+    let alloc_ref = def_alloc_ref(&metadata);
     let global_alloc = match global {
         Some(LitBool { value, .. }) if value => Some(def_global_alloc(&metadata)),
         _ => None,
     };
-    let allocator = def_allocator(&metadata, pools_len);
-    let alloc_ref = def_alloc_ref(&metadata);
 
     let expanded = quote! {
         #(#metadata_attrs)*
@@ -139,11 +148,18 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     expanded.into()
 }
 
-fn def_allocator(metadata: &Metadata, pools_len: usize) -> TokenStream2 {
+fn def_allocator(
+    metadata: &Metadata,
+    trace_port: Option<LitInt>,
+    pools_len: usize,
+) -> TokenStream2 {
     let Metadata { ident: metadata_ident, .. } = metadata;
+    let trace_port =
+        if let Some(trace_port) = trace_port { quote!(Some(#trace_port)) } else { quote!(None) };
     quote! {
         impl ::drone_core::heap::Allocator for #metadata_ident {
             const POOL_COUNT: usize = #pools_len;
+            const TRACE_PORT: Option<u8> = #trace_port;
 
             #[inline]
             unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output

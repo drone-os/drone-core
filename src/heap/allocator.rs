@@ -16,6 +16,9 @@ pub trait Allocator: Sized {
     /// The total number of memory pools.
     const POOL_COUNT: usize;
 
+    /// Logger port for heap tracing. Disabled if `None`.
+    const TRACE_PORT: Option<u8>;
+
     /// Returns a reference to a pool or subslice, without doing bounds
     /// checking.
     ///
@@ -45,8 +48,9 @@ pub fn binary_search<A: Allocator, T: Fits>(heap: &A, value: T) -> usize {
 
 #[doc(hidden)]
 pub fn alloc<A: Allocator>(heap: &A, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-    #[cfg(feature = "heaptrace")]
-    trace::alloc(layout);
+    if let Some(trace_port) = A::TRACE_PORT {
+        trace::alloc(trace_port, layout);
+    }
     if layout.size() == 0 {
         return Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0));
     }
@@ -68,8 +72,9 @@ pub fn alloc_zeroed<A: Allocator>(heap: &A, layout: Layout) -> Result<NonNull<[u
 
 #[doc(hidden)]
 pub unsafe fn dealloc<A: Allocator>(heap: &A, ptr: NonNull<u8>, layout: Layout) {
-    #[cfg(feature = "heaptrace")]
-    trace::dealloc(layout);
+    if let Some(trace_port) = A::TRACE_PORT {
+        trace::dealloc(trace_port, layout);
+    }
     if layout.size() == 0 {
         return;
     }
@@ -86,8 +91,9 @@ pub unsafe fn grow<A: Allocator>(
     old_layout: Layout,
     new_layout: Layout,
 ) -> Result<NonNull<[u8]>, AllocError> {
-    #[cfg(feature = "heaptrace")]
-    trace::grow(layout, new_size);
+    if let Some(trace_port) = A::TRACE_PORT {
+        trace::grow(trace_port, old_layout, new_layout);
+    }
     unsafe {
         let new_ptr = alloc(heap, new_layout)?;
         ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_layout.size());
@@ -103,8 +109,9 @@ pub unsafe fn grow_zeroed<A: Allocator>(
     old_layout: Layout,
     new_layout: Layout,
 ) -> Result<NonNull<[u8]>, AllocError> {
-    #[cfg(feature = "heaptrace")]
-    trace::grow(layout, new_size);
+    if let Some(trace_port) = A::TRACE_PORT {
+        trace::grow(trace_port, old_layout, new_layout);
+    }
     unsafe {
         let new_ptr = alloc_zeroed(heap, new_layout)?;
         ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_layout.size());
@@ -120,8 +127,9 @@ pub unsafe fn shrink<A: Allocator>(
     old_layout: Layout,
     new_layout: Layout,
 ) -> Result<NonNull<[u8]>, AllocError> {
-    #[cfg(feature = "heaptrace")]
-    trace::shrink(layout, new_size);
+    if let Some(trace_port) = A::TRACE_PORT {
+        trace::shrink(trace_port, old_layout, new_layout);
+    }
     unsafe {
         let new_ptr = alloc(heap, new_layout)?;
         ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), new_layout.size());
@@ -130,71 +138,71 @@ pub unsafe fn shrink<A: Allocator>(
     }
 }
 
-#[cfg(feature = "heaptrace")]
 mod trace {
-    use crate::{
-        heap::HEAPTRACE_KEY,
-        log::{Port, HEAPTRACE_PORT},
-    };
+    use crate::{heap::HEAPTRACE_KEY, log::Port};
     use core::alloc::Layout;
 
     #[inline(always)]
-    pub(super) fn alloc(layout: Layout) {
+    pub(super) fn alloc(trace_port: u8, layout: Layout) {
         #[inline(never)]
-        fn trace(layout: Layout) {
-            Port::new(HEAPTRACE_PORT)
+        fn trace(trace_port: u8, layout: Layout) {
+            Port::new(trace_port)
                 .write::<u32>((0xA1 << 24 | layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
                 .write::<u32>((0xA2 << 24 | layout.size() as u32 & 0xFF) ^ HEAPTRACE_KEY);
         }
-        if Port::new(HEAPTRACE_PORT).is_enabled() {
-            trace(layout);
+        if Port::new(trace_port).is_enabled() {
+            trace(trace_port, layout);
         }
     }
 
     #[inline(always)]
-    pub(super) fn dealloc(layout: Layout) {
+    pub(super) fn dealloc(trace_port: u8, layout: Layout) {
         #[inline(never)]
-        fn trace(layout: Layout) {
-            Port::new(HEAPTRACE_PORT)
+        fn trace(trace_port: u8, layout: Layout) {
+            Port::new(trace_port)
                 .write::<u32>((0xD1 << 24 | layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
                 .write::<u32>((0xD2 << 24 | layout.size() as u32 & 0xFF) ^ HEAPTRACE_KEY);
         }
-        if Port::new(HEAPTRACE_PORT).is_enabled() {
-            trace(layout);
+        if Port::new(trace_port).is_enabled() {
+            trace(trace_port, layout);
         }
     }
 
     #[inline(always)]
-    pub(super) fn grow(layout: Layout, new_size: usize) {
+    pub(super) fn grow(trace_port: u8, old_layout: Layout, new_layout: Layout) {
         #[inline(never)]
-        fn trace(layout: Layout, new_size: usize) {
-            Port::new(HEAPTRACE_PORT)
-                .write::<u32>((0xB1 << 24 | layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
+        fn trace(trace_port: u8, old_layout: Layout, new_layout: Layout) {
+            Port::new(trace_port)
+                .write::<u32>((0xB1 << 24 | old_layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
                 .write::<u32>(
-                    (0xB2 << 24 | (layout.size() as u32 & 0xFF) << 16 | new_size as u32 >> 16)
+                    (0xB2 << 24
+                        | (old_layout.size() as u32 & 0xFF) << 16
+                        | new_layout.size() as u32 >> 16)
                         ^ HEAPTRACE_KEY,
                 )
-                .write::<u32>((0xB3 << 24 | new_size as u32 & 0xFFFF) ^ HEAPTRACE_KEY);
+                .write::<u32>((0xB3 << 24 | new_layout.size() as u32 & 0xFFFF) ^ HEAPTRACE_KEY);
         }
-        if Port::new(HEAPTRACE_PORT).is_enabled() {
-            trace(layout, new_size);
+        if Port::new(trace_port).is_enabled() {
+            trace(trace_port, old_layout, new_layout);
         }
     }
 
     #[inline(always)]
-    pub(super) fn shrink(layout: Layout, new_size: usize) {
+    pub(super) fn shrink(trace_port: u8, old_layout: Layout, new_layout: Layout) {
         #[inline(never)]
-        fn trace(layout: Layout, new_size: usize) {
-            Port::new(HEAPTRACE_PORT)
-                .write::<u32>((0xC1 << 24 | layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
+        fn trace(trace_port: u8, old_layout: Layout, new_layout: Layout) {
+            Port::new(trace_port)
+                .write::<u32>((0xC1 << 24 | old_layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
                 .write::<u32>(
-                    (0xC2 << 24 | (layout.size() as u32 & 0xFF) << 16 | new_size as u32 >> 16)
+                    (0xC2 << 24
+                        | (old_layout.size() as u32 & 0xFF) << 16
+                        | new_layout.size() as u32 >> 16)
                         ^ HEAPTRACE_KEY,
                 )
-                .write::<u32>((0xC3 << 24 | new_size as u32 & 0xFFFF) ^ HEAPTRACE_KEY);
+                .write::<u32>((0xC3 << 24 | new_layout.size() as u32 & 0xFFFF) ^ HEAPTRACE_KEY);
         }
-        if Port::new(HEAPTRACE_PORT).is_enabled() {
-            trace(layout, new_size);
+        if Port::new(trace_port).is_enabled() {
+            trace(trace_port, old_layout, new_layout);
         }
     }
 }
@@ -209,6 +217,7 @@ mod tests {
 
     impl Allocator for TestHeap {
         const POOL_COUNT: usize = 10;
+        const TRACE_PORT: Option<u8> = None;
 
         unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
         where

@@ -13,6 +13,8 @@ Possible log types:
 
 ### Unreleased
 
+- [removed] `heaptrace` feature has been removed in favor of the new
+  `trace_port` option in `heap!` macro
 - [added] Added support for multiple heaps
 - [added] `heap` option for `heap!` macro has been renamed to `metadata`
 - [added] Added `global` option to `heap!` macro
