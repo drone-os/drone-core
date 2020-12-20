@@ -53,6 +53,8 @@
 //! heap! {
 //!     /// The heap structure.
 //!     heap => pub Heap;
+//!     // Use this heap as the global allocator.
+//!     global => true;
 //! }
 //!
 //! // Create a static instance of the heap type and declare it as the global
