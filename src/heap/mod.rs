@@ -51,8 +51,8 @@
 //!
 //! // Define a concrete heap type with the layout defined in the Drone.toml
 //! heap! {
-//!     /// The heap structure.
-//!     heap => pub Heap;
+//!     /// Structure for storing this heap metadata.
+//!     metadata => pub Heap;
 //!     // Use this heap as the global allocator.
 //!     global => true;
 //! }

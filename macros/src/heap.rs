@@ -9,11 +9,11 @@ use syn::{
 };
 
 struct Input {
-    heap: Heap,
+    metadata: Metadata,
     global: Option<LitBool>,
 }
 
-struct Heap {
+struct Metadata {
     attrs: Vec<Attribute>,
     vis: Visibility,
     ident: Ident,
@@ -21,17 +21,17 @@ struct Heap {
 
 impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let mut heap = None;
+        let mut metadata = None;
         let mut global = None;
         while !input.is_empty() {
             let attrs = input.call(Attribute::parse_outer)?;
             let ident = input.parse::<Ident>()?;
             input.parse::<Token![=>]>()?;
-            if ident == "heap" {
-                if heap.is_none() {
-                    heap = Some(Heap::parse(input, attrs)?);
+            if ident == "metadata" {
+                if metadata.is_none() {
+                    metadata = Some(Metadata::parse(input, attrs)?);
                 } else {
-                    return Err(input.error("multiple `heap` specifications"));
+                    return Err(input.error("multiple `metadata` specifications"));
                 }
             } else if attrs.is_empty() && ident == "global" {
                 if global.is_none() {
@@ -46,11 +46,14 @@ impl Parse for Input {
                 input.parse::<Token![;]>()?;
             }
         }
-        Ok(Self { heap: heap.ok_or_else(|| input.error("missing `heap` specification"))?, global })
+        Ok(Self {
+            metadata: metadata.ok_or_else(|| input.error("missing `metadata` specification"))?,
+            global,
+        })
     }
 }
 
-impl Heap {
+impl Metadata {
     fn parse(input: ParseStream<'_>, attrs: Vec<Attribute>) -> Result<Self> {
         let vis = input.parse()?;
         let ident = input.parse()?;
@@ -60,8 +63,8 @@ impl Heap {
 
 #[allow(clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Input { heap, global } = parse_macro_input!(input);
-    let Heap { attrs: heap_attrs, vis: heap_vis, ident: heap_ident } = &heap;
+    let Input { metadata, global } = parse_macro_input!(input);
+    let Metadata { attrs: metadata_attrs, vis: metadata_vis, ident: metadata_ident } = &metadata;
     let config = match Config::read_from_cargo_manifest_dir() {
         Ok(config) => config,
         Err(err) => parse_error!("{}: {}", drone_config::CONFIG_NAME, err),
@@ -82,20 +85,20 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let pools_len = pools.len();
 
     let global_alloc = match global {
-        Some(LitBool { value, .. }) if value => Some(def_global_alloc(&heap)),
+        Some(LitBool { value, .. }) if value => Some(def_global_alloc(&metadata)),
         _ => None,
     };
-    let allocator = def_allocator(&heap, pools_len);
-    let alloc_ref = def_alloc_ref(&heap);
+    let allocator = def_allocator(&metadata, pools_len);
+    let alloc_ref = def_alloc_ref(&metadata);
 
     let expanded = quote! {
-        #(#heap_attrs)*
-        #heap_vis struct #heap_ident {
+        #(#metadata_attrs)*
+        #metadata_vis struct #metadata_ident {
             pools: [::drone_core::heap::Pool; #pools_len],
         }
 
-        impl #heap_ident {
-            /// Creates a new heap.
+        impl #metadata_ident {
+            /// Creates a new metadata.
             pub const fn new() -> Self {
                 Self {
                     pools: [#(#pools_tokens),*],
@@ -110,10 +113,10 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     expanded.into()
 }
 
-fn def_allocator(heap: &Heap, pools_len: usize) -> TokenStream2 {
-    let Heap { ident: heap_ident, .. } = heap;
+fn def_allocator(metadata: &Metadata, pools_len: usize) -> TokenStream2 {
+    let Metadata { ident: metadata_ident, .. } = metadata;
     quote! {
-        impl ::drone_core::heap::Allocator for #heap_ident {
+        impl ::drone_core::heap::Allocator for #metadata_ident {
             const POOL_COUNT: usize = #pools_len;
 
             #[inline]
@@ -127,10 +130,10 @@ fn def_allocator(heap: &Heap, pools_len: usize) -> TokenStream2 {
     }
 }
 
-fn def_alloc_ref(heap: &Heap) -> TokenStream2 {
-    let Heap { ident: heap_ident, .. } = heap;
+fn def_alloc_ref(metadata: &Metadata) -> TokenStream2 {
+    let Metadata { ident: metadata_ident, .. } = metadata;
     quote! {
-        unsafe impl ::core::alloc::AllocRef for #heap_ident {
+        unsafe impl ::core::alloc::AllocRef for #metadata_ident {
             fn alloc(
                 &self,
                 layout: ::core::alloc::Layout,
@@ -198,10 +201,10 @@ fn def_alloc_ref(heap: &Heap) -> TokenStream2 {
     }
 }
 
-fn def_global_alloc(heap: &Heap) -> TokenStream2 {
-    let Heap { ident: heap_ident, .. } = heap;
+fn def_global_alloc(metadata: &Metadata) -> TokenStream2 {
+    let Metadata { ident: metadata_ident, .. } = metadata;
     quote! {
-        unsafe impl ::core::alloc::GlobalAlloc for #heap_ident {
+        unsafe impl ::core::alloc::GlobalAlloc for #metadata_ident {
             unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
                 ::drone_core::heap::alloc(self, layout)
                     .map(|ptr| ptr.as_mut_ptr())

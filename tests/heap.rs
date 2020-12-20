@@ -30,7 +30,8 @@ platform = \"arm\"
 heap! {
     /// Test doc attribute
     #[doc = "test attribute"]
-    heap => pub Heap;
+    metadata => pub Heap;
+    global => false;
 }
 
 #[test]
