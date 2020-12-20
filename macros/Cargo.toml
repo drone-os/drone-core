@@ -2,13 +2,13 @@ cargo-features = ["resolver"]
 
 [package]
 name = "drone-core-macros"
-version = "0.13.0"
+version = "0.14.0"
 authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
 edition = "2018"
 resolver = "2"
 repository = "https://github.com/drone-os/drone-core"
 homepage = "https://www.drone-os.com/"
-documentation = "https://api.drone-os.com/drone-core/0.13/drone_core_macros/"
+documentation = "https://api.drone-os.com/drone-core/0.14/drone_core_macros/"
 license = "MIT OR Apache-2.0"
 description = """
 Procedural macros for drone-core.
@@ -18,11 +18,11 @@ Procedural macros for drone-core.
 proc-macro = true
 
 [dependencies.drone-macros-core]
-version = "=0.13.0"
+version = "=0.14.0"
 path = "../macros-core"
 
 [dependencies.drone-config]
-version = "0.13.0"
+version = "0.14.0"
 path = "../../drone/config"
 
 [dependencies]

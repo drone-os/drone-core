@@ -11,6 +11,8 @@ Possible log types:
 - `[fixed]` for any bug fixes.
 - `[security]` to invite users to upgrade in case of vulnerabilities.
 
+### Unreleased
+
 ### v0.13.0 (2020-11-28)
 
 - [changed] Use `typenum` crate instead of `const_generics` feature for
