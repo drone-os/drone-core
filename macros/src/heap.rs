@@ -186,16 +186,6 @@ fn def_alloc_ref(metadata: &Metadata) -> TokenStream2 {
                 ::drone_core::heap::alloc(self, layout)
             }
 
-            fn alloc_zeroed(
-                &self,
-                layout: ::core::alloc::Layout,
-            ) -> ::core::result::Result<
-                ::core::ptr::NonNull<[u8]>,
-                ::core::alloc::AllocError,
-            > {
-                ::drone_core::heap::alloc_zeroed(self, layout)
-            }
-
             unsafe fn deallocate(
                 &self,
                 ptr: ::core::ptr::NonNull<u8>,
