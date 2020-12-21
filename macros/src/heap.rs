@@ -175,8 +175,8 @@ fn def_allocator(
 fn def_alloc_ref(metadata: &Metadata) -> TokenStream2 {
     let Metadata { ident: metadata_ident, .. } = metadata;
     quote! {
-        unsafe impl ::core::alloc::AllocRef for #metadata_ident {
-            fn alloc(
+        unsafe impl ::core::alloc::Allocator for #metadata_ident {
+            fn allocate(
                 &self,
                 layout: ::core::alloc::Layout,
             ) -> ::core::result::Result<
@@ -196,7 +196,7 @@ fn def_alloc_ref(metadata: &Metadata) -> TokenStream2 {
                 ::drone_core::heap::alloc_zeroed(self, layout)
             }
 
-            unsafe fn dealloc(
+            unsafe fn deallocate(
                 &self,
                 ptr: ::core::ptr::NonNull<u8>,
                 layout: ::core::alloc::Layout,
