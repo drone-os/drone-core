@@ -31,19 +31,22 @@ impl Chain {
         self.head.load(Ordering::Acquire).is_null()
     }
 
-    /// Advances fibers, removing completed ones.
+    /// Advances fibers, removing completed ones. Returned `bool` indicates
+    /// whether any fiber was executed.
     ///
     /// # Safety
     ///
     /// This method is not reentrant.
     #[inline(never)]
-    pub unsafe fn drain(&self) {
+    pub unsafe fn drain(&self) -> bool {
+        let mut advanced = false;
         let mut prev = ptr::null_mut();
         let mut curr = self.head.load(Ordering::Acquire);
         while !curr.is_null() {
             unsafe {
                 let next = (*curr).next;
                 if (*curr).fib.as_mut().advance() {
+                    advanced = true;
                     prev = curr;
                 } else {
                     if prev.is_null() {
@@ -67,6 +70,7 @@ impl Chain {
                 curr = next;
             }
         }
+        advanced
     }
 
     fn push(&self, node: Node) {

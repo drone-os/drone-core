@@ -19,6 +19,8 @@ Possible log types:
 - [added] `heap` option for `heap!` macro has been renamed to `metadata`
 - [added] Added `global` option to `heap!` macro
 - [changed] Changed function signature for outer thread handlers
+- [changed] `fib::Chain::drain` method now returns a `bool`, which indicates
+  whether any fiber was executed.
 
 ### v0.13.0 (2020-11-28)
 
