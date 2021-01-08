@@ -18,6 +18,7 @@ Possible log types:
 - [added] Added support for multiple heaps
 - [added] `heap` option for `heap!` macro has been renamed to `metadata`
 - [added] Added `global` option to `heap!` macro
+- [changed] Changed function signature for outer thread handlers
 
 ### v0.13.0 (2020-11-28)
 

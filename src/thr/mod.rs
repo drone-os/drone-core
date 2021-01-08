@@ -161,9 +161,9 @@ pub unsafe fn thread_resume<T: Thread>(thr_idx: usize) {
 /// # Safety
 ///
 /// The function is not reentrant.
-pub unsafe fn thread_call<T: Thread>(thr_idx: usize, f: unsafe extern "C" fn()) {
+pub unsafe fn thread_call<T: Thread>(thr_idx: usize, f: unsafe fn(&'static T)) {
     unsafe {
-        thread_run::<T, _>(thr_idx, |_| f());
+        thread_run::<T, _>(thr_idx, |thr| f(thr));
     }
 }
 
