@@ -1,5 +1,3 @@
-cargo-features = ["resolver"]
-
 [package]
 name = "drone-core-macros"
 version = "0.14.0"

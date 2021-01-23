@@ -124,7 +124,11 @@ impl<T: ?Sized> RwLock<T> {
             if current >= WRITE_LOCK - 1 {
                 break None;
             }
-            if self.state.compare_and_swap(current, current + 1, Ordering::Acquire) == current {
+            if self
+                .state
+                .compare_exchange_weak(current, current + 1, Ordering::Acquire, Ordering::Acquire)
+                .is_ok()
+            {
                 break Some(RwLockReadGuard { rw_lock: self });
             }
         }
@@ -154,7 +158,11 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     pub fn try_write(&self) -> Option<RwLockWriteGuard<'_, T>> {
-        if self.state.compare_and_swap(NO_LOCK, WRITE_LOCK, Ordering::Acquire) == NO_LOCK {
+        if self
+            .state
+            .compare_exchange(NO_LOCK, WRITE_LOCK, Ordering::Acquire, Ordering::Acquire)
+            .is_ok()
+        {
             Some(RwLockWriteGuard { rw_lock: self })
         } else {
             None

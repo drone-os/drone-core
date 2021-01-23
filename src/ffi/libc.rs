@@ -78,7 +78,7 @@ pub unsafe extern "C" fn strcmp(mut s1: *const c_char, mut s2: *const c_char) ->
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn malloc(size: size_t) -> *mut c_void {
-    unsafe { alloc::alloc(Layout::from_size_align_unchecked(size, 1)) as *mut c_void }
+    unsafe { alloc::alloc(Layout::from_size_align_unchecked(size, 1)).cast::<c_void>() }
 }
 
 /// Allocates memory for an array of `nmemb` elements of `size` bytes each and
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn malloc(size: size_t) -> *mut c_void {
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn calloc(nmemb: size_t, size: size_t) -> *mut c_void {
     unsafe {
-        alloc::alloc_zeroed(Layout::from_size_align_unchecked(nmemb * size, 1)) as *mut c_void
+        alloc::alloc_zeroed(Layout::from_size_align_unchecked(nmemb * size, 1)).cast::<c_void>()
     }
 }
 
@@ -113,7 +113,8 @@ pub unsafe extern "C" fn calloc(nmemb: size_t, size: size_t) -> *mut c_void {
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn realloc(ptr: *mut c_void, size: size_t) -> *mut c_void {
     unsafe {
-        alloc::realloc(ptr as *mut u8, Layout::from_size_align_unchecked(1, 1), size) as *mut c_void
+        alloc::realloc(ptr.cast::<u8>(), Layout::from_size_align_unchecked(1, 1), size)
+            .cast::<c_void>()
     }
 }
 
@@ -128,5 +129,5 @@ pub unsafe extern "C" fn realloc(ptr: *mut c_void, size: size_t) -> *mut c_void 
 /// This function works with raw pointers.
 #[cfg_attr(not(feature = "std"), no_mangle)]
 pub unsafe extern "C" fn free(ptr: *mut c_void) {
-    unsafe { alloc::dealloc(ptr as *mut u8, Layout::from_size_align_unchecked(1, 1)) }
+    unsafe { alloc::dealloc(ptr.cast::<u8>(), Layout::from_size_align_unchecked(1, 1)) }
 }

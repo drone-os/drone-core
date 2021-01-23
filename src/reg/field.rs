@@ -65,7 +65,7 @@ pub trait RegField<T: RegTag>: Token + Sync {
     where
         T: RegAtomic,
     {
-        unsafe { &*(self as *const Self as *const Self::SRegField) }
+        unsafe { &*(self as *const Self).cast::<Self::SRegField>() }
     }
 }
 

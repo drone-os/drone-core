@@ -119,8 +119,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
     let pools_len = pools.len();
 
-    let allocator = def_allocator(&metadata, trace_port, pools_len);
-    let alloc_ref = def_alloc_ref(&metadata);
+    let drone_allocator = def_drone_allocator(&metadata, trace_port, pools_len);
+    let core_allocator = def_core_allocator(&metadata);
     let global_alloc = match global {
         Some(LitBool { value, .. }) if value => Some(def_global_alloc(&metadata)),
         _ => None,
@@ -141,14 +141,14 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
         }
 
-        #allocator
-        #alloc_ref
+        #drone_allocator
+        #core_allocator
         #global_alloc
     };
     expanded.into()
 }
 
-fn def_allocator(
+fn def_drone_allocator(
     metadata: &Metadata,
     trace_port: Option<LitInt>,
     pools_len: usize,
@@ -172,36 +172,36 @@ fn def_allocator(
     }
 }
 
-fn def_alloc_ref(metadata: &Metadata) -> TokenStream2 {
+fn def_core_allocator(metadata: &Metadata) -> TokenStream2 {
     let Metadata { ident: metadata_ident, .. } = metadata;
     quote! {
-        unsafe impl ::core::alloc::AllocRef for #metadata_ident {
-            fn alloc(
+        unsafe impl ::core::alloc::Allocator for #metadata_ident {
+            fn allocate(
                 &self,
                 layout: ::core::alloc::Layout,
             ) -> ::core::result::Result<
                 ::core::ptr::NonNull<[u8]>,
                 ::core::alloc::AllocError,
             > {
-                ::drone_core::heap::alloc(self, layout)
+                ::drone_core::heap::allocate(self, layout)
             }
 
-            fn alloc_zeroed(
+            fn allocate_zeroed(
                 &self,
                 layout: ::core::alloc::Layout,
             ) -> ::core::result::Result<
                 ::core::ptr::NonNull<[u8]>,
                 ::core::alloc::AllocError,
             > {
-                ::drone_core::heap::alloc_zeroed(self, layout)
+                ::drone_core::heap::allocate_zeroed(self, layout)
             }
 
-            unsafe fn dealloc(
+            unsafe fn deallocate(
                 &self,
                 ptr: ::core::ptr::NonNull<u8>,
                 layout: ::core::alloc::Layout,
             ) {
-                ::drone_core::heap::dealloc(self, ptr, layout)
+                ::drone_core::heap::deallocate(self, ptr, layout)
             }
 
             unsafe fn grow(
@@ -248,13 +248,13 @@ fn def_global_alloc(metadata: &Metadata) -> TokenStream2 {
     quote! {
         unsafe impl ::core::alloc::GlobalAlloc for #metadata_ident {
             unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
-                ::drone_core::heap::alloc(self, layout)
+                ::drone_core::heap::allocate(self, layout)
                     .map(|ptr| ptr.as_mut_ptr())
                     .unwrap_or(::core::ptr::null_mut())
             }
 
             unsafe fn dealloc(&self, ptr: *mut u8, layout: ::core::alloc::Layout) {
-                ::drone_core::heap::dealloc(
+                ::drone_core::heap::deallocate(
                     self,
                     ::core::ptr::NonNull::new_unchecked(ptr),
                     layout,

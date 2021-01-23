@@ -47,7 +47,7 @@ impl Pool {
     /// then the pool is exhausted.
     ///
     /// This operation is lock-free and has *O(1)* time complexity.
-    pub fn alloc(&self) -> Option<NonNull<u8>> {
+    pub fn allocate(&self) -> Option<NonNull<u8>> {
         unsafe { self.alloc_free().or_else(|| self.alloc_uninit()) }
     }
 
@@ -61,12 +61,16 @@ impl Pool {
     ///   [`alloc`](Pool::alloc).
     /// * `ptr` must not be used after deallocation.
     #[allow(clippy::cast_ptr_alignment)]
-    pub unsafe fn dealloc(&self, ptr: NonNull<u8>) {
+    pub unsafe fn deallocate(&self, ptr: NonNull<u8>) {
         loop {
             let curr = self.free.load(Ordering::Acquire);
-            unsafe { ptr::write(ptr.as_ptr() as *mut *mut u8, curr) };
-            let next = ptr.as_ptr() as *mut u8;
-            if self.free.compare_and_swap(curr, next, Ordering::AcqRel) == curr {
+            unsafe { ptr::write(ptr.as_ptr().cast::<*mut u8>(), curr) };
+            let next = ptr.as_ptr().cast::<u8>();
+            if self
+                .free
+                .compare_exchange_weak(curr, next, Ordering::AcqRel, Ordering::Acquire)
+                .is_ok()
+            {
                 break;
             }
         }
@@ -80,7 +84,11 @@ impl Pool {
                 break None;
             }
             let next = unsafe { ptr::read(curr as *const *mut u8) };
-            if self.free.compare_and_swap(curr, next, Ordering::AcqRel) == curr {
+            if self
+                .free
+                .compare_exchange_weak(curr, next, Ordering::AcqRel, Ordering::Acquire)
+                .is_ok()
+            {
                 break Some(unsafe { NonNull::new_unchecked(curr) });
             }
         }
@@ -93,7 +101,11 @@ impl Pool {
                 break None;
             }
             let next = unsafe { curr.add(self.size) };
-            if self.uninit.compare_and_swap(curr, next, Ordering::Relaxed) == curr {
+            if self
+                .uninit
+                .compare_exchange_weak(curr, next, Ordering::Relaxed, Ordering::Relaxed)
+                .is_ok()
+            {
                 break Some(unsafe { NonNull::new_unchecked(curr) });
             }
         }
@@ -114,6 +126,6 @@ impl<'a> Fits for &'a Layout {
 impl Fits for NonNull<u8> {
     #[inline]
     fn fits(self, pool: &Pool) -> bool {
-        (self.as_ptr() as *mut u8) < pool.edge
+        (self.as_ptr().cast::<u8>()) < pool.edge
     }
 }

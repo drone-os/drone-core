@@ -47,16 +47,16 @@ pub fn binary_search<A: Allocator, T: Fits>(heap: &A, value: T) -> usize {
 }
 
 #[doc(hidden)]
-pub fn alloc<A: Allocator>(heap: &A, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+pub fn allocate<A: Allocator>(heap: &A, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
     if let Some(trace_port) = A::TRACE_PORT {
-        trace::alloc(trace_port, layout);
+        trace::allocate(trace_port, layout);
     }
     if layout.size() == 0 {
         return Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0));
     }
     for pool_idx in binary_search(heap, &layout)..A::POOL_COUNT {
         let pool = unsafe { heap.get_pool_unchecked(pool_idx) };
-        if let Some(ptr) = pool.alloc() {
+        if let Some(ptr) = pool.allocate() {
             return Ok(NonNull::slice_from_raw_parts(ptr, pool.size()));
         }
     }
@@ -64,23 +64,26 @@ pub fn alloc<A: Allocator>(heap: &A, layout: Layout) -> Result<NonNull<[u8]>, Al
 }
 
 #[doc(hidden)]
-pub fn alloc_zeroed<A: Allocator>(heap: &A, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-    let ptr = alloc(heap, layout)?;
+pub fn allocate_zeroed<A: Allocator>(
+    heap: &A,
+    layout: Layout,
+) -> Result<NonNull<[u8]>, AllocError> {
+    let ptr = allocate(heap, layout)?;
     unsafe { ptr.as_non_null_ptr().as_ptr().write_bytes(0, ptr.len()) }
     Ok(ptr)
 }
 
 #[doc(hidden)]
-pub unsafe fn dealloc<A: Allocator>(heap: &A, ptr: NonNull<u8>, layout: Layout) {
+pub unsafe fn deallocate<A: Allocator>(heap: &A, ptr: NonNull<u8>, layout: Layout) {
     if let Some(trace_port) = A::TRACE_PORT {
-        trace::dealloc(trace_port, layout);
+        trace::deallocate(trace_port, layout);
     }
     if layout.size() == 0 {
         return;
     }
     unsafe {
         let pool = heap.get_pool_unchecked(binary_search(heap, ptr));
-        pool.dealloc(ptr);
+        pool.deallocate(ptr);
     }
 }
 
@@ -95,9 +98,9 @@ pub unsafe fn grow<A: Allocator>(
         trace::grow(trace_port, old_layout, new_layout);
     }
     unsafe {
-        let new_ptr = alloc(heap, new_layout)?;
+        let new_ptr = allocate(heap, new_layout)?;
         ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_layout.size());
-        dealloc(heap, ptr, old_layout);
+        deallocate(heap, ptr, old_layout);
         Ok(new_ptr)
     }
 }
@@ -113,9 +116,9 @@ pub unsafe fn grow_zeroed<A: Allocator>(
         trace::grow(trace_port, old_layout, new_layout);
     }
     unsafe {
-        let new_ptr = alloc_zeroed(heap, new_layout)?;
+        let new_ptr = allocate_zeroed(heap, new_layout)?;
         ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_layout.size());
-        dealloc(heap, ptr, old_layout);
+        deallocate(heap, ptr, old_layout);
         Ok(new_ptr)
     }
 }
@@ -131,9 +134,9 @@ pub unsafe fn shrink<A: Allocator>(
         trace::shrink(trace_port, old_layout, new_layout);
     }
     unsafe {
-        let new_ptr = alloc(heap, new_layout)?;
+        let new_ptr = allocate(heap, new_layout)?;
         ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), new_layout.size());
-        dealloc(heap, ptr, old_layout);
+        deallocate(heap, ptr, old_layout);
         Ok(new_ptr)
     }
 }
@@ -143,7 +146,7 @@ mod trace {
     use core::alloc::Layout;
 
     #[inline(always)]
-    pub(super) fn alloc(trace_port: u8, layout: Layout) {
+    pub(super) fn allocate(trace_port: u8, layout: Layout) {
         #[inline(never)]
         fn trace(trace_port: u8, layout: Layout) {
             Port::new(trace_port)
@@ -156,7 +159,7 @@ mod trace {
     }
 
     #[inline(always)]
-    pub(super) fn dealloc(trace_port: u8, layout: Layout) {
+    pub(super) fn deallocate(trace_port: u8, layout: Layout) {
         #[inline(never)]
         fn trace(trace_port: u8, layout: Layout) {
             Port::new(trace_port)
@@ -282,9 +285,9 @@ mod tests {
 
     #[test]
     fn allocations() {
-        unsafe fn alloc_and_set(heap: &TestHeap, layout: Layout, value: u8) {
+        unsafe fn allocate_and_set(heap: &TestHeap, layout: Layout, value: u8) {
             unsafe {
-                *alloc(heap, layout).unwrap().as_mut_ptr() = value;
+                *allocate(heap, layout).unwrap().as_mut_ptr() = value;
             }
         }
         let mut m = [0u8; 3230];
@@ -305,21 +308,21 @@ mod tests {
         };
         let layout = Layout::from_size_align(32, 1).unwrap();
         unsafe {
-            alloc_and_set(&heap, layout, 111);
+            allocate_and_set(&heap, layout, 111);
             assert_eq!(m[660], 111);
-            alloc_and_set(&heap, layout, 222);
+            allocate_and_set(&heap, layout, 222);
             assert_eq!(m[698], 222);
-            alloc_and_set(&heap, layout, 123);
+            allocate_and_set(&heap, layout, 123);
             assert_eq!(m[736], 123);
-            dealloc(&heap, NonNull::new_unchecked((o + 660) as *mut u8), layout);
+            deallocate(&heap, NonNull::new_unchecked((o + 660) as *mut u8), layout);
             assert_eq!(m[660], 0);
-            dealloc(&heap, NonNull::new_unchecked((o + 736) as *mut u8), layout);
+            deallocate(&heap, NonNull::new_unchecked((o + 736) as *mut u8), layout);
             assert_eq!(*(&m[736] as *const _ as *const usize), o + 660);
-            alloc_and_set(&heap, layout, 202);
+            allocate_and_set(&heap, layout, 202);
             assert_eq!(m[736], 202);
-            dealloc(&heap, NonNull::new_unchecked((o + 698) as *mut u8), layout);
+            deallocate(&heap, NonNull::new_unchecked((o + 698) as *mut u8), layout);
             assert_eq!(*(&m[698] as *const _ as *const usize), o + 660);
-            dealloc(&heap, NonNull::new_unchecked((o + 736) as *mut u8), layout);
+            deallocate(&heap, NonNull::new_unchecked((o + 736) as *mut u8), layout);
             assert_eq!(*(&m[736] as *const _ as *const usize), o + 698);
         }
     }

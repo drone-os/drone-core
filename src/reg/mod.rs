@@ -379,7 +379,7 @@ pub trait Reg<T: RegTag>: Token + Sync {
     where
         T: RegAtomic,
     {
-        unsafe { &*(self as *const Self as *const Self::SReg) }
+        unsafe { &*(self as *const Self).cast::<Self::SReg>() }
     }
 
     /// Creates a new opaque register value, and initializes it with the reset

@@ -258,7 +258,7 @@ impl CString {
     /// ```
     #[inline]
     pub fn into_raw(self) -> *mut c_char {
-        Box::into_raw(self.into_inner()) as *mut c_char
+        Box::into_raw(self.into_inner()).cast::<c_char>()
     }
 
     /// Converts the `CString` into a [`String`] if it contains valid UTF-8

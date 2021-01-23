@@ -50,8 +50,11 @@ impl Chain {
                     prev = curr;
                 } else {
                     if prev.is_null() {
-                        prev = self.head.compare_and_swap(curr, next, Ordering::Relaxed);
-                        if prev == curr {
+                        if self
+                            .head
+                            .compare_exchange(curr, next, Ordering::Relaxed, Ordering::Relaxed)
+                            .is_ok()
+                        {
                             prev = ptr::null_mut();
                         } else {
                             loop {
@@ -78,7 +81,11 @@ impl Chain {
         loop {
             let head = self.head.load(Ordering::Relaxed);
             unsafe { (*node).next = head };
-            if self.head.compare_and_swap(head, node, Ordering::Release) == head {
+            if self
+                .head
+                .compare_exchange_weak(head, node, Ordering::Release, Ordering::Relaxed)
+                .is_ok()
+            {
                 break;
             }
         }

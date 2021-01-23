@@ -141,7 +141,7 @@ impl CStr {
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a Self {
         unsafe {
             let len = strlen(ptr);
-            let ptr = ptr as *const u8;
+            let ptr = ptr.cast::<u8>();
             Self::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
         }
     }
