@@ -154,12 +154,15 @@ fn def_drone_allocator(
     pools_len: usize,
 ) -> TokenStream2 {
     let Metadata { ident: metadata_ident, .. } = metadata;
-    let trace_port =
-        if let Some(trace_port) = trace_port { quote!(Some(#trace_port)) } else { quote!(None) };
+    let trace_port = if let Some(trace_port) = trace_port {
+        quote!(::core::option::Option::Some(#trace_port))
+    } else {
+        quote!(::core::option::Option::None)
+    };
     quote! {
         impl ::drone_core::heap::Allocator for #metadata_ident {
             const POOL_COUNT: usize = #pools_len;
-            const TRACE_PORT: Option<u8> = #trace_port;
+            const TRACE_PORT: ::core::option::Option<u8> = #trace_port;
 
             #[inline]
             unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output

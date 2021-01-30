@@ -1,13 +1,19 @@
 #![feature(generators)]
+#![no_implicit_prelude]
 
-use drone_core::{
+use ::drone_core::{
     fib, thr,
     thr::{prelude::*, Thread},
     token::Token,
 };
-use std::sync::{
-    atomic::{AtomicI8, Ordering::*},
-    Arc,
+use ::std::{
+    assert_eq,
+    clone::Clone,
+    ops::Drop,
+    sync::{
+        atomic::{AtomicI8, Ordering::*},
+        Arc,
+    },
 };
 
 static mut THREADS: [Thr; 3] = [Thr::new(0), Thr::new(1), Thr::new(2)];

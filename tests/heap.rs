@@ -1,12 +1,11 @@
 #![feature(allocator_api)]
 #![feature(slice_ptr_get)]
+#![no_implicit_prelude]
 
-use crate::core::mem::size_of;
-use std as core;
+use ::drone_core::{config_override, heap};
+use ::std::{assert_eq, mem::size_of};
 
-use drone_core::heap;
-
-drone_core::config_override! { "
+config_override! { "
 [memory.flash]
 size = \"128K\"
 origin = 0x08000000

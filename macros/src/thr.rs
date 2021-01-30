@@ -232,6 +232,6 @@ fn def_local(local: &Local, local_wrapper: &Ident) -> TokenStream2 {
             }
         }
 
-        unsafe impl Sync for #local_wrapper {}
+        unsafe impl ::core::marker::Sync for #local_wrapper {}
     }
 }

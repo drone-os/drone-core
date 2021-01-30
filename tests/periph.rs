@@ -1,6 +1,7 @@
 #![feature(proc_macro_hygiene)]
+#![no_implicit_prelude]
 
-use drone_core::{
+use ::drone_core::{
     reg,
     reg::{marker::*, prelude::*},
     token::Token,
@@ -207,7 +208,7 @@ reg_tokens! {
 }
 
 pub mod gpio {
-    use drone_core::{periph, reg::marker::*};
+    use ::drone_core::{periph, reg::marker::*};
 
     periph! {
         pub trait GpioMap {}
@@ -323,7 +324,7 @@ pub mod gpio {
 }
 
 pub mod tim {
-    use drone_core::{periph, reg::marker::*};
+    use ::drone_core::{periph, reg::marker::*};
 
     periph! {
         pub trait TimMap {}
@@ -423,7 +424,7 @@ pub mod tim {
 }
 
 pub mod uarte {
-    use drone_core::{periph, reg::marker::*};
+    use ::drone_core::{periph, reg::marker::*};
 
     periph! {
         pub trait UarteMap {}

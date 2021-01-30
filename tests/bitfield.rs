@@ -1,4 +1,7 @@
-use drone_core::bitfield::Bitfield;
+#![no_implicit_prelude]
+
+use ::drone_core::bitfield::Bitfield;
+use ::std::assert_eq;
 
 #[derive(Bitfield, Copy, Clone)]
 #[bitfield(

@@ -136,6 +136,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let mut periph_bounds = Vec::new();
     let mut periph_fields = Vec::new();
     let mut traits_export = Vec::new();
+    let marker_bounds = quote! {
+        ::core::marker::Sized
+            + ::core::marker::Send
+            + ::core::marker::Sync
+            + 'static
+    };
     for Block { ident: block_ident, regs } in blocks {
         let block_snk = block_ident.to_string().to_snake_case();
         let block_psc = block_ident.to_string().to_pascal_case();
@@ -270,9 +276,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                                 #field_attrs
                                 #[allow(missing_docs)]
                                 pub trait #field_trait_opt {
-                                    type #u_field_opt: Sized + Send + Sync + 'static;
-                                    type #s_field_opt: Sized + Send + Sync + 'static;
-                                    type #c_field_opt: Sized + Send + Sync + 'static;
+                                    type #u_field_opt: #marker_bounds;
+                                    type #s_field_opt: #marker_bounds;
+                                    type #c_field_opt: #marker_bounds;
                                 }
                             });
                             tokens.push(quote! {
@@ -305,9 +311,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                                     #field_attrs
                                     #[allow(missing_docs)]
                                     pub trait #field_trait_opt<T: #reg_trait>: #reg_trait_ext<T> {
-                                        type #u_field_opt: Sized + Send + Sync + 'static;
-                                        type #s_field_opt: Sized + Send + Sync + 'static;
-                                        type #c_field_opt: Sized + Send + Sync + 'static;
+                                        type #u_field_opt: #marker_bounds;
+                                        type #s_field_opt: #marker_bounds;
+                                        type #c_field_opt: #marker_bounds;
                                     }
                                 });
                                 tokens.push(quote! {
@@ -339,9 +345,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                                     #field_attrs
                                     #[allow(missing_docs)]
                                     pub trait #field_trait_opt<T: #trait_ident>: #reg_trait<T> {
-                                        type #u_field_opt: Sized + Send + Sync + 'static;
-                                        type #s_field_opt: Sized + Send + Sync + 'static;
-                                        type #c_field_opt: Sized + Send + Sync + 'static;
+                                        type #u_field_opt: #marker_bounds;
+                                        type #s_field_opt: #marker_bounds;
+                                        type #c_field_opt: #marker_bounds;
                                     }
                                 });
                                 tokens.push(quote! {
@@ -503,9 +509,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         #reg_attrs
                         #[allow(missing_docs)]
                         pub trait #reg_trait_opt {
-                            type #u_reg_opt: Sized + Send + Sync + 'static;
-                            type #s_reg_opt: Sized + Send + Sync + 'static;
-                            type #c_reg_opt: Sized + Send + Sync + 'static;
+                            type #u_reg_opt: #marker_bounds;
+                            type #s_reg_opt: #marker_bounds;
+                            type #c_reg_opt: #marker_bounds;
                         }
                     });
                     tokens.push(quote! {
@@ -753,7 +759,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             #attrs
             pub trait #trait_ident
             where
-                Self: Sized + Send + Sync + 'static,
+                Self: #marker_bounds,
                 #(#bounds,)*
             {
                 #(#trait_items)*
