@@ -23,6 +23,7 @@ Possible log types:
   whether any fiber was executed.
 - [added] Added a new synchronization primitive: lock-free singly-linked list
   `sync::LinkedList`
+- [changed] `sync::Mutex` was rewritten to be futures-aware
 
 ### v0.13.0 (2020-11-28)
 
