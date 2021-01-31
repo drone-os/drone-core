@@ -24,6 +24,8 @@ Possible log types:
 - [added] Added a new synchronization primitive: lock-free singly-linked list
   `sync::LinkedList`
 - [changed] `sync::Mutex` was rewritten to be futures-aware
+- [removed] `sync::RwLock` was removed, because in its current non-futures-aware
+  form it was unusable
 
 ### v0.13.0 (2020-11-28)
 
