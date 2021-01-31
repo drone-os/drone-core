@@ -24,6 +24,7 @@
 #![feature(alloc_layout_extra)]
 #![feature(alloc_prelude)]
 #![feature(allocator_api)]
+#![feature(const_fn)]
 #![feature(const_raw_ptr_deref)]
 #![feature(core_intrinsics)]
 #![feature(exhaustive_patterns)]

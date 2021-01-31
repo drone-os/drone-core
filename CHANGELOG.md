@@ -21,6 +21,8 @@ Possible log types:
 - [changed] Changed function signature for outer thread handlers
 - [changed] `fib::Chain::drain` method now returns a `bool`, which indicates
   whether any fiber was executed.
+- [added] Added a new synchronization primitive: lock-free singly-linked list
+  `sync::LinkedList`
 
 ### v0.13.0 (2020-11-28)
 
