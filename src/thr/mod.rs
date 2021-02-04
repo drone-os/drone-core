@@ -149,11 +149,11 @@ pub fn local<T: Thread>() -> &'static T::Local {
 ///
 /// The function is not reentrant.
 pub unsafe fn thread_resume<T: Thread>(thr_idx: usize) {
-    unsafe {
-        thread_run::<T, _>(thr_idx, |thr| {
-            thr.fib_chain().drain();
-        });
+    #[inline(never)]
+    fn resume<T: Thread>(thr: &'static T) {
+        unsafe { thr.fib_chain().drain() };
     }
+    unsafe { thread_run(thr_idx, resume::<T>) };
 }
 
 /// Runs the function `f` inside the thread number `thr_idx`.
@@ -167,7 +167,10 @@ pub unsafe fn thread_call<T: Thread>(thr_idx: usize, f: unsafe fn(&'static T)) {
     }
 }
 
-unsafe fn thread_run<T: Thread, F: FnOnce(&'static T)>(thr_idx: usize, f: F) {
+unsafe fn thread_run<T: Thread, F>(thr_idx: usize, f: F)
+where
+    F: FnOnce(&'static T),
+{
     unsafe {
         let thr = get_thr::<T>(thr_idx);
         thr.local().preempted().0.set(CURRENT);
