@@ -37,8 +37,8 @@ where
     #[inline]
     fn advance(self: Pin<&mut Self>) -> bool {
         match self.resume(()) {
-            FiberState::Yielded(()) => true,
-            FiberState::Complete(()) => false,
+            FiberState::Yielded(()) => false,
+            FiberState::Complete(()) => true,
         }
     }
 }

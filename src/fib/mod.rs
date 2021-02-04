@@ -223,23 +223,23 @@ pub trait Fiber {
 /// A variation of [`Fiber`] with `Input` being `()`, `Yield` - `()` or `!`,
 /// `Complete` - `()`.
 pub trait FiberRoot: Send + 'static {
-    /// Resumes the execution of this fiber.
+    /// Resumes execution of this fiber, returning `false` if subsequent
+    /// resumptions are not allowed.
     ///
     /// This method will resume execution of the fiber or start execution if it
-    /// hasn't already.
+    /// hasn't already started.
     ///
     /// # Return value
     ///
-    /// If `true` is returned then the fiber has reached a suspension
-    /// point. Fibers in this state are available for resumption on a later
-    /// point.
+    /// If `false` is returned then the fiber has reached a suspension
+    /// point. Fibers in this state can be resumed again.
     ///
-    /// If `false` is returned then the fiber has completely finished. It is
-    /// invalid for the fiber to be resumed again.
+    /// If `true` is returned then the fiber has completely finished. It is not
+    /// allowed for the fiber to be resumed again.
     ///
     /// # Panics
     ///
-    /// This method may panic if it is called after `false` has been returned
+    /// This method may panic if it is called after `true` has been returned
     /// previously.
     fn advance(self: Pin<&mut Self>) -> bool;
 }

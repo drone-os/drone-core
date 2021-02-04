@@ -34,7 +34,7 @@ impl Chain {
         // function is not running concurrently because of the safety invariant
         // of this function.
         let drain_filter =
-            unsafe { self.stack.drain_filter_unchecked(|fib| !fib.as_mut().advance()) };
+            unsafe { self.stack.drain_filter_unchecked(|fib| fib.as_mut().advance()) };
         !drain_filter.is_end()
     }
 }
