@@ -85,7 +85,28 @@ pub trait ThrFiberStreamRing: ThrToken {
         F: Send + 'static,
         T: Send + 'static,
     {
-        FiberStreamRing { rx: add_rx(self, capacity, |_| Ok(()), fib, Ok) }
+        FiberStreamRing { rx: add_rx(self, capacity, |_| Ok(()), || fib, Ok) }
+    }
+
+    /// Adds the fiber returned by `factory` to the fiber chain and returns a
+    /// stream of `T` yielded from the fiber.
+    ///
+    /// When the underlying ring buffer overflows, new items will be skipped.
+    ///
+    /// This method is useful for non-`Send` fibers.
+    #[inline]
+    fn add_saturating_stream_factory<C, F, T>(
+        self,
+        capacity: usize,
+        factory: C,
+    ) -> FiberStreamRing<T>
+    where
+        C: FnOnce() -> F + Send + 'static,
+        F: Fiber<Input = (), Yield = Option<T>, Return = Option<T>>,
+        F: 'static,
+        T: Send + 'static,
+    {
+        FiberStreamRing { rx: add_rx(self, capacity, |_| Ok(()), factory, Ok) }
     }
 
     /// Adds the fiber `fib` to the fiber chain and returns a stream of `T`
@@ -100,7 +121,29 @@ pub trait ThrFiberStreamRing: ThrToken {
         F: Send + 'static,
         T: Send + 'static,
     {
-        FiberStreamRing { rx: add_rx_overwrite(self, capacity, fib, Ok) }
+        FiberStreamRing { rx: add_rx_overwrite(self, capacity, || fib, Ok) }
+    }
+
+    /// Adds the fiber returned by `factory` to the fiber chain and returns a
+    /// stream of `T` yielded from the fiber.
+    ///
+    /// When the underlying ring buffer overflows, new items will overwrite
+    /// existing ones.
+    ///
+    /// This method is useful for non-`Send` fibers.
+    #[inline]
+    fn add_overwriting_stream_factory<C, F, T>(
+        self,
+        capacity: usize,
+        factory: C,
+    ) -> FiberStreamRing<T>
+    where
+        C: FnOnce() -> F + Send + 'static,
+        F: Fiber<Input = (), Yield = Option<T>, Return = Option<T>>,
+        F: 'static,
+        T: Send + 'static,
+    {
+        FiberStreamRing { rx: add_rx_overwrite(self, capacity, factory, Ok) }
     }
 
     /// Adds the fiber `fib` to the fiber chain and returns a stream of
@@ -122,7 +165,32 @@ pub trait ThrFiberStreamRing: ThrToken {
         T: Send + 'static,
         E: Send + 'static,
     {
-        TryFiberStreamRing { rx: add_rx(self, capacity, overflow, fib, identity) }
+        TryFiberStreamRing { rx: add_rx(self, capacity, overflow, || fib, identity) }
+    }
+
+    /// Adds the fiber returned by `factory` to the fiber chain and returns a
+    /// stream of `Result<T, E>` yielded from the fiber.
+    ///
+    /// When the underlying ring buffer overflows, new items will be skipped.
+    ///
+    /// This method is useful for non-`Send` fibers.
+    #[inline]
+    fn add_try_stream_factory<C, O, F, T, E>(
+        self,
+        capacity: usize,
+        overflow: O,
+        factory: C,
+    ) -> TryFiberStreamRing<T, E>
+    where
+        C: FnOnce() -> F + Send + 'static,
+        O: Fn(T) -> Result<(), E>,
+        F: Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>,
+        O: Send + 'static,
+        F: 'static,
+        T: Send + 'static,
+        E: Send + 'static,
+    {
+        TryFiberStreamRing { rx: add_rx(self, capacity, overflow, factory, identity) }
     }
 
     /// Adds the fiber `fib` to the fiber chain and returns a stream of
@@ -142,122 +210,148 @@ pub trait ThrFiberStreamRing: ThrToken {
         T: Send + 'static,
         E: Send + 'static,
     {
-        TryFiberStreamRing { rx: add_rx_overwrite(self, capacity, fib, identity) }
+        TryFiberStreamRing { rx: add_rx_overwrite(self, capacity, || fib, identity) }
+    }
+
+    /// Adds the fiber returned by `factory` to the fiber chain and returns a
+    /// stream of `Result<T, E>` yielded from the fiber.
+    ///
+    /// When the underlying ring buffer overflows, new items will overwrite
+    /// existing ones.
+    ///
+    /// This method is useful for non-`Send` fibers.
+    #[inline]
+    fn add_overwriting_try_stream_factory<C, F, T, E>(
+        self,
+        capacity: usize,
+        factory: C,
+    ) -> TryFiberStreamRing<T, E>
+    where
+        C: FnOnce() -> F + Send + 'static,
+        F: Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>,
+        F: 'static,
+        T: Send + 'static,
+        E: Send + 'static,
+    {
+        TryFiberStreamRing { rx: add_rx_overwrite(self, capacity, factory, identity) }
     }
 }
 
 #[inline]
-fn add_rx<H, O, F, T, E, C>(
+fn add_rx<C, H, O, F, T, E, M>(
     thr: H,
     capacity: usize,
     overflow: O,
-    mut fib: F,
-    convert: C,
+    factory: C,
+    map: M,
 ) -> Receiver<T, E>
 where
+    C: FnOnce() -> F + Send + 'static,
     H: ThrToken,
     O: Fn(T) -> Result<(), E>,
     F: Fiber<Input = (), Yield = Option<T>>,
-    C: FnOnce(F::Return) -> Result<Option<T>, E>,
+    M: FnOnce(F::Return) -> Result<Option<T>, E>,
     O: Send + 'static,
-    F: Send + 'static,
+    F: 'static,
     T: Send + 'static,
     E: Send + 'static,
-    C: Send + 'static,
+    M: Send + 'static,
 {
     let (mut tx, rx) = channel(capacity);
-    thr.add(move || {
-        loop {
-            if tx.is_canceled() {
-                break;
-            }
-            match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-                fib::Yielded(None) => {}
-                fib::Yielded(Some(value)) => match tx.send(value) {
-                    Ok(()) => {}
-                    Err(SendError { value, kind }) => match kind {
-                        SendErrorKind::Canceled => {
-                            break;
-                        }
-                        SendErrorKind::Overflow => match overflow(value) {
-                            Ok(()) => {}
-                            Err(err) => {
-                                drop(tx.send_err(err));
-                                break;
-                            }
-                        },
-                    },
-                },
-                fib::Complete(value) => {
-                    match convert(value) {
-                        Ok(None) => {}
-                        Ok(Some(value)) => match tx.send(value) {
-                            Ok(()) => {}
-                            Err(SendError { value, kind }) => match kind {
-                                SendErrorKind::Canceled => {}
-                                SendErrorKind::Overflow => match overflow(value) {
-                                    Ok(()) => {}
-                                    Err(err) => {
-                                        drop(tx.send_err(err));
-                                    }
-                                },
-                            },
-                        },
-                        Err(err) => {
-                            drop(tx.send_err(err));
-                        }
-                    }
+    thr.add_factory(|| {
+        let mut fib = factory();
+        move || {
+            loop {
+                if tx.is_canceled() {
                     break;
                 }
+                match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+                    fib::Yielded(None) => {}
+                    fib::Yielded(Some(value)) => match tx.send(value) {
+                        Ok(()) => {}
+                        Err(SendError { value, kind }) => match kind {
+                            SendErrorKind::Canceled => {
+                                break;
+                            }
+                            SendErrorKind::Overflow => match overflow(value) {
+                                Ok(()) => {}
+                                Err(err) => {
+                                    drop(tx.send_err(err));
+                                    break;
+                                }
+                            },
+                        },
+                    },
+                    fib::Complete(value) => {
+                        match map(value) {
+                            Ok(None) => {}
+                            Ok(Some(value)) => match tx.send(value) {
+                                Ok(()) => {}
+                                Err(SendError { value, kind }) => match kind {
+                                    SendErrorKind::Canceled => {}
+                                    SendErrorKind::Overflow => match overflow(value) {
+                                        Ok(()) => {}
+                                        Err(err) => {
+                                            drop(tx.send_err(err));
+                                        }
+                                    },
+                                },
+                            },
+                            Err(err) => {
+                                drop(tx.send_err(err));
+                            }
+                        }
+                        break;
+                    }
+                }
+                yield;
             }
-            yield;
         }
     });
     rx
 }
 
 #[inline]
-fn add_rx_overwrite<H, F, T, E, C>(
-    thr: H,
-    capacity: usize,
-    mut fib: F,
-    convert: C,
-) -> Receiver<T, E>
+fn add_rx_overwrite<C, H, F, T, E, M>(thr: H, capacity: usize, factory: C, map: M) -> Receiver<T, E>
 where
+    C: FnOnce() -> F + Send + 'static,
     H: ThrToken,
     F: Fiber<Input = (), Yield = Option<T>>,
-    C: FnOnce(F::Return) -> Result<Option<T>, E>,
-    F: Send + 'static,
+    M: FnOnce(F::Return) -> Result<Option<T>, E>,
+    F: 'static,
     T: Send + 'static,
     E: Send + 'static,
-    C: Send + 'static,
+    M: Send + 'static,
 {
     let (mut tx, rx) = channel(capacity);
-    thr.add(move || {
-        loop {
-            if tx.is_canceled() {
-                break;
-            }
-            match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-                fib::Yielded(None) => {}
-                fib::Yielded(Some(value)) => match tx.send_overwrite(value) {
-                    Ok(()) => (),
-                    Err(_) => break,
-                },
-                fib::Complete(value) => {
-                    match convert(value) {
-                        Ok(None) => {}
-                        Ok(Some(value)) => {
-                            drop(tx.send_overwrite(value));
-                        }
-                        Err(err) => {
-                            drop(tx.send_err(err));
-                        }
-                    }
+    thr.add_factory(|| {
+        let mut fib = factory();
+        move || {
+            loop {
+                if tx.is_canceled() {
                     break;
                 }
+                match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+                    fib::Yielded(None) => {}
+                    fib::Yielded(Some(value)) => match tx.send_overwrite(value) {
+                        Ok(()) => (),
+                        Err(_) => break,
+                    },
+                    fib::Complete(value) => {
+                        match map(value) {
+                            Ok(None) => {}
+                            Ok(Some(value)) => {
+                                drop(tx.send_overwrite(value));
+                            }
+                            Err(err) => {
+                                drop(tx.send_err(err));
+                            }
+                        }
+                        break;
+                    }
+                }
+                yield;
             }
-            yield;
         }
     });
     rx

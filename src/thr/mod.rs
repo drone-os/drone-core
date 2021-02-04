@@ -116,8 +116,23 @@ where
 
     /// Adds the fiber `fib` to the fiber chain.
     #[inline]
-    fn add_fib<F: RootFiber>(self, fib: F) {
+    fn add_fib<F>(self, fib: F)
+    where
+        F: RootFiber + Send,
+    {
         self.to_thr().fib_chain().add(fib);
+    }
+
+    /// Adds the fiber returned by `factory` to the fiber chain.
+    ///
+    /// This method is useful for non-`Send` fibers.
+    #[inline]
+    fn add_fib_factory<C, F>(self, factory: C)
+    where
+        C: FnOnce() -> F + Send + 'static,
+        F: RootFiber,
+    {
+        self.to_thr().fib_chain().add(factory());
     }
 
     /// Returns `true` if the fiber chain is empty.

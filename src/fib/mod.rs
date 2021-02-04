@@ -127,6 +127,9 @@
 //! | [`token.add_overwriting_try_stream(...)`](ThrFiberStreamRing::add_overwriting_try_stream)    | `Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>`         |
 //! | `->`                                                                                         | `Stream<Item = Result<T, E>>`                                                 |
 //!
+//! In addition, each of the above methods has `*_factory` modification, which
+//! is useful for creating non-`Send` fibers.
+//!
 //! ## Examples
 //!
 //! ```
@@ -222,7 +225,7 @@ pub trait Fiber {
 ///
 /// A variation of [`Fiber`] with `Input` being `()`, `Yield` - `()` or `!`,
 /// `Complete` - `()`.
-pub trait RootFiber: Send + 'static {
+pub trait RootFiber: 'static {
     /// Resumes execution of this fiber, returning `false` if subsequent
     /// resumptions are not allowed.
     ///

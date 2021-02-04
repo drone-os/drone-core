@@ -32,7 +32,7 @@ where
 impl<G> RootFiber for FiberGen<G>
 where
     G: Generator<Yield = (), Return = ()>,
-    G: Send + 'static,
+    G: 'static,
 {
     #[inline]
     fn advance(self: Pin<&mut Self>) -> bool {
@@ -64,7 +64,8 @@ where
     FiberGen(gen)
 }
 
-/// Extends [`ThrToken`](crate::thr::ThrToken) types with `add` method.
+/// Extends [`ThrToken`](crate::thr::ThrToken) types with `add` and
+/// `add_factory` methods.
 pub trait ThrFiberGen: ThrToken {
     /// Adds a fiber for the generator `gen` to the fiber chain.
     #[inline]
@@ -74,6 +75,19 @@ pub trait ThrFiberGen: ThrToken {
         G: Send + 'static,
     {
         self.add_fib(new(gen))
+    }
+
+    /// Adds a fiber for the generator returned by `factory` to the fiber chain.
+    ///
+    /// This method is useful for non-`Send` fibers.
+    #[inline]
+    fn add_factory<C, G>(self, factory: C)
+    where
+        C: FnOnce() -> G + Send + 'static,
+        G: Generator<Yield = (), Return = ()>,
+        G: 'static,
+    {
+        self.add_fib_factory(|| new(factory()))
     }
 }
 

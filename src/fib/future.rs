@@ -47,10 +47,11 @@ impl<T> Future for FiberFuture<T> {
     }
 }
 
-/// Extends [`ThrToken`](crate::thr::ThrToken) types with `add_future` method.
+/// Extends [`ThrToken`](crate::thr::ThrToken) types with `add_future` and
+/// `add_future_factory` methods.
 pub trait ThrFiberFuture: ThrToken {
     /// Adds the fiber `fib` to the fiber chain and returns a future, which
-    /// resolves on completion of the fiber.
+    /// resolves on fiber completion.
     #[inline]
     fn add_future<F, Y, T>(self, fib: F) -> FiberFuture<T>
     where
@@ -59,33 +60,53 @@ pub trait ThrFiberFuture: ThrToken {
         F: Send + 'static,
         T: Send + 'static,
     {
-        FiberFuture { rx: add_rx(self, fib) }
+        FiberFuture { rx: add_rx(self, || fib) }
+    }
+
+    /// Adds the fiber returned by `factory` to the fiber chain and returns a
+    /// future, which resolves on fiber completion.
+    ///
+    /// This method is useful for non-`Send` fibers.
+    #[inline]
+    fn add_future_factory<C, F, Y, T>(self, factory: C) -> FiberFuture<T>
+    where
+        C: FnOnce() -> F + Send + 'static,
+        F: Fiber<Input = (), Yield = Y, Return = T>,
+        Y: YieldNone,
+        F: 'static,
+        T: Send + 'static,
+    {
+        FiberFuture { rx: add_rx(self, factory) }
     }
 }
 
 #[inline]
-fn add_rx<H, F, Y, T>(thr: H, mut fib: F) -> Receiver<T>
+fn add_rx<C, H, F, Y, T>(thr: H, factory: C) -> Receiver<T>
 where
+    C: FnOnce() -> F + Send + 'static,
     H: ThrToken,
     F: Fiber<Input = (), Yield = Y, Return = T>,
     Y: YieldNone,
-    F: Send + 'static,
+    F: 'static,
     T: Send + 'static,
 {
     let (tx, rx) = channel();
-    thr.add(move || {
-        loop {
-            if tx.is_canceled() {
-                break;
-            }
-            match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-                fib::Yielded(_) => {}
-                fib::Complete(complete) => {
-                    drop(tx.send(complete));
+    thr.add_factory(|| {
+        let mut fib = factory();
+        move || {
+            loop {
+                if tx.is_canceled() {
                     break;
                 }
+                match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+                    fib::Yielded(_) => {}
+                    fib::Complete(complete) => {
+                        drop(tx.send(complete));
+                        break;
+                    }
+                }
+                yield;
             }
-            yield;
         }
     });
     rx

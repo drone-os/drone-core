@@ -79,7 +79,21 @@ pub trait ThrFiberStreamPulse: ThrToken {
         F: Fiber<Input = (), Yield = Option<usize>, Return = Option<usize>>,
         F: Send + 'static,
     {
-        FiberStreamPulse { rx: add_rx(self, || Ok(()), fib, Ok) }
+        FiberStreamPulse { rx: add_rx(self, || Ok(()), || fib, Ok) }
+    }
+
+    /// Adds the fiber returned by `factory` to the fiber chain and returns a
+    /// stream of pulses yielded from the fiber.
+    ///
+    /// This method is useful for non-`Send` fibers.
+    #[inline]
+    fn add_saturating_pulse_stream_factory<C, F>(self, factory: C) -> FiberStreamPulse
+    where
+        C: FnOnce() -> F + Send + 'static,
+        F: Fiber<Input = (), Yield = Option<usize>, Return = Option<usize>>,
+        F: 'static,
+    {
+        FiberStreamPulse { rx: add_rx(self, || Ok(()), factory, Ok) }
     }
 
     /// Adds the fiber `fib` to the fiber chain and returns a fallible stream of
@@ -93,63 +107,88 @@ pub trait ThrFiberStreamPulse: ThrToken {
         F: Send + 'static,
         E: Send + 'static,
     {
-        TryFiberStreamPulse { rx: add_rx(self, overflow, fib, identity) }
+        TryFiberStreamPulse { rx: add_rx(self, overflow, || fib, identity) }
+    }
+
+    /// Adds the fiber returned by `factory` to the fiber chain and returns a
+    /// fallible stream of pulses yielded from the fiber.
+    ///
+    /// This method is useful for non-`Send` fibers.
+    #[inline]
+    fn add_pulse_try_stream_factory<C, O, F, E>(
+        self,
+        overflow: O,
+        factory: C,
+    ) -> TryFiberStreamPulse<E>
+    where
+        C: FnOnce() -> F + Send + 'static,
+        O: Fn() -> Result<(), E>,
+        F: Fiber<Input = (), Yield = Option<usize>, Return = Result<Option<usize>, E>>,
+        O: Send + 'static,
+        F: 'static,
+        E: Send + 'static,
+    {
+        TryFiberStreamPulse { rx: add_rx(self, overflow, factory, identity) }
     }
 }
 
 #[inline]
-fn add_rx<H, O, F, E, C>(thr: H, overflow: O, mut fib: F, convert: C) -> Receiver<E>
+fn add_rx<C, H, O, F, E, M>(thr: H, overflow: O, factory: C, map: M) -> Receiver<E>
 where
+    C: FnOnce() -> F + Send + 'static,
     H: ThrToken,
     O: Fn() -> Result<(), E>,
     F: Fiber<Input = (), Yield = Option<usize>>,
-    C: FnOnce(F::Return) -> Result<Option<usize>, E>,
+    M: FnOnce(F::Return) -> Result<Option<usize>, E>,
     O: Send + 'static,
-    F: Send + 'static,
+    F: 'static,
     E: Send + 'static,
-    C: Send + 'static,
+    M: Send + 'static,
 {
     let (mut tx, rx) = channel();
-    thr.add(move || {
-        loop {
-            if tx.is_canceled() {
-                break;
-            }
-            match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-                fib::Yielded(None) => {}
-                fib::Yielded(Some(pulses)) => match tx.send(pulses) {
-                    Ok(()) => {}
-                    Err(SendError::Canceled) => {
-                        break;
-                    }
-                    Err(SendError::Overflow) => match overflow() {
-                        Ok(()) => {}
-                        Err(err) => {
-                            drop(tx.send_err(err));
-                            break;
-                        }
-                    },
-                },
-                fib::Complete(value) => {
-                    match convert(value) {
-                        Ok(None) => {}
-                        Ok(Some(pulses)) => match tx.send(pulses) {
-                            Ok(()) | Err(SendError::Canceled) => {}
-                            Err(SendError::Overflow) => match overflow() {
-                                Ok(()) => {}
-                                Err(err) => {
-                                    drop(tx.send_err(err));
-                                }
-                            },
-                        },
-                        Err(err) => {
-                            drop(tx.send_err(err));
-                        }
-                    }
+    thr.add_factory(|| {
+        let mut fib = factory();
+        move || {
+            loop {
+                if tx.is_canceled() {
                     break;
                 }
+                match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+                    fib::Yielded(None) => {}
+                    fib::Yielded(Some(pulses)) => match tx.send(pulses) {
+                        Ok(()) => {}
+                        Err(SendError::Canceled) => {
+                            break;
+                        }
+                        Err(SendError::Overflow) => match overflow() {
+                            Ok(()) => {}
+                            Err(err) => {
+                                drop(tx.send_err(err));
+                                break;
+                            }
+                        },
+                    },
+                    fib::Complete(value) => {
+                        match map(value) {
+                            Ok(None) => {}
+                            Ok(Some(pulses)) => match tx.send(pulses) {
+                                Ok(()) | Err(SendError::Canceled) => {}
+                                Err(SendError::Overflow) => match overflow() {
+                                    Ok(()) => {}
+                                    Err(err) => {
+                                        drop(tx.send_err(err));
+                                    }
+                                },
+                            },
+                            Err(err) => {
+                                drop(tx.send_err(err));
+                            }
+                        }
+                        break;
+                    }
+                }
+                yield;
             }
-            yield;
         }
     });
     rx

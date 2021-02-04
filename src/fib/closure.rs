@@ -51,7 +51,7 @@ where
 impl<F, R> RootFiber for FiberFn<F, (), R>
 where
     F: FnMut() -> FiberState<(), R>,
-    F: Send + 'static,
+    F: 'static,
     R: ReturnNone,
 {
     #[inline]
@@ -84,7 +84,7 @@ where
 impl<F> RootFiber for FiberOnce<F, ()>
 where
     F: FnOnce(),
-    F: Unpin + Send + 'static,
+    F: Unpin + 'static,
 {
     #[inline]
     fn advance(self: Pin<&mut Self>) -> bool {
@@ -94,7 +94,8 @@ where
     }
 }
 
-/// Creates a fiber from the closure `f`.
+/// Creates a fiber that runs the closure `f` until [`FiberState::Complete`] is
+/// returned.
 #[inline]
 pub fn new_fn<F, Y, R>(f: F) -> FiberFn<F, Y, R>
 where
@@ -103,7 +104,7 @@ where
     FiberFn(Some(f))
 }
 
-/// Creates a fiber from the closure `f`.
+/// Creates a fiber that calls the closure `f` once.
 ///
 /// This type of fiber will never yield and will busy its thread until
 /// completion.
@@ -116,10 +117,11 @@ where
     FiberOnce(Some(f))
 }
 
-/// Extends [`ThrToken`](crate::thr::ThrToken) types with `add_fn` and
-/// `add_once` methods.
+/// Extends [`ThrToken`](crate::thr::ThrToken) types with `add_fn`,
+/// `add_fn_factory`, and `add_once` methods.
 pub trait ThrFiberClosure: ThrToken {
-    /// Adds a fiber for the closure `f` to the fiber chain.
+    /// Adds a fiber that runs the closure `f` until [`FiberState::Complete`] is
+    /// returned.
     #[inline]
     fn add_fn<F, R>(self, f: F)
     where
@@ -130,7 +132,22 @@ pub trait ThrFiberClosure: ThrToken {
         self.add_fib(new_fn(f))
     }
 
-    /// Adds a fiber for the closure `f` to the fiber chain.
+    /// Adds a fiber that runs the closure returned by `factory` until
+    /// [`FiberState::Complete`] is returned.
+    ///
+    /// This method is useful for non-`Send` fibers.
+    #[inline]
+    fn add_fn_factory<C, F, R>(self, factory: C)
+    where
+        C: FnOnce() -> F + Send + 'static,
+        F: FnMut() -> FiberState<(), R>,
+        F: 'static,
+        R: ReturnNone,
+    {
+        self.add_fib_factory(|| new_fn(factory()))
+    }
+
+    /// Adds a fiber that calls the closure `f` once.
     #[inline]
     fn add_once<F>(self, f: F)
     where
