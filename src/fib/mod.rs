@@ -222,7 +222,7 @@ pub trait Fiber {
 ///
 /// A variation of [`Fiber`] with `Input` being `()`, `Yield` - `()` or `!`,
 /// `Complete` - `()`.
-pub trait FiberRoot: Send + 'static {
+pub trait RootFiber: Send + 'static {
     /// Resumes execution of this fiber, returning `false` if subsequent
     /// resumptions are not allowed.
     ///

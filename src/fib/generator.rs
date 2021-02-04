@@ -1,5 +1,5 @@
 use crate::{
-    fib::{Fiber, FiberRoot, FiberState},
+    fib::{Fiber, FiberState, RootFiber},
     thr::prelude::*,
 };
 use core::{
@@ -29,7 +29,7 @@ where
     }
 }
 
-impl<G> FiberRoot for FiberGen<G>
+impl<G> RootFiber for FiberGen<G>
 where
     G: Generator<Yield = (), Return = ()>,
     G: Send + 'static,

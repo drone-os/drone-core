@@ -1,5 +1,5 @@
 use crate::{
-    fib::FiberRoot,
+    fib::RootFiber,
     sync::linked_list::{DrainFilter, LinkedList},
 };
 use core::pin::Pin;
@@ -9,7 +9,7 @@ pub struct Chain {
     stack: LinkedList<Node>,
 }
 
-type Node = Pin<Box<dyn FiberRoot>>;
+type Node = Pin<Box<dyn RootFiber>>;
 
 impl Chain {
     /// Creates an empty fiber chain.
@@ -20,7 +20,7 @@ impl Chain {
 
     /// Adds a fiber first in the chain.
     #[inline]
-    pub fn add<F: FiberRoot>(&self, fib: F) {
+    pub fn add<F: RootFiber>(&self, fib: F) {
         self.stack.push(Box::pin(fib));
     }
 

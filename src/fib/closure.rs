@@ -1,5 +1,5 @@
 use crate::{
-    fib::{Fiber, FiberRoot, FiberState},
+    fib::{Fiber, FiberState, RootFiber},
     thr::prelude::*,
 };
 use core::{marker::Unpin, pin::Pin};
@@ -48,7 +48,7 @@ where
     }
 }
 
-impl<F, R> FiberRoot for FiberFn<F, (), R>
+impl<F, R> RootFiber for FiberFn<F, (), R>
 where
     F: FnMut() -> FiberState<(), R>,
     F: Send + 'static,
@@ -81,7 +81,7 @@ where
     }
 }
 
-impl<F> FiberRoot for FiberOnce<F, ()>
+impl<F> RootFiber for FiberOnce<F, ()>
 where
     F: FnOnce(),
     F: Unpin + Send + 'static,

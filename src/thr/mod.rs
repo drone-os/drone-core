@@ -49,7 +49,7 @@
 pub mod prelude;
 
 use crate::{
-    fib::{Chain, FiberRoot},
+    fib::{Chain, RootFiber},
     token::Token,
 };
 use core::cell::Cell;
@@ -116,7 +116,7 @@ where
 
     /// Adds the fiber `fib` to the fiber chain.
     #[inline]
-    fn add_fib<F: FiberRoot>(self, fib: F) {
+    fn add_fib<F: RootFiber>(self, fib: F) {
         self.to_thr().fib_chain().add(fib);
     }
 

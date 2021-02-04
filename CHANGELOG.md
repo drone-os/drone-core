@@ -26,7 +26,8 @@ Possible log types:
 - [changed] `sync::Mutex` was rewritten to be futures-aware
 - [removed] `sync::RwLock` was removed, because in its current non-futures-aware
   form it was unusable
-- [changed] Changed semantics of `FiberRoot::advance`
+- [renamed] `FiberRoot` trait is now `RootFiber`
+- [changed] Changed semantics of `RootFiber::advance`
 
 ### v0.13.0 (2020-11-28)
 
