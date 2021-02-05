@@ -146,7 +146,11 @@ impl<T: ?Sized> Mutex<T> {
             self.state.fetch_or(WAITERS_LOCKED, Ordering::Acquire) & WAITERS_LOCKED == 0;
         if waiters_lock {
             // This is the only place where nodes can be removed.
-            unsafe { self.waiters.drain_filter_unchecked(|waiter| waiter.is_disabled()) };
+            unsafe {
+                self.waiters
+                    .drain_filter_raw(|waiter| (*waiter).is_disabled())
+                    .for_each(|node| drop(Box::from_raw(node)));
+            }
         }
         self.state.fetch_and(!DATA_LOCKED, Ordering::Release);
         // At this stage no nodes can't be removed.
@@ -180,9 +184,9 @@ impl<'a, T: ?Sized> Future for MutexLockFuture<'a, T> {
         if let Some(waiter) = self.waiter {
             unsafe { (*waiter).register(cx.waker()) };
         } else {
-            let waiter = Box::new(Node::from(Waiter::from(cx.waker().clone())));
-            self.waiter = Some(&*waiter);
-            self.mutex.waiters.push_node(waiter);
+            let waiter = Box::into_raw(Box::new(Node::from(Waiter::from(cx.waker().clone()))));
+            self.waiter = Some(waiter);
+            unsafe { self.mutex.waiters.push_raw(waiter) };
         }
         if let Some(lock) = self.mutex.try_lock() {
             self.disable_waiter();

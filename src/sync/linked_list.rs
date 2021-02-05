@@ -11,13 +11,14 @@ use core::{
 /// A lock-free singly-linked list.
 pub struct LinkedList<T> {
     head: AtomicPtr<Node<T>>,
-    marker: PhantomData<Box<Node<T>>>,
 }
 
 /// A node of [`LinkedList`].
+#[repr(C)]
 pub struct Node<T> {
     next: *mut Node<T>,
-    value: T,
+    /// The value attached to this node.
+    pub value: T,
 }
 
 /// An owning iterator over the elements of a [`LinkedList`].
@@ -32,11 +33,18 @@ pub struct IterMut<'a, T> {
     marker: PhantomData<&'a mut Node<T>>,
 }
 
-/// An iterator produced by [`LinkedList::drain_filter`] or
-/// [`LinkedList::drain_filter_unchecked`].
+/// An iterator produced by [`LinkedList::drain_filter`].
 pub struct DrainFilter<'a, T, F>
 where
-    F: FnMut(&mut T) -> bool,
+    F: FnMut(*mut Node<T>) -> bool,
+{
+    raw: DrainFilterRaw<'a, T, F>,
+}
+
+/// An iterator produced by [`LinkedList::drain_filter_raw`].
+pub struct DrainFilterRaw<'a, T, F>
+where
+    F: FnMut(*mut Node<T>) -> bool,
 {
     head: &'a AtomicPtr<Node<T>>,
     prev: *mut Node<T>,
@@ -58,7 +66,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     pub const fn new() -> Self {
-        Self { head: AtomicPtr::new(ptr::null_mut()), marker: PhantomData }
+        Self { head: AtomicPtr::new(ptr::null_mut()) }
     }
 
     /// Returns `true` if the [`LinkedList`] is empty.
@@ -99,11 +107,12 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     pub fn push(&self, data: T) {
-        self.push_node(Box::new(Node::from(data)));
+        unsafe { self.push_raw(Box::into_raw(Box::new(Node::from(data)))) };
     }
 
-    /// Variant of [`push`], but with boxed node. The node is guaranteed to not
-    /// be relocated until removed from the linked list.
+    /// Adds a pre-allocated element first in the list.
+    ///
+    /// This operation should compute in *O*(1) time.
     ///
     /// # Examples
     ///
@@ -112,14 +121,18 @@ impl<T> LinkedList<T> {
     ///
     /// let list = LinkedList::new();
     ///
-    /// let foo = Box::new(Node::from("foo"));
-    /// let foo_ptr: *const Node<&'static str> = &*foo;
-    /// list.push_node(foo);
-    /// assert_eq!(unsafe { *(*foo_ptr) }, "foo");
+    /// let foo = Box::into_raw(Box::new(Node::from("foo")));
+    /// unsafe { list.push_raw(foo) };
+    /// assert_eq!(unsafe { **foo }, "foo");
     /// ```
+    ///
+    /// # Safety
+    ///
+    /// The `node` parameter must point to a valid allocation. Other list
+    /// methods, which drop nodes in-place, assume that `node` is created using
+    /// [`Box::from_raw`].
     #[inline]
-    pub fn push_node(&self, node: Box<Node<T>>) {
-        let node = Box::into_raw(node);
+    pub unsafe fn push_raw(&self, node: *mut Node<T>) {
         loop {
             let curr = self.head.load(Ordering::Relaxed);
             unsafe { (*node).next = curr };
@@ -154,10 +167,13 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     pub fn pop(&self) -> Option<T> {
-        self.pop_node().map(Node::into_value)
+        unsafe { self.pop_raw().map(|node| Box::from_raw(node).value) }
     }
 
-    /// Variant of [`pop`], but returns a boxed node.
+    /// Removes the first element and returns a raw pointer to it, or `None` if
+    /// the list is empty.
+    ///
+    /// This operation should compute in *O*(1) time.
     ///
     /// # Examples
     ///
@@ -166,16 +182,21 @@ impl<T> LinkedList<T> {
     ///
     /// let list = LinkedList::new();
     ///
-    /// let foo = Box::new(Node::from("foo"));
-    /// let foo_ptr: *const Node<&'static str> = &*foo;
-    /// list.push_node(foo);
-    /// let foo = list.pop_node().unwrap();
-    /// list.push_node(foo);
+    /// let foo = Box::into_raw(Box::new(Node::from("foo")));
+    /// unsafe {
+    ///     list.push_raw(foo);
+    ///     let foo = list.pop_raw().unwrap();
+    ///     list.push_raw(foo);
+    /// }
     ///
-    /// assert_eq!(unsafe { *(*foo_ptr) }, "foo");
+    /// assert_eq!(unsafe { **foo }, "foo");
     /// ```
+    ///
+    /// # Safety
+    ///
+    /// It's responsibility of the caller to de-allocate the node.
     #[inline]
-    pub fn pop_node(&self) -> Option<Box<Node<T>>> {
+    pub unsafe fn pop_raw(&self) -> Option<*mut Node<T>> {
         loop {
             let curr = self.head.load(Ordering::Acquire);
             if curr.is_null() {
@@ -187,7 +208,7 @@ impl<T> LinkedList<T> {
                 .compare_exchange_weak(curr, next, Ordering::Relaxed, Ordering::Relaxed)
                 .is_ok()
             {
-                break Some(unsafe { Box::from_raw(curr) });
+                break Some(curr);
             }
         }
     }
@@ -225,7 +246,11 @@ impl<T> LinkedList<T> {
     ///
     /// # Safety
     ///
-    /// Until the iterator is dropped, no nodes shouldn't be removed.
+    /// While the returned iterator is alive:
+    ///
+    /// * Nodes shouldn't be removed.
+    /// * No other methods that produce mutable references (including this
+    ///   method) should be called.
     #[inline]
     pub unsafe fn iter_mut_unchecked(&self) -> IterMut<'_, T> {
         IterMut { curr: self.head.load(Ordering::Acquire), marker: PhantomData }
@@ -258,27 +283,38 @@ impl<T> LinkedList<T> {
     /// assert_eq!(odds.into_iter().collect::<Vec<_>>(), vec![15, 13, 11, 9, 5, 3, 1]);
     /// ```
     #[inline]
-    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F>
+    pub fn drain_filter<'a, F: 'a>(
+        &'a mut self,
+        mut filter: F,
+    ) -> DrainFilter<'_, T, impl FnMut(*mut Node<T>) -> bool>
     where
         F: FnMut(&mut T) -> bool,
     {
         // Because `self` is a unique reference, both safety invariants are
         // upholding.
-        unsafe { self.drain_filter_unchecked(filter) }
+        unsafe { DrainFilter { raw: self.drain_filter_raw(move |node| filter(&mut *node)) } }
     }
 
-    /// Unsafe variant of [`drain_filter`] with non-mutable `self`.
+    /// Raw variant of [`drain_filter`].
     ///
     /// # Safety
     ///
-    /// * This method is not re-entrant.
-    /// * Until the iterator is dropped, no nodes shouldn't be removed.
+    /// It's responsibility of the caller to de-allocate returned nodes.
+    ///
+    /// While the returned iterator is alive:
+    ///
+    /// * Nodes shouldn't be removed.
+    /// * No other methods that produce mutable references (including this
+    ///   method) should be called.
     #[inline]
-    pub unsafe fn drain_filter_unchecked<F>(&self, filter: F) -> DrainFilter<'_, T, F>
+    pub unsafe fn drain_filter_raw<F>(
+        &self,
+        filter: F,
+    ) -> DrainFilterRaw<'_, T, impl FnMut(*mut Node<T>) -> bool>
     where
-        F: FnMut(&mut T) -> bool,
+        F: FnMut(*mut Node<T>) -> bool,
     {
-        DrainFilter {
+        DrainFilterRaw {
             head: &self.head,
             prev: ptr::null_mut(),
             curr: self.head.load(Ordering::Acquire),
@@ -345,7 +381,7 @@ impl<T> Iterator for IntoIter<T> {
         } else {
             let next = unsafe { (*curr).next };
             self.list.head.store(next, Ordering::Relaxed);
-            Some(unsafe { Box::from_raw(curr) }.into_value())
+            Some(unsafe { Box::from_raw(curr) }.value)
         }
     }
 }
@@ -371,7 +407,32 @@ impl<T> FusedIterator for IterMut<'_, T> {}
 
 impl<T, F> DrainFilter<'_, T, F>
 where
-    F: FnMut(&mut T) -> bool,
+    F: FnMut(*mut Node<T>) -> bool,
+{
+    /// Returns `true` if the iterator has reached the end of the linked list.
+    #[inline]
+    pub fn is_end(&self) -> bool {
+        self.raw.is_end()
+    }
+}
+
+impl<T, F> Iterator for DrainFilter<'_, T, F>
+where
+    F: FnMut(*mut Node<T>) -> bool,
+{
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.raw.next().map(|node| unsafe { Box::from_raw(node).value })
+    }
+}
+
+impl<T, F> FusedIterator for DrainFilter<'_, T, F> where F: FnMut(*mut Node<T>) -> bool {}
+
+impl<T, F> DrainFilterRaw<'_, T, F>
+where
+    F: FnMut(*mut Node<T>) -> bool,
 {
     /// Returns `true` if the iterator has reached the end of the linked list.
     #[inline]
@@ -396,21 +457,21 @@ where
     }
 }
 
-impl<T, F> Iterator for DrainFilter<'_, T, F>
+impl<T, F> Iterator for DrainFilterRaw<'_, T, F>
 where
-    F: FnMut(&mut T) -> bool,
+    F: FnMut(*mut Node<T>) -> bool,
 {
-    type Item = T;
+    type Item = *mut Node<T>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         while !self.is_end() {
             let next = unsafe { (*self.curr).next };
-            if (self.filter)(unsafe { &mut (*self.curr).value }) {
+            if (self.filter)(self.curr) {
                 self.cut_out(next);
-                let node = unsafe { Box::from_raw(self.curr) };
+                let node = self.curr;
                 self.curr = next;
-                return Some(node.into_value());
+                return Some(node);
             }
             self.prev = self.curr;
             self.curr = next;
@@ -419,9 +480,9 @@ where
     }
 }
 
-impl<T, F> Drop for DrainFilter<'_, T, F>
+impl<T, F> Drop for DrainFilterRaw<'_, T, F>
 where
-    F: FnMut(&mut T) -> bool,
+    F: FnMut(*mut Node<T>) -> bool,
 {
     #[inline]
     fn drop(&mut self) {
@@ -429,16 +490,7 @@ where
     }
 }
 
-impl<T, F> FusedIterator for DrainFilter<'_, T, F> where F: FnMut(&mut T) -> bool {}
-
-impl<T> Node<T> {
-    /// Unwraps the value.
-    #[allow(clippy::boxed_local)]
-    #[inline]
-    pub fn into_value(self: Box<Self>) -> T {
-        self.value
-    }
-}
+impl<T, F> FusedIterator for DrainFilterRaw<'_, T, F> where F: FnMut(*mut Node<T>) -> bool {}
 
 impl<T> From<T> for Node<T> {
     #[inline]

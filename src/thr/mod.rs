@@ -166,7 +166,7 @@ pub fn local<T: Thread>() -> &'static T::Local {
 pub unsafe fn thread_resume<T: Thread>(thr_idx: usize) {
     #[inline(never)]
     fn resume<T: Thread>(thr: &'static T) {
-        unsafe { thr.fib_chain().drain() };
+        unsafe { drop(thr.fib_chain().drain()) };
     }
     unsafe { thread_run(thr_idx, resume::<T>) };
 }

@@ -29,6 +29,7 @@ Possible log types:
 - [renamed] `FiberRoot` trait is now `RootFiber`
 - [changed] Changed semantics of `RootFiber::advance`
 - [added] Added `*_factory` method variants for creating non-`Send` fibers
+- [fixed] Removed one layer of indirection from `fib::Chain`
 
 ### v0.13.0 (2020-11-28)
 
