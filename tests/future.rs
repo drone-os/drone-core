@@ -16,12 +16,12 @@ use core::{
 use drone_core::{sync::spsc::oneshot, thr};
 use futures::prelude::*;
 
-static mut THREADS: [Thr; 1] = [Thr::new(0)];
-
-thr! {
-    array => THREADS;
+thr::pool! {
+    pool => ThrPool;
     thread => Thr {};
     local => ThrLocal {};
+    index => Thrs;
+    threads => { thread_0 };
 }
 
 struct Counter(AtomicUsize);

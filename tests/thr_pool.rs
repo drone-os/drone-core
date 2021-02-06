@@ -16,10 +16,10 @@ use ::std::{
     },
 };
 
-static mut THREADS: [Thr; 3] = [Thr::new(0), Thr::new(1), Thr::new(2)];
-
-thr! {
-    array => THREADS;
+thr::pool! {
+    /// Test doc attribute
+    #[doc = "test attribute"]
+    pool => ThrPool;
 
     /// Test doc attribute
     #[doc = "test attribute"]
@@ -34,6 +34,16 @@ thr! {
         #[allow(dead_code)]
         pub foo: usize = 0;
     };
+
+    /// Test doc attribute
+    #[doc = "test attribute"]
+    index => Thrs;
+
+    threads => {
+        thread0;
+        thread1;
+        thread2;
+    }
 }
 
 macro_rules! thr_idx {

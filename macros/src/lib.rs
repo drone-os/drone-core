@@ -23,7 +23,7 @@ mod reg_tokens_inner;
 mod simple_token;
 mod simple_tokens;
 mod static_tokens;
-mod thr;
+mod thr_pool;
 
 use proc_macro::TokenStream;
 
@@ -98,6 +98,6 @@ pub fn unsafe_static_tokens(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn thr(input: TokenStream) -> TokenStream {
-    thr::proc_macro(input)
+pub fn thr_pool(input: TokenStream) -> TokenStream {
+    thr_pool::proc_macro(input)
 }

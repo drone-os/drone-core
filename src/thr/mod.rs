@@ -18,9 +18,9 @@
 //! # fn main() {}
 //! use drone_core::thr;
 //!
-//! thr! {
-//!     // Path to the array of threads.
-//!     array => THREADS;
+//! thr::pool! {
+//!     /// Thread pool storage.
+//!     pool => pub ThrPool;
 //!
 //!     /// The thread object.
 //!     thread => pub Thr {
@@ -39,40 +39,72 @@
 //!         // The types of these fields shouldn't necessarily be `Sync`.
 //!         pub bar: usize = index;
 //!     };
-//! }
 //!
-//! // This is for example only. Platform crates should provide macros to
-//! // automatically generate this.
-//! static mut THREADS: [Thr; 2] = [Thr::new(0), Thr::new(1)];
+//!     /// Thread token set.
+//!     index => pub Thrs;
+//!
+//!     // Thread definitions.
+//!     threads => {
+//!         /// Example thread 1.
+//!         pub thread1;
+//!         /// Example thread 2.
+//!         pub thread2;
+//!     };
+//! }
 //! ```
 
 pub mod prelude;
+
+/// Defines a thread pool.
+///
+/// See [the module level documentation](self) for details.
+#[doc(inline)]
+pub use drone_core_macros::thr_pool as pool;
 
 use crate::{
     fib::{Chain, RootFiber},
     token::Token,
 };
-use core::cell::Cell;
+use core::{
+    cell::Cell,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
-static mut CURRENT: usize = 0;
+/// Abstract thread pool.
+pub trait ThreadPool: Sized + Sync + 'static {
+    /// The thread type.
+    type Thr: Thread;
 
-/// Thread-local previous thread index cell.
-pub struct PreemptedCell(Cell<usize>);
+    /// Returns a reference to the array of threads.
+    ///
+    /// A safe alternative to this function is calling [`ThrToken::to_thr`]
+    /// method on an instance of a thread token.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it doesn't check for presence of the
+    /// corresponding thread token.
+    unsafe fn threads() -> &'static [Self::Thr];
 
-/// Generic thread.
+    /// Returns a storage for the current thread index.
+    fn current() -> &'static Current;
+}
+
+/// Abstract thread.
 pub trait Thread: Sized + Sync + 'static {
-    /// The thread-local storage.
-    type Local: ThreadLocal;
+    /// The thread pool type.
+    type Pool: ThreadPool<Thr = Self>;
 
-    /// Returns a pointer to the first thread in the thread array.
-    fn first() -> *const Self;
+    /// The thread-local storage type.
+    type Local: ThreadLocal;
 
     /// Returns a reference to the fiber chain.
     fn fib_chain(&self) -> &Chain;
 
     /// Returns a reference to the thread-local storage of the thread.
     ///
-    /// [`local`] function should be used instead of this method.
+    /// A safe alternative to this method is calling [`local`] function when
+    /// running on this thread.
     ///
     /// # Safety
     ///
@@ -81,15 +113,15 @@ pub trait Thread: Sized + Sync + 'static {
     unsafe fn local(&self) -> &Self::Local;
 }
 
-/// Generic thread-local storage.
+/// Abstract thread-local storage.
 pub trait ThreadLocal: Sized + 'static {
-    /// Returns a reference to the previous thread index cell.
+    /// Returns a storage for the previous thread index.
     ///
     /// This method is safe because the type doesn't have public methods.
-    fn preempted(&self) -> &PreemptedCell;
+    fn preempted(&self) -> &Preempted;
 }
 
-/// The base trait for a thread token.
+/// Abstract token for a thread in a thread pool.
 ///
 /// # Safety
 ///
@@ -142,8 +174,21 @@ where
     }
 }
 
-impl PreemptedCell {
-    /// Creates a new `PreemptedCell`.
+/// Current thread index.
+pub struct Current(AtomicUsize);
+
+/// Previous thread index.
+pub struct Preempted(Cell<usize>);
+
+impl Current {
+    /// Creates a new `Current`.
+    pub const fn new() -> Self {
+        Self(AtomicUsize::new(0))
+    }
+}
+
+impl Preempted {
+    /// Creates a new `Preempted`.
     pub const fn new() -> Self {
         Self(Cell::new(0))
     }
@@ -151,11 +196,11 @@ impl PreemptedCell {
 
 /// Returns a reference to the thread-local storage of the current thread.
 ///
-/// The contents of this object can be customized with `thr!` macro. See [`the
-/// module-level documentation`](crate::thr) for details.
+/// The contents of this object can be customized with `thr::pool!` macro. See
+/// [`the module-level documentation`](self) for details.
 #[inline]
 pub fn local<T: Thread>() -> &'static T::Local {
-    unsafe { get_thr::<T>(CURRENT).local() }
+    unsafe { get_thr::<T>(T::Pool::current().0.load(Ordering::Relaxed)).local() }
 }
 
 /// Runs the fiber chain of the thread number `thr_hum`.
@@ -163,12 +208,9 @@ pub fn local<T: Thread>() -> &'static T::Local {
 /// # Safety
 ///
 /// The function is not reentrant.
-pub unsafe fn thread_resume<T: Thread>(thr_idx: usize) {
-    #[inline(never)]
-    fn resume<T: Thread>(thr: &'static T) {
-        unsafe { drop(thr.fib_chain().drain()) };
-    }
-    unsafe { thread_run(thr_idx, resume::<T>) };
+#[inline(never)]
+pub unsafe fn resume<T: Thread>(thr: &'static T) {
+    unsafe { drop(thr.fib_chain().drain()) };
 }
 
 /// Runs the function `f` inside the thread number `thr_idx`.
@@ -176,25 +218,16 @@ pub unsafe fn thread_resume<T: Thread>(thr_idx: usize) {
 /// # Safety
 ///
 /// The function is not reentrant.
-pub unsafe fn thread_call<T: Thread>(thr_idx: usize, f: unsafe fn(&'static T)) {
-    unsafe {
-        thread_run::<T, _>(thr_idx, |thr| f(thr));
-    }
-}
-
-unsafe fn thread_run<T: Thread, F>(thr_idx: usize, f: F)
-where
-    F: FnOnce(&'static T),
-{
+pub unsafe fn run<T: Thread>(thr_idx: usize, f: unsafe fn(&'static T)) {
     unsafe {
         let thr = get_thr::<T>(thr_idx);
-        thr.local().preempted().0.set(CURRENT);
-        CURRENT = thr_idx;
+        thr.local().preempted().0.set(T::Pool::current().0.load(Ordering::Relaxed));
+        T::Pool::current().0.store(thr_idx, Ordering::Relaxed);
         f(thr);
-        CURRENT = thr.local().preempted().0.get();
+        T::Pool::current().0.store(thr.local().preempted().0.get(), Ordering::Relaxed);
     }
 }
 
 unsafe fn get_thr<T: Thread>(thr_idx: usize) -> &'static T {
-    unsafe { &*T::first().add(thr_idx) }
+    unsafe { T::Pool::threads().get_unchecked(thr_idx) }
 }
