@@ -64,7 +64,6 @@
 //! # #![feature(never_type)]
 //! # use drone_core::token::Token;
 //! # drone_core::thr::pool! {
-//! #     pool => ThrPool;
 //! #     thread => Thr {};
 //! #     local => ThrLocal {};
 //! #     index => Thrs;
@@ -129,7 +128,6 @@
 //! # #![feature(generators)]
 //! # use drone_core::token::Token;
 //! # drone_core::thr::pool! {
-//! #     pool => ThrPool;
 //! #     thread => Thr {};
 //! #     local => ThrLocal {};
 //! #     index => Thrs;

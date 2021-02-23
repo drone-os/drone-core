@@ -17,7 +17,6 @@ use drone_core::{sync::spsc::oneshot, thr};
 use futures::prelude::*;
 
 thr::pool! {
-    pool => ThrPool;
     thread => Thr {};
     local => ThrLocal {};
     index => Thrs;

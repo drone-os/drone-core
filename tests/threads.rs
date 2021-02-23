@@ -19,10 +19,6 @@ use ::std::{
 thr::pool! {
     /// Test doc attribute
     #[doc = "test attribute"]
-    pool => ThrPool;
-
-    /// Test doc attribute
-    #[doc = "test attribute"]
     thread => Thr {
         #[allow(dead_code)]
         pub bar: isize = 1 - 2;
@@ -40,34 +36,11 @@ thr::pool! {
     index => Thrs;
 
     threads => {
-        thread0;
-        thread1;
-        thread2;
+        thr0;
+        thr1;
+        thr2;
     }
 }
-
-macro_rules! thr_idx {
-    ($name:ident, $position:expr) => {
-        #[derive(Clone, Copy)]
-        struct $name;
-
-        unsafe impl Token for $name {
-            unsafe fn take() -> Self {
-                Self
-            }
-        }
-
-        unsafe impl ThrToken for $name {
-            type Thr = Thr;
-
-            const THR_IDX: usize = $position;
-        }
-    };
-}
-
-thr_idx!(Thr0, 0);
-thr_idx!(Thr1, 1);
-thr_idx!(Thr2, 2);
 
 struct Counter(Arc<AtomicI8>);
 

@@ -9,17 +9,10 @@ use syn::{
 };
 
 struct Input {
-    pool: Pool,
     thr: Thr,
     local: Local,
     index: Index,
     threads: Threads,
-}
-
-struct Pool {
-    attrs: Vec<Attribute>,
-    vis: Visibility,
-    ident: Ident,
 }
 
 struct Thr {
@@ -62,7 +55,6 @@ struct Thread {
 
 impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let mut pool = None;
         let mut thr = None;
         let mut local = None;
         let mut index = None;
@@ -71,13 +63,7 @@ impl Parse for Input {
             let attrs = input.call(Attribute::parse_outer)?;
             let ident = input.parse::<Ident>()?;
             input.parse::<Token![=>]>()?;
-            if ident == "pool" {
-                if pool.is_none() {
-                    pool = Some(Pool::parse(input, attrs)?);
-                } else {
-                    return Err(input.error("multiple `pool` specifications"));
-                }
-            } else if ident == "thread" {
+            if ident == "thread" {
                 if thr.is_none() {
                     thr = Some(Thr::parse(input, attrs)?);
                 } else {
@@ -109,20 +95,11 @@ impl Parse for Input {
             }
         }
         Ok(Self {
-            pool: pool.ok_or_else(|| input.error("missing `pool` specification"))?,
             thr: thr.ok_or_else(|| input.error("missing `thread` specification"))?,
             local: local.ok_or_else(|| input.error("missing `local` specification"))?,
             index: index.ok_or_else(|| input.error("missing `index` specification"))?,
             threads: threads.ok_or_else(|| input.error("missing `threads` specification"))?,
         })
-    }
-}
-
-impl Pool {
-    fn parse(input: ParseStream<'_>, attrs: Vec<Attribute>) -> Result<Self> {
-        let vis = input.parse()?;
-        let ident = input.parse()?;
-        Ok(Self { attrs, vis, ident })
     }
 }
 
@@ -200,16 +177,12 @@ impl Parse for Threads {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Input { pool, thr, local, index, threads } = parse_macro_input!(input);
-    let Local { ident: local_ident, .. } = &local;
+    let Input { thr, local, index, threads } = parse_macro_input!(input);
     let Threads { threads } = threads;
-    let local_wrapper = format_ident!("{}Wrapper", local_ident);
-    let def_pool = def_pool(&pool, &thr, &threads);
-    let def_thr = def_thr(&pool, &thr, &local, &local_wrapper);
-    let def_local = def_local(&local, &local_wrapper);
+    let def_thr = def_thr(&thr, &threads, &local);
+    let def_local = def_local(&local);
     let def_index = def_index(&thr, &index, &threads);
     let expanded = quote! {
-        #def_pool
         #def_thr
         #def_local
         #def_index
@@ -217,56 +190,16 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     expanded.into()
 }
 
-fn def_pool(pool: &Pool, thr: &Thr, threads: &[Thread]) -> TokenStream2 {
-    let Pool { vis: pool_vis, attrs: pool_attrs, ident: pool_ident } = pool;
-    let Thr { ident: thr_ident, .. } = thr;
-    let mut pool_tokens = Vec::new();
-    for idx in 0..threads.len() {
-        pool_tokens.push(quote! {
-            #thr_ident::new(#idx)
-        });
-    }
-    let pool_len = threads.len();
-    let static_ident = format_ident!("{}", pool_ident.to_string().to_screaming_snake_case());
-    quote! {
-        #(#pool_attrs)*
-        #pool_vis static #static_ident: #pool_ident = #pool_ident::new();
-
-        #(#pool_attrs)*
-        #pool_vis struct #pool_ident {
-            threads: [#thr_ident; #pool_len],
-            current: ::drone_core::thr::Current,
-        }
-
-        impl #pool_ident {
-            const fn new() -> Self {
-                Self {
-                    threads: [#(#pool_tokens),*],
-                    current: ::drone_core::thr::Current::new(),
-                }
-            }
-        }
-
-        impl ::drone_core::thr::ThreadPool for #pool_ident {
-            type Thr = #thr_ident;
-
-            #[inline]
-            unsafe fn threads() -> &'static [Self::Thr] {
-                &#static_ident.threads
-            }
-
-            #[inline]
-            fn current() -> &'static ::drone_core::thr::Current {
-                &#static_ident.current
-            }
-        }
-    }
-}
-
-fn def_thr(pool: &Pool, thr: &Thr, local: &Local, local_wrapper: &Ident) -> TokenStream2 {
-    let Pool { ident: pool_ident, .. } = pool;
+fn def_thr(thr: &Thr, threads: &[Thread], local: &Local) -> TokenStream2 {
     let Thr { vis: thr_vis, attrs: thr_attrs, ident: thr_ident, fields: thr_fields } = thr;
     let Local { ident: local_ident, .. } = local;
+    let threads_len = threads.len();
+    let mut threads_tokens = Vec::new();
+    for idx in 0..threads.len() {
+        threads_tokens.push(quote! {
+            ::drone_core::thr::ThrOpaque::new(#thr_ident::new(#idx))
+        });
+    }
     let mut thr_tokens = Vec::new();
     let mut thr_ctor_tokens = Vec::new();
     for Field { attrs, vis, ident, ty, init } in thr_fields {
@@ -277,7 +210,7 @@ fn def_thr(pool: &Pool, thr: &Thr, local: &Local, local_wrapper: &Ident) -> Toke
         #(#thr_attrs)*
         #thr_vis struct #thr_ident {
             fib_chain: ::drone_core::fib::Chain,
-            local: #local_wrapper,
+            local: ::drone_core::thr::LocalOpaque<Self>,
             #(#thr_tokens,)*
         }
 
@@ -286,15 +219,29 @@ fn def_thr(pool: &Pool, thr: &Thr, local: &Local, local_wrapper: &Ident) -> Toke
             pub const fn new(index: usize) -> Self {
                 Self {
                     fib_chain: ::drone_core::fib::Chain::new(),
-                    local: #local_wrapper(#local_ident::new(index)),
+                    local: ::drone_core::thr::LocalOpaque::new(#local_ident::new(index)),
                     #(#thr_ctor_tokens,)*
                 }
             }
         }
 
         impl ::drone_core::thr::Thread for #thr_ident {
-            type Pool = #pool_ident;
             type Local = #local_ident;
+
+            #[inline]
+            fn threads() -> &'static [::drone_core::thr::ThrOpaque<Self>] {
+                static THREADS: [::drone_core::thr::ThrOpaque<#thr_ident>; #threads_len] = [
+                    #(#threads_tokens,)*
+                ];
+                &THREADS
+            }
+
+            #[inline]
+            fn current() -> &'static ::drone_core::thr::AtomicOpaque<::core::sync::atomic::AtomicUsize> {
+                static CURRENT: ::drone_core::thr::AtomicOpaque<::core::sync::atomic::AtomicUsize> =
+                    ::drone_core::thr::AtomicOpaque::default_usize();
+                &CURRENT
+            }
 
             #[inline]
             fn fib_chain(&self) -> &::drone_core::fib::Chain {
@@ -302,14 +249,14 @@ fn def_thr(pool: &Pool, thr: &Thr, local: &Local, local_wrapper: &Ident) -> Toke
             }
 
             #[inline]
-            unsafe fn local(&self) -> &#local_ident {
-                &self.local.0
+            fn local_opaque(&self) -> &::drone_core::thr::LocalOpaque<Self> {
+                &self.local
             }
         }
     }
 }
 
-fn def_local(local: &Local, local_wrapper: &Ident) -> TokenStream2 {
+fn def_local(local: &Local) -> TokenStream2 {
     let Local { vis: local_vis, attrs: local_attrs, ident: local_ident, fields: local_fields } =
         &local;
     let mut local_tokens = Vec::new();
@@ -321,29 +268,14 @@ fn def_local(local: &Local, local_wrapper: &Ident) -> TokenStream2 {
     quote! {
         #(#local_attrs)*
         #local_vis struct #local_ident {
-            preempted: ::drone_core::thr::Preempted,
             #(#local_tokens,)*
         }
-
-        // The purpose of this wrapper is to embed non-Sync #local_ident into
-        // Sync #thr_ident.
-        struct #local_wrapper(#local_ident);
-
-        unsafe impl ::core::marker::Sync for #local_wrapper {}
 
         impl #local_ident {
             const fn new(index: usize) -> Self {
                 Self {
-                    preempted: ::drone_core::thr::Preempted::new(),
                     #(#local_ctor_tokens,)*
                 }
-            }
-        }
-
-        impl ::drone_core::thr::ThreadLocal for #local_ident {
-            #[inline]
-            fn preempted(&self) -> &::drone_core::thr::Preempted {
-                &self.preempted
             }
         }
     }
@@ -406,7 +338,7 @@ fn def_thr_token(
         }
 
         unsafe impl ::drone_core::thr::ThrToken for #struct_ident {
-            type Thr = #thr_ident;
+            type Thread = #thr_ident;
 
             const THR_IDX: usize = #idx;
         }

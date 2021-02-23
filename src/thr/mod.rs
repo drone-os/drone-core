@@ -3,7 +3,7 @@
 //! **NOTE** A Drone platform crate may re-export this module with its own
 //! additions under the same name, in which case it should be used instead.
 //!
-//! Drone is a hard real-time operating system.  It uses interrupt-based
+//! Drone is a hard real-time operating system. It uses interrupt-based
 //! preemptive priority scheduling, where tasks with same priorities are
 //! executed cooperatively. A task unit, called Fiber in Drone, is a stack-less
 //! co-routine programmed with Rust async/await and/or generator syntax.
@@ -19,9 +19,6 @@
 //! use drone_core::thr;
 //!
 //! thr::pool! {
-//!     /// Thread pool storage.
-//!     pool => pub ThrPool;
-//!
 //!     /// The thread object.
 //!     thread => pub Thr {
 //!         // You can add your own fields to the thread object. These fields will be
@@ -55,6 +52,14 @@
 
 pub mod prelude;
 
+mod exec;
+mod soft;
+
+pub use self::{
+    exec::{ExecOutput, ThrExec},
+    soft::{SoftThrToken, SoftThread},
+};
+
 /// Defines a thread pool.
 ///
 /// See [the module level documentation](self) for details.
@@ -65,68 +70,76 @@ use crate::{
     fib::{Chain, RootFiber},
     token::Token,
 };
-use core::{
-    cell::Cell,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use core::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
 
-/// Abstract thread pool.
-pub trait ThreadPool: Sized + Sync + 'static {
-    /// The thread type.
-    type Thr: Thread;
-
-    /// Returns a reference to the array of threads.
-    ///
-    /// A safe alternative to this function is calling [`ThrToken::to_thr`]
-    /// method on an instance of a thread token.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because it doesn't check for presence of the
-    /// corresponding thread token.
-    unsafe fn threads() -> &'static [Self::Thr];
-
-    /// Returns a storage for the current thread index.
-    fn current() -> &'static Current;
-}
-
-/// Abstract thread.
+/// Basic thread.
 pub trait Thread: Sized + Sync + 'static {
-    /// The thread pool type.
-    type Pool: ThreadPool<Thr = Self>;
-
     /// The thread-local storage type.
-    type Local: ThreadLocal;
+    type Local: Sized + 'static;
+
+    /// Returns a reference to the array of opaque thread objects.
+    ///
+    /// To obtain a non-opaque reference to a thread object, use
+    /// [`ThrToken::to_thr`] method on an instance of a thread token.
+    fn threads() -> &'static [ThrOpaque<Self>];
+
+    /// Returns a reference to the opaque current thread index storage.
+    fn current() -> &'static AtomicOpaque<AtomicUsize>;
 
     /// Returns a reference to the fiber chain.
     fn fib_chain(&self) -> &Chain;
 
-    /// Returns a reference to the thread-local storage of the thread.
+    /// Returns a reference to the opaque thread-local storage.
     ///
-    /// A safe alternative to this method is calling [`local`] function when
-    /// running on this thread.
+    /// Non-opaque thread-local storage can be obtained through
+    /// [`Thread::local`] function.
+    fn local_opaque(&self) -> &LocalOpaque<Self>;
+
+    /// Returns a reference to the thread-local storage for the current thread.
+    ///
+    /// The contents of this object can be customized with `thr::pool!`
+    /// macro. See [`the module-level documentation`](self) for details.
+    #[inline]
+    fn local() -> &'static Self::Local {
+        let current = Self::current().0.load(Ordering::Relaxed);
+        unsafe { Self::threads().get_unchecked(current).reveal().local_opaque().reveal() }
+    }
+
+    /// Resumes each fiber attached to the thread.
     ///
     /// # Safety
     ///
-    /// This method is unsafe because [`Thread`] is `Sync` while
-    /// [`Thread::Local`] is not.
-    unsafe fn local(&self) -> &Self::Local;
-}
+    /// The method is not reentrant.
+    #[inline(never)]
+    unsafe fn resume(&self) {
+        unsafe { drop(self.fib_chain().drain()) };
+    }
 
-/// Abstract thread-local storage.
-pub trait ThreadLocal: Sized + 'static {
-    /// Returns a storage for the previous thread index.
+    /// Runs the function `f` inside the thread number `thr_idx`.
     ///
-    /// This method is safe because the type doesn't have public methods.
-    fn preempted(&self) -> &Preempted;
+    /// # Safety
+    ///
+    /// * The function is not reentrant.
+    /// * `thr_idx` must be a valid index within [`Thread::threads`] array.
+    #[inline]
+    unsafe fn call(thr_idx: usize, f: unsafe fn(&'static Self)) {
+        unsafe {
+            let preempted = Self::current().reveal().load(Ordering::Relaxed);
+            let thr = Self::threads().get_unchecked(thr_idx).reveal();
+            Self::current().reveal().store(thr_idx, Ordering::Relaxed);
+            f(thr);
+            Self::current().reveal().store(preempted, Ordering::Relaxed);
+        }
+    }
 }
 
-/// Abstract token for a thread in a thread pool.
+/// Token for a thread in a thread pool.
 ///
 /// # Safety
 ///
-/// [`ThrToken::THR_IDX`] must be a valid index in [`ThrToken::Thr`]'s array
-/// returned by [`Thread::first`] method.
+/// * [`ThrToken::THR_IDX`] must be a valid index within [`ThreadPool::threads`]
+///   array.
+/// * At most one `ThrToken` type must exist for each thread.
 pub unsafe trait ThrToken
 where
     Self: Sized + Clone + Copy,
@@ -134,16 +147,15 @@ where
     Self: Token,
 {
     /// The thread type.
-    type Thr: Thread;
+    type Thread: Thread;
 
-    /// Position of the thread inside [`ThrToken::Thr`]'s array returned by
-    /// [`Thread::first`] method.
+    /// Position of the thread within [`ThreadPool::threads`] array.
     const THR_IDX: usize;
 
     /// Returns a reference to the thread object.
     #[inline]
-    fn to_thr(self) -> &'static Self::Thr {
-        unsafe { get_thr(Self::THR_IDX) }
+    fn to_thr(self) -> &'static Self::Thread {
+        unsafe { Self::Thread::threads().get_unchecked(Self::THR_IDX).reveal() }
     }
 
     /// Adds the fiber `fib` to the fiber chain.
@@ -174,60 +186,64 @@ where
     }
 }
 
-/// Current thread index.
-pub struct Current(AtomicUsize);
+/// A wrapper type for incapsulating thread objects.
+#[repr(transparent)]
+pub struct ThrOpaque<T: Thread>(T);
 
-/// Previous thread index.
-pub struct Preempted(Cell<usize>);
+/// A wrapper type for incapsulating thread-local storage objects.
+#[repr(transparent)]
+pub struct LocalOpaque<T: Thread>(T::Local);
 
-impl Current {
-    /// Creates a new `Current`.
-    pub const fn new() -> Self {
+/// A wrapper type for incapsulating various atomic variables for the threading
+/// module.
+#[repr(transparent)]
+pub struct AtomicOpaque<T>(T);
+
+unsafe impl<T: Thread> ::core::marker::Sync for LocalOpaque<T> {}
+
+impl<T: Thread> LocalOpaque<T> {
+    /// Creates a new `LocalOpaque`.
+    #[inline]
+    pub const fn new(local: T::Local) -> Self {
+        Self(local)
+    }
+
+    // Safety: returned type is not `Sync`.
+    unsafe fn reveal(&self) -> &T::Local {
+        &self.0
+    }
+}
+
+impl<T: Thread> ThrOpaque<T> {
+    /// Creates a new `ThrOpaque`.
+    #[inline]
+    pub const fn new(value: T) -> Self {
+        Self(value)
+    }
+
+    fn reveal(&self) -> &T {
+        &self.0
+    }
+}
+
+impl<T> AtomicOpaque<T> {
+    fn reveal(&self) -> &T {
+        &self.0
+    }
+}
+
+impl AtomicOpaque<AtomicUsize> {
+    /// Creates a new zeroed `AtomicOpaque<AtomicUsize>`.
+    #[inline]
+    pub const fn default_usize() -> Self {
         Self(AtomicUsize::new(0))
     }
 }
 
-impl Preempted {
-    /// Creates a new `Preempted`.
-    pub const fn new() -> Self {
-        Self(Cell::new(0))
+impl AtomicOpaque<AtomicU8> {
+    /// Creates a new zeroed `AtomicOpaque<AtomicU8>`.
+    #[inline]
+    pub const fn default_u8() -> Self {
+        Self(AtomicU8::new(0))
     }
-}
-
-/// Returns a reference to the thread-local storage of the current thread.
-///
-/// The contents of this object can be customized with `thr::pool!` macro. See
-/// [`the module-level documentation`](self) for details.
-#[inline]
-pub fn local<T: Thread>() -> &'static T::Local {
-    unsafe { get_thr::<T>(T::Pool::current().0.load(Ordering::Relaxed)).local() }
-}
-
-/// Runs the fiber chain of the thread number `thr_hum`.
-///
-/// # Safety
-///
-/// The function is not reentrant.
-#[inline(never)]
-pub unsafe fn resume<T: Thread>(thr: &'static T) {
-    unsafe { drop(thr.fib_chain().drain()) };
-}
-
-/// Runs the function `f` inside the thread number `thr_idx`.
-///
-/// # Safety
-///
-/// The function is not reentrant.
-pub unsafe fn run<T: Thread>(thr_idx: usize, f: unsafe fn(&'static T)) {
-    unsafe {
-        let thr = get_thr::<T>(thr_idx);
-        thr.local().preempted().0.set(T::Pool::current().0.load(Ordering::Relaxed));
-        T::Pool::current().0.store(thr_idx, Ordering::Relaxed);
-        f(thr);
-        T::Pool::current().0.store(thr.local().preempted().0.get(), Ordering::Relaxed);
-    }
-}
-
-unsafe fn get_thr<T: Thread>(thr_idx: usize) -> &'static T {
-    unsafe { T::Pool::threads().get_unchecked(thr_idx) }
 }
