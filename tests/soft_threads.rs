@@ -1,13 +1,13 @@
-use core::sync::atomic::{AtomicU8, AtomicUsize};
+use core::sync::atomic::{AtomicU32, AtomicU8};
 use drone_core::{
     thr,
-    thr::{AtomicOpaque, SoftThread, ThrExec},
+    thr::{pending_size, SoftThread, ThrExec},
     token::Token,
 };
 
 thr::pool! {
     thread => Thr {
-        priority: AtomicOpaque<AtomicU8> = AtomicOpaque::default_u8();
+        priority: AtomicU8 = AtomicU8::new(0);
     };
 
     local => ThrLocal {};
@@ -22,24 +22,23 @@ thr::pool! {
 }
 
 unsafe impl SoftThread for Thr {
-    const PRIORITY_LEVELS: u8 = 8;
-
-    fn pending() -> &'static [AtomicOpaque<AtomicUsize>] {
-        const DEFAULT: AtomicOpaque<AtomicUsize> = AtomicOpaque::default_usize();
-        static PENDING: [AtomicOpaque<AtomicUsize>; 2] = [DEFAULT; 2];
-        &PENDING
+    fn pending() -> *const AtomicU32 {
+        const VALUE: AtomicU32 = AtomicU32::new(0);
+        const COUNT: usize = pending_size::<Thr>();
+        static PENDING: [AtomicU32; COUNT] = [VALUE; COUNT];
+        PENDING.as_ptr()
     }
 
-    fn current_priority() -> &'static AtomicOpaque<AtomicU8> {
-        static CURRENT_PRIORITY: AtomicOpaque<AtomicU8> = AtomicOpaque::default_u8();
-        &CURRENT_PRIORITY
+    fn pending_priority() -> *const AtomicU8 {
+        static PENDING_PRIORITY: AtomicU8 = AtomicU8::new(0);
+        &PENDING_PRIORITY
     }
 
-    fn priority(&self) -> &AtomicOpaque<AtomicU8> {
+    fn priority(&self) -> *const AtomicU8 {
         &self.priority
     }
 
-    unsafe fn set_pending(thr_idx: usize) {
+    unsafe fn set_pending(thr_idx: u16) {
         if Self::will_preempt(thr_idx) {
             Self::preempt();
         }

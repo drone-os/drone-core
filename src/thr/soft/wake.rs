@@ -6,12 +6,12 @@ use core::{
 
 #[repr(transparent)]
 pub struct SoftWaker<T: SoftThread> {
-    thr_idx: usize,
+    thr_idx: u16,
     _marker: PhantomData<T>,
 }
 
 impl<T: SoftThread> SoftWaker<T> {
-    pub fn new(thr_idx: usize) -> Self {
+    pub fn new(thr_idx: u16) -> Self {
         Self { thr_idx, _marker: PhantomData }
     }
 
@@ -31,10 +31,10 @@ impl<T: SoftThread> SoftWaker<T> {
     }
 
     unsafe fn clone(data: *const ()) -> RawWaker {
-        Self::new(data as usize).to_raw_waker()
+        Self::new(data as u16).to_raw_waker()
     }
 
     unsafe fn wake(data: *const ()) {
-        Self::new(data as usize).wakeup();
+        Self::new(data as u16).wakeup();
     }
 }

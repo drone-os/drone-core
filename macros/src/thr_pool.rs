@@ -1,11 +1,11 @@
 use inflector::Inflector;
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 use syn::{
     braced,
     parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, Expr, Ident, Token, Type, Visibility,
+    parse_macro_input, Attribute, Expr, Ident, LitInt, Token, Type, Visibility,
 };
 
 struct Input {
@@ -193,11 +193,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 fn def_thr(thr: &Thr, threads: &[Thread], local: &Local) -> TokenStream2 {
     let Thr { vis: thr_vis, attrs: thr_attrs, ident: thr_ident, fields: thr_fields } = thr;
     let Local { ident: local_ident, .. } = local;
-    let threads_len = threads.len();
+    let count = LitInt::new(&format!("{}_u16", threads.len()), Span::call_site());
     let mut threads_tokens = Vec::new();
     for idx in 0..threads.len() {
+        let idx = LitInt::new(&format!("{}_u16", idx), Span::call_site());
         threads_tokens.push(quote! {
-            ::drone_core::thr::ThrOpaque::new(#thr_ident::new(#idx))
+            #thr_ident::new(#idx)
         });
     }
     let mut thr_tokens = Vec::new();
@@ -216,7 +217,7 @@ fn def_thr(thr: &Thr, threads: &[Thread], local: &Local) -> TokenStream2 {
 
         impl #thr_ident {
             /// Creates a new thread object with given `index`.
-            pub const fn new(index: usize) -> Self {
+            pub const fn new(index: u16) -> Self {
                 Self {
                     fib_chain: ::drone_core::fib::Chain::new(),
                     local: ::drone_core::thr::LocalOpaque::new(#local_ident::new(index)),
@@ -225,21 +226,21 @@ fn def_thr(thr: &Thr, threads: &[Thread], local: &Local) -> TokenStream2 {
             }
         }
 
-        impl ::drone_core::thr::Thread for #thr_ident {
+        unsafe impl ::drone_core::thr::Thread for #thr_ident {
             type Local = #local_ident;
 
+            const COUNT: u16 = #count;
+
             #[inline]
-            fn threads() -> &'static [::drone_core::thr::ThrOpaque<Self>] {
-                static THREADS: [::drone_core::thr::ThrOpaque<#thr_ident>; #threads_len] = [
-                    #(#threads_tokens,)*
-                ];
-                &THREADS
+            fn pool() -> *const Self {
+                static THREADS: [#thr_ident; #count as usize] = [#(#threads_tokens),*];
+                THREADS.as_ptr()
             }
 
             #[inline]
-            fn current() -> &'static ::drone_core::thr::AtomicOpaque<::core::sync::atomic::AtomicUsize> {
-                static CURRENT: ::drone_core::thr::AtomicOpaque<::core::sync::atomic::AtomicUsize> =
-                    ::drone_core::thr::AtomicOpaque::default_usize();
+            fn current() -> *const ::core::sync::atomic::AtomicU16 {
+                static CURRENT: ::core::sync::atomic::AtomicU16 =
+                    ::core::sync::atomic::AtomicU16::new(0);
                 &CURRENT
             }
 
@@ -272,7 +273,7 @@ fn def_local(local: &Local) -> TokenStream2 {
         }
 
         impl #local_ident {
-            const fn new(index: usize) -> Self {
+            const fn new(index: u16) -> Self {
                 Self {
                     #(#local_ctor_tokens,)*
                 }
@@ -321,6 +322,7 @@ fn def_thr_token(
     let mut tokens = Vec::new();
     let field_ident = format_ident!("{}", ident.to_string().to_snake_case());
     let struct_ident = format_ident!("{}", ident.to_string().to_pascal_case());
+    let idx = LitInt::new(&format!("{}_u16", idx), Span::call_site());
     tokens.push(quote! {
         #(#attrs)*
         #[derive(Clone, Copy)]
@@ -340,7 +342,7 @@ fn def_thr_token(
         unsafe impl ::drone_core::thr::ThrToken for #struct_ident {
             type Thread = #thr_ident;
 
-            const THR_IDX: usize = #idx;
+            const THR_IDX: u16 = #idx;
         }
     });
     (

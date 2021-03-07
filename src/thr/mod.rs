@@ -34,7 +34,7 @@
 //!         // Note that the initializer uses the special `index` variable, that
 //!         // has the value of the position of the thread within the threads array.
 //!         // The types of these fields shouldn't necessarily be `Sync`.
-//!         pub bar: usize = index;
+//!         pub bar: u16 = index;
 //!     };
 //!
 //!     /// Thread token set.
@@ -57,7 +57,7 @@ mod soft;
 
 pub use self::{
     exec::{ExecOutput, ThrExec},
-    soft::{SoftThrToken, SoftThread},
+    soft::{pending_size, SoftThrToken, SoftThread},
 };
 
 /// Defines a thread pool.
@@ -70,21 +70,30 @@ use crate::{
     fib::{Chain, RootFiber},
     token::Token,
 };
-use core::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicU16, Ordering};
 
 /// Basic thread.
-pub trait Thread: Sized + Sync + 'static {
+///
+/// # Safety
+///
+/// * [`Thread::pool`] must point to an array with [`Thread::COUNT`] number of
+///   elements.
+/// * [`Thread::current`] value must be zero-initialized.
+pub unsafe trait Thread: Sized + Sync + 'static {
     /// The thread-local storage type.
     type Local: Sized + 'static;
 
-    /// Returns a reference to the array of opaque thread objects.
-    ///
-    /// To obtain a non-opaque reference to a thread object, use
-    /// [`ThrToken::to_thr`] method on an instance of a thread token.
-    fn threads() -> &'static [ThrOpaque<Self>];
+    /// Number of threads in the pool.
+    const COUNT: u16;
 
-    /// Returns a reference to the opaque current thread index storage.
-    fn current() -> &'static AtomicOpaque<AtomicUsize>;
+    /// Returns a raw pointer to the thread pool.
+    ///
+    /// To obtain a safe reference to a thread object, use [`ThrToken::to_thr`]
+    /// method on the corresponding thread token instance.
+    fn pool() -> *const Self;
+
+    /// Returns a raw pointer to the current thread index storage.
+    fn current() -> *const AtomicU16;
 
     /// Returns a reference to the fiber chain.
     fn fib_chain(&self) -> &Chain;
@@ -101,8 +110,10 @@ pub trait Thread: Sized + Sync + 'static {
     /// macro. See [`the module-level documentation`](self) for details.
     #[inline]
     fn local() -> &'static Self::Local {
-        let current = Self::current().0.load(Ordering::Relaxed);
-        unsafe { Self::threads().get_unchecked(current).reveal().local_opaque().reveal() }
+        unsafe {
+            let current = (*Self::current()).load(Ordering::Relaxed);
+            (*Self::pool().add(usize::from(current))).local_opaque().reveal()
+        }
     }
 
     /// Resumes each fiber attached to the thread.
@@ -120,15 +131,14 @@ pub trait Thread: Sized + Sync + 'static {
     /// # Safety
     ///
     /// * The function is not reentrant.
-    /// * `thr_idx` must be a valid index within [`Thread::threads`] array.
+    /// * `thr_idx` must be less than [`Thread::COUNT`].
     #[inline]
-    unsafe fn call(thr_idx: usize, f: unsafe fn(&'static Self)) {
+    unsafe fn call(thr_idx: u16, f: unsafe fn(&'static Self)) {
         unsafe {
-            let preempted = Self::current().reveal().load(Ordering::Relaxed);
-            let thr = Self::threads().get_unchecked(thr_idx).reveal();
-            Self::current().reveal().store(thr_idx, Ordering::Relaxed);
-            f(thr);
-            Self::current().reveal().store(preempted, Ordering::Relaxed);
+            let preempted = (*Self::current()).load(Ordering::Relaxed);
+            (*Self::current()).store(thr_idx, Ordering::Relaxed);
+            f(&*Self::pool().add(usize::from(thr_idx)));
+            (*Self::current()).store(preempted, Ordering::Relaxed);
         }
     }
 }
@@ -137,9 +147,8 @@ pub trait Thread: Sized + Sync + 'static {
 ///
 /// # Safety
 ///
-/// * [`ThrToken::THR_IDX`] must be a valid index within [`ThreadPool::threads`]
-///   array.
-/// * At most one `ThrToken` type must exist for each thread.
+/// * At most one trait implementation per thread must exist.
+/// * [`ThrToken::THR_IDX`] must be less than [`ThrToken::Thread::COUNT`].
 pub unsafe trait ThrToken
 where
     Self: Sized + Clone + Copy,
@@ -149,13 +158,13 @@ where
     /// The thread type.
     type Thread: Thread;
 
-    /// Position of the thread within [`ThreadPool::threads`] array.
-    const THR_IDX: usize;
+    /// Position of the thread within [`Self::Thread::pool`] array.
+    const THR_IDX: u16;
 
     /// Returns a reference to the thread object.
     #[inline]
     fn to_thr(self) -> &'static Self::Thread {
-        unsafe { Self::Thread::threads().get_unchecked(Self::THR_IDX).reveal() }
+        unsafe { &*Self::Thread::pool().add(usize::from(Self::THR_IDX)) }
     }
 
     /// Adds the fiber `fib` to the fiber chain.
@@ -186,18 +195,14 @@ where
     }
 }
 
-/// A wrapper type for incapsulating thread objects.
-#[repr(transparent)]
-pub struct ThrOpaque<T: Thread>(T);
-
-/// A wrapper type for incapsulating thread-local storage objects.
+/// Thread-local storage wrapper for thread `T`.
+///
+/// The wrapper is always `Sync`, while `T::Local` is not necessarily
+/// `Sync`. The contents of the wrapper can be revealed only by
+/// [`Thread::local`] function, which guarantees that the contents doesn't leave
+/// its thread.
 #[repr(transparent)]
 pub struct LocalOpaque<T: Thread>(T::Local);
-
-/// A wrapper type for incapsulating various atomic variables for the threading
-/// module.
-#[repr(transparent)]
-pub struct AtomicOpaque<T>(T);
 
 unsafe impl<T: Thread> ::core::marker::Sync for LocalOpaque<T> {}
 
@@ -208,42 +213,7 @@ impl<T: Thread> LocalOpaque<T> {
         Self(local)
     }
 
-    // Safety: returned type is not `Sync`.
     unsafe fn reveal(&self) -> &T::Local {
         &self.0
-    }
-}
-
-impl<T: Thread> ThrOpaque<T> {
-    /// Creates a new `ThrOpaque`.
-    #[inline]
-    pub const fn new(value: T) -> Self {
-        Self(value)
-    }
-
-    fn reveal(&self) -> &T {
-        &self.0
-    }
-}
-
-impl<T> AtomicOpaque<T> {
-    fn reveal(&self) -> &T {
-        &self.0
-    }
-}
-
-impl AtomicOpaque<AtomicUsize> {
-    /// Creates a new zeroed `AtomicOpaque<AtomicUsize>`.
-    #[inline]
-    pub const fn default_usize() -> Self {
-        Self(AtomicUsize::new(0))
-    }
-}
-
-impl AtomicOpaque<AtomicU8> {
-    /// Creates a new zeroed `AtomicOpaque<AtomicU8>`.
-    #[inline]
-    pub const fn default_u8() -> Self {
-        Self(AtomicU8::new(0))
     }
 }
