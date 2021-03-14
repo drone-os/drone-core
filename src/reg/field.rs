@@ -76,6 +76,7 @@ pub trait RegFieldBit<T: RegTag>: RegField<T> {}
 pub trait RegFieldBits<T: RegTag>: RegField<T> {}
 
 /// Readable field of readable register.
+#[allow(clippy::upper_case_acronyms)]
 pub trait RRRegField<T: RegTag>
 where
     Self: RegField<T>,
@@ -93,6 +94,7 @@ where
 }
 
 /// Writable field of writable register.
+#[allow(clippy::upper_case_acronyms)]
 pub trait WWRegField<T: RegTag>
 where
     Self: RegField<T>,
@@ -141,6 +143,7 @@ where
 }
 
 /// Readable single-bit field of readable register.
+#[allow(clippy::upper_case_acronyms)]
 pub trait RRRegFieldBit<T: RegTag>
 where
     Self: RegFieldBit<T> + RRRegField<T>,
@@ -155,6 +158,7 @@ where
 }
 
 /// Writable single-bit field of writable register.
+#[allow(clippy::upper_case_acronyms)]
 pub trait WWRegFieldBit<T: RegTag>
 where
     Self: RegFieldBit<T> + WWRegField<T>,
@@ -187,6 +191,7 @@ where
 }
 
 /// Readable multiple-bit field of readable register.
+#[allow(clippy::upper_case_acronyms)]
 pub trait RRRegFieldBits<T: RegTag>
 where
     Self: RegFieldBits<T> + RRRegField<T>,
@@ -203,6 +208,7 @@ where
 }
 
 /// Writable multiple-bit field of writable register.
+#[allow(clippy::upper_case_acronyms)]
 pub trait WWRegFieldBits<T: RegTag>
 where
     Self: RegFieldBits<T> + WWRegField<T>,

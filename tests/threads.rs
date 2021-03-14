@@ -16,11 +16,7 @@ use ::std::{
     },
 };
 
-static mut THREADS: [Thr; 3] = [Thr::new(0), Thr::new(1), Thr::new(2)];
-
-thr! {
-    array => THREADS;
-
+thr::pool! {
     /// Test doc attribute
     #[doc = "test attribute"]
     thread => Thr {
@@ -34,30 +30,17 @@ thr! {
         #[allow(dead_code)]
         pub foo: usize = 0;
     };
+
+    /// Test doc attribute
+    #[doc = "test attribute"]
+    index => Thrs;
+
+    threads => {
+        thr0;
+        thr1;
+        thr2;
+    }
 }
-
-macro_rules! thr_idx {
-    ($name:ident, $position:expr) => {
-        #[derive(Clone, Copy)]
-        struct $name;
-
-        unsafe impl Token for $name {
-            unsafe fn take() -> Self {
-                Self
-            }
-        }
-
-        unsafe impl ThrToken for $name {
-            type Thr = Thr;
-
-            const THR_IDX: usize = $position;
-        }
-    };
-}
-
-thr_idx!(Thr0, 0);
-thr_idx!(Thr1, 1);
-thr_idx!(Thr2, 2);
 
 struct Counter(Arc<AtomicI8>);
 

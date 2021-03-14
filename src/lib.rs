@@ -102,12 +102,6 @@ pub use drone_core_macros::periph;
 #[doc(inline)]
 pub use drone_core_macros::reg;
 
-/// Defines threads.
-///
-/// See [the module level documentation](thr) for details.
-#[doc(inline)]
-pub use drone_core_macros::thr;
-
 #[doc(hidden)]
 pub use drone_core_macros::config_override;
 
