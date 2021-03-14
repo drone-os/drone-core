@@ -10,7 +10,7 @@ use core::{
 /// Number of priority levels.
 pub const PRIORITY_LEVELS: u8 = 27;
 
-/// TODO docs
+/// Returns the number of elements in [`SoftThread::pending`] array.
 pub const fn pending_size<T: SoftThread>() -> usize {
     1 + pending_row_size::<T>() * PRIORITY_LEVELS as usize
 }
@@ -32,11 +32,10 @@ const fn pending_bit<T: SoftThread>(thr_idx: u16) -> u32 {
 
 /// Software-managed thread.
 ///
-/// TODO document implementation.
-///
 /// # Safety
 ///
-/// TODO document `pending` size.
+/// [`SoftThread::pending`] must point to an array with [`pending_size`] number
+/// of elements.
 pub unsafe trait SoftThread: Thread {
     /// Returns a raw pointer to the pending state storage.
     fn pending() -> *const AtomicU32;
@@ -55,7 +54,12 @@ pub unsafe trait SoftThread: Thread {
     ///
     /// * `thr_idx` must be less than [`Thread::COUNT`].
     /// * This function doesn't check for the thread token ownership.
-    unsafe fn set_pending(thr_idx: u16);
+    #[inline]
+    unsafe fn set_pending(thr_idx: u16) {
+        if unsafe { Self::will_preempt(thr_idx) } {
+            Self::preempt();
+        }
+    }
 
     /// Sets the `thr_idx` thread pending and returns `true` if the thread
     /// priority is higher than the currently priority.
@@ -70,13 +74,13 @@ pub unsafe trait SoftThread: Thread {
     #[inline]
     unsafe fn will_preempt(thr_idx: u16) -> bool {
         unsafe {
-            let priority =
+            let mut priority =
                 (*(*Self::pool().add(usize::from(thr_idx))).priority()).load(Ordering::Relaxed);
             let cursor = set_pending::<Self>(thr_idx, priority);
+            priority += 1;
             cursor & pending_bit::<Self>(thr_idx) == 0
                 && cursor >> PRIORITY_LEVELS < u32::from(priority)
-                && (*Self::pending_priority()).fetch_max(priority + 1, Ordering::Relaxed)
-                    < priority + 1
+                && (*Self::pending_priority()).fetch_max(priority, Ordering::Release) < priority
         }
     }
 
@@ -84,7 +88,7 @@ pub unsafe trait SoftThread: Thread {
     /// priority.
     fn preempt() {
         unsafe {
-            let mut priority = match (*Self::pending_priority()).swap(0, Ordering::Relaxed) {
+            let mut priority = match (*Self::pending_priority()).swap(0, Ordering::Acquire) {
                 0 => return,
                 priority => u32::from(priority),
             };
@@ -97,7 +101,7 @@ pub unsafe trait SoftThread: Thread {
             loop {
                 let mut thr_idx = 0;
                 'row: loop {
-                    let mut cell = (*ptr).load(Ordering::Relaxed);
+                    let mut cell = (*ptr).load(Ordering::Acquire);
                     if cell == 0 {
                         thr_idx += 32;
                         if thr_idx >= Self::COUNT {
@@ -191,7 +195,7 @@ impl<T: SoftThrToken> ThrExec for T {
 unsafe fn cursor_start<T: SoftThread>(priority: u32) -> Option<u32> {
     unsafe {
         let mut prev_priority;
-        let mut cursor = (*T::pending()).load(Ordering::Relaxed);
+        let mut cursor = (*T::pending()).load(Ordering::Acquire);
         loop {
             prev_priority = cursor >> PRIORITY_LEVELS;
             if prev_priority >= priority {
@@ -200,7 +204,7 @@ unsafe fn cursor_start<T: SoftThread>(priority: u32) -> Option<u32> {
             match (*T::pending()).compare_exchange_weak(
                 cursor,
                 (cursor & !PRIORITY_MASK | priority << PRIORITY_LEVELS) & !(1 << priority - 1),
-                Ordering::Relaxed,
+                Ordering::Acquire,
                 Ordering::Relaxed,
             ) {
                 Ok(_) => return Some(prev_priority),
@@ -216,7 +220,7 @@ unsafe fn cursor_advance<T: SoftThread>(
     prev_priority: u32,
 ) -> bool {
     unsafe {
-        let mut cursor = (*T::pending()).load(Ordering::Relaxed);
+        let mut cursor = (*T::pending()).load(Ordering::Acquire);
         loop {
             if cursor & 1 << *priority - 1 == 0 {
                 let mut next_priority = *priority;
@@ -226,7 +230,7 @@ unsafe fn cursor_advance<T: SoftThread>(
                         match (*T::pending()).compare_exchange_weak(
                             cursor,
                             cursor & !PRIORITY_MASK | prev_priority << PRIORITY_LEVELS,
-                            Ordering::Relaxed,
+                            Ordering::Acquire,
                             Ordering::Relaxed,
                         ) {
                             Ok(_) => {
@@ -243,7 +247,7 @@ unsafe fn cursor_advance<T: SoftThread>(
                             cursor,
                             (cursor & !PRIORITY_MASK | next_priority << PRIORITY_LEVELS)
                                 & !(1 << next_priority - 1),
-                            Ordering::Relaxed,
+                            Ordering::Acquire,
                             Ordering::Relaxed,
                         ) {
                             Ok(_) => {
@@ -264,7 +268,7 @@ unsafe fn cursor_advance<T: SoftThread>(
                 match (*T::pending()).compare_exchange_weak(
                     cursor,
                     cursor & !(1 << *priority - 1),
-                    Ordering::Relaxed,
+                    Ordering::Acquire,
                     Ordering::Relaxed,
                 ) {
                     Ok(_) => return false,
@@ -286,7 +290,7 @@ unsafe fn thr_resume<T: SoftThread>(cell: &mut u32, ptr: *const AtomicU32, thr_i
             match (*ptr).compare_exchange_weak(
                 *cell,
                 next_cell,
-                Ordering::Relaxed,
+                Ordering::Acquire,
                 Ordering::Relaxed,
             ) {
                 Ok(_) => {
@@ -305,8 +309,8 @@ unsafe fn thr_resume<T: SoftThread>(cell: &mut u32, ptr: *const AtomicU32, thr_i
 unsafe fn set_pending<T: SoftThread>(thr_idx: u16, priority: u8) -> u32 {
     unsafe {
         (*T::pending().add(pending_idx::<T>(thr_idx, priority)))
-            .fetch_or(pending_bit::<T>(thr_idx), Ordering::Relaxed);
-        (*T::pending()).fetch_or(1 << priority, Ordering::Relaxed)
+            .fetch_or(pending_bit::<T>(thr_idx), Ordering::Release);
+        (*T::pending()).fetch_or(1 << priority, Ordering::Release)
     }
 }
 

@@ -3,14 +3,13 @@
 //! **NOTE** A Drone platform crate may re-export this module with its own
 //! additions under the same name, in which case it should be used instead.
 //!
-//! Drone is a hard real-time operating system. It uses interrupt-based
-//! preemptive priority scheduling, where tasks with same priorities are
-//! executed cooperatively. A task unit, called Fiber in Drone, is a stack-less
-//! co-routine programmed with Rust async/await and/or generator syntax.
+//! Drone is a hard real-time operating system. It uses preemptive priority
+//! scheduling, where tasks with same priorities are executed cooperatively. A
+//! task unit, called Fiber in Drone, is a stack-less co-routine programmed with
+//! Rust async/await and/or generator syntax.
 //!
-//! A Drone application maps available prioritized interrupts to Drone threads.
 //! The number of threads is always static but configurable. Any number of
-//! fibers can be attached to particular threads, see [`fib`](crate::fib) for
+//! fibers can be attached to a particular thread, see [`fib`](crate::fib) for
 //! details. The Drone application configures its own thread type, which
 //! implements [`Thread`], and creates a continuous array of this type.
 //!
@@ -57,7 +56,7 @@ mod soft;
 
 pub use self::{
     exec::{ExecOutput, ThrExec},
-    soft::{pending_size, SoftThrToken, SoftThread},
+    soft::{pending_size, SoftThrToken, SoftThread, PRIORITY_LEVELS},
 };
 
 /// Defines a thread pool.
@@ -65,6 +64,12 @@ pub use self::{
 /// See [the module level documentation](self) for details.
 #[doc(inline)]
 pub use drone_core_macros::thr_pool as pool;
+
+/// Defines a software-managed thread pool.
+///
+/// See [the module level documentation](self) for details.
+#[doc(inline)]
+pub use drone_core_macros::thr_soft as soft;
 
 use crate::{
     fib::{Chain, RootFiber},
