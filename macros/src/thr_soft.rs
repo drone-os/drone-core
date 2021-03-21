@@ -193,6 +193,7 @@ fn def_soft(thr: &Thr, set_pending: Option<&ExprPath>) -> TokenStream2 {
         unsafe impl ::drone_core::thr::SoftThread for #thr_ident {
             #[inline]
             fn pending() -> *const ::core::sync::atomic::AtomicU32 {
+                #[allow(clippy::declare_interior_mutable_const)]
                 const VALUE: ::core::sync::atomic::AtomicU32 =
                     ::core::sync::atomic::AtomicU32::new(0);
                 const COUNT: usize = ::drone_core::thr::pending_size::<#thr_ident>();

@@ -113,11 +113,30 @@ pub unsafe trait Thread: Sized + Sync + 'static {
     ///
     /// The contents of this object can be customized with `thr::pool!`
     /// macro. See [`the module-level documentation`](self) for details.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if called outside of this thread pool.
     #[inline]
     fn local() -> &'static Self::Local {
+        Self::local_checked().expect("getting thread-local outside of thread pool")
+    }
+
+    /// Returns a reference to the thread-local storage for the current thread.
+    ///
+    /// If called outside of this thread pool, returns `None`.
+    ///
+    /// The contents of this object can be customized with `thr::pool!`
+    /// macro. See [`the module-level documentation`](self) for details.
+    #[inline]
+    fn local_checked() -> Option<&'static Self::Local> {
         unsafe {
             let current = (*Self::current()).load(Ordering::Relaxed);
-            (*Self::pool().add(usize::from(current))).local_opaque().reveal()
+            if current == 0 {
+                None
+            } else {
+                Some((*Self::pool().add(usize::from(current) - 1)).local_opaque().reveal())
+            }
         }
     }
 
@@ -141,7 +160,7 @@ pub unsafe trait Thread: Sized + Sync + 'static {
     unsafe fn call(thr_idx: u16, f: unsafe fn(&'static Self)) {
         unsafe {
             let preempted = (*Self::current()).load(Ordering::Relaxed);
-            (*Self::current()).store(thr_idx, Ordering::Relaxed);
+            (*Self::current()).store(thr_idx + 1, Ordering::Relaxed);
             f(&*Self::pool().add(usize::from(thr_idx)));
             (*Self::current()).store(preempted, Ordering::Relaxed);
         }
