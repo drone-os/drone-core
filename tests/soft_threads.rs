@@ -29,6 +29,21 @@ fn test_set_pending() {
 }
 
 #[test]
+fn test_resume() {
+    thr::soft! {
+        thread => Thr {};
+        local => ThrLocal {};
+        index => Thrs;
+        threads => {};
+        resume => resume;
+    }
+    unsafe fn resume(thr: &Thr) {
+        use ::drone_core::thr::prelude::*;
+        thr.fib_chain().drain();
+    }
+}
+
+#[test]
 fn test_pending_size() {
     thr::soft! {
         thread => Thr0 {};

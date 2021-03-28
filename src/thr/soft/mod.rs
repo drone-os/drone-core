@@ -86,6 +86,7 @@ pub unsafe trait SoftThread: Thread {
 
     /// Runs all pending threads with higher priorities than the current
     /// priority.
+    #[inline]
     fn preempt() {
         unsafe {
             let mut priority = match (*Self::pending_priority()).swap(0, Ordering::Acquire) {

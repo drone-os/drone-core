@@ -12,6 +12,7 @@ struct Input {
     local: Local,
     index: Index,
     threads: Threads,
+    resume: Option<ExprPath>,
     set_pending: Option<ExprPath>,
 }
 
@@ -45,6 +46,7 @@ impl Parse for Input {
         let mut local = None;
         let mut index = None;
         let mut threads = None;
+        let mut resume = None;
         let mut set_pending = None;
         while !input.is_empty() {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -74,6 +76,12 @@ impl Parse for Input {
                 } else {
                     return Err(input.error("multiple `threads` specifications"));
                 }
+            } else if attrs.is_empty() && ident == "resume" {
+                if resume.is_none() {
+                    resume = Some(input.parse()?);
+                } else {
+                    return Err(input.error("multiple `resume` specifications"));
+                }
             } else if attrs.is_empty() && ident == "set_pending" {
                 if set_pending.is_none() {
                     set_pending = Some(input.parse()?);
@@ -92,6 +100,7 @@ impl Parse for Input {
             local: local.ok_or_else(|| input.error("missing `local` specification"))?,
             index: index.ok_or_else(|| input.error("missing `index` specification"))?,
             threads: threads.ok_or_else(|| input.error("missing `threads` specification"))?,
+            resume,
             set_pending,
         })
     }
@@ -137,8 +146,8 @@ impl Parse for Threads {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Input { thr, local, index, threads, set_pending } = parse_macro_input!(input);
-    let def_pool = def_pool(&thr, &local, &index, &threads);
+    let Input { thr, local, index, threads, resume, set_pending } = parse_macro_input!(input);
+    let def_pool = def_pool(&thr, &local, &index, &threads, resume.as_ref());
     let def_soft = def_soft(&thr, set_pending.as_ref());
 
     let expanded = quote! {
@@ -148,12 +157,19 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     expanded.into()
 }
 
-fn def_pool(thr: &Thr, local: &Local, index: &Index, threads: &Threads) -> TokenStream2 {
+fn def_pool(
+    thr: &Thr,
+    local: &Local,
+    index: &Index,
+    threads: &Threads,
+    resume: Option<&ExprPath>,
+) -> TokenStream2 {
     let Thr { attrs: thr_attrs, vis: thr_vis, ident: thr_ident, tokens: thr_tokens } = thr;
     let Local { attrs: local_attrs, vis: local_vis, ident: local_ident, tokens: local_tokens } =
         local;
     let Index { attrs: index_attrs, vis: index_vis, ident: index_ident } = index;
     let Threads { tokens: threads_tokens } = threads;
+    let resume = resume.into_iter();
 
     quote! {
         ::drone_core::thr::pool! {
@@ -174,6 +190,8 @@ fn def_pool(thr: &Thr, local: &Local, index: &Index, threads: &Threads) -> Token
             threads => {
                 #threads_tokens
             };
+
+            #(resume => #resume;)*
         }
     }
 }

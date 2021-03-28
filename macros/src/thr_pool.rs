@@ -5,7 +5,7 @@ use quote::{format_ident, quote};
 use syn::{
     braced,
     parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, Expr, Ident, LitInt, Token, Type, Visibility,
+    parse_macro_input, Attribute, Expr, ExprPath, Ident, LitInt, Token, Type, Visibility,
 };
 
 struct Input {
@@ -13,6 +13,7 @@ struct Input {
     local: Local,
     index: Index,
     threads: Threads,
+    resume: Option<ExprPath>,
 }
 
 struct Thr {
@@ -59,6 +60,7 @@ impl Parse for Input {
         let mut local = None;
         let mut index = None;
         let mut threads = None;
+        let mut resume = None;
         while !input.is_empty() {
             let attrs = input.call(Attribute::parse_outer)?;
             let ident = input.parse::<Ident>()?;
@@ -87,6 +89,12 @@ impl Parse for Input {
                 } else {
                     return Err(input.error("multiple `threads` specifications"));
                 }
+            } else if attrs.is_empty() && ident == "resume" {
+                if resume.is_none() {
+                    resume = Some(input.parse()?);
+                } else {
+                    return Err(input.error("multiple `resume` specifications"));
+                }
             } else {
                 return Err(input.error(format!("unknown key: `{}`", ident)));
             }
@@ -99,6 +107,7 @@ impl Parse for Input {
             local: local.ok_or_else(|| input.error("missing `local` specification"))?,
             index: index.ok_or_else(|| input.error("missing `index` specification"))?,
             threads: threads.ok_or_else(|| input.error("missing `threads` specification"))?,
+            resume,
         })
     }
 }
@@ -177,9 +186,9 @@ impl Parse for Threads {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Input { thr, local, index, threads } = parse_macro_input!(input);
+    let Input { thr, local, index, threads, resume } = parse_macro_input!(input);
     let Threads { threads } = threads;
-    let def_thr = def_thr(&thr, &threads, &local);
+    let def_thr = def_thr(&thr, &threads, &local, resume.as_ref());
     let def_local = def_local(&local);
     let def_index = def_index(&thr, &index, &threads);
     let expanded = quote! {
@@ -190,9 +199,22 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     expanded.into()
 }
 
-fn def_thr(thr: &Thr, threads: &[Thread], local: &Local) -> TokenStream2 {
+fn def_thr(
+    thr: &Thr,
+    threads: &[Thread],
+    local: &Local,
+    resume: Option<&ExprPath>,
+) -> TokenStream2 {
     let Thr { vis: thr_vis, attrs: thr_attrs, ident: thr_ident, fields: thr_fields } = thr;
     let Local { ident: local_ident, .. } = local;
+    let resume = resume.map(|resume| {
+        quote! {
+            #[inline]
+            unsafe fn resume(&self) {
+                unsafe { #resume(self) };
+            }
+        }
+    });
     let count = LitInt::new(&format!("{}_u16", threads.len()), Span::call_site());
     let mut threads_tokens = Vec::new();
     for idx in 0..threads.len() {
@@ -253,6 +275,8 @@ fn def_thr(thr: &Thr, threads: &[Thread], local: &Local) -> TokenStream2 {
             fn local_opaque(&self) -> &::drone_core::thr::LocalOpaque<Self> {
                 &self.local
             }
+
+            #resume
         }
     }
 }

@@ -145,7 +145,7 @@ pub unsafe trait Thread: Sized + Sync + 'static {
     /// # Safety
     ///
     /// The method is not reentrant.
-    #[inline(never)]
+    #[inline]
     unsafe fn resume(&self) {
         unsafe { drop(self.fib_chain().drain()) };
     }

@@ -43,7 +43,6 @@
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
-#![feature(unsafe_block_in_unsafe_fn)]
 #![feature(untagged_unions)]
 #![warn(missing_docs, unsafe_op_in_unsafe_fn)]
 #![warn(clippy::pedantic)]
