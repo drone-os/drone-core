@@ -234,6 +234,7 @@ impl Variant {
                 });
                 if traits.iter().any(|name| name == "RRRegField") {
                     tokens.push(quote! {
+                        #[allow(clippy::len_without_is_empty)]
                         impl<'a, #t: ::drone_core::reg::tag::RegTag> Hold<'a, #t> {
                             #(#attrs)*
                             #[inline]
@@ -251,6 +252,7 @@ impl Variant {
                     let clear_field = format_ident!("clear_{}", field_snk);
                     let toggle_field = format_ident!("toggle_{}", field_snk);
                     tokens.push(quote! {
+                        #[allow(clippy::len_without_is_empty)]
                         impl<'a, #t: ::drone_core::reg::tag::RegTag> Hold<'a, #t> {
                             #(#attrs)*
                             #[inline]
@@ -294,6 +296,7 @@ impl Variant {
                 });
                 if traits.iter().any(|name| name == "RRRegField") {
                     tokens.push(quote! {
+                        #[allow(clippy::len_without_is_empty)]
                         impl<'a, #t: ::drone_core::reg::tag::RegTag> Hold<'a, #t> {
                             #(#attrs)*
                             #[inline]
@@ -309,6 +312,7 @@ impl Variant {
                 if traits.iter().any(|name| name == "WWRegField") {
                     let write_field = format_ident!("write_{}", field_snk);
                     tokens.push(quote! {
+                        #[allow(clippy::len_without_is_empty)]
                         impl<'a, #t: ::drone_core::reg::tag::RegTag> Hold<'a, #t> {
                             #(#attrs)*
                             #[inline]

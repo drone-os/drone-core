@@ -11,7 +11,7 @@ Possible log types:
 - `[fixed]` for any bug fixes.
 - `[security]` to invite users to upgrade in case of vulnerabilities.
 
-### Unreleased
+### v0.14.0 (2021-04-09)
 
 - [removed] `heaptrace` feature has been removed in favor of the new
   `trace_port` option in `heap!` macro
@@ -20,7 +20,7 @@ Possible log types:
 - [added] Added `global` option to `heap!` macro
 - [changed] Changed function signature for outer thread handlers
 - [changed] `fib::Chain::drain` method now returns an iterator, which can be
-  queried whether any fiber was executed.
+  queried for whether any fiber was executed.
 - [added] Added a new synchronization primitive: lock-free singly-linked list
   `sync::LinkedList`
 - [changed] `sync::Mutex` was rewritten to be futures-aware
@@ -29,7 +29,17 @@ Possible log types:
 - [renamed] `FiberRoot` trait is now `RootFiber`
 - [changed] Changed semantics of `RootFiber::advance`
 - [added] Added `*_factory` method variants for creating non-`Send` fibers
-- [fixed] Removed one layer of indirection from `fib::Chain`
+- [fixed] Removed one layer of indirection in `fib::Chain`
+- [changed] `thr!` macro has been renamed to `thr::pool!` and the syntax has
+  been changed
+- [added] `thr::ThrExec` trait from `drone-cortexm` has been moved to the core with
+- [changed] `thr::Thread` and `thr::ThrToken` trait definitions have been
+  changed
+- [removed] `thr::ThreadLocal` trait has been removed
+- [changed] `thr::local` and `thr::thread_call` free-standing functions have
+  been moved to `thr::Thread` trait with changes in semantics
+- [added] Added software-driven thread pools (see `thr::soft` module and
+  `thr::soft!` macro)
 
 ### v0.13.0 (2020-11-28)
 

@@ -563,6 +563,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         });
                     }
                     tokens.push(quote! {
+                        #[allow(clippy::inconsistent_struct_constructor)]
                         #reg_attrs
                         impl #u_reg<#periph_ty> for #reg_root::Reg<#core_urt> {
                             #[inline]
@@ -585,6 +586,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         }
                     });
                     tokens.push(quote! {
+                        #[allow(clippy::inconsistent_struct_constructor)]
                         #reg_attrs
                         impl #s_reg<#periph_ty> for #reg_root::Reg<#core_srt> {
                             #[inline]
@@ -607,6 +609,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         }
                     });
                     tokens.push(quote! {
+                        #[allow(clippy::inconsistent_struct_constructor)]
                         #reg_attrs
                         impl #c_reg<#periph_ty> for #reg_root::Reg<#core_crt> {
                             #[inline]
