@@ -146,4 +146,14 @@ where
     }
 }
 
+impl<F> Drop for Drain<'_, F>
+where
+    F: FnMut(*mut ListNode<Node<()>>) -> bool,
+{
+    #[inline]
+    fn drop(&mut self) {
+        self.for_each(drop);
+    }
+}
+
 impl<F> FusedIterator for Drain<'_, F> where F: FnMut(*mut ListNode<Node<()>>) -> bool {}

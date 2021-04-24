@@ -16,7 +16,7 @@ Add the crate to your `Cargo.toml` dependencies:
 
 ```toml
 [dependencies]
-drone-core = { version = "0.14.0" }
+drone-core = { version = "0.14.1" }
 ```
 
 Add or extend `std` feature as follows:
