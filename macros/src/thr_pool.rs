@@ -344,7 +344,7 @@ fn def_thr_token(
     let Thr { ident: thr_ident, .. } = thr;
     let Thread { attrs, vis, ident } = thread;
     let mut tokens = Vec::new();
-    let field_ident = format_ident!("{}", ident.to_string().to_snake_case());
+    let field_ident = format_ident!("{}", ident);
     let struct_ident = format_ident!("{}", ident.to_string().to_pascal_case());
     let idx = LitInt::new(&format!("{}_u16", idx), Span::call_site());
     tokens.push(quote! {

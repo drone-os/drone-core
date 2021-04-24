@@ -305,8 +305,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                                 }
                             });
                         } else {
+                            reg_bounds.push((features, quote!(Self: #field_trait_opt<Self>)));
                             if reg_option {
-                                reg_bounds.push((features, quote!(Self: #field_trait_opt<Self>)));
                                 tokens.push(quote! {
                                     #field_attrs
                                     #[allow(missing_docs)]
@@ -324,23 +324,22 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                                     }
                                 });
                                 tokens.push(quote! {
-                                #field_attrs
-                                #[allow(missing_docs)]
-                                pub trait #field_trait
-                                where
-                                    Self: #reg_trait,
-                                    Self: #field_trait_ext<Self>,
-                                    Self: #field_trait_opt<
-                                        Self,
-                                        #u_field_opt = <Self as #field_trait_ext<Self>>::#u_field,
-                                        #s_field_opt = <Self as #field_trait_ext<Self>>::#s_field,
-                                        #c_field_opt = <Self as #field_trait_ext<Self>>::#c_field,
-                                    >,
-                                {
-                                }
-                            });
+                                    #field_attrs
+                                    #[allow(missing_docs)]
+                                    pub trait #field_trait
+                                    where
+                                        Self: #reg_trait,
+                                        Self: #field_trait_ext<Self>,
+                                        Self: #field_trait_opt<
+                                            Self,
+                                            #u_field_opt = <Self as #field_trait_ext<Self>>::#u_field,
+                                            #s_field_opt = <Self as #field_trait_ext<Self>>::#s_field,
+                                            #c_field_opt = <Self as #field_trait_ext<Self>>::#c_field,
+                                        >,
+                                    {
+                                    }
+                                });
                             } else {
-                                reg_bounds.push((features, quote!(Self: #field_trait_opt<Self>)));
                                 tokens.push(quote! {
                                     #field_attrs
                                     #[allow(missing_docs)]
@@ -358,22 +357,22 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                                     }
                                 });
                                 tokens.push(quote! {
-                                #field_attrs
-                                #[allow(missing_docs)]
-                                pub trait #field_trait
-                                where
-                                    Self: #trait_ident,
-                                    Self: #reg_trait<Self>,
-                                    Self: #field_trait_ext<Self>,
-                                    Self: #field_trait_opt<
-                                        Self,
-                                        #u_field_opt = <Self as #field_trait_ext<Self>>::#u_field,
-                                        #s_field_opt = <Self as #field_trait_ext<Self>>::#s_field,
-                                        #c_field_opt = <Self as #field_trait_ext<Self>>::#c_field,
-                                    >,
-                                {
-                                }
-                            });
+                                    #field_attrs
+                                    #[allow(missing_docs)]
+                                    pub trait #field_trait
+                                    where
+                                        Self: #trait_ident,
+                                        Self: #reg_trait<Self>,
+                                        Self: #field_trait_ext<Self>,
+                                        Self: #field_trait_opt<
+                                            Self,
+                                            #u_field_opt = <Self as #field_trait_ext<Self>>::#u_field,
+                                            #s_field_opt = <Self as #field_trait_ext<Self>>::#s_field,
+                                            #c_field_opt = <Self as #field_trait_ext<Self>>::#c_field,
+                                        >,
+                                    {
+                                    }
+                                });
                             }
                             u_fields_tokens.push(quote! {
                                 #struct_attrs
@@ -415,8 +414,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             }
                         });
                     } else {
+                        reg_bounds.push((features, quote!(Self: #field_trait<Self>)));
                         if reg_option {
-                            reg_bounds.push((features, quote!(Self: #field_trait<Self>)));
                             tokens.push(quote! {
                                 #field_attrs
                                 #[allow(missing_docs)]
@@ -425,7 +424,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                                 }
                             });
                         } else {
-                            reg_bounds.push((features, quote!(Self: #field_trait<Self>)));
                             tokens.push(quote! {
                                 #field_attrs
                                 #[allow(missing_docs)]

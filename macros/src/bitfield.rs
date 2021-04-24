@@ -7,7 +7,6 @@ use syn::{
     parenthesized,
     parse::{Parse, ParseStream, Result},
     parse_macro_input, Data, DeriveInput, Fields, Ident, LitInt, LitStr, PathArguments, Token,
-    Type,
 };
 
 #[derive(Default)]
@@ -122,7 +121,6 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         if let Fields::Unnamed(x) = x.fields;
         if x.unnamed.len() <= 1;
         if let Some(x) = x.unnamed.into_iter().next();
-        if let Type::Path(x) = x.ty;
         then {
             x
         } else {
@@ -151,6 +149,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
                 if mode.is_read() {
                     let read_bit = format_ident!("{}", ident);
                     fields.push(quote! {
+                        #[allow(clippy::unnecessary_cast)]
                         #(#attrs)*
                         pub fn #read_bit(&self) -> bool {
                             unsafe {
@@ -164,6 +163,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
                     let clear_bit = format_ident!("clear_{}", ident);
                     let toggle_bit = format_ident!("toggle_{}", ident);
                     fields.push(quote! {
+                        #[allow(clippy::unnecessary_cast)]
                         #(#attrs)*
                         pub fn #set_bit(&mut self) -> &mut Self {
                             unsafe {
@@ -173,6 +173,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
                         }
                     });
                     fields.push(quote! {
+                        #[allow(clippy::unnecessary_cast)]
                         #(#attrs)*
                         pub fn #clear_bit(&mut self) -> &mut Self {
                             unsafe {
@@ -182,6 +183,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
                         }
                     });
                     fields.push(quote! {
+                        #[allow(clippy::unnecessary_cast)]
                         #(#attrs)*
                         pub fn #toggle_bit(&mut self) -> &mut Self {
                             unsafe {
@@ -195,6 +197,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
                 if mode.is_read() {
                     let read_bits = format_ident!("{}", ident);
                     fields.push(quote! {
+                        #[allow(clippy::unnecessary_cast)]
                         #(#attrs)*
                         pub fn #read_bits(&self) -> #bits {
                             unsafe {
@@ -210,6 +213,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
                 if mode.is_write() {
                     let write_bits = format_ident!("write_{}", ident);
                     fields.push(quote! {
+                        #[allow(clippy::unnecessary_cast)]
                         #(#attrs)*
                         pub fn #write_bits(&mut self, bits: #bits) -> &mut Self {
                             unsafe {

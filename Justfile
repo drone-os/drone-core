@@ -1,7 +1,5 @@
 # Install dependencies
 deps:
-	rustup component add clippy
-	rustup component add rustfmt
 	type cargo-readme >/dev/null || cargo +stable install cargo-readme
 
 # Reformat the source code

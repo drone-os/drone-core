@@ -11,6 +11,10 @@ Possible log types:
 - `[fixed]` for any bug fixes.
 - `[security]` to invite users to upgrade in case of vulnerabilities.
 
+### Unreleased
+
+- [fixed] Fixed thread field names corruption in `thr::pool!` macro
+
 ### v0.14.0 (2021-04-09)
 
 - [removed] `heaptrace` feature has been removed in favor of the new
