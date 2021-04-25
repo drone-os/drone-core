@@ -13,7 +13,7 @@ Possible log types:
 
 ### Unreleased
 
-### v0.14.1 (2021-04-24)
+### v0.14.2 (2021-04-25)
 
 - [fixed] Fixed thread field names corruption in `thr::pool!` macro
 - [fixed] Fixed memory leak inside `fib::Chain`

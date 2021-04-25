@@ -11,7 +11,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! drone-core = { version = "0.14.1" }
+//! drone-core = { version = "0.14.2" }
 //! ```
 //!
 //! Add or extend `std` feature as follows:

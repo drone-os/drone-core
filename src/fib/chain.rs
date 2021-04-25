@@ -56,7 +56,7 @@ impl Chain {
     ///
     /// let chain = Chain::new();
     /// unsafe {
-    ///     drop(chain.drain()); // run the iterator and drop completed fibers
+    ///     chain.drain().for_each(drop); // run the iterator and drop completed fibers
     /// }
     /// ```
     ///
@@ -70,6 +70,7 @@ impl Chain {
     /// if drain.is_end() {
     ///     println!("No active fibers to react to this interrupt");
     /// }
+    /// drain.for_each(drop);
     /// ```
     ///
     /// # Safety
@@ -85,6 +86,7 @@ impl Chain {
 }
 
 impl Drop for Chain {
+    #[inline]
     fn drop(&mut self) {
         unsafe { self.list.drain_filter_raw(|_| true).for_each(Node::delete) };
     }
@@ -143,16 +145,6 @@ where
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next().map(Node::delete)
-    }
-}
-
-impl<F> Drop for Drain<'_, F>
-where
-    F: FnMut(*mut ListNode<Node<()>>) -> bool,
-{
-    #[inline]
-    fn drop(&mut self) {
-        self.for_each(drop);
     }
 }
 
