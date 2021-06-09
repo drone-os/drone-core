@@ -11,6 +11,9 @@ use ::std::assert_eq;
 )]
 pub struct Byte(u8);
 
+#[derive(Bitfield, Copy, Clone)]
+pub struct Public(pub u8);
+
 #[test]
 fn read_bit() {
     let x = Byte(0b1010_1010);

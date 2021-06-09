@@ -13,6 +13,10 @@ Possible log types:
 
 ### Unreleased
 
+### v0.14.3 (2021-06-09)
+
+- [fixed] Fixed regression in `Bitfield` around the wrapped type visibility
+
 ### v0.14.2 (2021-04-25)
 
 - [fixed] Fixed thread field names corruption in `thr::pool!` macro

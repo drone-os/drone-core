@@ -122,7 +122,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         if x.unnamed.len() <= 1;
         if let Some(x) = x.unnamed.into_iter().next();
         then {
-            x
+            x.ty
         } else {
             parse_error!("Bitfield can be derived only from a tuple struct with one field");
         }
