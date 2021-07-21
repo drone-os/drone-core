@@ -176,6 +176,9 @@ impl Variant {
         let mut struct_tokens = Vec::new();
         let mut ctor_tokens = Vec::new();
         for Field { attrs, ident, offset, width, traits } in &self.fields {
+            let cfg_attrs = attrs.iter().filter(|attr| {
+                attr.path.get_ident().and_then(|p| Some(p == "cfg")).unwrap_or(false)
+            }).collect::<Vec<_>>();
             let field_snk = ident.to_string().to_snake_case();
             let mut field_psc = ident.to_string().to_pascal_case();
             if field_psc == "Val" {
@@ -189,6 +192,7 @@ impl Variant {
                 pub #field_ident: #field_psc<#t>
             });
             ctor_tokens.push(quote! {
+                #(#cfg_attrs)*
                 #field_ident: ::drone_core::token::Token::take()
             });
             tokens.push(quote! {
@@ -196,6 +200,7 @@ impl Variant {
                 #[derive(Clone, Copy)]
                 pub struct #field_psc<#t: ::drone_core::reg::tag::RegTag>(#t);
 
+                #(#cfg_attrs)*
                 unsafe impl<#t> ::drone_core::token::Token for #field_psc<#t>
                 where
                     #t: ::drone_core::reg::tag::RegTag,
@@ -206,6 +211,7 @@ impl Variant {
                     }
                 }
 
+                #(#cfg_attrs)*
                 impl<#t> ::drone_core::reg::field::RegField<#t> for #field_psc<#t>
                 where
                     #t: ::drone_core::reg::tag::RegTag,
@@ -221,11 +227,13 @@ impl Variant {
             });
             for ident in traits {
                 tokens.push(quote! {
+                    #(#cfg_attrs)*
                     impl<#t: ::drone_core::reg::tag::RegTag> #ident<#t> for #field_psc<#t> {}
                 });
             }
             if width.base10_digits() == "1" {
                 tokens.push(quote! {
+                    #(#cfg_attrs)*
                     impl<#t> ::drone_core::reg::field::RegFieldBit<#t> for #field_psc<#t>
                     where
                         #t: ::drone_core::reg::tag::RegTag,
