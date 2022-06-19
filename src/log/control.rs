@@ -2,7 +2,7 @@ use core::{
     cell::UnsafeCell,
     cmp::min,
     ptr,
-    sync::atomic::{AtomicU32, AtomicUsize, Ordering},
+    sync::atomic::{AtomicU8, AtomicUsize, Ordering},
 };
 
 extern "C" {
@@ -12,7 +12,7 @@ extern "C" {
 
 #[repr(C)]
 pub(crate) struct Control {
-    state: AtomicU32,
+    mask: AtomicU8,
     write_offset: AtomicUsize,
     read_offset: AtomicUsize,
 }
@@ -20,14 +20,16 @@ pub(crate) struct Control {
 impl Control {
     pub(crate) const fn new() -> Self {
         Self {
-            state: AtomicU32::new(0),
+            mask: AtomicU8::new(0),
             write_offset: AtomicUsize::new(0),
             read_offset: AtomicUsize::new(0),
         }
     }
 
     pub(crate) fn is_enabled(&self, stream: u8) -> bool {
-        self.state.load(Ordering::Relaxed) & 1 << stream != 0
+        // unsafe { asm!("bkpt") };
+        self.mask.load(Ordering::Relaxed) & 1 << stream != 0
+        // if self.mask.load(Ordering::Relaxed) & 1 << stream != 0 { loop {} } else { false }
     }
 
     pub(crate) fn write_bytes(&self, _stream: u8, mut buffer: *const u8, mut length: usize) {

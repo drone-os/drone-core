@@ -16,7 +16,7 @@ use core::{fmt, fmt::Write};
 #[link_section = ".log"]
 #[no_mangle]
 #[used]
-static CONTROL: Control = Control::new();
+static CTRL: Control = Control::new();
 
 /// Number of streams.
 pub const STREAMS_COUNT: u8 = 32;

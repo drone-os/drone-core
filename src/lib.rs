@@ -21,6 +21,7 @@
 //! std = ["drone-core/std"]
 //! ```
 
+#![feature(asm)]
 #![feature(alloc_layout_extra)]
 #![feature(alloc_prelude)]
 #![feature(allocator_api)]

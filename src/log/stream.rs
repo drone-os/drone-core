@@ -1,4 +1,4 @@
-use super::{CONTROL, STREAMS_COUNT};
+use super::{CTRL, STREAMS_COUNT};
 use core::{fmt, fmt::Write};
 
 /// Logging stream handle.
@@ -25,7 +25,7 @@ impl Stream {
     #[inline]
     pub fn is_enabled(self) -> bool {
         let Self(stream) = self;
-        CONTROL.is_enabled(stream)
+        CTRL.is_enabled(stream)
     }
 
     /// Writes a sequence of bytes to the stream.
@@ -36,7 +36,7 @@ impl Stream {
     #[inline]
     pub fn write_bytes(self, bytes: &[u8]) -> Self {
         let Self(stream) = self;
-        CONTROL.write_bytes(stream, bytes.as_ptr(), bytes.len());
+        CTRL.write_bytes(stream, bytes.as_ptr(), bytes.len());
         self
     }
 
@@ -63,18 +63,18 @@ impl Write for Stream {
 
 impl StreamWrite for u8 {
     fn stream_write(stream: u8, value: Self) {
-        CONTROL.write_u8(stream, value);
+        CTRL.write_u8(stream, value);
     }
 }
 
 impl StreamWrite for u16 {
     fn stream_write(stream: u8, value: Self) {
-        CONTROL.write_u16(stream, value);
+        CTRL.write_u16(stream, value);
     }
 }
 
 impl StreamWrite for u32 {
     fn stream_write(stream: u8, value: Self) {
-        CONTROL.write_u32(stream, value);
+        CTRL.write_u32(stream, value);
     }
 }
