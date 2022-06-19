@@ -1,4 +1,4 @@
-use crate::{eprintln, log};
+use crate::eprintln;
 use core::{alloc::Layout, panic::PanicInfo};
 
 extern "C" {
@@ -18,6 +18,5 @@ fn oom(layout: Layout) -> ! {
 }
 
 fn abort() -> ! {
-    log::flush();
     unsafe { drone_self_reset() }
 }

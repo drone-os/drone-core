@@ -11,7 +11,6 @@ extern crate proc_macro;
 mod bitfield;
 mod config_override;
 mod heap;
-mod log_baud_rate;
 mod periph;
 mod periph_map;
 mod periph_singular;
@@ -40,11 +39,6 @@ pub fn config_override(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn heap(input: TokenStream) -> TokenStream {
     heap::proc_macro(input)
-}
-
-#[proc_macro]
-pub fn log_baud_rate(input: TokenStream) -> TokenStream {
-    log_baud_rate::proc_macro(input)
 }
 
 #[proc_macro]

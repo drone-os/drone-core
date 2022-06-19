@@ -1,128 +1,82 @@
-//! Debug logging facade.
+//! Drone Logging.
 //!
 //! This module implements standard output/error interface, which mimics Rust's
-//! standard library. This is a facade module. Concrete output implementation
-//! should be provided by downstream crates.
-//!
-//! Reserved ports:
-//!
-//! * `0` - standard output
-//! * `1` - standard error
-//! * `31` - heap trace
+//! standard library.
 
-#![cfg_attr(feature = "std", allow(unreachable_code, unused_variables))]
-
+mod control;
 mod macros;
-mod port;
+mod stream;
 
-/// Returns log output baud rate defined in `Drone.toml`.
-///
-/// # Examples
-///
-/// ```
-/// # #![feature(proc_macro_hygiene)]
-/// # drone_core::config_override! { "
-/// # [memory]
-/// # flash = { size = \"128K\", origin = 0x08000000 }
-/// # ram = { size = \"20K\", origin = 0x20000000 }
-/// # [heap.main]
-/// # size = \"0\"
-/// # pools = []
-/// # [linker]
-/// # platform = \"arm\"
-/// # [probe]
-/// # gdb-client-command = \"gdb-multiarch\"
-/// # [log.dso]
-/// # baud-rate = 115200
-/// # serial-endpoint = \"/dev/ttyACM0\"
-/// # " }
-/// use drone_core::log;
-///
-/// assert_eq!(log::baud_rate!(), 115_200);
-/// ```
-#[doc(inline)]
-pub use drone_core_macros::log_baud_rate as baud_rate;
+pub use self::stream::Stream;
 
-pub use self::port::Port;
-
+use self::control::Control;
 use core::{fmt, fmt::Write};
 
-extern "C" {
-    pub(crate) fn drone_log_is_enabled(port: u8) -> bool;
-    pub(crate) fn drone_log_write_bytes(port: u8, buffer: *const u8, count: usize);
-    pub(crate) fn drone_log_write_u8(port: u8, value: u8);
-    pub(crate) fn drone_log_write_u16(port: u8, value: u16);
-    pub(crate) fn drone_log_write_u32(port: u8, value: u32);
-    pub(crate) fn drone_log_flush();
-}
+#[doc(hidden)]
+#[link_section = ".log"]
+#[no_mangle]
+#[used]
+static CONTROL: Control = Control::new();
 
-/// Number of ports.
-pub const PORTS_COUNT: u8 = 32;
+/// Number of streams.
+pub const STREAMS_COUNT: u8 = 32;
 
-/// Port number of the standard output stream.
-pub const STDOUT_PORT: u8 = 0;
+/// Stream number of the standard output.
+pub const STDOUT_NUMBER: u8 = 0;
 
-/// Port number of the standard error stream.
-pub const STDERR_PORT: u8 = 1;
+/// Stream number of the standard error.
+pub const STDERR_NUMBER: u8 = 1;
 
-/// Returns port for standard output.
+/// Returns a stream for the standard output.
 #[inline]
-pub fn stdout() -> Port {
-    Port::new(STDOUT_PORT)
+pub fn stdout() -> Stream {
+    Stream::new(STDOUT_NUMBER)
 }
 
-/// Returns port for standard error.
+/// Returns a stream for the standard error.
 #[inline]
-pub fn stderr() -> Port {
-    Port::new(STDERR_PORT)
+pub fn stderr() -> Stream {
+    Stream::new(STDERR_NUMBER)
 }
 
-/// Writes `string` to the log port number `port`.
+/// Writes the string `value` to the stream number `stream`.
 ///
-/// The presence of the debug probe is not checked, so it is recommended to use
-/// this function together with [`Port::is_enabled`].
+/// This function doesn't check whether the logging is enabled by the debug
+/// probe. It's recommended to use this function together with
+/// [`Stream::is_enabled`].
 ///
 /// # Examples
 ///
 /// ```
-/// use drone_core::{log, log::Port};
+/// use drone_core::{log, log::Stream};
 ///
-/// if Port::new(11).is_enabled() {
+/// if Stream::new(11).is_enabled() {
 ///     log::write_str(11, "hello there!\n");
 /// }
 /// ```
 #[inline(never)]
-pub fn write_str(port: u8, string: &str) {
-    let _ = Port::new(port).write_str(string);
+pub fn write_str(stream: u8, value: &str) {
+    let _ = Stream::new(stream).write_str(value);
 }
 
-/// Writes `args` to the log port number `port`.
+/// Writes the formatting `args` to the log stream number `stream`.
 ///
-/// The presence of the debug probe is not checked, so it is recommended to use
-/// this function together with [`Port::is_enabled`].
+/// This function doesn't check whether the logging is enabled by the debug
+/// probe. It's recommended to use this function together with
+/// [`Stream::is_enabled`].
 ///
 /// # Examples
 ///
 /// ```
-/// use drone_core::{log, log::Port};
+/// use drone_core::{log, log::Stream};
 ///
 /// let a = 0;
 ///
-/// if Port::new(11).is_enabled() {
+/// if Stream::new(11).is_enabled() {
 ///     log::write_fmt(11, format_args!("a = {}\n", a));
 /// }
 /// ```
 #[inline(never)]
-pub fn write_fmt(port: u8, args: fmt::Arguments<'_>) {
-    let _ = Port::new(port).write_fmt(args);
-}
-
-/// Blocks until all pending packets are transmitted.
-///
-/// This function is a no-op if no debug probe is connected and listening.
-#[inline]
-pub fn flush() {
-    #[cfg(feature = "std")]
-    return;
-    unsafe { drone_log_flush() };
+pub fn write_fmt(stream: u8, args: fmt::Arguments<'_>) {
+    let _ = Stream::new(stream).write_fmt(args);
 }

@@ -1,11 +1,8 @@
-/// Prints to the log port #0, if the debug probe is connected.
+/// Prints to the log stream #0, if logging is enabled in the run-time by the
+/// debug probe.
 ///
 /// Equivalent to the [`println!`] macro except that a newline is not printed at
 /// the end of the message.
-///
-/// Note that log port is buffered so it may be necessary to use
-/// [`log::flush`](crate::log::flush) to ensure the output is emitted
-/// immediately.
 ///
 /// Use `print!` only for the primary output of your program. Use [`eprint!`]
 /// instead to print error and progress messages.
@@ -23,27 +20,24 @@
 /// print!("same ");
 /// print!("line ");
 ///
-/// log::flush();
-///
 /// print!("this string has a newline, why not choose println! instead?\n");
-///
-/// log::flush();
 /// ```
 #[macro_export]
 macro_rules! print {
     ($str:expr) => {
         if $crate::log::stdout().is_enabled() {
-            $crate::log::write_str($crate::log::STDOUT_PORT, $str);
+            $crate::log::write_str($crate::log::STDOUT_NUMBER, $str);
         }
     };
     ($($arg:tt)*) => {
         if $crate::log::stdout().is_enabled() {
-            $crate::log::write_fmt($crate::log::STDOUT_PORT, format_args!($($arg)*));
+            $crate::log::write_fmt($crate::log::STDOUT_NUMBER, format_args!($($arg)*));
         }
     };
 }
 
-/// Prints to the log port #0, with a newline, if a debug probe is connected.
+/// Prints to the log stream #0, with a newline, if logging is enabled in the
+/// run-time by the debug probe.
 ///
 /// Use the `format!` syntax to write data to the standard output. See
 /// [`core::fmt`] for more information.
@@ -73,9 +67,10 @@ macro_rules! println {
     };
 }
 
-/// Prints to the log port #1, if a debug probe is connected.
+/// Prints to the log stream #1, if logging is enabled in the run-time by the
+/// debug probe.
 ///
-/// Equivalent to the [`print!`] macro, except that output goes to the port #1
+/// Equivalent to the [`print!`] macro, except that output goes to the stream #1
 /// instead of #0. See [`print!`] for example usage.
 ///
 /// Use `eprint!` only for error and progress messages. Use `print!` instead for
@@ -90,20 +85,21 @@ macro_rules! println {
 macro_rules! eprint {
     ($str:expr) => {
         if $crate::log::stderr().is_enabled() {
-            $crate::log::write_str($crate::log::STDERR_PORT, $str);
+            $crate::log::write_str($crate::log::STDERR_NUMBER, $str);
         }
     };
     ($($arg:tt)*) => {
         if $crate::log::stderr().is_enabled() {
-            $crate::log::write_fmt($crate::log::STDERR_PORT, format_args!($($arg)*));
+            $crate::log::write_fmt($crate::log::STDERR_NUMBER, format_args!($($arg)*));
         }
     };
 }
 
-/// Prints to the log port #1, with a newline, if a debug probe is connected.
+/// Prints to the log stream #1, with a newline, if logging is enabled in the
+/// run-time by the debug probe.
 ///
-/// Equivalent to the [`println!`] macro, except that output goes to the port #1
-/// instead of #0. See [`println!`] for example usage.
+/// Equivalent to the [`println!`] macro, except that output goes to the stream
+/// #1 instead of #0. See [`println!`] for example usage.
 ///
 /// Use `eprintln!` only for error and progress messages. Use `println!` instead
 /// for the primary output of your program.
@@ -130,7 +126,7 @@ macro_rules! eprintln {
 /// debugging.
 ///
 /// The macro works by using the `Debug` implementation of the type of the given
-/// expression to print the value to the log port #1 along with the source
+/// expression to print the value to the log stream #1 along with the source
 /// location of the macro invocation as well as the source code of the
 /// expression.
 ///
