@@ -1,18 +1,18 @@
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use regex::Regex;
 
-lazy_static! {
-    static ref KEYWORDS: Regex = Regex::new(
+static KEYWORDS: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
         r"(?x)
             ^ ( as | break | const | continue | crate | else | enum | extern | false | fn | for | if
             | impl | in | let | loop | match | mod | move | mut | pub | ref | return | Self | self |
             static | struct | super | trait | true | type | unsafe | use | where | while | abstract
             | alignof | become | box | do | final | macro | offsetof | override | priv | proc | pure
             | sizeof | typeof | unsized | virtual | yield ) $
-        "
+        ",
     )
-    .unwrap();
-}
+    .unwrap()
+});
 
 /// Inserts an underscore at the end of the string if the string is a reserved
 /// keyword.
