@@ -325,8 +325,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         }
                     }
                     let mut features = CfgCond::default();
-                    features.add_clause(&reg_features);
-                    features.add_clause(&field_features);
+                    features.add_clause(reg_features);
+                    features.add_clause(field_features);
                     let field_attrs = features.attrs();
                     let struct_attrs = field_features.attrs();
                     if field_path.is_none() {
@@ -664,8 +664,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             #[macro_export]
             macro_rules! #periph_macro {
                 ($reg:ident) => {
-                    $crate#(#macro_root_path)*::#periph_struct::<
-                        $crate#(#macro_root_path)*::#periph_ty,
+                    $crate #(#macro_root_path)*::#periph_struct::<
+                        $crate #(#macro_root_path)*::#periph_ty,
                     > {
                         #(#macro_tokens,)*
                     }

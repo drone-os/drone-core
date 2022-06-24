@@ -234,8 +234,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         }
                     }
                     let mut features = CfgCond::default();
-                    features.add_clause(&reg_features);
-                    features.add_clause(&field_features);
+                    features.add_clause(reg_features);
+                    features.add_clause(field_features);
                     let field_attrs = features.attrs();
                     let struct_attrs = field_features.attrs();
                     let field_trait_items = quote! {

@@ -1,2 +1,5 @@
 /target
+/result
 Cargo.lock
+.envrc
+.direnv

@@ -48,6 +48,7 @@ where
     }
 }
 
+#[allow(clippy::mismatching_type_param_order)]
 impl<F, R> RootFiber for FiberFn<F, (), R>
 where
     F: FnMut() -> FiberState<(), R>,
@@ -129,7 +130,7 @@ pub trait ThrFiberClosure: ThrToken {
         F: Send + 'static,
         R: ReturnNone,
     {
-        self.add_fib(new_fn(f))
+        self.add_fib(new_fn(f));
     }
 
     /// Adds a fiber that runs the closure returned by `factory` until
@@ -144,7 +145,7 @@ pub trait ThrFiberClosure: ThrToken {
         F: 'static,
         R: ReturnNone,
     {
-        self.add_fib_factory(|| new_fn(factory()))
+        self.add_fib_factory(|| new_fn(factory()));
     }
 
     /// Adds a fiber that calls the closure `f` once.
@@ -154,7 +155,7 @@ pub trait ThrFiberClosure: ThrToken {
         F: FnOnce(),
         F: Unpin + Send + 'static,
     {
-        self.add_fib(new_once(f))
+        self.add_fib(new_once(f));
     }
 }
 

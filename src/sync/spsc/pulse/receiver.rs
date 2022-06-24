@@ -31,7 +31,7 @@ impl<E> Receiver<E> {
     /// message had previously been sent.
     #[inline]
     pub fn close(&mut self) {
-        self.inner.close_half(IS_TX_HALF)
+        self.inner.close_half(IS_TX_HALF);
     }
 
     /// Attempts to receive pulses outside of the context of a task.

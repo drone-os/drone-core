@@ -74,7 +74,7 @@ pub trait ThrFiberGen: ThrToken {
         G: Generator<Yield = (), Return = ()>,
         G: Send + 'static,
     {
-        self.add_fib(new(gen))
+        self.add_fib(new(gen));
     }
 
     /// Adds a fiber for the generator returned by `factory` to the fiber chain.
@@ -87,7 +87,7 @@ pub trait ThrFiberGen: ThrToken {
         G: Generator<Yield = (), Return = ()>,
         G: 'static,
     {
-        self.add_fib_factory(|| new(factory()))
+        self.add_fib_factory(|| new(factory()));
     }
 }
 

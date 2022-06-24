@@ -315,7 +315,7 @@ macro_rules! define_methods {
             $(
                 /// Consumes a token and returns a new inventory object with
                 /// decreased counter in its type.
-                #[allow(clippy::too_many_arguments)]
+                #[allow(clippy::drop_non_drop, clippy::too_many_arguments)]
                 pub fn $merge(self, $($merge_token: Token<T>,)*) -> Inventory<T, Diff<C, $dec>>
                 where
                     C: Sub<$dec>,

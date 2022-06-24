@@ -139,7 +139,7 @@ impl<T, E> Inner<T, E> {
                 return Err(None);
             }
             let length = Self::get_length(*state);
-            if length == self.buffer.capacity() {
+            if length == self.capacity {
                 let index = self.take_index(state, length);
                 Ok((*state, index))
             } else {
@@ -148,7 +148,7 @@ impl<T, E> Inner<T, E> {
             }
         }) {
             Ok((state, index)) => {
-                unsafe { ptr::drop_in_place(self.buffer.ptr().add(index)) };
+                unsafe { ptr::drop_in_place(self.ptr.as_ptr().add(index)) };
                 self.put(value, state, index)
             }
             Err(Some((state, index))) => self.put(value, state, index),
@@ -157,7 +157,7 @@ impl<T, E> Inner<T, E> {
     }
 
     fn put(&self, value: T, state: usize, index: usize) -> Result<(), T> {
-        let buffer_ptr = unsafe { self.buffer.ptr().add(index) };
+        let buffer_ptr = unsafe { self.ptr.as_ptr().add(index) };
         unsafe { ptr::write(buffer_ptr, value) };
         self.transaction(state, Ordering::AcqRel, Ordering::Acquire, |state| {
             if *state & COMPLETE == 0 {
@@ -177,12 +177,12 @@ impl<T, E> Inner<T, E> {
 
     fn put_index_try(&self, state: usize) -> Option<usize> {
         let length = Self::get_length(state);
-        if length == self.buffer.capacity() { None } else { Some(self.put_index(state, length)) }
+        if length == self.capacity { None } else { Some(self.put_index(state, length)) }
     }
 
     fn put_index(&self, state: usize, length: usize) -> usize {
         let cursor = state >> NUMBER_BITS & NUMBER_MASK;
-        cursor.wrapping_add(length).wrapping_rem(self.buffer.capacity())
+        cursor.wrapping_add(length).wrapping_rem(self.capacity)
     }
 }
 

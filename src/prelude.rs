@@ -13,10 +13,15 @@
 //! ```
 
 #[doc(no_inline)]
-pub use core::prelude::v1::*;
+pub use core::prelude::rust_2021::*;
 
 #[doc(no_inline)]
-pub use alloc::prelude::v1::*;
+pub use alloc::{
+    borrow::ToOwned,
+    boxed::Box,
+    string::{String, ToString},
+    vec::Vec,
+};
 
 #[cfg(not(feature = "std"))]
 #[doc(no_inline)]

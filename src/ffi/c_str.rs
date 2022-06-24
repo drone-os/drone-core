@@ -6,6 +6,7 @@ use core::{
     ascii,
     cmp::Ordering,
     fmt::{self, Write},
+    ptr,
     slice::{self, memchr},
     str,
 };
@@ -306,7 +307,7 @@ impl CStr {
     /// ```
     #[inline]
     pub fn to_bytes_with_nul(&self) -> &[u8] {
-        unsafe { &*(&self.inner as *const [c_char] as *const [u8]) }
+        unsafe { &*(ptr::addr_of!(self.inner) as *const [u8]) }
     }
 
     /// Yields a `&`[`str`] slice if the `CStr` contains valid UTF-8.
@@ -436,13 +437,13 @@ impl Eq for CStr {}
 
 impl PartialOrd for CStr {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.to_bytes().partial_cmp(&other.to_bytes())
+        self.to_bytes().partial_cmp(other.to_bytes())
     }
 }
 
 impl Ord for CStr {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.to_bytes().cmp(&other.to_bytes())
+        self.to_bytes().cmp(other.to_bytes())
     }
 }
 

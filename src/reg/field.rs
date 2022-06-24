@@ -34,6 +34,7 @@ pub trait RegField<T: RegTag>: Token + Sync {
 
     /// Converts into unsynchronized register field token.
     #[inline]
+    #[must_use]
     fn into_unsync(self) -> Self
     where
         Self: RegField<Urt>,
@@ -43,6 +44,7 @@ pub trait RegField<T: RegTag>: Token + Sync {
 
     /// Converts into synchronized register field token.
     #[inline]
+    #[must_use]
     fn into_sync(self) -> Self
     where
         Self: RegField<Srt>,

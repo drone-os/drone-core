@@ -34,6 +34,7 @@ impl Stream {
     /// interleaved with concurrent writes. See also [`Stream::write`] for
     /// writing atomic byte sequences.
     #[inline]
+    #[allow(clippy::return_self_not_must_use)]
     pub fn write_bytes(self, bytes: &[u8]) -> Self {
         let Self(stream) = self;
         CTRL.write_bytes(stream, bytes.as_ptr(), bytes.len());
@@ -46,6 +47,7 @@ impl Stream {
     /// Bytes are written in big-endian order. It's guaranteed that all bytes of
     /// `value` will not be split.
     #[inline]
+    #[allow(clippy::return_self_not_must_use)]
     pub fn write<T: StreamWrite>(self, value: T) -> Self {
         let Self(stream) = self;
         T::stream_write(stream, value);

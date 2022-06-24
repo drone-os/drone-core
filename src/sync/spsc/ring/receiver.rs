@@ -31,7 +31,7 @@ impl<T, E> Receiver<T, E> {
     /// message had previously been sent.
     #[inline]
     pub fn close(&mut self) {
-        self.inner.close_half(IS_TX_HALF)
+        self.inner.close_half(IS_TX_HALF);
     }
 
     /// Attempts to receive a value outside of the context of a task.
@@ -74,7 +74,7 @@ impl<T, E> Inner<T, E> {
         let cursor = *state >> NUMBER_BITS & NUMBER_MASK;
         *state >>= NUMBER_BITS << 1;
         *state <<= NUMBER_BITS;
-        *state |= cursor.wrapping_add(1).wrapping_rem(self.buffer.capacity());
+        *state |= cursor.wrapping_add(1).wrapping_rem(self.capacity);
         *state <<= NUMBER_BITS;
         *state |= length.wrapping_sub(1);
         cursor
@@ -115,6 +115,6 @@ impl<T, E> Inner<T, E> {
     }
 
     unsafe fn take_value(&self, index: usize) -> T {
-        unsafe { ptr::read(self.buffer.ptr().add(index)) }
+        unsafe { ptr::read(self.ptr.as_ptr().add(index)) }
     }
 }

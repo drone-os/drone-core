@@ -165,8 +165,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     let block_reg_field_snk =
                         format_ident!("{}_{}_{}", block_snk, reg_snk, field_snk);
                     let mut features = CfgCond::default();
-                    features.add_clause(&reg_features);
-                    features.add_clause(&field_features);
+                    features.add_clause(reg_features);
+                    features.add_clause(field_features);
                     let field_attrs = features.attrs();
                     periph_tokens.push(quote! {
                         #[allow(missing_docs)]
@@ -192,7 +192,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             #[macro_export]
             macro_rules! #macro_ident {
                 ($reg:ident) => {
-                    $crate#(#macro_root_path)*::#struct_ident {
+                    $crate #(#macro_root_path)*::#struct_ident {
                         #(#macro_tokens,)*
                     }
                 };

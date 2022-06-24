@@ -167,9 +167,11 @@ pub use drone_core_macros::unsafe_static_tokens;
 
 /// A zero-sized affine type, at most one instance of which ever exists.
 ///
-/// The above properties can't be expressed with Rust type-system, therefore the
-/// trait is marked `unsafe`, and it is the implementer responsibility to keep
-/// the following invariants:
+/// # Safety
+///
+/// The above properties can't be expressed with Rust type-system, therefore
+/// the trait is marked `unsafe`, and it is the implementer's responsibility to
+/// keep the following invariants:
 ///
 /// 1. The type must not implement [`Clone`].
 /// 2. The type must be instantiated only inside [`Token::take`] method.

@@ -34,7 +34,7 @@ impl<T> FiberStreamRing<T> {
     /// The fiber will be removed on a next thread invocation without resuming.
     #[inline]
     pub fn close(&mut self) {
-        self.rx.close()
+        self.rx.close();
     }
 }
 
@@ -44,7 +44,7 @@ impl<T, E> TryFiberStreamRing<T, E> {
     /// The fiber will be removed on a next thread invocation without resuming.
     #[inline]
     pub fn close(&mut self) {
-        self.rx.close()
+        self.rx.close();
     }
 }
 
@@ -260,52 +260,50 @@ where
     let (mut tx, rx) = channel(capacity);
     thr.add_factory(|| {
         let mut fib = factory();
-        move || {
-            loop {
-                if tx.is_canceled() {
-                    break;
-                }
-                match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-                    fib::Yielded(None) => {}
-                    fib::Yielded(Some(value)) => match tx.send(value) {
-                        Ok(()) => {}
-                        Err(SendError { value, kind }) => match kind {
-                            SendErrorKind::Canceled => {
-                                break;
-                            }
-                            SendErrorKind::Overflow => match overflow(value) {
-                                Ok(()) => {}
-                                Err(err) => {
-                                    drop(tx.send_err(err));
-                                    break;
-                                }
-                            },
-                        },
-                    },
-                    fib::Complete(value) => {
-                        match map(value) {
-                            Ok(None) => {}
-                            Ok(Some(value)) => match tx.send(value) {
-                                Ok(()) => {}
-                                Err(SendError { value, kind }) => match kind {
-                                    SendErrorKind::Canceled => {}
-                                    SendErrorKind::Overflow => match overflow(value) {
-                                        Ok(()) => {}
-                                        Err(err) => {
-                                            drop(tx.send_err(err));
-                                        }
-                                    },
-                                },
-                            },
+        move || loop {
+            if tx.is_canceled() {
+                break;
+            }
+            match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+                fib::Yielded(None) => {}
+                fib::Yielded(Some(value)) => match tx.send(value) {
+                    Ok(()) => {}
+                    Err(SendError { value, kind }) => match kind {
+                        SendErrorKind::Canceled => {
+                            break;
+                        }
+                        SendErrorKind::Overflow => match overflow(value) {
+                            Ok(()) => {}
                             Err(err) => {
                                 drop(tx.send_err(err));
+                                break;
                             }
+                        },
+                    },
+                },
+                fib::Complete(value) => {
+                    match map(value) {
+                        Ok(None) => {}
+                        Ok(Some(value)) => match tx.send(value) {
+                            Ok(()) => {}
+                            Err(SendError { value, kind }) => match kind {
+                                SendErrorKind::Canceled => {}
+                                SendErrorKind::Overflow => match overflow(value) {
+                                    Ok(()) => {}
+                                    Err(err) => {
+                                        drop(tx.send_err(err));
+                                    }
+                                },
+                            },
+                        },
+                        Err(err) => {
+                            drop(tx.send_err(err));
                         }
-                        break;
                     }
+                    break;
                 }
-                yield;
             }
+            yield;
         }
     });
     rx
@@ -326,32 +324,30 @@ where
     let (mut tx, rx) = channel(capacity);
     thr.add_factory(|| {
         let mut fib = factory();
-        move || {
-            loop {
-                if tx.is_canceled() {
+        move || loop {
+            if tx.is_canceled() {
+                break;
+            }
+            match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+                fib::Yielded(None) => {}
+                fib::Yielded(Some(value)) => match tx.send_overwrite(value) {
+                    Ok(()) => (),
+                    Err(_) => break,
+                },
+                fib::Complete(value) => {
+                    match map(value) {
+                        Ok(None) => {}
+                        Ok(Some(value)) => {
+                            drop(tx.send_overwrite(value));
+                        }
+                        Err(err) => {
+                            drop(tx.send_err(err));
+                        }
+                    }
                     break;
                 }
-                match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-                    fib::Yielded(None) => {}
-                    fib::Yielded(Some(value)) => match tx.send_overwrite(value) {
-                        Ok(()) => (),
-                        Err(_) => break,
-                    },
-                    fib::Complete(value) => {
-                        match map(value) {
-                            Ok(None) => {}
-                            Ok(Some(value)) => {
-                                drop(tx.send_overwrite(value));
-                            }
-                            Err(err) => {
-                                drop(tx.send_err(err));
-                            }
-                        }
-                        break;
-                    }
-                }
-                yield;
             }
+            yield;
         }
     });
     rx

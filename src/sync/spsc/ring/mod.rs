@@ -12,12 +12,17 @@ pub use self::{
 };
 
 use crate::sync::spsc::{SpscInner, SpscInnerErr};
-use alloc::{raw_vec::RawVec, sync::Arc};
+use alloc::{
+    alloc::{alloc, dealloc, Layout},
+    sync::Arc,
+};
 use core::{
     cell::UnsafeCell,
     cmp,
     mem::{size_of, MaybeUninit},
-    ptr, slice,
+    ptr,
+    ptr::NonNull,
+    slice,
     sync::atomic::{AtomicUsize, Ordering},
     task::Waker,
 };
@@ -28,10 +33,10 @@ pub const MAX_CAPACITY: usize = (1 << NUMBER_BITS) - 1;
 const NUMBER_MASK: usize = (1 << NUMBER_BITS) - 1;
 const NUMBER_BITS: u32 = (size_of::<usize>() as u32 * 8 - OPTION_BITS) / 2;
 
-const _RESERVED: usize = 1 << size_of::<usize>() * 8 - 1;
-const COMPLETE: usize = 1 << size_of::<usize>() * 8 - 2;
-const RX_WAKER_STORED: usize = 1 << size_of::<usize>() * 8 - 3;
-const TX_WAKER_STORED: usize = 1 << size_of::<usize>() * 8 - 4;
+const _RESERVED: usize = 1 << usize::BITS as usize - 1;
+const COMPLETE: usize = 1 << usize::BITS as usize - 2;
+const RX_WAKER_STORED: usize = 1 << usize::BITS as usize - 3;
+const TX_WAKER_STORED: usize = 1 << usize::BITS as usize - 4;
 const OPTION_BITS: u32 = 4;
 
 // Layout of the state field:
@@ -42,7 +47,8 @@ const OPTION_BITS: u32 = 4;
 // Length range: [0; MAX_CAPACITY]
 struct Inner<T, E> {
     state: AtomicUsize,
-    buffer: RawVec<T>,
+    ptr: NonNull<T>,
+    capacity: usize,
     err: UnsafeCell<Option<E>>,
     rx_waker: UnsafeCell<MaybeUninit<Waker>>,
     tx_waker: UnsafeCell<MaybeUninit<Waker>>,
@@ -70,9 +76,12 @@ impl<T, E> Inner<T, E> {
     #[inline]
     fn new(capacity: usize) -> Self {
         assert!(capacity <= MAX_CAPACITY);
+        let layout = Layout::array::<T>(capacity).expect("capacity overflow");
+        let ptr = unsafe { NonNull::new_unchecked(alloc(layout).cast()) };
         Self {
             state: AtomicUsize::new(0),
-            buffer: RawVec::with_capacity(capacity),
+            ptr,
+            capacity,
             err: UnsafeCell::new(None),
             rx_waker: UnsafeCell::new(MaybeUninit::zeroed()),
             tx_waker: UnsafeCell::new(MaybeUninit::zeroed()),
@@ -85,27 +94,28 @@ impl<T, E> Drop for Inner<T, E> {
         let state = self.state_load(Ordering::Acquire);
         let length = state & NUMBER_MASK;
         let cursor = state >> NUMBER_BITS & NUMBER_MASK;
-        let end = cursor.wrapping_add(length).wrapping_rem(self.buffer.capacity());
+        let end = cursor.wrapping_add(length).wrapping_rem(self.capacity);
         match cursor.cmp(&end) {
             cmp::Ordering::Equal => unsafe {
-                ptr::drop_in_place(slice::from_raw_parts_mut(
-                    self.buffer.ptr(),
-                    self.buffer.capacity(),
-                ));
+                ptr::drop_in_place(slice::from_raw_parts_mut(self.ptr.as_ptr(), self.capacity));
             },
             cmp::Ordering::Less => unsafe {
                 ptr::drop_in_place(slice::from_raw_parts_mut(
-                    self.buffer.ptr().add(cursor),
+                    self.ptr.as_ptr().add(cursor),
                     end - cursor,
                 ));
             },
             cmp::Ordering::Greater => unsafe {
-                ptr::drop_in_place(slice::from_raw_parts_mut(self.buffer.ptr(), end));
+                ptr::drop_in_place(slice::from_raw_parts_mut(self.ptr.as_ptr(), end));
                 ptr::drop_in_place(slice::from_raw_parts_mut(
-                    self.buffer.ptr().add(cursor),
-                    self.buffer.capacity() - cursor,
+                    self.ptr.as_ptr().add(cursor),
+                    self.capacity - cursor,
                 ));
             },
+        }
+        unsafe {
+            let layout = Layout::array::<T>(self.capacity).unwrap_unchecked();
+            dealloc(self.ptr.cast().as_ptr(), layout);
         }
     }
 }

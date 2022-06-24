@@ -31,7 +31,7 @@ impl<T> FiberFuture<T> {
     /// The fiber will be removed on a next thread invocation without resuming.
     #[inline]
     pub fn close(&mut self) {
-        self.rx.close()
+        self.rx.close();
     }
 }
 
@@ -93,20 +93,18 @@ where
     let (tx, rx) = channel();
     thr.add_factory(|| {
         let mut fib = factory();
-        move || {
-            loop {
-                if tx.is_canceled() {
+        move || loop {
+            if tx.is_canceled() {
+                break;
+            }
+            match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+                fib::Yielded(_) => {}
+                fib::Complete(complete) => {
+                    drop(tx.send(complete));
                     break;
                 }
-                match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-                    fib::Yielded(_) => {}
-                    fib::Complete(complete) => {
-                        drop(tx.send(complete));
-                        break;
-                    }
-                }
-                yield;
             }
+            yield;
         }
     });
     rx

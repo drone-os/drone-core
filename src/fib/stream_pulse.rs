@@ -35,7 +35,7 @@ impl FiberStreamPulse {
     /// The fiber will be removed on a next thread invocation without resuming.
     #[inline]
     pub fn close(&mut self) {
-        self.rx.close()
+        self.rx.close();
     }
 }
 
@@ -45,7 +45,7 @@ impl<E> TryFiberStreamPulse<E> {
     /// The fiber will be removed on a next thread invocation without resuming.
     #[inline]
     pub fn close(&mut self) {
-        self.rx.close()
+        self.rx.close();
     }
 }
 
@@ -148,47 +148,45 @@ where
     let (mut tx, rx) = channel();
     thr.add_factory(|| {
         let mut fib = factory();
-        move || {
-            loop {
-                if tx.is_canceled() {
-                    break;
-                }
-                match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
-                    fib::Yielded(None) => {}
-                    fib::Yielded(Some(pulses)) => match tx.send(pulses) {
-                        Ok(()) => {}
-                        Err(SendError::Canceled) => {
-                            break;
-                        }
-                        Err(SendError::Overflow) => match overflow() {
-                            Ok(()) => {}
-                            Err(err) => {
-                                drop(tx.send_err(err));
-                                break;
-                            }
-                        },
-                    },
-                    fib::Complete(value) => {
-                        match map(value) {
-                            Ok(None) => {}
-                            Ok(Some(pulses)) => match tx.send(pulses) {
-                                Ok(()) | Err(SendError::Canceled) => {}
-                                Err(SendError::Overflow) => match overflow() {
-                                    Ok(()) => {}
-                                    Err(err) => {
-                                        drop(tx.send_err(err));
-                                    }
-                                },
-                            },
-                            Err(err) => {
-                                drop(tx.send_err(err));
-                            }
-                        }
+        move || loop {
+            if tx.is_canceled() {
+                break;
+            }
+            match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
+                fib::Yielded(None) => {}
+                fib::Yielded(Some(pulses)) => match tx.send(pulses) {
+                    Ok(()) => {}
+                    Err(SendError::Canceled) => {
                         break;
                     }
+                    Err(SendError::Overflow) => match overflow() {
+                        Ok(()) => {}
+                        Err(err) => {
+                            drop(tx.send_err(err));
+                            break;
+                        }
+                    },
+                },
+                fib::Complete(value) => {
+                    match map(value) {
+                        Ok(None) => {}
+                        Ok(Some(pulses)) => match tx.send(pulses) {
+                            Ok(()) | Err(SendError::Canceled) => {}
+                            Err(SendError::Overflow) => match overflow() {
+                                Ok(()) => {}
+                                Err(err) => {
+                                    drop(tx.send_err(err));
+                                }
+                            },
+                        },
+                        Err(err) => {
+                            drop(tx.send_err(err));
+                        }
+                    }
+                    break;
                 }
-                yield;
             }
+            yield;
         }
     });
     rx

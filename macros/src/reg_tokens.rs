@@ -184,7 +184,7 @@ fn make_macro(
                 let macro_root_path = macro_root_path.iter();
                 defs.push(quote! {
                     #(#block_attrs_non_cfg)* #(#reg_attrs)*
-                    #reg_long $crate#(#macro_root_path)*::#block_name::#reg_psc;
+                    #reg_long $crate #(#macro_root_path)*::#block_name::#reg_psc;
                 });
             }
         }
@@ -246,7 +246,7 @@ fn negate_cfg_attrs(cfg_attrs: &[&Attribute]) -> Attribute {
         style: AttrStyle::Outer,
         bracket_token: token::Bracket(Span::call_site()),
         path: format_ident!("cfg").into(),
-        tokens: quote!((not(all(#(all#cfg_attrs),*)))),
+        tokens: quote!((not(all(#(all #cfg_attrs),*)))),
     }
 }
 

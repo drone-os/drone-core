@@ -99,6 +99,7 @@ impl ExecOutput for () {
     fn terminate(self) {}
 }
 
+#[allow(clippy::mismatching_type_param_order)]
 impl<E: Send + Display> ExecOutput for Result<(), E> {
     type Terminate = ();
 
@@ -120,6 +121,7 @@ impl ExecOutput for ! {
     }
 }
 
+#[allow(clippy::mismatching_type_param_order)]
 impl<E: Send + Display> ExecOutput for Result<!, E> {
     type Terminate = !;
 
