@@ -36,6 +36,10 @@ maintenance = { status = "actively-developed" }
 default = []
 std = ["futures/std"]
 
+[dependencies.drone-stream]
+version = "0.15.0"
+path = "../drone/stream"
+
 [dependencies.drone-ctypes]
 version = "=0.15.0"
 path = "ctypes"

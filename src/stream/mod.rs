@@ -6,17 +6,27 @@
 mod macros;
 mod runtime;
 
-use self::runtime::Runtime;
-use core::{fmt, fmt::Write};
+pub use drone_stream::STREAM_COUNT;
+
+use self::runtime::LocalRuntime;
+use core::{
+    cell::{SyncUnsafeCell, UnsafeCell},
+    fmt,
+    fmt::Write,
+    mem, ptr,
+};
+use drone_stream::{Runtime, BOOTSTRAP_SEQUENCE, BOOTSTRAP_SEQUENCE_LENGTH};
+
+extern "C" {
+    static STREAM_START: UnsafeCell<u8>;
+    static STREAM_END: UnsafeCell<u8>;
+}
 
 #[doc(hidden)]
 #[link_section = ".stream_rt"]
 #[no_mangle]
 #[used]
-static RT: Runtime = Runtime::new();
-
-/// Maximum number of streams.
-pub const STREAM_COUNT: u8 = 32;
+static RT: SyncUnsafeCell<Runtime> = SyncUnsafeCell::new(Runtime::zeroed());
 
 /// Stream number of the standard output.
 pub const STDOUT_STREAM: u8 = 0;
@@ -27,6 +37,33 @@ pub const STDERR_STREAM: u8 = 1;
 /// Stream handle.
 #[derive(Clone, Copy)]
 pub struct Stream(u8);
+
+/// Initializes the Drone Stream runtime.
+pub fn init() {
+    unsafe {
+        // Check if the debug probe wants to modify the runtime structure as
+        // soon as possible.
+        let mut buffer = STREAM_START.get();
+        let mut sample = BOOTSTRAP_SEQUENCE.as_ptr();
+        let mut counter = BOOTSTRAP_SEQUENCE_LENGTH;
+        while counter > 0 && *buffer == *sample {
+            buffer = buffer.add(1);
+            sample = sample.add(1);
+            counter -= 1;
+        }
+        if counter == 0 {
+            // Found the valid bootstrap sequence. Copy the bytes, which follow
+            // it, into the runtime structure.
+            ptr::copy_nonoverlapping(
+                buffer,
+                STREAM_START.get().sub(mem::size_of::<Runtime>()),
+                mem::size_of::<Runtime>(),
+            );
+            // Invalidate the bootstrap sequence.
+            *STREAM_START.get() = 0;
+        }
+    }
+}
 
 /// Returns a stream for the standard output.
 #[inline]
@@ -99,7 +136,7 @@ impl Stream {
     #[inline]
     pub fn is_enabled(self) -> bool {
         let Self(stream) = self;
-        RT.is_enabled(stream)
+        rt().is_enabled(stream)
     }
 
     /// Writes a sequence of bytes to this stream.
@@ -111,7 +148,7 @@ impl Stream {
     #[allow(clippy::return_self_not_must_use)]
     pub fn write_bytes(self, bytes: &[u8]) -> Self {
         let Self(stream) = self;
-        RT.write_bytes(stream, bytes.as_ptr(), bytes.len());
+        rt().write_bytes(stream, bytes.as_ptr(), bytes.len());
         self
     }
 
@@ -137,26 +174,32 @@ impl Write for Stream {
     }
 }
 
+fn rt() -> &'static Runtime {
+    unsafe { &*RT.get().as_const() }
+}
+
 mod sealed {
+    use super::{rt, LocalRuntime};
+
     pub trait StreamWrite: Copy {
         fn stream_write(stream: u8, value: Self);
     }
 
     impl StreamWrite for u8 {
         fn stream_write(stream: u8, value: Self) {
-            super::RT.write_u8(stream, value);
+            rt().write_u8(stream, value);
         }
     }
 
     impl StreamWrite for u16 {
         fn stream_write(stream: u8, value: Self) {
-            super::RT.write_u16(stream, value);
+            rt().write_u16(stream, value);
         }
     }
 
     impl StreamWrite for u32 {
         fn stream_write(stream: u8, value: Self) {
-            super::RT.write_u32(stream, value);
+            rt().write_u32(stream, value);
         }
     }
 }
