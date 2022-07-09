@@ -16,8 +16,8 @@ pub trait Allocator: Sized {
     /// The total number of memory pools.
     const POOL_COUNT: usize;
 
-    /// Logger port for heap tracing. Disabled if `None`.
-    const TRACE_PORT: Option<u8>;
+    /// Stream for heap tracing. Heap tracing is disabled if `None`.
+    const TRACE_STREAM: Option<u8>;
 
     /// Returns a reference to a pool or subslice, without doing bounds
     /// checking.
@@ -48,8 +48,8 @@ pub fn binary_search<A: Allocator, T: Fits>(heap: &A, value: T) -> usize {
 
 #[doc(hidden)]
 pub fn allocate<A: Allocator>(heap: &A, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-    if let Some(trace_port) = A::TRACE_PORT {
-        trace::allocate(trace_port, layout);
+    if let Some(trace_stream) = A::TRACE_STREAM {
+        trace::allocate(trace_stream, layout);
     }
     if layout.size() == 0 {
         return Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0));
@@ -75,8 +75,8 @@ pub fn allocate_zeroed<A: Allocator>(
 
 #[doc(hidden)]
 pub unsafe fn deallocate<A: Allocator>(heap: &A, ptr: NonNull<u8>, layout: Layout) {
-    if let Some(trace_port) = A::TRACE_PORT {
-        trace::deallocate(trace_port, layout);
+    if let Some(trace_stream) = A::TRACE_STREAM {
+        trace::deallocate(trace_stream, layout);
     }
     if layout.size() == 0 {
         return;
@@ -94,8 +94,8 @@ pub unsafe fn grow<A: Allocator>(
     old_layout: Layout,
     new_layout: Layout,
 ) -> Result<NonNull<[u8]>, AllocError> {
-    if let Some(trace_port) = A::TRACE_PORT {
-        trace::grow(trace_port, old_layout, new_layout);
+    if let Some(trace_stream) = A::TRACE_STREAM {
+        trace::grow(trace_stream, old_layout, new_layout);
     }
     unsafe {
         let new_ptr = allocate(heap, new_layout)?;
@@ -112,8 +112,8 @@ pub unsafe fn grow_zeroed<A: Allocator>(
     old_layout: Layout,
     new_layout: Layout,
 ) -> Result<NonNull<[u8]>, AllocError> {
-    if let Some(trace_port) = A::TRACE_PORT {
-        trace::grow(trace_port, old_layout, new_layout);
+    if let Some(trace_stream) = A::TRACE_STREAM {
+        trace::grow(trace_stream, old_layout, new_layout);
     }
     unsafe {
         let new_ptr = allocate_zeroed(heap, new_layout)?;
@@ -130,8 +130,8 @@ pub unsafe fn shrink<A: Allocator>(
     old_layout: Layout,
     new_layout: Layout,
 ) -> Result<NonNull<[u8]>, AllocError> {
-    if let Some(trace_port) = A::TRACE_PORT {
-        trace::shrink(trace_port, old_layout, new_layout);
+    if let Some(trace_stream) = A::TRACE_STREAM {
+        trace::shrink(trace_stream, old_layout, new_layout);
     }
     unsafe {
         let new_ptr = allocate(heap, new_layout)?;
@@ -142,40 +142,40 @@ pub unsafe fn shrink<A: Allocator>(
 }
 
 mod trace {
-    use crate::{heap::HEAPTRACE_KEY, log::Stream};
+    use crate::{heap::HEAPTRACE_KEY, stream::Stream};
     use core::alloc::Layout;
 
     #[inline(always)]
-    pub(super) fn allocate(trace_port: u8, layout: Layout) {
+    pub(super) fn allocate(trace_stream: u8, layout: Layout) {
         #[inline(never)]
-        fn trace(trace_port: u8, layout: Layout) {
-            Stream::new(trace_port)
+        fn trace(trace_stream: u8, layout: Layout) {
+            Stream::new(trace_stream)
                 .write::<u32>((0xA1 << 24 | layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
                 .write::<u32>((0xA2 << 24 | layout.size() as u32 & 0xFF) ^ HEAPTRACE_KEY);
         }
-        if Stream::new(trace_port).is_enabled() {
-            trace(trace_port, layout);
+        if Stream::new(trace_stream).is_enabled() {
+            trace(trace_stream, layout);
         }
     }
 
     #[inline(always)]
-    pub(super) fn deallocate(trace_port: u8, layout: Layout) {
+    pub(super) fn deallocate(trace_stream: u8, layout: Layout) {
         #[inline(never)]
-        fn trace(trace_port: u8, layout: Layout) {
-            Stream::new(trace_port)
+        fn trace(trace_stream: u8, layout: Layout) {
+            Stream::new(trace_stream)
                 .write::<u32>((0xD1 << 24 | layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
                 .write::<u32>((0xD2 << 24 | layout.size() as u32 & 0xFF) ^ HEAPTRACE_KEY);
         }
-        if Stream::new(trace_port).is_enabled() {
-            trace(trace_port, layout);
+        if Stream::new(trace_stream).is_enabled() {
+            trace(trace_stream, layout);
         }
     }
 
     #[inline(always)]
-    pub(super) fn grow(trace_port: u8, old_layout: Layout, new_layout: Layout) {
+    pub(super) fn grow(trace_stream: u8, old_layout: Layout, new_layout: Layout) {
         #[inline(never)]
-        fn trace(trace_port: u8, old_layout: Layout, new_layout: Layout) {
-            Stream::new(trace_port)
+        fn trace(trace_stream: u8, old_layout: Layout, new_layout: Layout) {
+            Stream::new(trace_stream)
                 .write::<u32>((0xB1 << 24 | old_layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
                 .write::<u32>(
                     (0xB2 << 24
@@ -185,16 +185,16 @@ mod trace {
                 )
                 .write::<u32>((0xB3 << 24 | new_layout.size() as u32 & 0xFFFF) ^ HEAPTRACE_KEY);
         }
-        if Stream::new(trace_port).is_enabled() {
-            trace(trace_port, old_layout, new_layout);
+        if Stream::new(trace_stream).is_enabled() {
+            trace(trace_stream, old_layout, new_layout);
         }
     }
 
     #[inline(always)]
-    pub(super) fn shrink(trace_port: u8, old_layout: Layout, new_layout: Layout) {
+    pub(super) fn shrink(trace_stream: u8, old_layout: Layout, new_layout: Layout) {
         #[inline(never)]
-        fn trace(trace_port: u8, old_layout: Layout, new_layout: Layout) {
-            Stream::new(trace_port)
+        fn trace(trace_stream: u8, old_layout: Layout, new_layout: Layout) {
+            Stream::new(trace_stream)
                 .write::<u32>((0xC1 << 24 | old_layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
                 .write::<u32>(
                     (0xC2 << 24
@@ -204,8 +204,8 @@ mod trace {
                 )
                 .write::<u32>((0xC3 << 24 | new_layout.size() as u32 & 0xFFFF) ^ HEAPTRACE_KEY);
         }
-        if Stream::new(trace_port).is_enabled() {
-            trace(trace_port, old_layout, new_layout);
+        if Stream::new(trace_stream).is_enabled() {
+            trace(trace_stream, old_layout, new_layout);
         }
     }
 }
@@ -220,7 +220,7 @@ mod tests {
 
     impl Allocator for TestHeap {
         const POOL_COUNT: usize = 10;
-        const TRACE_PORT: Option<u8> = None;
+        const TRACE_STREAM: Option<u8> = None;
 
         unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
         where

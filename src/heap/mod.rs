@@ -58,7 +58,7 @@
 //!     // Use this heap as the global allocator.
 //!     global => true;
 //!     // Uncomment the following line to enable heap tracing feature:
-//!     // trace_port => 31;
+//!     // trace_stream => 31;
 //! }
 //!
 //! // Create a static instance of the heap type and declare it as the global

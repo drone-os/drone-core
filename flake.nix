@@ -31,14 +31,18 @@
         rustAnalyzer = fenix.packages.${system}.rust-analyzer;
       in
       {
-        devShells.default = pkgs.mkShell ({
-          nativeBuildInputs = [
-            rustToolchain
-            rustFmt
-            rustAnalyzer
-          ];
-          RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
-        });
+        devShells = rec {
+          native = pkgs.mkShell {
+            name = "native";
+            nativeBuildInputs = [
+              rustToolchain
+              rustFmt
+              rustAnalyzer
+            ];
+            RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
+          };
+          default = native;
+        };
       }
     );
 }

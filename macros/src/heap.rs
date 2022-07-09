@@ -11,7 +11,7 @@ use syn::{
 struct Input {
     config: Ident,
     metadata: Metadata,
-    trace_port: Option<LitInt>,
+    trace_stream: Option<LitInt>,
     global: Option<LitBool>,
 }
 
@@ -25,7 +25,7 @@ impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let mut config = None;
         let mut metadata = None;
-        let mut trace_port = None;
+        let mut trace_stream = None;
         let mut global = None;
         while !input.is_empty() {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -43,11 +43,11 @@ impl Parse for Input {
                 } else {
                     return Err(input.error("multiple `metadata` specifications"));
                 }
-            } else if attrs.is_empty() && ident == "trace_port" {
-                if trace_port.is_none() {
-                    trace_port = Some(input.parse()?);
+            } else if attrs.is_empty() && ident == "trace_stream" {
+                if trace_stream.is_none() {
+                    trace_stream = Some(input.parse()?);
                 } else {
-                    return Err(input.error("multiple `trace_port` specifications"));
+                    return Err(input.error("multiple `trace_stream` specifications"));
                 }
             } else if attrs.is_empty() && ident == "global" {
                 if global.is_none() {
@@ -65,7 +65,7 @@ impl Parse for Input {
         Ok(Self {
             config: config.ok_or_else(|| input.error("missing `config` specification"))?,
             metadata: metadata.ok_or_else(|| input.error("missing `metadata` specification"))?,
-            trace_port,
+            trace_stream,
             global,
         })
     }
@@ -81,7 +81,7 @@ impl Metadata {
 
 #[allow(clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Input { config: heap_config, metadata, trace_port, global } = parse_macro_input!(input);
+    let Input { config: heap_config, metadata, trace_stream, global } = parse_macro_input!(input);
     let Metadata { attrs: metadata_attrs, vis: metadata_vis, ident: metadata_ident } = &metadata;
     let mut config = match Config::read_from_cargo_manifest_dir() {
         Ok(config) => config,
@@ -119,7 +119,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
     let pools_len = pools.len();
 
-    let drone_allocator = def_drone_allocator(&metadata, trace_port, pools_len);
+    let drone_allocator = def_drone_allocator(&metadata, trace_stream, pools_len);
     let core_allocator = def_core_allocator(&metadata);
     let global_alloc = match global {
         Some(LitBool { value, .. }) if value => Some(def_global_alloc(&metadata)),
@@ -150,19 +150,19 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
 fn def_drone_allocator(
     metadata: &Metadata,
-    trace_port: Option<LitInt>,
+    trace_stream: Option<LitInt>,
     pools_len: usize,
 ) -> TokenStream2 {
     let Metadata { ident: metadata_ident, .. } = metadata;
-    let trace_port = if let Some(trace_port) = trace_port {
-        quote!(::core::option::Option::Some(#trace_port))
+    let trace_stream = if let Some(trace_stream) = trace_stream {
+        quote!(::core::option::Option::Some(#trace_stream))
     } else {
         quote!(::core::option::Option::None)
     };
     quote! {
         impl ::drone_core::heap::Allocator for #metadata_ident {
             const POOL_COUNT: usize = #pools_len;
-            const TRACE_PORT: ::core::option::Option<u8> = #trace_port;
+            const TRACE_STREAM: ::core::option::Option<u8> = #trace_stream;
 
             #[inline]
             unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output

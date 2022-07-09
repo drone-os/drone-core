@@ -21,12 +21,12 @@
 //! std = ["drone-core/std"]
 //! ```
 
-#![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
+#![feature(alloc_layout_extra)]
 #![feature(core_intrinsics)]
 #![feature(exhaustive_patterns)]
-#![feature(generator_trait)]
 #![feature(generators)]
+#![feature(generator_trait)]
 #![feature(lang_items)]
 #![feature(marker_trait_attr)]
 #![feature(negative_impls)]
@@ -41,7 +41,6 @@
 #![warn(missing_docs, unsafe_op_in_unsafe_fn)]
 #![warn(clippy::pedantic)]
 #![allow(
-    incomplete_features,
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
     clippy::cast_sign_loss,
@@ -64,12 +63,12 @@ pub mod fib;
 pub mod heap;
 pub mod inventory;
 pub mod io;
-pub mod log;
 pub mod mem;
 pub mod periph;
 pub mod prelude;
 pub mod proc_loop;
 pub mod reg;
+pub mod stream;
 pub mod sync;
 pub mod thr;
 pub mod token;
@@ -101,3 +100,9 @@ pub use drone_core_macros::config_override;
 #[prelude_import]
 #[allow(unused_imports)]
 use crate::prelude::*;
+
+/// Re-exports for use inside macros.
+#[doc(hidden)]
+pub mod _rt {
+    pub use ::core;
+}
