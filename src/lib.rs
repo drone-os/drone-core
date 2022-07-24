@@ -60,6 +60,7 @@
 extern crate alloc;
 
 pub mod bitfield;
+pub mod cpu;
 pub mod ffi;
 pub mod fib;
 pub mod heap;

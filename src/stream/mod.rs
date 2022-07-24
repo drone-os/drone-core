@@ -28,6 +28,10 @@ extern "C" {
 #[used]
 static RT: SyncUnsafeCell<Runtime> = SyncUnsafeCell::new(Runtime::zeroed());
 
+unsafe fn rt() -> &'static mut Runtime {
+    unsafe { &mut *RT.get() }
+}
+
 /// Stream number of the standard output.
 pub const STDOUT_STREAM: u8 = 0;
 
@@ -136,7 +140,7 @@ impl Stream {
     #[inline]
     pub fn is_enabled(self) -> bool {
         let Self(stream) = self;
-        rt().is_enabled(stream)
+        unsafe { rt().is_enabled(stream) }
     }
 
     /// Writes a sequence of bytes to this stream.
@@ -144,21 +148,32 @@ impl Stream {
     /// The resulting byte sequence visible to a debug probe may be interleaved
     /// with other concurrent writes. See also [`Stream::write`] for writing
     /// atomic byte sequences.
-    #[inline]
     #[allow(clippy::return_self_not_must_use)]
+    #[inline]
     pub fn write_bytes(self, bytes: &[u8]) -> Self {
         let Self(stream) = self;
-        rt().write_bytes(stream, bytes.as_ptr(), bytes.len());
+        unsafe { rt().write_bytes(stream, bytes.as_ptr(), bytes.len()) };
         self
     }
 
-    /// Writes an atomic byte sequence to this stream. `T` can be one of `u8`,
-    /// `u16`, `u32`.
+    /// Writes a sequence of bytes to this stream in one transaction.
     ///
-    /// Bytes are written in big-endian order. It's guaranteed that all bytes
-    /// of `value` will be visible be a debug probe indissolubly.
-    #[inline]
+    /// # Panics
+    ///
+    /// If length of `bytes` is more than 256.
     #[allow(clippy::return_self_not_must_use)]
+    #[inline]
+    pub fn write_transaction(self, bytes: &[u8]) -> Self {
+        let Self(stream) = self;
+        let length = bytes.len().try_into().expect("maximum transaction length exceeded");
+        unsafe { rt().write_transaction(stream, bytes.as_ptr(), length) };
+        self
+    }
+
+    /// Writes `T` as a sequence of bytes to this stream in one transaction.
+    /// `T` can be one of  `u8`, `u16`, `u32`.
+    #[allow(clippy::return_self_not_must_use)]
+    #[inline]
     pub fn write<T: sealed::StreamWrite>(self, value: T) -> Self {
         let Self(stream) = self;
         T::stream_write(stream, value);
@@ -174,10 +189,6 @@ impl Write for Stream {
     }
 }
 
-fn rt() -> &'static Runtime {
-    unsafe { &*RT.get().as_const() }
-}
-
 mod sealed {
     use super::{rt, LocalRuntime};
 
@@ -185,21 +196,19 @@ mod sealed {
         fn stream_write(stream: u8, value: Self);
     }
 
-    impl StreamWrite for u8 {
-        fn stream_write(stream: u8, value: Self) {
-            rt().write_u8(stream, value);
-        }
+    macro_rules! impl_integer {
+        ($ty:ty) => {
+            impl StreamWrite for $ty {
+                #[inline]
+                fn stream_write(stream: u8, value: Self) {
+                    let bytes = value.to_ne_bytes();
+                    unsafe { rt().write_transaction(stream, bytes.as_ptr(), bytes.len() as u8) };
+                }
+            }
+        };
     }
 
-    impl StreamWrite for u16 {
-        fn stream_write(stream: u8, value: Self) {
-            rt().write_u16(stream, value);
-        }
-    }
-
-    impl StreamWrite for u32 {
-        fn stream_write(stream: u8, value: Self) {
-            rt().write_u32(stream, value);
-        }
-    }
+    impl_integer!(u8);
+    impl_integer!(u16);
+    impl_integer!(u32);
 }
