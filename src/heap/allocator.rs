@@ -9,8 +9,8 @@ use core::{
 /// Allocator for a generic memory pools layout.
 ///
 /// The trait is supposed to be implemented for an array of pools.
-/// [`heap`](crate::heap) macro should be used to generate the concrete type and
-/// the implementation.
+/// [`heap`](crate::heap!) macro should be used to generate the concrete type
+/// and the implementation.
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub trait Allocator: Sized {
     /// The total number of memory pools.

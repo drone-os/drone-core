@@ -58,7 +58,7 @@ impl Pool {
     /// # Safety
     ///
     /// * `ptr` must point to a block previously allocated by
-    ///   [`alloc`](Pool::alloc).
+    ///   [`allocate`](Pool::allocate).
     /// * `ptr` must not be used after deallocation.
     #[allow(clippy::cast_ptr_alignment)]
     pub unsafe fn deallocate(&self, ptr: NonNull<u8>) {

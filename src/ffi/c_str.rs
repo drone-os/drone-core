@@ -13,13 +13,14 @@ use core::{
 
 /// Representation of a borrowed C string.
 ///
-/// This type represents a borrowed reference to a nul-terminated array of
-/// bytes. It can be constructed safely from a `&`[`u8`] slice, or unsafely from
-/// a raw `*const c_char`. It can then be converted to a Rust `&`[`str`] by
-/// performing UTF-8 validation, or into an owned [`CString`].
+/// This type represents a borrowed reference to a nul-terminated array
+/// of bytes. It can be constructed safely from a `&`[`u8`] slice, or
+/// unsafely from a raw `*const c_char`. It can then be converted to a
+/// Rust `&`[`prim@str`] by performing UTF-8 validation, or into an owned
+/// [`CString`].
 ///
-/// `&CStr` is to [`CString`] as `&`[`str`] is to [`String`]: the former in each
-/// pair are borrowed references; the latter are owned strings.
+/// `&CStr` is to [`CString`] as `&`[`prim@str`] is to [`String`]: the former
+/// in each pair are borrowed references; the latter are owned strings.
 ///
 /// Note that this structure is **not** `repr(C)` and is not recommended to be
 /// placed in the signatures of FFI functions. Instead, safe wrappers of FFI
@@ -310,11 +311,11 @@ impl CStr {
         unsafe { &*(ptr::addr_of!(self.inner) as *const [u8]) }
     }
 
-    /// Yields a `&`[`str`] slice if the `CStr` contains valid UTF-8.
+    /// Yields a `&`[`prim@str`] slice if the `CStr` contains valid UTF-8.
     ///
     /// If the contents of the `CStr` are valid UTF-8 data, this function will
-    /// return the corresponding `&`[`str`] slice. Otherwise, it will return an
-    /// error with details of where UTF-8 validation failed.
+    /// return the corresponding `&`[`prim@str`] slice. Otherwise, it will
+    /// return an error with details of where UTF-8 validation failed.
     ///
     /// > **Note**: This method is currently implemented to check for validity
     /// > after a constant-time cast, but it is planned to alter its definition
@@ -337,13 +338,14 @@ impl CStr {
         str::from_utf8(self.to_bytes())
     }
 
-    /// Converts a `CStr` into a [`Cow`]`<`[`str`]`>`.
+    /// Converts a `CStr` into a [`Cow`]`<`[`prim@str`]`>`.
     ///
-    /// If the contents of the `CStr` are valid UTF-8 data, this function will
-    /// return a [`Cow::Borrowed`]`(&`[`str`]`)` with the corresponding
-    /// `&`[`str`] slice. Otherwise, it will replace any invalid UTF-8 sequences
-    /// with [`U+FFFD REPLACEMENT CHARACTER`](core::char::REPLACEMENT_CHARACTER)
-    /// and return a [`Cow::Owned`]`(`[`String`]`)` with the result.
+    /// If the contents of the `CStr` are valid UTF-8 data, this
+    /// function will return a [`Cow::Borrowed`]`(&`[`prim@str`]`)`
+    /// with the corresponding `&`[`prim@str`] slice. Otherwise, it will
+    /// replace any invalid UTF-8 sequences with [`U+FFFD REPLACEMENT
+    /// CHARACTER`](core::char::REPLACEMENT_CHARACTER) and return a
+    /// [`Cow::Owned`]`(`[`String`]`)` with the result.
     ///
     /// > **Note**: This method is currently implemented to check for validity
     /// > after a constant-time cast, but it is planned to alter its definition

@@ -81,19 +81,19 @@ mod lang_items;
 
 /// Defines dynamic memory structures.
 ///
-/// See [the module level documentation](heap) for details.
+/// See [the module level documentation](mod@heap) for details.
 #[doc(inline)]
 pub use drone_core_macros::heap;
 
 /// Defines a new generic peripheral.
 ///
-/// See [the module level documentation](periph) for details.
+/// See [the module level documentation](mod@periph) for details.
 #[doc(inline)]
 pub use drone_core_macros::periph;
 
 /// Defines a memory-mapped register.
 ///
-/// See [the module level documentation](reg) for details.
+/// See [the module level documentation](mod@reg) for details.
 #[doc(inline)]
 pub use drone_core_macros::reg;
 

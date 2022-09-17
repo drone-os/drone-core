@@ -88,10 +88,10 @@
 //! # Static Tokens
 //!
 //! Mutable statics are unsafe in Rust. One way to make them safe is to use
-//! interior-mutability. For example [`Mutex`](crate::sync::mutex::Mutex)
-//! ensures that concurrent access to the data is safe. If you don't need
-//! simultaneous access to the static but still need other static
-//! characteristics like known and stable address, you can use static tokens:
+//! interior-mutability. For example [`Mutex`](crate::sync::Mutex) ensures
+//! that concurrent access to the data is safe. If you don't need simultaneous
+//! access to the static but still need other static characteristics like known
+//! and stable address, you can use static tokens:
 //!
 //! ```
 //! use drone_core::token::{unsafe_static_tokens, StaticToken, Token};

@@ -242,7 +242,8 @@ impl<T> LinkedList<T> {
         unsafe { self.iter_mut_unchecked() }
     }
 
-    /// Unsafe variant of [`iter_mut`] with non-mutable `self`.
+    /// Unsafe variant of [`iter_mut`](LinkedList::iter_mut) with non-mutable
+    /// `self`.
     ///
     /// # Safety
     ///
@@ -295,7 +296,7 @@ impl<T> LinkedList<T> {
         unsafe { DrainFilter { raw: self.drain_filter_raw(move |node| filter(&mut *node)) } }
     }
 
-    /// Raw variant of [`drain_filter`].
+    /// Raw variant of [`drain_filter`](LinkedList::drain_filter).
     ///
     /// # Safety
     ///

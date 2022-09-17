@@ -43,8 +43,8 @@ macro_rules! print {
 
 /// Prints to the standard output (stream number 0), with a newline.
 ///
-/// This macro uses the same syntax as [`format!`], but writes to the standard
-/// output instead. See [`core::fmt`] for more information.
+/// This macro uses the same syntax as [`alloc::format!`], but writes to the
+/// standard output instead. See [`core::fmt`] for more information.
 ///
 /// Use `println!` only for the primary output of your program. Use
 /// [`eprintln!`] instead to print error and progress messages.

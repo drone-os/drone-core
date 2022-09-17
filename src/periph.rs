@@ -1,5 +1,5 @@
-//! Peripheral is a group of [`memory-mapped registers`](crate::reg) or their
-//! fields.
+//! Peripheral is a group of [`memory-mapped registers`](mod@crate::reg) or
+//! their fields.
 //!
 //! # Singular Peripheral
 //!

@@ -172,7 +172,8 @@ pub unsafe trait Thread: Sized + Sync + 'static {
 /// # Safety
 ///
 /// * At most one trait implementation per thread must exist.
-/// * [`ThrToken::THR_IDX`] must be less than [`ThrToken::Thread::COUNT`].
+/// * [`ThrToken::THR_IDX`] must be less than
+///   [`ThrToken::Thread`]::[`COUNT`](Thread::COUNT).
 pub unsafe trait ThrToken
 where
     Self: Sized + Clone + Copy,
@@ -182,7 +183,8 @@ where
     /// The thread type.
     type Thread: Thread;
 
-    /// Position of the thread within [`Self::Thread::pool`] array.
+    /// Position of the thread within [`Self::Thread`]::[`pool`][Thread::pool]
+    /// array.
     const THR_IDX: u16;
 
     /// Returns a reference to the thread object.
