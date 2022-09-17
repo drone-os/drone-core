@@ -43,7 +43,7 @@ impl Parse for Input {
                 } else {
                     return Err(input.error("multiple `metadata` specifications"));
                 }
-            } else if attrs.is_empty() && ident == "trace_stream" {
+            } else if attrs.is_empty() && ident == "enable_trace_stream" {
                 if trace_stream.is_none() {
                     trace_stream = Some(input.parse()?);
                 } else {

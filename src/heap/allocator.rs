@@ -142,16 +142,16 @@ pub unsafe fn shrink<A: Allocator>(
 }
 
 mod trace {
-    use crate::{heap::HEAPTRACE_KEY, stream::Stream};
-    use core::alloc::Layout;
+    use crate::stream::Stream;
+    use core::{alloc::Layout, mem};
 
     #[inline(always)]
     pub(super) fn allocate(trace_stream: u8, layout: Layout) {
         #[inline(never)]
         fn trace(trace_stream: u8, layout: Layout) {
-            Stream::new(trace_stream)
-                .write::<u32>((0xA1 << 24 | layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
-                .write::<u32>((0xA2 << 24 | layout.size() as u32 & 0xFF) ^ HEAPTRACE_KEY);
+            let buffer: [usize; 2] = [0_usize.to_be(), layout.size()];
+            let buffer: [u8; mem::size_of::<[usize; 2]>()] = unsafe { mem::transmute(buffer) };
+            Stream::new(trace_stream).write_transaction(&buffer[3..]);
         }
         if Stream::new(trace_stream).is_enabled() {
             trace(trace_stream, layout);
@@ -162,9 +162,9 @@ mod trace {
     pub(super) fn deallocate(trace_stream: u8, layout: Layout) {
         #[inline(never)]
         fn trace(trace_stream: u8, layout: Layout) {
-            Stream::new(trace_stream)
-                .write::<u32>((0xD1 << 24 | layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
-                .write::<u32>((0xD2 << 24 | layout.size() as u32 & 0xFF) ^ HEAPTRACE_KEY);
+            let buffer: [usize; 2] = [1_usize.to_be(), layout.size()];
+            let buffer: [u8; mem::size_of::<[usize; 2]>()] = unsafe { mem::transmute(buffer) };
+            Stream::new(trace_stream).write_transaction(&buffer[3..]);
         }
         if Stream::new(trace_stream).is_enabled() {
             trace(trace_stream, layout);
@@ -175,15 +175,9 @@ mod trace {
     pub(super) fn grow(trace_stream: u8, old_layout: Layout, new_layout: Layout) {
         #[inline(never)]
         fn trace(trace_stream: u8, old_layout: Layout, new_layout: Layout) {
-            Stream::new(trace_stream)
-                .write::<u32>((0xB1 << 24 | old_layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
-                .write::<u32>(
-                    (0xB2 << 24
-                        | (old_layout.size() as u32 & 0xFF) << 16
-                        | new_layout.size() as u32 >> 16)
-                        ^ HEAPTRACE_KEY,
-                )
-                .write::<u32>((0xB3 << 24 | new_layout.size() as u32 & 0xFFFF) ^ HEAPTRACE_KEY);
+            let buffer: [usize; 3] = [2_usize.to_be(), old_layout.size(), new_layout.size()];
+            let buffer: [u8; mem::size_of::<[usize; 3]>()] = unsafe { mem::transmute(buffer) };
+            Stream::new(trace_stream).write_transaction(&buffer[3..]);
         }
         if Stream::new(trace_stream).is_enabled() {
             trace(trace_stream, old_layout, new_layout);
@@ -194,15 +188,9 @@ mod trace {
     pub(super) fn shrink(trace_stream: u8, old_layout: Layout, new_layout: Layout) {
         #[inline(never)]
         fn trace(trace_stream: u8, old_layout: Layout, new_layout: Layout) {
-            Stream::new(trace_stream)
-                .write::<u32>((0xC1 << 24 | old_layout.size() as u32 >> 24) ^ HEAPTRACE_KEY)
-                .write::<u32>(
-                    (0xC2 << 24
-                        | (old_layout.size() as u32 & 0xFF) << 16
-                        | new_layout.size() as u32 >> 16)
-                        ^ HEAPTRACE_KEY,
-                )
-                .write::<u32>((0xC3 << 24 | new_layout.size() as u32 & 0xFFFF) ^ HEAPTRACE_KEY);
+            let buffer: [usize; 3] = [3_usize.to_be(), old_layout.size(), new_layout.size()];
+            let buffer: [u8; mem::size_of::<[usize; 3]>()] = unsafe { mem::transmute(buffer) };
+            Stream::new(trace_stream).write_transaction(&buffer[3..]);
         }
         if Stream::new(trace_stream).is_enabled() {
             trace(trace_stream, old_layout, new_layout);

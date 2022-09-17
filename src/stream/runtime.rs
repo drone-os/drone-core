@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "std", allow(unused_imports, unused_variables))]
+
 use super::{STREAM_END, STREAM_START};
 use crate::cpu::Critical;
 use core::ptr;
@@ -24,10 +26,15 @@ impl LocalRuntime for Runtime {
             unsafe { self.write_transaction(stream, buffer, DEFAULT_TRANSACTION_LENGTH) };
             buffer = unsafe { buffer.add(usize::from(DEFAULT_TRANSACTION_LENGTH)) };
         }
-        unsafe { self.write_transaction(stream, buffer, length as u8) };
+        if length > 0 {
+            unsafe { self.write_transaction(stream, buffer, length as u8) };
+        }
     }
 
     unsafe fn write_transaction(&mut self, stream: u8, buffer: *const u8, length: u8) {
+        #[cfg(feature = "std")]
+        return unimplemented!();
+        #[cfg(not(feature = "std"))]
         unsafe {
             let buffer_size = (STREAM_END.get() as usize - STREAM_START.get() as usize) as u32;
             loop {

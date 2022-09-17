@@ -3,6 +3,8 @@
 //! This module implements standard output/error interface, which mimics Rust's
 //! standard library.
 
+#![cfg_attr(feature = "std", allow(unused_imports, dead_code, unreachable_code))]
+
 mod macros;
 mod runtime;
 
@@ -44,6 +46,9 @@ pub struct Stream(u8);
 
 /// Initializes the Drone Stream runtime.
 pub fn init() {
+    #[cfg(feature = "std")]
+    return unimplemented!();
+    #[cfg(not(feature = "std"))]
     unsafe {
         // Check if the debug probe wants to modify the runtime structure as
         // soon as possible.

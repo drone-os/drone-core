@@ -58,7 +58,7 @@
 //!     // Use this heap as the global allocator.
 //!     global => true;
 //!     // Uncomment the following line to enable heap tracing feature:
-//!     // trace_stream => 31;
+//!     // enable_trace_stream => 31;
 //! }
 //!
 //! // Create a static instance of the heap type and declare it as the global
@@ -88,6 +88,3 @@ pub use self::{
     },
     pool::Pool,
 };
-
-/// XOR pattern for heap trace output.
-pub const HEAPTRACE_KEY: u32 = 0xC5AC_CE55;

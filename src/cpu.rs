@@ -1,5 +1,7 @@
 //! CPU management.
 
+#![cfg_attr(feature = "std", allow(dead_code, unreachable_code))]
+
 extern "C" {
     fn drone_self_reset() -> !;
     fn drone_int_enable();
