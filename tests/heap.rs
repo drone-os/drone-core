@@ -2,55 +2,57 @@
 #![feature(slice_ptr_get)]
 #![no_implicit_prelude]
 
-use ::drone_core::{config_override, heap};
+use ::drone_core::{heap, override_layout};
 use ::std::{assert_eq, mem::size_of};
 
-config_override! { "
-[memory.flash]
-size = \"128K\"
-origin = 0x08000000
+override_layout! { r#"
+[ram]
+main = { origin = 0x20000000, size = "20K" }
 
-[memory.ram]
-size = \"20K\"
-origin = 0x20000000
+[data]
+ram = "main"
 
-[heap.main]
-size = \"10K\"
+[heap.primary]
+ram = "main"
+size = "10K"
 pools = [
-    { block = \"4\", capacity = 896 },
-    { block = \"32\", capacity = 80 },
-    { block = \"256\", capacity = 16 },
+    { block = "4", count = "896" },
+    { block = "32", count = "80" },
+    { block = "256", count = "16" },
 ]
 
 [heap.secondary]
-origin = 0x40000000
-size = \"6K\"
+ram = "main"
+size = "6K"
 pools = [
-    { block = \"4\", capacity = 896 },
-    { block = \"32\", capacity = 80 },
+    { block = "4", count = "896" },
+    { block = "32", count = "80" },
 ]
-
-[linker]
-platform = \"arm\"
-" }
+"# }
 
 heap! {
-    config => main;
+    layout => primary;
     /// Test doc attribute
     #[doc = "test attribute"]
-    metadata => pub HeapMain;
-    global => false;
+    metadata => pub HeapPrimary;
+    /// Test doc attribute
+    #[cfg_attr(not(feature = "std"), global_allocator)]
+    #[doc = "test attribute"]
+    instance => pub HEAP_PRIMARY;
 }
 
 heap! {
-    config => secondary;
+    layout => secondary;
     metadata => pub HeapSecondary;
-    global => false;
+    instance => pub HEAP_SECONDARY;
     enable_trace_stream => 5;
 }
 
+fn assert_global_alloc<T: ::core::alloc::GlobalAlloc>() {}
+
 #[test]
 fn size() {
-    assert_eq!(size_of::<HeapMain>(), size_of::<heap::Pool>() * 3);
+    assert_global_alloc::<HeapPrimary>();
+    assert_eq!(size_of::<HeapPrimary>(), size_of::<heap::Pool>() * 3);
     assert_eq!(size_of::<HeapSecondary>(), size_of::<heap::Pool>() * 2);
 }

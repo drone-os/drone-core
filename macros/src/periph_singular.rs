@@ -199,13 +199,13 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
         });
     }
-    let expanded = quote! {
+    quote! {
         #(#struct_attrs)*
         pub struct #struct_ident {
             #(#periph_tokens,)*
         }
 
         #(#tokens)*
-    };
-    expanded.into()
+    }
+    .into()
 }

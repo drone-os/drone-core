@@ -150,11 +150,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let def_pool = def_pool(&thr, &local, &index, &threads, resume.as_ref());
     let def_soft = def_soft(&thr, set_pending.as_ref());
 
-    let expanded = quote! {
+    quote! {
         #def_pool
         #def_soft
-    };
-    expanded.into()
+    }
+    .into()
 }
 
 fn def_pool(

@@ -95,7 +95,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let def_tokens = def_tokens.values();
     let ctor_tokens = ctor_tokens.values();
     let assert_tokens = assert_tokens.values();
-    let expanded = quote! {
+    quote! {
         #(#attrs)* #vis struct #ident {
             #(#def_tokens)*
         }
@@ -106,6 +106,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
         }
         #(#assert_tokens)*
-    };
-    expanded.into()
+    }
+    .into()
 }

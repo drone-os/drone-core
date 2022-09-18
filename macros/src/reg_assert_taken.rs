@@ -39,9 +39,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         Input::Concat { strings } => strings.iter().map(LitStr::value).collect::<Vec<_>>().concat(),
     };
     let ident = format_ident!("__assert_register_block_taken_{}", name);
-    let expanded = quote! {
+    quote! {
         #[no_mangle]
         fn #ident() {}
-    };
-    expanded.into()
+    }
+    .into()
 }

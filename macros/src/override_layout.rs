@@ -19,6 +19,6 @@ impl Parse for Input {
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
     let Input { contents } = parse_macro_input!(input);
-    env::set_var("CARGO_MANIFEST_DIR_OVERRIDE", contents.value());
+    env::set_var("DRONE_LAYOUT_CONFIG", contents.value());
     quote!().into()
 }

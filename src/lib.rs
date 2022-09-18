@@ -98,7 +98,7 @@ pub use drone_core_macros::periph;
 pub use drone_core_macros::reg;
 
 #[doc(hidden)]
-pub use drone_core_macros::config_override;
+pub use drone_core_macros::override_layout;
 
 #[prelude_import]
 #[allow(unused_imports)]

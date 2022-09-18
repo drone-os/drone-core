@@ -476,9 +476,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             });
         }
     }
-    let expanded = quote! {
+    quote! {
         #(#reg_tokens)*
         #(#variant_tokens)*
-    };
-    expanded.into()
+    }
+    .into()
 }

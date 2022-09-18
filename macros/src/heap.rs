@@ -1,18 +1,20 @@
-use drone_config::Config;
+use drone_config::{Layout, LAYOUT_CONFIG};
 use drone_macros_core::parse_error;
+use inflector::Inflector;
 use proc_macro::TokenStream;
-use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::quote;
+use proc_macro2::{Span, TokenStream as TokenStream2, TokenTree as TokenTree2};
+use quote::{format_ident, quote};
+use std::iter;
 use syn::{
     parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, Ident, LitBool, LitInt, Token, Visibility,
+    parse_macro_input, Attribute, Ident, LitInt, LitStr, Token, Visibility,
 };
 
 struct Input {
-    config: Ident,
+    layout: Ident,
     metadata: Metadata,
+    instance: Instance,
     trace_stream: Option<LitInt>,
-    global: Option<LitBool>,
 }
 
 struct Metadata {
@@ -21,21 +23,27 @@ struct Metadata {
     ident: Ident,
 }
 
+struct Instance {
+    attrs: Vec<Attribute>,
+    vis: Visibility,
+    ident: Ident,
+}
+
 impl Parse for Input {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let mut config = None;
+        let mut layout = None;
         let mut metadata = None;
+        let mut instance = None;
         let mut trace_stream = None;
-        let mut global = None;
         while !input.is_empty() {
             let attrs = input.call(Attribute::parse_outer)?;
             let ident = input.parse::<Ident>()?;
             input.parse::<Token![=>]>()?;
-            if attrs.is_empty() && ident == "config" {
-                if config.is_none() {
-                    config = Some(input.parse()?);
+            if attrs.is_empty() && ident == "layout" {
+                if layout.is_none() {
+                    layout = Some(input.parse()?);
                 } else {
-                    return Err(input.error("multiple `config` specifications"));
+                    return Err(input.error("multiple `layout` specifications"));
                 }
             } else if ident == "metadata" {
                 if metadata.is_none() {
@@ -43,17 +51,17 @@ impl Parse for Input {
                 } else {
                     return Err(input.error("multiple `metadata` specifications"));
                 }
+            } else if ident == "instance" {
+                if instance.is_none() {
+                    instance = Some(Instance::parse(input, attrs)?);
+                } else {
+                    return Err(input.error("multiple `instance` specifications"));
+                }
             } else if attrs.is_empty() && ident == "enable_trace_stream" {
                 if trace_stream.is_none() {
                     trace_stream = Some(input.parse()?);
                 } else {
                     return Err(input.error("multiple `trace_stream` specifications"));
-                }
-            } else if attrs.is_empty() && ident == "global" {
-                if global.is_none() {
-                    global = Some(input.parse()?);
-                } else {
-                    return Err(input.error("multiple `global` specifications"));
                 }
             } else {
                 return Err(input.error(format!("unknown key: `{}`", ident)));
@@ -63,10 +71,10 @@ impl Parse for Input {
             }
         }
         Ok(Self {
-            config: config.ok_or_else(|| input.error("missing `config` specification"))?,
+            layout: layout.ok_or_else(|| input.error("missing `layout` specification"))?,
             metadata: metadata.ok_or_else(|| input.error("missing `metadata` specification"))?,
+            instance: instance.ok_or_else(|| input.error("missing `instance` specification"))?,
             trace_stream,
-            global,
         })
     }
 }
@@ -79,76 +87,110 @@ impl Metadata {
     }
 }
 
+impl Instance {
+    fn parse(input: ParseStream<'_>, attrs: Vec<Attribute>) -> Result<Self> {
+        let vis = input.parse()?;
+        let ident = input.parse()?;
+        Ok(Self { attrs, vis, ident })
+    }
+}
+
 #[allow(clippy::too_many_lines)]
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Input { config: heap_config, metadata, trace_stream, global } = parse_macro_input!(input);
+    let Input { layout: heap_layout, metadata, instance, trace_stream } = parse_macro_input!(input);
     let Metadata { attrs: metadata_attrs, vis: metadata_vis, ident: metadata_ident } = &metadata;
-    let mut config = match Config::read_from_cargo_manifest_dir() {
-        Ok(config) => config,
-        Err(err) => parse_error!("{}: {}", drone_config::CONFIG_NAME, err),
+    let Instance { attrs: instance_attrs, vis: instance_vis, ident: instance_ident } = &instance;
+    let layout = match Layout::read() {
+        Ok(layout) => layout,
+        Err(err) => parse_error!("{err:#?}"),
     };
 
-    let (mut pointer, pools) = if heap_config == "main" {
-        (
-            config.memory.ram.origin + config.memory.ram.size - config.heap.main.size,
-            &mut config.heap.main.pools,
-        )
-    } else {
-        match config.heap.extra.get_mut(&heap_config.to_string()) {
-            Some(heap) => (heap.origin, &mut heap.block.pools),
-            None => {
-                parse_error!(
-                    "Missing `{}` heap configuration in {}",
-                    heap_config,
-                    drone_config::CONFIG_NAME
-                )
-            }
-        }
+    let pools = match layout.heap.get(&heap_layout.to_string()) {
+        Some(heap) => &heap.pools,
+        None => parse_error!("Couldn't find heap.{heap_layout} in {LAYOUT_CONFIG}"),
     };
-
-    pools.sort_by_key(|pool| pool.block);
-    let mut pools_tokens = Vec::new();
-    for pool in pools.iter() {
-        let block = LitInt::new(&pool.block.to_string(), Span::call_site());
-        let capacity = LitInt::new(&pool.capacity.to_string(), Span::call_site());
-        let address = LitInt::new(&pointer.to_string(), Span::call_site());
-        pools_tokens.push(quote! {
-            ::drone_core::heap::Pool::new(#address, #block, #capacity)
-        });
-        pointer += pool.block * pool.capacity;
-    }
+    let heap_layout_uppercase = heap_layout.to_string().to_screaming_snake_case();
+    let heap_rt_load = format_ident!("HEAP_{}_RT_LOAD", heap_layout_uppercase);
+    let heap_rt_base = format_ident!("HEAP_{}_RT_BASE", heap_layout_uppercase);
+    let heap_rt_end = format_ident!("HEAP_{}_RT_END", heap_layout_uppercase);
+    let section = LitStr::new(&format!(".heap_{heap_layout}_rt"), Span::call_site());
     let pools_len = pools.len();
+    let pools_tokens = iter::repeat(quote! {
+        // Actual parameters will be set by drone-ld.
+        ::drone_core::heap::Pool::new(0, 0, 0),
+    })
+    .take(pools_len)
+    .collect::<Vec<_>>();
 
-    let drone_allocator = def_drone_allocator(&metadata, trace_stream, pools_len);
-    let core_allocator = def_core_allocator(&metadata);
-    let global_alloc = match global {
-        Some(LitBool { value, .. }) if value => Some(def_global_alloc(&metadata)),
-        _ => None,
-    };
+    let drone_alloc = def_drone_alloc(&metadata, trace_stream, pools_len);
+    let core_alloc = def_core_alloc(&metadata);
+    let global_alloc = instance_attrs
+        .clone()
+        .into_iter()
+        .any(|attr| {
+            fn any_global_alloc(stream: TokenStream2) -> bool {
+                stream.into_iter().any(|tt| match tt {
+                    TokenTree2::Group(group) => any_global_alloc(group.stream()),
+                    TokenTree2::Ident(ident) => ident == "global_allocator",
+                    _ => false,
+                })
+            }
+            attr.path.get_ident().map_or(false, |ident| ident == "global_allocator")
+                || any_global_alloc(attr.tokens)
+        })
+        .then(|| def_global_alloc(&metadata));
 
-    let expanded = quote! {
+    quote! {
         #(#metadata_attrs)*
         #metadata_vis struct #metadata_ident {
             pools: [::drone_core::heap::Pool; #pools_len],
         }
 
+        #(#instance_attrs)*
+        #[link_section = #section]
+        #instance_vis static #instance_ident: #metadata_ident = #metadata_ident::new();
+
         impl #metadata_ident {
-            /// Creates a new metadata.
+            /// Creates a instance of this new heap metadata.
             pub const fn new() -> Self {
                 Self {
-                    pools: [#(#pools_tokens),*],
+                    pools: [
+                        #(#pools_tokens)*
+                    ],
+                }
+            }
+
+            /// Initializes this heap metadata.
+            ///
+            /// This function **must** be called as early as possible.
+            ///
+            /// # Safety
+            ///
+            /// This function reverts the state of the heap.
+            pub unsafe fn init() {
+                extern "C" {
+                    static #heap_rt_load: ::core::cell::UnsafeCell<usize>;
+                    static #heap_rt_base: ::core::cell::UnsafeCell<usize>;
+                    static #heap_rt_end: ::core::cell::UnsafeCell<usize>;
+                }
+                unsafe {
+                    ::drone_core::mem::data_section_init(
+                        &#heap_rt_load,
+                        &#heap_rt_base,
+                        &#heap_rt_end,
+                    );
                 }
             }
         }
 
-        #drone_allocator
-        #core_allocator
+        #drone_alloc
+        #core_alloc
         #global_alloc
-    };
-    expanded.into()
+    }
+    .into()
 }
 
-fn def_drone_allocator(
+fn def_drone_alloc(
     metadata: &Metadata,
     trace_stream: Option<LitInt>,
     pools_len: usize,
@@ -175,7 +217,7 @@ fn def_drone_allocator(
     }
 }
 
-fn def_core_allocator(metadata: &Metadata) -> TokenStream2 {
+fn def_core_alloc(metadata: &Metadata) -> TokenStream2 {
     let Metadata { ident: metadata_ident, .. } = metadata;
     quote! {
         unsafe impl ::core::alloc::Allocator for #metadata_ident {

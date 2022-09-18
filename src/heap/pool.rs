@@ -9,11 +9,12 @@ use core::{
 /// It operates by connecting unallocated regions of memory together in a linked
 /// list, using the first word of each unallocated region as a pointer to the
 /// next.
+// This structure should be kept in sync with drone-ld.
+#[repr(C)]
 pub struct Pool {
-    /// Block size. Doesn't change in the run-time.
+    /// Block size. This field is immutable.
     size: usize,
-    /// Address of the byte past the last element. Doesn't change in the
-    /// run-time.
+    /// Address of the byte past the last element. This field is immutable.
     edge: *mut u8,
     /// Free List of previously allocated blocks.
     free: AtomicPtr<u8>,
@@ -25,10 +26,10 @@ unsafe impl Sync for Pool {}
 
 impl Pool {
     /// Creates a new `Pool`.
-    pub const fn new(address: usize, size: usize, capacity: usize) -> Self {
+    pub const fn new(address: usize, size: usize, count: usize) -> Self {
         Self {
             size,
-            edge: (address + size * capacity) as *mut u8,
+            edge: (address + size * count) as *mut u8,
             free: AtomicPtr::new(ptr::null_mut()),
             uninit: AtomicPtr::new(address as *mut u8),
         }

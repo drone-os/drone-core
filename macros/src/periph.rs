@@ -780,7 +780,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         });
     }
 
-    let expanded = quote! {
+    quote! {
         #(#tokens)*
 
         #(#struct_attrs)*
@@ -792,6 +792,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         pub mod traits {
             #(#traits_export)*
         }
-    };
-    expanded.into()
+    }
+    .into()
 }

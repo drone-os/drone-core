@@ -49,5 +49,5 @@ version = "=0.15.0"
 path = "macros"
 
 [dependencies]
-futures = { version = "0.3.21", default-features = false, features = ["alloc", "async-await"] }
+futures = { version = "0.3.24", default-features = false, features = ["alloc", "async-await"] }
 typenum = "1.15.0"

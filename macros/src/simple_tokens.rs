@@ -66,7 +66,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             #field_ident: ::drone_core::token::Token::take(),
         });
     }
-    let expanded = quote! {
+    quote! {
         mod #wrapper {
             use super::*;
 
@@ -88,6 +88,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         }
 
         #vis use #wrapper::#ident;
-    };
-    expanded.into()
+    }
+    .into()
 }

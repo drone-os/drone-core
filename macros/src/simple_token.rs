@@ -26,7 +26,7 @@ impl Parse for Input {
 pub fn proc_macro(input: TokenStream) -> TokenStream {
     let Input { attrs, vis, ident } = parse_macro_input!(input);
     let wrapper = format_ident!("__{}_simple_token", ident.to_string().to_snake_case());
-    let expanded = quote! {
+    quote! {
         mod #wrapper {
             use super::*;
 
@@ -46,6 +46,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         }
 
         #vis use #wrapper::#ident;
-    };
-    expanded.into()
+    }
+    .into()
 }

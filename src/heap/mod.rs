@@ -13,15 +13,15 @@
 //!
 //! # Usage
 //!
-//! Add the heap configuration to the `Drone.toml`:
+//! Add the heap configuration to the `layout.toml`:
 //!
 //! ```toml
 //! [heap]
 //! size = "10K"
 //! pools = [
-//!     { block = "4", capacity = 896 },
-//!     { block = "32", capacity = 80 },
-//!     { block = "256", capacity = 16 },
+//!     { block = "4", count = "896" },
+//!     { block = "32", count = "80" },
+//!     { block = "256", count = "16" },
 //! ]
 //! ```
 //!
@@ -32,40 +32,35 @@
 //! ```no_run
 //! # #![feature(allocator_api)]
 //! # #![feature(slice_ptr_get)]
-//! # drone_core::config_override! { "
-//! # [memory]
-//! # flash = { size = \"128K\", origin = 0x08000000 }
-//! # ram = { size = \"20K\", origin = 0x20000000 }
+//! # drone_core::override_layout! { r#"
+//! # [ram]
+//! # main = { origin = 0x20000000, size = "20K" }
+//! # [data]
+//! # ram = "main"
 //! # [heap.main]
-//! # size = \"10K\"
+//! # ram = "main"
+//! # size = "10K"
 //! # pools = [
-//! #     { block = \"4\", capacity = 896 },
-//! #     { block = \"32\", capacity = 80 },
-//! #     { block = \"256\", capacity = 16 },
+//! #     { block = "4", count = "896" },
+//! #     { block = "32", count = "80" },
+//! #     { block = "256", count = "16" },
 //! # ]
-//! # [linker]
-//! # platform = \"arm\"
-//! # " }
+//! # "# }
 //! # fn main() {}
 //! use drone_core::heap;
 //!
-//! // Define a concrete heap type with the layout defined in the Drone.toml
+//! // Define a concrete heap type with the layout defined in the layout.toml
 //! heap! {
-//!     // Heap configuration key in `Drone.toml`.
-//!     config => main;
-//!     /// The main heap allocator generated from the `Drone.toml`.
+//!     // Heap name in `layout.toml`.
+//!     layout => main;
+//!     /// The main heap allocator generated from the `layout.toml`.
 //!     metadata => pub Heap;
-//!     // Use this heap as the global allocator.
-//!     global => true;
+//!     /// The global allocator.
+//!     #[global_allocator] // Use this heap as the global allocator.
+//!     instance => pub HEAP;
 //!     // Uncomment the following line to enable heap tracing feature:
 //!     // enable_trace_stream => 31;
 //! }
-//!
-//! // Create a static instance of the heap type and declare it as the global
-//! // allocator.
-//! /// The global allocator.
-//! #[global_allocator]
-//! pub static HEAP: Heap = Heap::new();
 //! ```
 //!
 //! # Tuning

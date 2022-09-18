@@ -191,12 +191,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let def_thr = def_thr(&thr, &threads, &local, resume.as_ref());
     let def_local = def_local(&local);
     let def_index = def_index(&thr, &index, &threads);
-    let expanded = quote! {
+    quote! {
         #def_thr
         #def_local
         #def_index
-    };
-    expanded.into()
+    }
+    .into()
 }
 
 fn def_thr(

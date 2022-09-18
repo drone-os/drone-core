@@ -233,7 +233,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-    let expanded = quote! {
+    quote! {
         impl ::drone_core::bitfield::Bitfield for #ident {
             type Bits = #bits;
 
@@ -251,6 +251,6 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
         impl #ident {
             #(#field_tokens)*
         }
-    };
-    expanded.into()
+    }
+    .into()
 }

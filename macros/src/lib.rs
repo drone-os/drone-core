@@ -9,8 +9,8 @@
 extern crate proc_macro;
 
 mod bitfield;
-mod config_override;
 mod heap;
+mod override_layout;
 mod periph;
 mod periph_map;
 mod periph_singular;
@@ -32,8 +32,8 @@ pub fn derive_bitfield(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn config_override(input: TokenStream) -> TokenStream {
-    config_override::proc_macro(input)
+pub fn override_layout(input: TokenStream) -> TokenStream {
+    override_layout::proc_macro(input)
 }
 
 #[proc_macro]

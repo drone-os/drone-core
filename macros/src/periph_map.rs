@@ -674,7 +674,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         });
     }
 
-    let expanded = quote! {
+    quote! {
         #(#periph_ty_attrs)*
         pub struct #periph_ty(());
 
@@ -683,6 +683,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         }
 
         #(#tokens)*
-    };
-    expanded.into()
+    }
+    .into()
 }
