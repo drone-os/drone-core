@@ -23,7 +23,7 @@ version = "0.15.0"
 path = "../../drone/config"
 
 [dependencies]
-Inflector = "0.11.4"
+heck = "0.4.0"
 if_chain = "1.0.2"
 proc-macro2 = "1.0.43"
 quote = "1.0.21"

@@ -1,5 +1,5 @@
 use drone_macros_core::{unkeywordize, CfgCond, CfgCondExt};
-use inflector::Inflector;
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
@@ -160,7 +160,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             } else {
                 for Field { features: field_features, ident: field_ident } in fields {
                     let field_snk = field_ident.to_string().to_snake_case();
-                    let field_psc = format_ident!("{}", field_ident.to_string().to_pascal_case());
+                    let field_cml =
+                        format_ident!("{}", field_ident.to_string().to_upper_camel_case());
                     let field_ident = format_ident!("{}", unkeywordize(&field_snk));
                     let block_reg_field_snk =
                         format_ident!("{}_{}_{}", block_snk, reg_snk, field_snk);
@@ -171,7 +172,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     periph_tokens.push(quote! {
                         #[allow(missing_docs)]
                         #field_attrs
-                        pub #block_reg_field_snk: #root_path::#block_ident::#reg_ident::#field_psc<
+                        pub #block_reg_field_snk: #root_path::#block_ident::#reg_ident::#field_cml<
                             ::drone_core::reg::tag::Srt,
                         >
                     });

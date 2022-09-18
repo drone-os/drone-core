@@ -377,7 +377,7 @@ impl CString {
     /// ```
     #[inline]
     pub fn as_c_str(&self) -> &CStr {
-        &**self
+        self
     }
 
     /// Converts this `CString` into a boxed [`CStr`].

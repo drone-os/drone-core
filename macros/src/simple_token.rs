@@ -1,4 +1,4 @@
-use inflector::Inflector;
+use heck::ToSnakeCase;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{

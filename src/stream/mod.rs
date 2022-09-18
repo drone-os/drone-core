@@ -21,10 +21,10 @@ use core::{
 use drone_stream::{Runtime, BOOTSTRAP_SEQUENCE, BOOTSTRAP_SEQUENCE_LENGTH};
 
 extern "C" {
-    static STREAM_CORE_0_RT_BASE: UnsafeCell<usize>;
-    static STREAM_CORE_0_RT_END: UnsafeCell<usize>;
-    static STREAM_CORE_0_BUF_BASE: UnsafeCell<u8>;
-    static STREAM_CORE_0_BUF_END: UnsafeCell<u8>;
+    static STREAM_CORE0_RT_BASE: UnsafeCell<usize>;
+    static STREAM_CORE0_RT_END: UnsafeCell<usize>;
+    static STREAM_CORE0_BUF_BASE: UnsafeCell<u8>;
+    static STREAM_CORE0_BUF_END: UnsafeCell<u8>;
 }
 
 #[doc(hidden)]
@@ -55,7 +55,7 @@ pub fn init() {
     unsafe {
         // Check if the debug probe wants to modify the runtime structure as
         // soon as possible.
-        let mut buffer = STREAM_CORE_0_BUF_BASE.get();
+        let mut buffer = STREAM_CORE0_BUF_BASE.get();
         let mut sample = BOOTSTRAP_SEQUENCE.as_ptr();
         let mut counter = BOOTSTRAP_SEQUENCE_LENGTH;
         while counter > 0 && *buffer == *sample {
@@ -68,13 +68,13 @@ pub fn init() {
             // it, into the runtime structure.
             ptr::copy_nonoverlapping(
                 buffer,
-                STREAM_CORE_0_BUF_BASE.get().sub(mem::size_of::<Runtime>()),
+                STREAM_CORE0_BUF_BASE.get().sub(mem::size_of::<Runtime>()),
                 mem::size_of::<Runtime>(),
             );
             // Invalidate the bootstrap sequence.
-            *STREAM_CORE_0_BUF_BASE.get() = 0;
+            *STREAM_CORE0_BUF_BASE.get() = 0;
         } else {
-            zeroed_section_init(&STREAM_CORE_0_RT_BASE, &STREAM_CORE_0_RT_END);
+            zeroed_section_init(&STREAM_CORE0_RT_BASE, &STREAM_CORE0_RT_END);
         }
     }
 }

@@ -1,5 +1,5 @@
 use drone_macros_core::unkeywordize;
-use inflector::Inflector;
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
@@ -172,19 +172,19 @@ fn make_macro(
         let block_attrs_non_cfg =
             block_attrs.iter().filter(|attr| !is_cfg_attr(attr)).collect::<Vec<_>>();
         for Reg { attrs: reg_attrs, ident: reg_ident, skip } in regs {
-            let reg_psc = format_ident!("{}", reg_ident.to_string().to_pascal_case());
+            let reg_cml = format_ident!("{}", reg_ident.to_string().to_upper_camel_case());
             let reg_snk = reg_ident.to_string().to_snake_case();
             let reg_long = format_ident!("{}_{}", block_snk, reg_snk);
             let reg_short = format_ident!("{}", unkeywordize(&reg_snk));
             block_tokens.push(quote! {
                 pub use #root_path::#reg_long as #reg_short;
-                pub use #root_path::#reg_long::Reg as #reg_psc;
+                pub use #root_path::#reg_long::Reg as #reg_cml;
             });
             if !skip {
                 let macro_root_path = macro_root_path.iter();
                 defs.push(quote! {
                     #(#block_attrs_non_cfg)* #(#reg_attrs)*
-                    #reg_long $crate #(#macro_root_path)*::#block_name::#reg_psc;
+                    #reg_long $crate #(#macro_root_path)*::#block_name::#reg_cml;
                 });
             }
         }

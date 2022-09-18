@@ -1,5 +1,5 @@
 use drone_macros_core::unkeywordize;
-use inflector::Inflector;
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
@@ -177,16 +177,16 @@ impl Variant {
         let mut ctor_tokens = Vec::new();
         for Field { attrs, ident, offset, width, traits } in &self.fields {
             let field_snk = ident.to_string().to_snake_case();
-            let mut field_psc = ident.to_string().to_pascal_case();
-            if field_psc == "Val" {
-                field_psc.push('_');
+            let mut field_cml = ident.to_string().to_upper_camel_case();
+            if field_cml == "Val" {
+                field_cml.push('_');
             }
-            let field_psc = format_ident!("{}", field_psc);
+            let field_cml = format_ident!("{}", field_cml);
             let field_ident = format_ident!("{}", unkeywordize(&field_snk));
             imports.extend(traits.iter().cloned());
             struct_tokens.push(quote! {
                 #(#attrs)*
-                pub #field_ident: #field_psc<#t>
+                pub #field_ident: #field_cml<#t>
             });
             ctor_tokens.push(quote! {
                 #field_ident: ::drone_core::token::Token::take()
@@ -194,26 +194,26 @@ impl Variant {
             tokens.push(quote! {
                 #(#attrs)*
                 #[derive(Clone, Copy)]
-                pub struct #field_psc<#t: ::drone_core::reg::tag::RegTag>(#t);
+                pub struct #field_cml<#t: ::drone_core::reg::tag::RegTag>(#t);
 
-                unsafe impl<#t> ::drone_core::token::Token for #field_psc<#t>
+                unsafe impl<#t> ::drone_core::token::Token for #field_cml<#t>
                 where
                     #t: ::drone_core::reg::tag::RegTag,
                 {
                     #[inline]
                     unsafe fn take() -> Self {
-                        #field_psc(#t::default())
+                        #field_cml(#t::default())
                     }
                 }
 
-                impl<#t> ::drone_core::reg::field::RegField<#t> for #field_psc<#t>
+                impl<#t> ::drone_core::reg::field::RegField<#t> for #field_cml<#t>
                 where
                     #t: ::drone_core::reg::tag::RegTag,
                 {
                     type Reg = Reg<#t>;
-                    type URegField = #field_psc<::drone_core::reg::tag::Urt>;
-                    type SRegField = #field_psc<::drone_core::reg::tag::Srt>;
-                    type CRegField = #field_psc<::drone_core::reg::tag::Crt>;
+                    type URegField = #field_cml<::drone_core::reg::tag::Urt>;
+                    type SRegField = #field_cml<::drone_core::reg::tag::Srt>;
+                    type CRegField = #field_cml<::drone_core::reg::tag::Crt>;
 
                     const OFFSET: usize = #offset;
                     const WIDTH: usize = #width;
@@ -221,12 +221,12 @@ impl Variant {
             });
             for ident in traits {
                 tokens.push(quote! {
-                    impl<#t: ::drone_core::reg::tag::RegTag> #ident<#t> for #field_psc<#t> {}
+                    impl<#t: ::drone_core::reg::tag::RegTag> #ident<#t> for #field_cml<#t> {}
                 });
             }
             if width.base10_digits() == "1" {
                 tokens.push(quote! {
-                    impl<#t> ::drone_core::reg::field::RegFieldBit<#t> for #field_psc<#t>
+                    impl<#t> ::drone_core::reg::field::RegFieldBit<#t> for #field_cml<#t>
                     where
                         #t: ::drone_core::reg::tag::RegTag,
                     {
@@ -288,7 +288,7 @@ impl Variant {
                 }
             } else {
                 tokens.push(quote! {
-                    impl<#t> ::drone_core::reg::field::RegFieldBits<#t> for #field_psc<#t>
+                    impl<#t> ::drone_core::reg::field::RegFieldBits<#t> for #field_cml<#t>
                     where
                         #t: ::drone_core::reg::tag::RegTag,
                     {

@@ -1,6 +1,6 @@
 #![cfg_attr(feature = "std", allow(unused_imports, unused_variables))]
 
-use super::{STREAM_CORE_0_BUF_BASE, STREAM_CORE_0_BUF_END};
+use super::{STREAM_CORE0_BUF_BASE, STREAM_CORE0_BUF_END};
 use crate::cpu::Critical;
 use core::ptr;
 use drone_stream::{Runtime, HEADER_LENGTH};
@@ -36,8 +36,8 @@ impl LocalRuntime for Runtime {
         return unimplemented!();
         #[cfg(not(feature = "std"))]
         unsafe {
-            let buffer_size = (STREAM_CORE_0_BUF_END.get() as usize
-                - STREAM_CORE_0_BUF_BASE.get() as usize) as u32;
+            let buffer_size =
+                (STREAM_CORE0_BUF_END.get() as usize - STREAM_CORE0_BUF_BASE.get() as usize) as u32;
             loop {
                 let _critical = Critical::enter();
                 let read_cursor = ptr::addr_of!(self.read_cursor).read_volatile();
@@ -45,7 +45,7 @@ impl LocalRuntime for Runtime {
                 let wrapped = write_cursor >= read_cursor;
                 let available = if wrapped { buffer_size } else { read_cursor } - write_cursor;
                 let frame_length = u32::from(length) + HEADER_LENGTH;
-                let cursor = STREAM_CORE_0_BUF_BASE.get().add(write_cursor as usize);
+                let cursor = STREAM_CORE0_BUF_BASE.get().add(write_cursor as usize);
                 if available >= frame_length {
                     let mut next_write_cursor = write_cursor + frame_length;
                     if next_write_cursor == buffer_size {

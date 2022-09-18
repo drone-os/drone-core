@@ -1,6 +1,6 @@
 use drone_config::{Layout, LAYOUT_CONFIG};
 use drone_macros_core::parse_error;
-use inflector::Inflector;
+use heck::ToShoutySnakeCase;
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2, TokenTree as TokenTree2};
 use quote::{format_ident, quote};
@@ -109,10 +109,10 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         Some(heap) => &heap.pools,
         None => parse_error!("Couldn't find heap.{heap_layout} in {LAYOUT_CONFIG}"),
     };
-    let heap_layout_uppercase = heap_layout.to_string().to_screaming_snake_case();
-    let heap_rt_load = format_ident!("HEAP_{}_RT_LOAD", heap_layout_uppercase);
-    let heap_rt_base = format_ident!("HEAP_{}_RT_BASE", heap_layout_uppercase);
-    let heap_rt_end = format_ident!("HEAP_{}_RT_END", heap_layout_uppercase);
+    let heap_layout_shouty_snk = heap_layout.to_string().to_shouty_snake_case();
+    let heap_rt_load = format_ident!("HEAP_{}_RT_LOAD", heap_layout_shouty_snk);
+    let heap_rt_base = format_ident!("HEAP_{}_RT_BASE", heap_layout_shouty_snk);
+    let heap_rt_end = format_ident!("HEAP_{}_RT_END", heap_layout_shouty_snk);
     let section = LitStr::new(&format!(".heap_{heap_layout}_rt"), Span::call_site());
     let pools_len = pools.len();
     let pools_tokens = iter::repeat(quote! {

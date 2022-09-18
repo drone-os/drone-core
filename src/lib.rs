@@ -34,12 +34,10 @@
 #![feature(never_type_fallback)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(prelude_import)]
-#![feature(ptr_const_cast)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
 #![feature(sync_unsafe_cell)]
-#![feature(untagged_unions)]
 #![warn(missing_docs, unsafe_op_in_unsafe_fn)]
 #![warn(clippy::pedantic)]
 #![allow(

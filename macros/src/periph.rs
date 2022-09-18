@@ -1,5 +1,5 @@
 use drone_macros_core::{parse_error, unkeywordize, CfgCond, CfgCondExt};
-use inflector::Inflector;
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
@@ -144,35 +144,35 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     };
     for Block { ident: block_ident, regs } in blocks {
         let block_snk = block_ident.to_string().to_snake_case();
-        let block_psc = block_ident.to_string().to_pascal_case();
+        let block_cml = block_ident.to_string().to_upper_camel_case();
         for Reg { features: reg_features, ident: reg_ident, variants } in regs {
             let reg_snk = reg_ident.to_string().to_snake_case();
-            let reg_psc = reg_ident.to_string().to_pascal_case();
+            let reg_cml = reg_ident.to_string().to_upper_camel_case();
             for (variant_i, variant) in variants.iter().enumerate() {
                 let Variant { ident: variant_ident, size, traits, fields } = variant;
-                let (var_snk, var_psc) = if let Some(variant_ident) = variant_ident {
+                let (var_snk, var_cml) = if let Some(variant_ident) = variant_ident {
                     (
                         format!("{}_{}", reg_snk, variant_ident.to_string().to_snake_case()),
-                        format!("{}{}", reg_psc, variant_ident.to_string().to_pascal_case()),
+                        format!("{}{}", reg_cml, variant_ident.to_string().to_upper_camel_case()),
                     )
                 } else {
-                    (reg_snk.clone(), reg_psc.clone())
+                    (reg_snk.clone(), reg_cml.clone())
                 };
                 let block_var_snk = format_ident!("{}_{}", block_snk, var_snk);
                 let val_ty = format_ident!("u{}", size);
-                let reg_trait = format_ident!("{}{}", block_psc, var_psc);
-                let reg_trait_opt = format_ident!("{}{}Opt", block_psc, var_psc);
-                let reg_trait_ext = format_ident!("{}{}Ext", block_psc, var_psc);
-                let val = format_ident!("{}{}Val", block_psc, var_psc);
-                let u_reg = format_ident!("U{}{}", block_psc, var_psc);
-                let s_reg = format_ident!("S{}{}", block_psc, var_psc);
-                let c_reg = format_ident!("C{}{}", block_psc, var_psc);
-                let u_reg_opt = format_ident!("U{}{}Opt", block_psc, var_psc);
-                let s_reg_opt = format_ident!("S{}{}Opt", block_psc, var_psc);
-                let c_reg_opt = format_ident!("C{}{}Opt", block_psc, var_psc);
-                let u_fields = format_ident!("U{}{}Fields", block_psc, var_psc);
-                let s_fields = format_ident!("S{}{}Fields", block_psc, var_psc);
-                let c_fields = format_ident!("C{}{}Fields", block_psc, var_psc);
+                let reg_trait = format_ident!("{}{}", block_cml, var_cml);
+                let reg_trait_opt = format_ident!("{}{}Opt", block_cml, var_cml);
+                let reg_trait_ext = format_ident!("{}{}Ext", block_cml, var_cml);
+                let val = format_ident!("{}{}Val", block_cml, var_cml);
+                let u_reg = format_ident!("U{}{}", block_cml, var_cml);
+                let s_reg = format_ident!("S{}{}", block_cml, var_cml);
+                let c_reg = format_ident!("C{}{}", block_cml, var_cml);
+                let u_reg_opt = format_ident!("U{}{}Opt", block_cml, var_cml);
+                let s_reg_opt = format_ident!("S{}{}Opt", block_cml, var_cml);
+                let c_reg_opt = format_ident!("C{}{}Opt", block_cml, var_cml);
+                let u_fields = format_ident!("U{}{}Fields", block_cml, var_cml);
+                let s_fields = format_ident!("S{}{}Fields", block_cml, var_cml);
+                let c_fields = format_ident!("C{}{}Fields", block_cml, var_cml);
                 let reg_attrs = reg_features.attrs();
                 let mut u_traits = Vec::new();
                 let mut s_traits = Vec::new();
@@ -207,19 +207,19 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 let mut reg_bounds = Vec::new();
                 for Field { features: field_features, ident: field_ident, traits } in fields {
                     let field_snk = field_ident.to_string().to_snake_case();
-                    let field_psc = field_ident.to_string().to_pascal_case();
+                    let field_cml = field_ident.to_string().to_upper_camel_case();
                     let field_ident = format_ident!("{}", unkeywordize(&field_snk));
                     let block_reg_field_snk =
                         format_ident!("{}_{}_{}", block_snk, var_snk, field_snk);
-                    let field_trait = format_ident!("{}{}{}", block_psc, var_psc, field_psc);
-                    let field_trait_opt = format_ident!("{}{}{}Opt", block_psc, var_psc, field_psc);
-                    let field_trait_ext = format_ident!("{}{}{}Ext", block_psc, var_psc, field_psc);
-                    let u_field = format_ident!("U{}{}{}", block_psc, var_psc, field_psc);
-                    let s_field = format_ident!("S{}{}{}", block_psc, var_psc, field_psc);
-                    let c_field = format_ident!("C{}{}{}", block_psc, var_psc, field_psc);
-                    let u_field_opt = format_ident!("U{}{}{}Opt", block_psc, var_psc, field_psc);
-                    let s_field_opt = format_ident!("S{}{}{}Opt", block_psc, var_psc, field_psc);
-                    let c_field_opt = format_ident!("C{}{}{}Opt", block_psc, var_psc, field_psc);
+                    let field_trait = format_ident!("{}{}{}", block_cml, var_cml, field_cml);
+                    let field_trait_opt = format_ident!("{}{}{}Opt", block_cml, var_cml, field_cml);
+                    let field_trait_ext = format_ident!("{}{}{}Ext", block_cml, var_cml, field_cml);
+                    let u_field = format_ident!("U{}{}{}", block_cml, var_cml, field_cml);
+                    let s_field = format_ident!("S{}{}{}", block_cml, var_cml, field_cml);
+                    let c_field = format_ident!("C{}{}{}", block_cml, var_cml, field_cml);
+                    let u_field_opt = format_ident!("U{}{}{}Opt", block_cml, var_cml, field_cml);
+                    let s_field_opt = format_ident!("S{}{}{}Opt", block_cml, var_cml, field_cml);
+                    let c_field_opt = format_ident!("C{}{}{}Opt", block_cml, var_cml, field_cml);
                     let mut u_traits = Vec::new();
                     let mut s_traits = Vec::new();
                     let mut c_traits = Vec::new();
@@ -474,12 +474,13 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             continue;
                         }
                         let var_snk = variant.ident.as_ref().unwrap().to_string().to_snake_case();
-                        let var_psc = variant.ident.as_ref().unwrap().to_string().to_pascal_case();
+                        let var_cml =
+                            variant.ident.as_ref().unwrap().to_string().to_upper_camel_case();
                         let into_variant = format_ident!("into_{}", var_snk);
-                        let u_variant = format_ident!("U{}{}{}", block_psc, reg_psc, var_psc);
-                        let s_variant = format_ident!("S{}{}{}", block_psc, reg_psc, var_psc);
-                        let c_variant = format_ident!("C{}{}{}", block_psc, reg_psc, var_psc);
-                        let variant = format_ident!("{}{}{}", block_psc, reg_psc, var_psc);
+                        let u_variant = format_ident!("U{}{}{}", block_cml, reg_cml, var_cml);
+                        let s_variant = format_ident!("S{}{}{}", block_cml, reg_cml, var_cml);
+                        let c_variant = format_ident!("C{}{}{}", block_cml, reg_cml, var_cml);
+                        let variant = format_ident!("{}{}{}", block_cml, reg_cml, var_cml);
                         u_tokens.push(quote! {
                             fn #into_variant(self) -> T::#u_variant
                             where
@@ -655,11 +656,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             continue;
                         }
                         let var_snk = variant.ident.as_ref().unwrap().to_string().to_snake_case();
-                        let var_psc = variant.ident.as_ref().unwrap().to_string().to_pascal_case();
+                        let var_cml =
+                            variant.ident.as_ref().unwrap().to_string().to_upper_camel_case();
                         let into_variant = format_ident!("into_{}", var_snk);
-                        let u_variant = format_ident!("U{}{}{}", block_psc, reg_psc, var_psc);
-                        let s_variant = format_ident!("S{}{}{}", block_psc, reg_psc, var_psc);
-                        let c_variant = format_ident!("C{}{}{}", block_psc, reg_psc, var_psc);
+                        let u_variant = format_ident!("U{}{}{}", block_cml, reg_cml, var_cml);
+                        let s_variant = format_ident!("S{}{}{}", block_cml, reg_cml, var_cml);
+                        let c_variant = format_ident!("C{}{}{}", block_cml, reg_cml, var_cml);
                         u_tokens.push(quote! {
                             fn #into_variant(self) -> T::#u_variant;
                         });

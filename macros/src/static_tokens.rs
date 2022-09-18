@@ -1,4 +1,4 @@
-use inflector::Inflector;
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
@@ -54,7 +54,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let mut ctor_tokens = Vec::new();
     for Token { attrs, ident, ty } in tokens {
         let wrapper = format_ident!("__{}_nested_static_tokens", ident.to_string().to_snake_case());
-        let struct_ident = format_ident!("{}Token", ident.to_string().to_pascal_case());
+        let struct_ident = format_ident!("{}Token", ident.to_string().to_upper_camel_case());
         let field_ident = format_ident!("{}", ident.to_string().to_snake_case());
         outer_tokens.push(quote! {
             mod #wrapper {

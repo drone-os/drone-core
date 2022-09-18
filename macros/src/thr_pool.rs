@@ -1,4 +1,4 @@
-use inflector::Inflector;
+use heck::ToUpperCamelCase;
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
@@ -345,7 +345,7 @@ fn def_thr_token(
     let Thread { attrs, vis, ident } = thread;
     let mut tokens = Vec::new();
     let field_ident = format_ident!("{}", ident);
-    let struct_ident = format_ident!("{}", ident.to_string().to_pascal_case());
+    let struct_ident = format_ident!("{}", ident.to_string().to_upper_camel_case());
     let idx = LitInt::new(&format!("{}_u16", idx), Span::call_site());
     tokens.push(quote! {
         #(#attrs)*

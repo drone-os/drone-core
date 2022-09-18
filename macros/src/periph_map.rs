@@ -1,5 +1,5 @@
 use drone_macros_core::{parse_error, parse_ident, unkeywordize, CfgCond, CfgCondExt};
-use inflector::Inflector;
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
@@ -213,24 +213,24 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let mut macro_tokens = Vec::new();
     for Block { ident: block_ident, path: block_path, regs } in blocks {
         let block_snk = block_ident.to_string().to_snake_case();
-        let block_psc = block_ident.to_string().to_pascal_case();
+        let block_cml = block_ident.to_string().to_upper_camel_case();
         let block_path = block_path.as_ref().unwrap_or(block_ident);
         let block_path_snk = format_ident!("{}", block_path.to_string().to_snake_case());
         let block_path_ident =
             format_ident!("{}", unkeywordize(block_path_snk.to_string().as_str()));
         for Reg { features: reg_features, ident: reg_ident, variants } in regs {
             let reg_snk = reg_ident.to_string().to_snake_case();
-            let reg_psc = reg_ident.to_string().to_pascal_case();
+            let reg_cml = reg_ident.to_string().to_upper_camel_case();
             for (variant_i, variant) in variants.iter().enumerate() {
                 let Variant { ident: variant_ident, path: var_path, variant, traits, fields } =
                     variant;
-                let (var_snk, var_psc) = if let Some(variant_ident) = variant_ident {
+                let (var_snk, var_cml) = if let Some(variant_ident) = variant_ident {
                     (
                         format!("{}_{}", reg_snk, variant_ident.to_string().to_snake_case()),
-                        format!("{}{}", reg_psc, variant_ident.to_string().to_pascal_case()),
+                        format!("{}{}", reg_cml, variant_ident.to_string().to_upper_camel_case()),
                     )
                 } else {
-                    (reg_snk.clone(), reg_psc.clone())
+                    (reg_snk.clone(), reg_cml.clone())
                 };
                 let var_path_snk = var_path
                     .as_ref()
@@ -242,19 +242,19 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 let block_var_path_snk = var_path_snk
                     .as_ref()
                     .map(|var_path_snk| format_ident!("{}_{}", block_path_snk, var_path_snk));
-                let reg_trait = format_ident!("{}{}", block_psc, var_psc);
-                let reg_trait_opt = format_ident!("{}{}Opt", block_psc, var_psc);
-                let reg_trait_ext = format_ident!("{}{}Ext", block_psc, var_psc);
-                let val = format_ident!("{}{}Val", block_psc, var_psc);
-                let u_reg = format_ident!("U{}{}", block_psc, var_psc);
-                let s_reg = format_ident!("S{}{}", block_psc, var_psc);
-                let c_reg = format_ident!("C{}{}", block_psc, var_psc);
-                let u_reg_opt = format_ident!("U{}{}Opt", block_psc, var_psc);
-                let s_reg_opt = format_ident!("S{}{}Opt", block_psc, var_psc);
-                let c_reg_opt = format_ident!("C{}{}Opt", block_psc, var_psc);
-                let u_fields = format_ident!("U{}{}Fields", block_psc, var_psc);
-                let s_fields = format_ident!("S{}{}Fields", block_psc, var_psc);
-                let c_fields = format_ident!("C{}{}Fields", block_psc, var_psc);
+                let reg_trait = format_ident!("{}{}", block_cml, var_cml);
+                let reg_trait_opt = format_ident!("{}{}Opt", block_cml, var_cml);
+                let reg_trait_ext = format_ident!("{}{}Ext", block_cml, var_cml);
+                let val = format_ident!("{}{}Val", block_cml, var_cml);
+                let u_reg = format_ident!("U{}{}", block_cml, var_cml);
+                let s_reg = format_ident!("S{}{}", block_cml, var_cml);
+                let c_reg = format_ident!("C{}{}", block_cml, var_cml);
+                let u_reg_opt = format_ident!("U{}{}Opt", block_cml, var_cml);
+                let s_reg_opt = format_ident!("S{}{}Opt", block_cml, var_cml);
+                let c_reg_opt = format_ident!("C{}{}Opt", block_cml, var_cml);
+                let u_fields = format_ident!("U{}{}Fields", block_cml, var_cml);
+                let s_fields = format_ident!("S{}{}Fields", block_cml, var_cml);
+                let c_fields = format_ident!("C{}{}Fields", block_cml, var_cml);
                 let reg_attrs = reg_features.attrs();
                 let (mut reg_shared, mut reg_option) = (false, false);
                 for ident in traits {
@@ -293,9 +293,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     traits,
                 } in fields
                 {
-                    let field_path_psc = field_path
+                    let field_path_cml = field_path
                         .as_ref()
-                        .map(|ident| format_ident!("{}", ident.to_string().to_pascal_case()));
+                        .map(|ident| format_ident!("{}", ident.to_string().to_upper_camel_case()));
                     let field_path_ident = field_path.as_ref().map(|ident| {
                         format_ident!(
                             "{}",
@@ -303,19 +303,19 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         )
                     });
                     let field_snk = field_ident.to_string().to_snake_case();
-                    let field_psc = field_ident.to_string().to_pascal_case();
+                    let field_cml = field_ident.to_string().to_upper_camel_case();
                     let field_ident = format_ident!("{}", unkeywordize(field_snk.clone().as_str()));
                     let block_reg_field_snk =
                         format_ident!("{}_{}_{}", block_snk, var_snk, field_snk);
-                    let field_trait = format_ident!("{}{}{}", block_psc, var_psc, field_psc);
-                    let field_trait_opt = format_ident!("{}{}{}Opt", block_psc, var_psc, field_psc);
-                    let field_trait_ext = format_ident!("{}{}{}Ext", block_psc, var_psc, field_psc);
-                    let u_field = format_ident!("U{}{}{}", block_psc, var_psc, field_psc);
-                    let s_field = format_ident!("S{}{}{}", block_psc, var_psc, field_psc);
-                    let c_field = format_ident!("C{}{}{}", block_psc, var_psc, field_psc);
-                    let u_field_opt = format_ident!("U{}{}{}Opt", block_psc, var_psc, field_psc);
-                    let s_field_opt = format_ident!("S{}{}{}Opt", block_psc, var_psc, field_psc);
-                    let c_field_opt = format_ident!("C{}{}{}Opt", block_psc, var_psc, field_psc);
+                    let field_trait = format_ident!("{}{}{}", block_cml, var_cml, field_cml);
+                    let field_trait_opt = format_ident!("{}{}{}Opt", block_cml, var_cml, field_cml);
+                    let field_trait_ext = format_ident!("{}{}{}Ext", block_cml, var_cml, field_cml);
+                    let u_field = format_ident!("U{}{}{}", block_cml, var_cml, field_cml);
+                    let s_field = format_ident!("S{}{}{}", block_cml, var_cml, field_cml);
+                    let c_field = format_ident!("C{}{}{}", block_cml, var_cml, field_cml);
+                    let u_field_opt = format_ident!("U{}{}{}Opt", block_cml, var_cml, field_cml);
+                    let s_field_opt = format_ident!("S{}{}{}Opt", block_cml, var_cml, field_cml);
+                    let c_field_opt = format_ident!("C{}{}{}Opt", block_cml, var_cml, field_cml);
                     let mut field_option = false;
                     for ident in traits {
                         if ident == "Option" {
@@ -374,17 +374,17 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             tokens.push(quote! {
                                 #field_attrs
                                 impl #field_trait_opt for #periph_ty {
-                                    type #u_field_opt = #reg_root::#field_path_psc<#core_urt>;
-                                    type #s_field_opt = #reg_root::#field_path_psc<#core_srt>;
-                                    type #c_field_opt = #reg_root::#field_path_psc<#core_crt>;
+                                    type #u_field_opt = #reg_root::#field_path_cml<#core_urt>;
+                                    type #s_field_opt = #reg_root::#field_path_cml<#core_srt>;
+                                    type #c_field_opt = #reg_root::#field_path_cml<#core_crt>;
                                 }
                             });
                             tokens.push(quote! {
                                 #field_attrs
                                 impl #field_trait_ext for #periph_ty {
-                                    type #u_field = #reg_root::#field_path_psc<#core_urt>;
-                                    type #s_field = #reg_root::#field_path_psc<#core_srt>;
-                                    type #c_field = #reg_root::#field_path_psc<#core_crt>;
+                                    type #u_field = #reg_root::#field_path_cml<#core_urt>;
+                                    type #s_field = #reg_root::#field_path_cml<#core_srt>;
+                                    type #c_field = #reg_root::#field_path_cml<#core_crt>;
                                 }
                             });
                             tokens.push(quote! {
@@ -395,9 +395,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             tokens.push(quote! {
                                 #field_attrs
                                 impl #field_trait for #periph_ty {
-                                    type #u_field = #reg_root::#field_path_psc<#core_urt>;
-                                    type #s_field = #reg_root::#field_path_psc<#core_srt>;
-                                    type #c_field = #reg_root::#field_path_psc<#core_crt>;
+                                    type #u_field = #reg_root::#field_path_cml<#core_urt>;
+                                    type #s_field = #reg_root::#field_path_cml<#core_srt>;
+                                    type #c_field = #reg_root::#field_path_cml<#core_crt>;
                                 }
                             });
                         }
@@ -409,17 +409,17 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             tokens.push(quote! {
                                 #field_attrs
                                 impl #field_trait_opt<#periph_ty> for #periph_ty {
-                                    type #u_field_opt = #reg_root::#field_path_psc<#core_urt>;
-                                    type #s_field_opt = #reg_root::#field_path_psc<#core_srt>;
-                                    type #c_field_opt = #reg_root::#field_path_psc<#core_crt>;
+                                    type #u_field_opt = #reg_root::#field_path_cml<#core_urt>;
+                                    type #s_field_opt = #reg_root::#field_path_cml<#core_srt>;
+                                    type #c_field_opt = #reg_root::#field_path_cml<#core_crt>;
                                 }
                             });
                             tokens.push(quote! {
                                 #field_attrs
                                 impl #field_trait_ext<#periph_ty> for #periph_ty {
-                                    type #u_field = #reg_root::#field_path_psc<#core_urt>;
-                                    type #s_field = #reg_root::#field_path_psc<#core_srt>;
-                                    type #c_field = #reg_root::#field_path_psc<#core_crt>;
+                                    type #u_field = #reg_root::#field_path_cml<#core_urt>;
+                                    type #s_field = #reg_root::#field_path_cml<#core_srt>;
+                                    type #c_field = #reg_root::#field_path_cml<#core_crt>;
                                 }
                             });
                             tokens.push(quote! {
@@ -430,30 +430,30 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             tokens.push(quote! {
                                 #field_attrs
                                 impl #field_trait<#periph_ty> for #periph_ty {
-                                    type #u_field = #reg_root::#field_path_psc<#core_urt>;
-                                    type #s_field = #reg_root::#field_path_psc<#core_srt>;
-                                    type #c_field = #reg_root::#field_path_psc<#core_crt>;
+                                    type #u_field = #reg_root::#field_path_cml<#core_urt>;
+                                    type #s_field = #reg_root::#field_path_cml<#core_srt>;
+                                    type #c_field = #reg_root::#field_path_cml<#core_crt>;
                                 }
                             });
                         }
                         u_tokens.push(quote! {
                             #struct_attrs
                             #[inline]
-                            fn #field_ident(&self) -> &#reg_root::#field_path_psc<#core_urt> {
+                            fn #field_ident(&self) -> &#reg_root::#field_path_cml<#core_urt> {
                                 &self.#field_path_ident
                             }
                         });
                         s_tokens.push(quote! {
                             #struct_attrs
                             #[inline]
-                            fn #field_ident(&self) -> &#reg_root::#field_path_psc<#core_srt> {
+                            fn #field_ident(&self) -> &#reg_root::#field_path_cml<#core_srt> {
                                 &self.#field_path_ident
                             }
                         });
                         c_tokens.push(quote! {
                             #struct_attrs
                             #[inline]
-                            fn #field_ident(&self) -> &#reg_root::#field_path_psc<#core_crt> {
+                            fn #field_ident(&self) -> &#reg_root::#field_path_cml<#core_crt> {
                                 &self.#field_path_ident
                             }
                         });
@@ -652,9 +652,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
         }
     }
-    let mut periph_name_psc = periph_trait.to_string();
-    periph_name_psc.truncate(periph_name_psc.len() - TRAIT_SUFFIX.len());
-    let periph_struct = format_ident!("{}Periph", periph_name_psc);
+    let mut periph_name_cml = periph_trait.to_string();
+    periph_name_cml.truncate(periph_name_cml.len() - TRAIT_SUFFIX.len());
+    let periph_struct = format_ident!("{}Periph", periph_name_cml);
     for (features, macro_tokens) in macro_tokens.as_slice().transpose() {
         let attrs = features.attrs();
         let macro_root_path = macro_root_path.iter().collect::<Vec<_>>();
