@@ -579,6 +579,6 @@ mod tests {
         let deleted = m.drain_filter(|_| true).collect::<Vec<_>>();
 
         assert_eq!(deleted, &[6, 5, 4, 3, 2, 1]);
-        assert_eq!(m.into_iter().collect::<Vec<_>>(), &[]);
+        assert!(m.into_iter().collect::<Vec<_>>().is_empty());
     }
 }

@@ -7,7 +7,10 @@ use core::task::{Context, Poll};
 use futures::future::FusedFuture;
 use futures::prelude::*;
 
-use super::{Shared, CLOSED, DATA_STORED, HALF_DROPPED, RX_WAKER_STORED, TX_WAKER_STORED};
+use super::{
+    Shared, CLOSED, CLOSED_WITH_DATA, CLOSED_WITH_DATA_SHIFT, DATA_STORED, DATA_STORED_SHIFT,
+    HALF_DROPPED, RX_WAKER_STORED, TX_WAKER_STORED,
+};
 
 /// The receiving-half of [`oneshot::channel`](super::channel).
 #[must_use = "futures do nothing unless you `.await` or poll them"]
@@ -35,7 +38,9 @@ impl<T> Receiver<T> {
     /// previously been sent.
     pub fn close(&mut self) {
         unsafe {
-            let state = load_modify_state!(self.ptr, Relaxed, Acquire, |state| state | CLOSED);
+            let state = load_modify_state!(self.ptr, Relaxed, Acquire, |state| state
+                | CLOSED
+                | (state >> DATA_STORED_SHIFT & 1) << CLOSED_WITH_DATA_SHIFT);
             if state & CLOSED == 0 && state & TX_WAKER_STORED != 0 {
                 let waker = (*self.ptr.as_ref().tx_waker.get()).assume_init_read();
                 if state & HALF_DROPPED == 0 {
@@ -57,10 +62,10 @@ impl<T> Receiver<T> {
         unsafe {
             let state =
                 load_modify_state!(self.ptr, Relaxed, Acquire, |state| state & !DATA_STORED);
-            if state & DATA_STORED != 0 {
+            if state & DATA_STORED != 0 && (state & CLOSED == 0 || state & CLOSED_WITH_DATA != 0) {
                 return Ok(Some((*self.ptr.as_ref().data.get()).assume_init_read()));
             }
-            if state & HALF_DROPPED != 0 {
+            if state & HALF_DROPPED != 0 || state & CLOSED != 0 {
                 return Err(Canceled);
             }
             Ok(None)
@@ -75,17 +80,21 @@ impl<T> Future for Receiver<T> {
         unsafe {
             let mut state =
                 load_modify_state!(self.ptr, Relaxed, Acquire, |state| state & !DATA_STORED);
-            if state & DATA_STORED != 0 {
+            if state & DATA_STORED != 0 && (state & CLOSED == 0 || state & CLOSED_WITH_DATA != 0) {
                 return Poll::Ready(Ok((*self.ptr.as_ref().data.get()).assume_init_read()));
             }
-            if state & HALF_DROPPED != 0 {
+            if state & HALF_DROPPED != 0 || state & CLOSED != 0 {
                 return Poll::Ready(Err(Canceled));
             }
             if state & RX_WAKER_STORED == 0 {
                 (*self.ptr.as_ref().rx_waker.get()).write(cx.waker().clone());
-                state = modify_state!(self.ptr, Relaxed, Release, |state| state | RX_WAKER_STORED);
+                state = modify_state!(self.ptr, Acquire, AcqRel, |state| state & !DATA_STORED
+                    | RX_WAKER_STORED);
                 if state & HALF_DROPPED != 0 {
                     (*self.ptr.as_ref().rx_waker.get()).assume_init_read();
+                    if state & DATA_STORED != 0 {
+                        return Poll::Ready(Ok((*self.ptr.as_ref().data.get()).assume_init_read()));
+                    }
                     return Poll::Ready(Err(Canceled));
                 }
             }
@@ -98,7 +107,9 @@ impl<T> FusedFuture for Receiver<T> {
     fn is_terminated(&self) -> bool {
         unsafe {
             let state = load_state!(self.ptr, Relaxed);
-            state & HALF_DROPPED != 0 && state & DATA_STORED == 0
+            (state & HALF_DROPPED != 0 || state & CLOSED != 0)
+                && (state & DATA_STORED == 0
+                    || state & CLOSED != 0 && state & CLOSED_WITH_DATA == 0)
         }
     }
 }
@@ -109,7 +120,7 @@ impl<T> Drop for Receiver<T> {
             let state = load_modify_state!(self.ptr, Relaxed, Acquire, |state| state
                 | CLOSED
                 | HALF_DROPPED);
-            if state & DATA_STORED != 0 {
+            if state & DATA_STORED != 0 && (state & CLOSED == 0 || state & CLOSED_WITH_DATA != 0) {
                 (*self.ptr.as_ref().data.get()).assume_init_read();
             }
             if state & CLOSED == 0 && state & TX_WAKER_STORED != 0 {

@@ -1,8 +1,8 @@
-use core::fmt;
 use core::marker::PhantomData;
 use core::pin::Pin;
 use core::ptr::NonNull;
 use core::task::{Context, Poll};
+use core::{fmt, mem};
 
 use futures::prelude::*;
 
@@ -43,23 +43,25 @@ impl<T> Sender<T> {
     pub fn send(self, value: T) -> Result<(), T> {
         unsafe {
             let Self { ptr, .. } = self;
+            mem::forget(self);
             (*ptr.as_ref().data.get()).write(value);
             let state = load_modify_state!(ptr, Acquire, AcqRel, |state| state
                 | DATA_STORED
                 | HALF_DROPPED);
             if state & RX_WAKER_STORED != 0 {
-                let waker = (*self.ptr.as_ref().rx_waker.get()).assume_init_read();
+                let waker = (*ptr.as_ref().rx_waker.get()).assume_init_read();
                 if state & HALF_DROPPED == 0 {
                     waker.wake();
                 }
             }
-            if state & HALF_DROPPED == 0 {
-                Ok(())
-            } else {
+            if state & CLOSED != 0 {
                 let value = (*ptr.as_ref().data.get()).assume_init_read();
-                drop(Box::from_raw(ptr.as_ptr()));
-                Err(value)
+                if state & HALF_DROPPED != 0 {
+                    drop(Box::from_raw(ptr.as_ptr()));
+                }
+                return Err(value);
             }
+            Ok(())
         }
     }
 
@@ -83,7 +85,7 @@ impl<T> Sender<T> {
             }
             if state & TX_WAKER_STORED == 0 {
                 (*self.ptr.as_ref().tx_waker.get()).write(cx.waker().clone());
-                state = modify_state!(self.ptr, Relaxed, Release, |state| state | TX_WAKER_STORED);
+                state = modify_state!(self.ptr, Acquire, AcqRel, |state| state | TX_WAKER_STORED);
                 if state & CLOSED != 0 {
                     (*self.ptr.as_ref().tx_waker.get()).assume_init_read();
                     return Poll::Ready(());

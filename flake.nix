@@ -54,6 +54,7 @@
           cargo test --workspace --exclude drone-core
           cargo test --package drone-core --features std
           cargo test --package drone-core --features std,atomics
+          RUSTFLAGS='--cfg loom' cargo test --package drone-core --features std --release loom
           RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --workspace
         '';
 

@@ -2,11 +2,11 @@
 
 macro_rules! load_state {
     ($ptr:expr, $ordering:ident) => {{
-        #[cfg(not(feature = "atomics"))]
+        #[cfg(not(any(feature = "_atomics", loom)))]
         {
             $ptr.as_ref().state.load()
         }
-        #[cfg(feature = "atomics")]
+        #[cfg(any(feature = "_atomics", loom))]
         {
             $ptr.as_ref().state.load(core::sync::atomic::Ordering::$ordering)
         }
@@ -15,11 +15,11 @@ macro_rules! load_state {
 
 macro_rules! modify_state {
     ($ptr:expr, $ordering_read:ident, $ordering_cas:ident, | $old:ident | $new:expr) => {{
-        #[cfg(not(feature = "atomics"))]
+        #[cfg(not(any(feature = "_atomics", loom)))]
         {
             $ptr.as_ref().state.modify(|$old| $new)
         }
-        #[cfg(feature = "atomics")]
+        #[cfg(any(feature = "_atomics", loom))]
         loop {
             match $ptr.as_ref().state.compare_exchange_weak(
                 $old,
@@ -36,11 +36,11 @@ macro_rules! modify_state {
 
 macro_rules! load_modify_state {
     ($ptr:expr, $ordering_read:ident, $ordering_cas:ident, | $old:ident | $new:expr) => {{
-        #[cfg(not(feature = "atomics"))]
+        #[cfg(not(any(feature = "_atomics", loom)))]
         {
             $ptr.as_ref().state.modify(|$old| $new)
         }
-        #[cfg(feature = "atomics")]
+        #[cfg(any(feature = "_atomics", loom))]
         {
             let mut $old = $ptr.as_ref().state.load(core::sync::atomic::Ordering::$ordering_read);
             modify_state!($ptr, $ordering_read, $ordering_cas, |$old| $new)

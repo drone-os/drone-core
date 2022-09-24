@@ -36,6 +36,7 @@ maintenance = { status = "actively-developed" }
 default = []
 std = ["futures/std"]
 atomics = []
+_atomics = []
 
 [dependencies.drone-stream]
 version = "0.15.0"
@@ -52,3 +53,6 @@ path = "macros"
 [dependencies]
 futures = { version = "0.3.24", default-features = false, features = ["alloc", "async-await"] }
 typenum = "1.15.0"
+
+[target.'cfg(loom)'.dependencies]
+loom = { version = "0.5.6", features = ["checkpoint"] }
