@@ -97,7 +97,7 @@ pub unsafe trait SoftThread: Thread {
         unsafe {
             let mut priority = (*(*Self::pool().add(usize::from(thr_idx))).priority()).load();
             let cell_ptr = Self::pending().add(pending_idx::<Self>(thr_idx, priority));
-            let _critical = Interrupts::enter();
+            let _critical = Interrupts::pause();
             let cell = (*cell_ptr).load();
             if cell & thr_bit != 0 {
                 return false;
@@ -276,7 +276,7 @@ impl<T: SoftThrToken> ThrExec for T {
 unsafe fn cursor_claim<T: SoftThread>() -> Option<(u32, u32)> {
     #[cfg(not(feature = "atomics"))]
     unsafe {
-        let _critical = Interrupts::enter();
+        let _critical = Interrupts::pause();
         let pending_priority = mem::replace(&mut *(*T::pending_priority()).as_mut_ptr(), 0);
         let priority = match pending_priority {
             0 => return None,
@@ -324,7 +324,7 @@ unsafe fn cursor_advance<T: SoftThread>(
 ) -> bool {
     #[cfg(not(feature = "atomics"))]
     unsafe {
-        let _critical = Interrupts::enter();
+        let _critical = Interrupts::pause();
         let cursor = (*T::pending()).load();
         if cursor & 1 << *priority - 1 == 0 {
             let mut next_priority = *priority;
@@ -422,7 +422,7 @@ unsafe fn check_resume<T: SoftThread>(
         return;
     }
     #[cfg(not(feature = "atomics"))]
-    Interrupts::section(|| unsafe {
+    Interrupts::paused(|| unsafe {
         *loaded_cell = (*cell_ptr).load();
         (*cell_ptr).store(*loaded_cell & !thr_bit);
     });

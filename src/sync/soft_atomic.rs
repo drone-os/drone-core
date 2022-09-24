@@ -68,13 +68,13 @@ impl<T: sealed::AtMostWordSized + Copy> Atomic<T> {
 
     /// Stores a value into the atomic, returning the previous value.
     pub fn swap(&self, value: T) -> T {
-        let _critical = Interrupts::enter();
+        let _critical = Interrupts::pause();
         unsafe { mem::replace(&mut *self.inner.get(), value) }
     }
 
     /// Performs read-modify-write sequence, returning the previus value.
     pub fn modify<F: FnOnce(T) -> T>(&self, f: F) -> T {
-        let _critical = Interrupts::enter();
+        let _critical = Interrupts::pause();
         let prev = self.load();
         let next = f(prev);
         self.store(next);
@@ -84,7 +84,7 @@ impl<T: sealed::AtMostWordSized + Copy> Atomic<T> {
     /// Tries to perform read-modify-write sequence, returning the previus
     /// value.
     pub fn try_modify<F: FnOnce(T) -> Option<T>>(&self, f: F) -> Result<T, T> {
-        let _critical = Interrupts::enter();
+        let _critical = Interrupts::pause();
         let prev = self.load();
         if let Some(next) = f(prev) {
             self.store(next);

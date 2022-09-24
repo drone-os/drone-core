@@ -23,19 +23,18 @@ impl Interrupts {
     /// # Examples
     ///
     /// ```
-    /// use drone_core::cpu::Critical;
+    /// use drone_core::platform::Interrupts;
     ///
     /// let mut x = 0;
     /// {
-    ///     // Making this block of code un-interruptable by creating a new
-    ///     // value of the `Critical` type. The value is dropped at the end of
-    ///     // this block.
-    ///     let _critical = Critical::enter();
+    ///     // Making this block of code un-interruptable by creating a new value of the
+    ///     // `Interrupts` type. The value is dropped at the end of this block.
+    ///     let _critical = Interrupts::pause();
     ///     x += 1;
     /// }
     /// dbg!(x);
     /// ```
-    pub fn enter() -> Self {
+    pub fn pause() -> Self {
         Self {
             #[cfg(feature = "std")]
             save: 0,
@@ -52,17 +51,17 @@ impl Interrupts {
     /// # Examples
     ///
     /// ```
-    /// use drone_core::cpu::Critical;
+    /// use drone_core::platform::Interrupts;
     ///
     /// let mut x = 0;
-    /// Critical::section(|| {
+    /// Interrupts::paused(|| {
     ///     // This block of code is un-interruptable.
     ///     x += 1;
     /// });
     /// dbg!(x);
     /// ```
-    pub fn section<R, F: FnOnce() -> R>(f: F) -> R {
-        let _critical = Self::enter();
+    pub fn paused<R, F: FnOnce() -> R>(f: F) -> R {
+        let _paused = Self::pause();
         f()
     }
 }

@@ -41,7 +41,7 @@ impl LocalRuntime for Runtime {
             let buffer_size =
                 (STREAM_CORE0_BUF_END.get() as usize - STREAM_CORE0_BUF_BASE.get() as usize) as u32;
             loop {
-                let _critical = Interrupts::enter();
+                let _critical = Interrupts::pause();
                 let read_cursor = ptr::addr_of!(self.read_cursor).read_volatile();
                 let write_cursor = ptr::addr_of!(self.write_cursor).read_volatile();
                 let wrapped = write_cursor >= read_cursor;
