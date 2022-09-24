@@ -1,4 +1,8 @@
 use crate::sync::linked_list::{LinkedList, Node};
+#[cfg(not(feature = "atomics"))]
+use crate::sync::soft_atomic::Atomic;
+#[cfg(feature = "atomics")]
+use core::sync::atomic::{AtomicU8, Ordering};
 use core::{
     cell::UnsafeCell,
     fmt,
@@ -6,7 +10,6 @@ use core::{
     mem::MaybeUninit,
     ops::{Deref, DerefMut},
     pin::Pin,
-    sync::atomic::{AtomicU8, Ordering},
     task::{Context, Poll, Waker},
 };
 
@@ -22,6 +25,9 @@ use core::{
 /// [`lock`]: Self::lock
 /// [`try_lock`]: Self::try_lock
 pub struct Mutex<T: ?Sized> {
+    #[cfg(not(feature = "atomics"))]
+    state: Atomic<u8>,
+    #[cfg(feature = "atomics")]
     state: AtomicU8,
     waiters: LinkedList<Waiter>,
     data: UnsafeCell<T>,
@@ -54,6 +60,9 @@ pub struct MutexLockFuture<'a, T: ?Sized> {
 }
 
 struct Waiter {
+    #[cfg(not(feature = "atomics"))]
+    state: Atomic<u8>,
+    #[cfg(feature = "atomics")]
     state: AtomicU8,
     wakers: [UnsafeCell<MaybeUninit<Waker>>; 2],
 }
@@ -79,7 +88,14 @@ impl<T> Mutex<T> {
     /// ```
     #[inline]
     pub const fn new(data: T) -> Self {
-        Self { state: AtomicU8::new(0), waiters: LinkedList::new(), data: UnsafeCell::new(data) }
+        Self {
+            #[cfg(not(feature = "atomics"))]
+            state: Atomic::new(0),
+            #[cfg(feature = "atomics")]
+            state: AtomicU8::new(0),
+            waiters: LinkedList::new(),
+            data: UnsafeCell::new(data),
+        }
     }
 
     /// Consumes this mutex, returning the underlying data.
@@ -106,11 +122,11 @@ impl<T: ?Sized> Mutex<T> {
     /// unlocked when the guard is dropped.
     #[inline]
     pub fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
-        if self.state.fetch_or(DATA_LOCKED, Ordering::Acquire) & DATA_LOCKED == 0 {
-            Some(MutexGuard { mutex: self })
-        } else {
-            None
-        }
+        #[cfg(not(feature = "atomics"))]
+        let fetch = self.state.modify(|state| state | DATA_LOCKED);
+        #[cfg(feature = "atomics")]
+        let fetch = self.state.fetch_or(DATA_LOCKED, Ordering::Acquire);
+        if fetch & DATA_LOCKED == 0 { Some(MutexGuard { mutex: self }) } else { None }
     }
 
     /// Acquires this lock asynchronously.
@@ -142,8 +158,11 @@ impl<T: ?Sized> Mutex<T> {
     }
 
     fn unlock(&self) {
-        let waiters_lock =
-            self.state.fetch_or(WAITERS_LOCKED, Ordering::Acquire) & WAITERS_LOCKED == 0;
+        #[cfg(not(feature = "atomics"))]
+        let fetch = self.state.modify(|state| state | WAITERS_LOCKED);
+        #[cfg(feature = "atomics")]
+        let fetch = self.state.fetch_or(WAITERS_LOCKED, Ordering::Acquire);
+        let waiters_lock = fetch & WAITERS_LOCKED == 0;
         if waiters_lock {
             // This is the only place where nodes can be removed.
             unsafe {
@@ -152,6 +171,9 @@ impl<T: ?Sized> Mutex<T> {
                     .for_each(|node| drop(Box::from_raw(node)));
             }
         }
+        #[cfg(not(feature = "atomics"))]
+        self.state.modify(|state| state & !DATA_LOCKED);
+        #[cfg(feature = "atomics")]
         self.state.fetch_and(!DATA_LOCKED, Ordering::Release);
         // At this stage no nodes can't be removed.
         for waiter in unsafe { self.waiters.iter_mut_unchecked() } {
@@ -160,6 +182,9 @@ impl<T: ?Sized> Mutex<T> {
             }
         }
         if waiters_lock {
+            #[cfg(not(feature = "atomics"))]
+            self.state.modify(|state| state & !WAITERS_LOCKED);
+            #[cfg(feature = "atomics")]
             self.state.fetch_and(!WAITERS_LOCKED, Ordering::Release);
         }
     }
@@ -211,6 +236,9 @@ impl<T: ?Sized> Drop for MutexLockFuture<'_, T> {
 
 impl Waiter {
     fn register(&self, waker: &Waker) {
+        #[cfg(not(feature = "atomics"))]
+        let state = self.state.load();
+        #[cfg(feature = "atomics")]
         let state = self.state.load(Ordering::Acquire);
         let mut index = (state & WAITER_INDEX) as usize;
         if state & WAITER_DISABLED != 0
@@ -219,6 +247,9 @@ impl Waiter {
         {
             index = (index + 1) % 2;
             unsafe { (*self.wakers.get_unchecked(index).get()).write(waker.clone()) };
+            #[cfg(not(feature = "atomics"))]
+            self.state.store(index as u8);
+            #[cfg(feature = "atomics")]
             self.state.store(index as u8, Ordering::Release);
         }
     }
@@ -235,17 +266,31 @@ impl Waiter {
     }
 
     fn disable(&self) -> u8 {
-        self.state.fetch_or(WAITER_DISABLED, Ordering::Relaxed)
+        #[cfg(not(feature = "atomics"))]
+        {
+            self.state.modify(|state| state | WAITER_DISABLED)
+        }
+        #[cfg(feature = "atomics")]
+        {
+            self.state.fetch_or(WAITER_DISABLED, Ordering::Relaxed)
+        }
     }
 
     fn is_disabled(&self) -> bool {
-        self.state.load(Ordering::Relaxed) & WAITER_DISABLED != 0
+        #[cfg(not(feature = "atomics"))]
+        let state = self.state.load();
+        #[cfg(feature = "atomics")]
+        let state = self.state.load(Ordering::Relaxed);
+        state & WAITER_DISABLED != 0
     }
 }
 
 impl From<Waker> for Waiter {
     fn from(waker: Waker) -> Self {
         Self {
+            #[cfg(not(feature = "atomics"))]
+            state: Atomic::new(0),
+            #[cfg(feature = "atomics")]
             state: AtomicU8::new(0),
             wakers: [
                 UnsafeCell::new(MaybeUninit::new(waker)),

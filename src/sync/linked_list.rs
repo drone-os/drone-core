@@ -1,15 +1,21 @@
 //! A lock-free singly-linked list.
 
+#[cfg(not(feature = "atomics"))]
+use crate::sync::soft_atomic::Atomic;
+#[cfg(feature = "atomics")]
+use core::sync::atomic::{AtomicPtr, Ordering};
 use core::{
     iter::{FromIterator, FusedIterator},
     marker::PhantomData,
     ops::{Deref, DerefMut},
     ptr,
-    sync::atomic::{AtomicPtr, Ordering},
 };
 
 /// A lock-free singly-linked list.
 pub struct LinkedList<T> {
+    #[cfg(not(feature = "atomics"))]
+    head: Atomic<*mut Node<T>>,
+    #[cfg(feature = "atomics")]
     head: AtomicPtr<Node<T>>,
 }
 
@@ -46,6 +52,9 @@ pub struct DrainFilterRaw<'a, T, F>
 where
     F: FnMut(*mut Node<T>) -> bool,
 {
+    #[cfg(not(feature = "atomics"))]
+    head: &'a Atomic<*mut Node<T>>,
+    #[cfg(feature = "atomics")]
     head: &'a AtomicPtr<Node<T>>,
     prev: *mut Node<T>,
     curr: *mut Node<T>,
@@ -66,7 +75,12 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     pub const fn new() -> Self {
-        Self { head: AtomicPtr::new(ptr::null_mut()) }
+        Self {
+            #[cfg(not(feature = "atomics"))]
+            head: Atomic::new(ptr::null_mut()),
+            #[cfg(feature = "atomics")]
+            head: AtomicPtr::new(ptr::null_mut()),
+        }
     }
 
     /// Returns `true` if the [`LinkedList`] is empty.
@@ -86,7 +100,11 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.head.load(Ordering::Relaxed).is_null()
+        #[cfg(not(feature = "atomics"))]
+        let head = self.head.load();
+        #[cfg(feature = "atomics")]
+        let head = self.head.load(Ordering::Relaxed);
+        head.is_null()
     }
 
     /// Adds an element first in the list.
@@ -133,12 +151,18 @@ impl<T> LinkedList<T> {
     /// [`Box::from_raw`].
     #[inline]
     pub unsafe fn push_raw(&self, node: *mut Node<T>) {
+        let modify = |curr| {
+            unsafe { (*node).next = curr };
+            node
+        };
+        #[cfg(not(feature = "atomics"))]
+        self.head.modify(modify);
+        #[cfg(feature = "atomics")]
         loop {
             let curr = self.head.load(Ordering::Relaxed);
-            unsafe { (*node).next = curr };
             if self
                 .head
-                .compare_exchange_weak(curr, node, Ordering::Release, Ordering::Relaxed)
+                .compare_exchange_weak(curr, modify(curr), Ordering::Release, Ordering::Relaxed)
                 .is_ok()
             {
                 break;
@@ -197,18 +221,24 @@ impl<T> LinkedList<T> {
     /// It's responsibility of the caller to de-allocate the node.
     #[inline]
     pub unsafe fn pop_raw(&self) -> Option<*mut Node<T>> {
+        let modify = |curr: *mut Node<T>| (!curr.is_null()).then(|| unsafe { (*curr).next });
+        #[cfg(not(feature = "atomics"))]
+        {
+            self.head.try_modify(modify).ok()
+        }
+        #[cfg(feature = "atomics")]
         loop {
             let curr = self.head.load(Ordering::Acquire);
-            if curr.is_null() {
+            if let Some(next) = modify(curr) {
+                if self
+                    .head
+                    .compare_exchange_weak(curr, next, Ordering::Relaxed, Ordering::Relaxed)
+                    .is_ok()
+                {
+                    break Some(curr);
+                }
+            } else {
                 break None;
-            }
-            let next = unsafe { (*curr).next };
-            if self
-                .head
-                .compare_exchange_weak(curr, next, Ordering::Relaxed, Ordering::Relaxed)
-                .is_ok()
-            {
-                break Some(curr);
             }
         }
     }
@@ -254,7 +284,13 @@ impl<T> LinkedList<T> {
     ///   method) should be called.
     #[inline]
     pub unsafe fn iter_mut_unchecked(&self) -> IterMut<'_, T> {
-        IterMut { curr: self.head.load(Ordering::Acquire), marker: PhantomData }
+        IterMut {
+            #[cfg(not(feature = "atomics"))]
+            curr: self.head.load(),
+            #[cfg(feature = "atomics")]
+            curr: self.head.load(Ordering::Acquire),
+            marker: PhantomData,
+        }
     }
 
     /// Creates an iterator which uses a closure to determine if an element
@@ -318,6 +354,9 @@ impl<T> LinkedList<T> {
         DrainFilterRaw {
             head: &self.head,
             prev: ptr::null_mut(),
+            #[cfg(not(feature = "atomics"))]
+            curr: self.head.load(),
+            #[cfg(feature = "atomics")]
             curr: self.head.load(Ordering::Acquire),
             filter,
         }
@@ -327,7 +366,7 @@ impl<T> LinkedList<T> {
 impl<T> Drop for LinkedList<T> {
     #[inline]
     fn drop(&mut self) {
-        let mut curr = self.head.load(Ordering::Acquire);
+        let mut curr = *self.head.get_mut();
         while !curr.is_null() {
             let next = unsafe { (*curr).next };
             drop(unsafe { Box::from_raw(curr) });
@@ -376,12 +415,12 @@ impl<T> Iterator for IntoIter<T> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        let curr = self.list.head.load(Ordering::Acquire);
+        let curr = *self.list.head.get_mut();
         if curr.is_null() {
             None
         } else {
             let next = unsafe { (*curr).next };
-            self.list.head.store(next, Ordering::Relaxed);
+            *self.list.head.get_mut() = next;
             Some(unsafe { Box::from_raw(curr) }.value)
         }
     }
@@ -443,8 +482,12 @@ where
 
     fn cut_out(&mut self, next: *mut Node<T>) {
         if self.prev.is_null() {
-            match self.head.compare_exchange(self.curr, next, Ordering::Relaxed, Ordering::Relaxed)
-            {
+            #[cfg(not(feature = "atomics"))]
+            let result = self.head.try_modify(|curr| (curr == self.curr).then_some(next));
+            #[cfg(feature = "atomics")]
+            let result =
+                self.head.compare_exchange(self.curr, next, Ordering::Relaxed, Ordering::Relaxed);
+            match result {
                 Ok(_) => return,
                 Err(prev) => {
                     self.prev = prev;

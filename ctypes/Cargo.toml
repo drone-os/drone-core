@@ -1,7 +1,7 @@
 [package]
 name = "drone-ctypes"
 version = "0.15.0"
-authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
+authors = ["Valentyn Valiaiev <valentine.valyaeff@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/drone-os/drone-core"
 homepage = "https://www.drone-os.com/"

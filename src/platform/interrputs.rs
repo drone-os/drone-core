@@ -1,12 +1,6 @@
-//! CPU management.
+#![cfg_attr(feature = "std", allow(unused_imports, unused_variables))]
 
-#![cfg_attr(feature = "std", allow(dead_code, unreachable_code))]
-
-extern "C" {
-    fn drone_self_reset() -> !;
-    fn drone_int_enable();
-    fn drone_int_disable();
-}
+use super::{drone_restore_interrupts, drone_save_and_disable_interrupts};
 
 /// Critical section.
 ///
@@ -16,9 +10,11 @@ extern "C" {
 ///
 /// When this type is created, interrupts are disabled. Interrupts are enabled
 /// back automatically when the instance is dropped.
-pub struct Critical(());
+pub struct Interrupts {
+    save: u32,
+}
 
-impl Critical {
+impl Interrupts {
     /// Creates a new critical section handle.
     ///
     /// This function disables all interrupts for the current CPU. Interrupts
@@ -40,11 +36,12 @@ impl Critical {
     /// dbg!(x);
     /// ```
     pub fn enter() -> Self {
-        #[cfg(not(feature = "std"))]
-        unsafe {
-            drone_int_disable();
+        Self {
+            #[cfg(feature = "std")]
+            save: 0,
+            #[cfg(not(feature = "std"))]
+            save: unsafe { drone_save_and_disable_interrupts() },
         }
-        Self(())
     }
 
     /// Runs a closure inside a critical section.
@@ -70,24 +67,12 @@ impl Critical {
     }
 }
 
-impl Drop for Critical {
+impl Drop for Interrupts {
     fn drop(&mut self) {
+        let Self { save } = *self;
         #[cfg(not(feature = "std"))]
         unsafe {
-            drone_int_enable();
+            drone_restore_interrupts(save);
         }
-    }
-}
-
-/// Requests system reset.
-///
-/// This function never returns.
-#[inline]
-pub fn self_reset() -> ! {
-    #[cfg(feature = "std")]
-    return unimplemented!();
-    #[cfg(not(feature = "std"))]
-    unsafe {
-        drone_self_reset()
     }
 }

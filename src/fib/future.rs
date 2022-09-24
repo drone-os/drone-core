@@ -1,5 +1,6 @@
 use crate::{
-    fib::{self, Fiber},
+    fib,
+    fib::Fiber,
     sync::spsc::oneshot::{channel, Canceled, Receiver},
     thr::prelude::*,
 };

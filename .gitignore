@@ -1,4 +1,4 @@
 /target
 /result
-Cargo.lock
-.direnv
+/Cargo.lock
+/.direnv

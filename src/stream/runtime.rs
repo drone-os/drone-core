@@ -1,7 +1,7 @@
 #![cfg_attr(feature = "std", allow(unused_imports, unused_variables))]
 
 use super::{STREAM_CORE0_BUF_BASE, STREAM_CORE0_BUF_END};
-use crate::cpu::Critical;
+use crate::platform::Interrupts;
 use core::ptr;
 use drone_stream::{Runtime, HEADER_LENGTH};
 
@@ -39,7 +39,7 @@ impl LocalRuntime for Runtime {
             let buffer_size =
                 (STREAM_CORE0_BUF_END.get() as usize - STREAM_CORE0_BUF_BASE.get() as usize) as u32;
             loop {
-                let _critical = Critical::enter();
+                let _critical = Interrupts::enter();
                 let read_cursor = ptr::addr_of!(self.read_cursor).read_volatile();
                 let write_cursor = ptr::addr_of!(self.write_cursor).read_volatile();
                 let wrapped = write_cursor >= read_cursor;

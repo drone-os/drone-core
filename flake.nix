@@ -50,8 +50,10 @@
           cargo rdme --check
           cargo fmt --all --check
           cargo clippy --workspace -- --deny warnings
+          cargo clippy --workspace --features atomics -- --deny warnings
           cargo test --workspace --exclude drone-core
           cargo test --package drone-core --features std
+          cargo test --package drone-core --features std,atomics
           RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --workspace
         '';
 

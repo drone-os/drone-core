@@ -71,10 +71,13 @@ pub use drone_core_macros::thr_pool as pool;
 #[doc(inline)]
 pub use drone_core_macros::thr_soft as soft;
 
+#[cfg(not(feature = "atomics"))]
+use crate::sync::soft_atomic::Atomic;
 use crate::{
     fib::{Chain, RootFiber},
     token::Token,
 };
+#[cfg(feature = "atomics")]
 use core::sync::atomic::{AtomicU16, Ordering};
 
 /// Basic thread.
@@ -97,6 +100,10 @@ pub unsafe trait Thread: Sized + Sync + 'static {
     /// method on the corresponding thread token instance.
     fn pool() -> *const Self;
 
+    #[cfg(not(feature = "atomics"))]
+    /// Returns a raw pointer to the current thread index storage.
+    fn current() -> *const Atomic<u16>;
+    #[cfg(feature = "atomics")]
     /// Returns a raw pointer to the current thread index storage.
     fn current() -> *const AtomicU16;
 
@@ -131,12 +138,12 @@ pub unsafe trait Thread: Sized + Sync + 'static {
     #[inline]
     fn local_checked() -> Option<&'static Self::Local> {
         unsafe {
+            #[cfg(not(feature = "atomics"))]
+            let current = (*Self::current()).load();
+            #[cfg(feature = "atomics")]
             let current = (*Self::current()).load(Ordering::Relaxed);
-            if current == 0 {
-                None
-            } else {
-                Some((*Self::pool().add(usize::from(current) - 1)).local_opaque().reveal())
-            }
+            (current != 0)
+                .then(|| (*Self::pool().add(usize::from(current) - 1)).local_opaque().reveal())
         }
     }
 
@@ -158,6 +165,14 @@ pub unsafe trait Thread: Sized + Sync + 'static {
     /// * `thr_idx` must be less than [`Thread::COUNT`].
     #[inline]
     unsafe fn call(thr_idx: u16, f: unsafe fn(&'static Self)) {
+        #[cfg(not(feature = "atomics"))]
+        unsafe {
+            let preempted = (*Self::current()).load();
+            (*Self::current()).store(thr_idx + 1);
+            f(&*Self::pool().add(usize::from(thr_idx)));
+            (*Self::current()).store(preempted);
+        }
+        #[cfg(feature = "atomics")]
         unsafe {
             let preempted = (*Self::current()).load(Ordering::Relaxed);
             (*Self::current()).store(thr_idx + 1, Ordering::Relaxed);

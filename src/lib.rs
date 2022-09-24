@@ -58,7 +58,6 @@
 extern crate alloc;
 
 pub mod bitfield;
-pub mod cpu;
 pub mod ffi;
 pub mod fib;
 pub mod heap;
@@ -66,6 +65,7 @@ pub mod inventory;
 pub mod io;
 pub mod mem;
 pub mod periph;
+pub mod platform;
 pub mod prelude;
 pub mod proc_loop;
 pub mod reg;

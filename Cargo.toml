@@ -4,7 +4,7 @@ members = ["ctypes", "macros", "macros-core"]
 [package]
 name = "drone-core"
 version = "0.15.0"
-authors = ["Valentine Valyaeff <valentine.valyaeff@gmail.com>"]
+authors = ["Valentyn Valiaiev <valentine.valyaeff@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/drone-os/drone-core"
 homepage = "https://www.drone-os.com/"
@@ -35,6 +35,7 @@ maintenance = { status = "actively-developed" }
 [features]
 default = []
 std = ["futures/std"]
+atomics = []
 
 [dependencies.drone-stream]
 version = "0.15.0"

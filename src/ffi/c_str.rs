@@ -1,15 +1,10 @@
 #![allow(clippy::missing_safety_doc)]
 
 use crate::ffi::{c_char, libc::strlen, CString};
-use alloc::{borrow::Cow, rc::Rc, sync::Arc};
-use core::{
-    ascii,
-    cmp::Ordering,
-    fmt::{self, Write},
-    ptr,
-    slice::{self, memchr},
-    str,
-};
+#[cfg(feature = "atomics")]
+use alloc::sync::Arc;
+use alloc::{borrow::Cow, rc::Rc};
+use core::{ascii, cmp::Ordering, fmt, fmt::Write, ptr, slice, slice::memchr, str};
 
 /// Representation of a borrowed C string.
 ///
@@ -494,6 +489,7 @@ impl From<CString> for Box<CStr> {
     }
 }
 
+#[cfg(feature = "atomics")]
 impl From<CString> for Arc<CStr> {
     /// Converts a [`CString`] into a [`Arc`]`<`[`CStr`]`>` without copying or
     /// allocating.
@@ -504,6 +500,7 @@ impl From<CString> for Arc<CStr> {
     }
 }
 
+#[cfg(feature = "atomics")]
 impl From<&CStr> for Arc<CStr> {
     #[inline]
     fn from(s: &CStr) -> Self {
