@@ -1,15 +1,13 @@
-use crate::{
-    fib::{self, Fiber},
-    sync::spsc::pulse::{channel, Receiver, SendError},
-    thr::prelude::*,
-};
-use core::{
-    convert::identity,
-    num::NonZeroUsize,
-    pin::Pin,
-    task::{Context, Poll},
-};
+use core::convert::identity;
+use core::num::NonZeroUsize;
+use core::pin::Pin;
+use core::task::{Context, Poll};
+
 use futures::Stream;
+
+use crate::fib::{self, Fiber};
+use crate::sync::spsc::pulse::{channel, Receiver, SendError};
+use crate::thr::prelude::*;
 
 /// A stream of pulses from the fiber in another thread.
 ///

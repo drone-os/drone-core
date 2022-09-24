@@ -1,11 +1,10 @@
 #![feature(proc_macro_hygiene)]
 #![no_implicit_prelude]
 
-use ::drone_core::{
-    reg,
-    reg::{marker::*, prelude::*},
-    token::Token,
-};
+use ::drone_core::reg;
+use ::drone_core::reg::marker::*;
+use ::drone_core::reg::prelude::*;
+use ::drone_core::token::Token;
 
 reg! {
     pub RCC AHB2ENR => {
@@ -208,7 +207,8 @@ reg_tokens! {
 }
 
 pub mod gpio {
-    use ::drone_core::{periph, reg::marker::*};
+    use ::drone_core::periph;
+    use ::drone_core::reg::marker::*;
 
     periph! {
         pub trait GpioMap {}
@@ -324,7 +324,8 @@ pub mod gpio {
 }
 
 pub mod tim {
-    use ::drone_core::{periph, reg::marker::*};
+    use ::drone_core::periph;
+    use ::drone_core::reg::marker::*;
 
     periph! {
         pub trait TimMap {}
@@ -424,7 +425,8 @@ pub mod tim {
 }
 
 pub mod uarte {
-    use ::drone_core::{periph, reg::marker::*};
+    use ::drone_core::periph;
+    use ::drone_core::reg::marker::*;
 
     periph! {
         pub trait UarteMap {}

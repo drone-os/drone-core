@@ -1,10 +1,16 @@
 #![allow(clippy::missing_safety_doc)]
 
-use crate::ffi::{c_char, libc::strlen, CString};
+use alloc::borrow::Cow;
+use alloc::rc::Rc;
 #[cfg(feature = "atomics")]
 use alloc::sync::Arc;
-use alloc::{borrow::Cow, rc::Rc};
-use core::{ascii, cmp::Ordering, fmt, fmt::Write, ptr, slice, slice::memchr, str};
+use core::cmp::Ordering;
+use core::fmt::Write;
+use core::slice::memchr;
+use core::{ascii, fmt, ptr, slice, str};
+
+use crate::ffi::libc::strlen;
+use crate::ffi::{c_char, CString};
 
 /// Representation of a borrowed C string.
 ///
@@ -355,6 +361,7 @@ impl CStr {
     /// # #![feature(alloc)]
     /// # extern crate alloc;
     /// use alloc::borrow::Cow;
+    ///
     /// use drone_core::ffi::CStr;
     ///
     /// let c_str =
@@ -368,6 +375,7 @@ impl CStr {
     /// # #![feature(alloc)]
     /// # extern crate alloc;
     /// use alloc::borrow::Cow;
+    ///
     /// use drone_core::ffi::CStr;
     ///
     /// let c_str = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0")

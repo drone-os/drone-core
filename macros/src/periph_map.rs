@@ -2,10 +2,9 @@ use drone_macros_core::{parse_error, parse_ident, unkeywordize, CfgCond, CfgCond
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
+use syn::parse::{Parse, ParseStream, Result};
 use syn::{
-    braced, parenthesized,
-    parse::{Parse, ParseStream, Result},
-    parse_macro_input, token, Attribute, Ident, ImplItem, Path, Token,
+    braced, parenthesized, parse_macro_input, token, Attribute, Ident, ImplItem, Path, Token,
 };
 
 const MACRO_PREFIX: &str = "periph_";

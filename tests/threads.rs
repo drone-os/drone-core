@@ -1,20 +1,16 @@
 #![feature(generators)]
 #![no_implicit_prelude]
 
-use ::drone_core::{
-    fib, thr,
-    thr::{prelude::*, Thread},
-    token::Token,
-};
-use ::std::{
-    assert_eq,
-    clone::Clone,
-    ops::Drop,
-    sync::{
-        atomic::{AtomicI8, Ordering::*},
-        Arc,
-    },
-};
+use ::drone_core::thr::prelude::*;
+use ::drone_core::thr::Thread;
+use ::drone_core::token::Token;
+use ::drone_core::{fib, thr};
+use ::std::assert_eq;
+use ::std::clone::Clone;
+use ::std::ops::Drop;
+use ::std::sync::atomic::AtomicI8;
+use ::std::sync::atomic::Ordering::*;
+use ::std::sync::Arc;
 
 thr::pool! {
     /// Test doc attribute

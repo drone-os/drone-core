@@ -2,15 +2,12 @@
 //!
 //! See [the top-level module documentation](self) for details.
 
-use crate::{
-    bitfield::{Bitfield, Bits},
-    reg::{
-        tag::{Crt, RegAtomic, RegTag, Srt, Urt},
-        RReg, Reg, WReg, WoReg,
-    },
-    token::Token,
-};
 use core::ptr::{read_volatile, write_volatile};
+
+use crate::bitfield::{Bitfield, Bits};
+use crate::reg::tag::{Crt, RegAtomic, RegTag, Srt, Urt};
+use crate::reg::{RReg, Reg, WReg, WoReg};
+use crate::token::Token;
 
 /// The base trait for a field token of a memory-mapped register.
 pub trait RegField<T: RegTag>: Token + Sync {

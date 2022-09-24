@@ -1,14 +1,12 @@
-use crate::{
-    fib::{self, Fiber},
-    sync::spsc::ring::{channel, Receiver, SendError, SendErrorKind},
-    thr::prelude::*,
-};
-use core::{
-    convert::identity,
-    pin::Pin,
-    task::{Context, Poll},
-};
+use core::convert::identity;
+use core::pin::Pin;
+use core::task::{Context, Poll};
+
 use futures::Stream;
+
+use crate::fib::{self, Fiber};
+use crate::sync::spsc::ring::{channel, Receiver, SendError, SendErrorKind};
+use crate::thr::prelude::*;
 
 /// A stream of `T` from the fiber in another thread.
 ///

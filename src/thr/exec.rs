@@ -1,10 +1,10 @@
-use crate::{fib, thr::prelude::*};
-use core::{
-    fmt::Display,
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll, Waker},
-};
+use core::fmt::Display;
+use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll, Waker};
+
+use crate::fib;
+use crate::thr::prelude::*;
 
 /// Thread executor.
 pub trait ThrExec: ThrToken {

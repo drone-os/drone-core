@@ -1,16 +1,13 @@
 #![no_implicit_prelude]
 
-use ::drone_core::{
-    thr,
-    thr::{pending_size, SoftThrToken, SoftThread, ThrExec, PRIORITY_LEVELS},
-    token::Token,
-};
-use ::std::{
-    assert_eq,
-    clone::Clone,
-    sync::{atomic::Ordering, Arc, Mutex},
-    vec::Vec,
-};
+use ::drone_core::thr;
+use ::drone_core::thr::{pending_size, SoftThrToken, SoftThread, ThrExec, PRIORITY_LEVELS};
+use ::drone_core::token::Token;
+use ::std::assert_eq;
+use ::std::clone::Clone;
+use ::std::sync::atomic::Ordering;
+use ::std::sync::{Arc, Mutex};
+use ::std::vec::Vec;
 
 #[test]
 fn test_set_pending() {

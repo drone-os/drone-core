@@ -2,11 +2,8 @@ use drone_macros_core::{parse_error, unkeywordize, CfgCond, CfgCondExt};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{
-    braced,
-    parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, Ident, LitInt, Token, TraitItem,
-};
+use syn::parse::{Parse, ParseStream, Result};
+use syn::{braced, parse_macro_input, Attribute, Ident, LitInt, Token, TraitItem};
 
 struct Input {
     trait_attrs: Vec<Attribute>,

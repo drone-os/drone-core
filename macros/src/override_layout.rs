@@ -1,10 +1,9 @@
+use std::env;
+
 use proc_macro::TokenStream;
 use quote::quote;
-use std::env;
-use syn::{
-    parse::{Parse, ParseStream, Result},
-    parse_macro_input, LitStr,
-};
+use syn::parse::{Parse, ParseStream, Result};
+use syn::{parse_macro_input, LitStr};
 
 struct Input {
     contents: LitStr,

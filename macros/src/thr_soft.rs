@@ -1,11 +1,8 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{
-    braced,
-    parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, ExprPath, Ident, Token, Visibility,
-};
+use syn::parse::{Parse, ParseStream, Result};
+use syn::{braced, parse_macro_input, Attribute, ExprPath, Ident, Token, Visibility};
 
 struct Input {
     thr: Thr,

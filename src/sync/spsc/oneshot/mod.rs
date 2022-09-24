@@ -5,19 +5,15 @@
 mod receiver;
 mod sender;
 
-pub use self::{
-    receiver::{Canceled, Receiver},
-    sender::Sender,
-};
-
-use crate::sync::spsc::SpscInner;
 use alloc::sync::Arc;
-use core::{
-    cell::UnsafeCell,
-    mem::MaybeUninit,
-    sync::atomic::{AtomicU8, Ordering},
-    task::Waker,
-};
+use core::cell::UnsafeCell;
+use core::mem::MaybeUninit;
+use core::sync::atomic::{AtomicU8, Ordering};
+use core::task::Waker;
+
+pub use self::receiver::{Canceled, Receiver};
+pub use self::sender::Sender;
+use crate::sync::spsc::SpscInner;
 
 #[allow(clippy::identity_op)]
 const TX_WAKER_STORED: u8 = 1 << 0;
@@ -94,13 +90,12 @@ impl<T> SpscInner<AtomicU8, u8> for Inner<T> {
 
 #[cfg(test)]
 mod tests {
+    use core::future::Future;
+    use core::pin::Pin;
+    use core::sync::atomic::AtomicUsize;
+    use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+
     use super::*;
-    use core::{
-        future::Future,
-        pin::Pin,
-        sync::atomic::AtomicUsize,
-        task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-    };
 
     struct Counter(AtomicUsize);
 

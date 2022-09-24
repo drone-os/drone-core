@@ -1,4 +1,5 @@
-use core::{future::Future, pin::Pin};
+use core::future::Future;
+use core::pin::Pin;
 
 /// The `Write` trait allows for writing bytes to a source asynchronously.
 pub trait Write<'sess> {

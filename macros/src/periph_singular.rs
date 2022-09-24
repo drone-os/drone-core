@@ -2,11 +2,8 @@ use drone_macros_core::{unkeywordize, CfgCond, CfgCondExt};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{
-    braced,
-    parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, Ident, Path, Token,
-};
+use syn::parse::{Parse, ParseStream, Result};
+use syn::{braced, parse_macro_input, Attribute, Ident, Path, Token};
 
 const MACRO_PREFIX: &str = "periph_";
 const STRUCT_SUFFIX: &str = "Periph";

@@ -1,8 +1,8 @@
-use crate::{
-    fib::{Fiber, FiberState, RootFiber},
-    thr::prelude::*,
-};
-use core::{marker::Unpin, pin::Pin};
+use core::marker::Unpin;
+use core::pin::Pin;
+
+use crate::fib::{Fiber, FiberState, RootFiber};
+use crate::thr::prelude::*;
 
 /// Fiber for [`FnMut`] closure.
 ///

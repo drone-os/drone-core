@@ -1,15 +1,14 @@
 //! A lock-free singly-linked list.
 
-#[cfg(not(feature = "atomics"))]
-use crate::sync::soft_atomic::Atomic;
+use core::iter::{FromIterator, FusedIterator};
+use core::marker::PhantomData;
+use core::ops::{Deref, DerefMut};
+use core::ptr;
 #[cfg(feature = "atomics")]
 use core::sync::atomic::{AtomicPtr, Ordering};
-use core::{
-    iter::{FromIterator, FusedIterator},
-    marker::PhantomData,
-    ops::{Deref, DerefMut},
-    ptr,
-};
+
+#[cfg(not(feature = "atomics"))]
+use crate::sync::soft_atomic::Atomic;
 
 /// A lock-free singly-linked list.
 pub struct LinkedList<T> {

@@ -1,4 +1,5 @@
-use core::{future::Future, pin::Pin};
+use core::future::Future;
+use core::pin::Pin;
 
 /// The `Seek` trait provides a cursor which can be moved within a stream of
 /// bytes asynchronously.

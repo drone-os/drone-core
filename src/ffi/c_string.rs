@@ -1,12 +1,12 @@
 #![allow(clippy::missing_safety_doc)]
 
-use crate::ffi::{c_char, libc::strlen, CStr};
 use alloc::borrow::{Borrow, Cow};
-use core::{
-    fmt, mem, ops, ptr,
-    slice::{self, memchr},
-    str::Utf8Error,
-};
+use core::slice::{self, memchr};
+use core::str::Utf8Error;
+use core::{fmt, mem, ops, ptr};
+
+use crate::ffi::libc::strlen;
+use crate::ffi::{c_char, CStr};
 
 /// A type representing an owned, C-compatible, nul-terminated string with no
 /// nul bytes in the middle.
@@ -275,7 +275,7 @@ impl CString {
     /// let cstring = CString::new(valid_utf8).expect("CString::new failed");
     /// assert_eq!(cstring.into_string().expect("into_string() call failed"), "foo");
     ///
-    /// let invalid_utf8 = vec![b'f', 0xff, b'o', b'o'];
+    /// let invalid_utf8 = vec![b'f', 0xFF, b'o', b'o'];
     /// let cstring = CString::new(invalid_utf8).expect("CString::new failed");
     /// let err = cstring.into_string().err().expect("into_string().err() failed");
     /// assert_eq!(err.utf8_error().valid_up_to(), 1);

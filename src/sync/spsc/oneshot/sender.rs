@@ -1,10 +1,9 @@
+use alloc::sync::Arc;
+use core::sync::atomic::Ordering;
+use core::task::{Context, Poll};
+
 use super::Inner;
 use crate::sync::spsc::SpscInner;
-use alloc::sync::Arc;
-use core::{
-    sync::atomic::Ordering,
-    task::{Context, Poll},
-};
 
 const IS_TX_HALF: bool = true;
 

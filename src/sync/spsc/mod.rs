@@ -1,11 +1,9 @@
 //! Single-producer, single-consumer communication primitives.
 
-use core::{
-    mem::MaybeUninit,
-    ops::{BitAnd, BitOr, BitOrAssign, BitXorAssign},
-    sync::atomic::Ordering,
-    task::{Context, Poll, Waker},
-};
+use core::mem::MaybeUninit;
+use core::ops::{BitAnd, BitOr, BitOrAssign, BitXorAssign};
+use core::sync::atomic::Ordering;
+use core::task::{Context, Poll, Waker};
 
 pub mod oneshot;
 pub mod pulse;

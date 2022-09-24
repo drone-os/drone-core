@@ -6,9 +6,13 @@
 //! Dynamic memory functions (e.g. `malloc`, `free`) are implemented in terms of
 //! [Drone Heap](mod@crate::heap).
 
-use crate::ffi::{c_char, c_int};
+use core::alloc::Layout;
+use core::ffi::c_void;
+use core::ptr;
+
 use ::alloc::alloc;
-use core::{alloc::Layout, ffi::c_void, ptr};
+
+use crate::ffi::{c_char, c_int};
 
 /// A type able to represent the size of any object in bytes.
 #[allow(non_camel_case_types)]

@@ -1,13 +1,9 @@
 use drone_macros_core::parse_ident;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{
-    parenthesized,
-    parse::{Parse, ParseStream, Result},
-    parse_macro_input,
-    punctuated::Punctuated,
-    LitStr, Token,
-};
+use syn::parse::{Parse, ParseStream, Result};
+use syn::punctuated::Punctuated;
+use syn::{parenthesized, parse_macro_input, LitStr, Token};
 
 #[allow(dead_code)]
 enum Input {

@@ -82,21 +82,18 @@ mod lang_items;
 /// See [the module level documentation](mod@heap) for details.
 #[doc(inline)]
 pub use drone_core_macros::heap;
-
+#[doc(hidden)]
+pub use drone_core_macros::override_layout;
 /// Defines a new generic peripheral.
 ///
 /// See [the module level documentation](mod@periph) for details.
 #[doc(inline)]
 pub use drone_core_macros::periph;
-
 /// Defines a memory-mapped register.
 ///
 /// See [the module level documentation](mod@reg) for details.
 #[doc(inline)]
 pub use drone_core_macros::reg;
-
-#[doc(hidden)]
-pub use drone_core_macros::override_layout;
 
 #[prelude_import]
 #[allow(unused_imports)]

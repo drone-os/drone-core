@@ -3,10 +3,10 @@ use if_chain::if_chain;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{format_ident, quote};
+use syn::parse::{Parse, ParseStream, Result};
 use syn::{
-    parenthesized,
-    parse::{Parse, ParseStream, Result},
-    parse_macro_input, Data, DeriveInput, Fields, Ident, LitInt, LitStr, PathArguments, Token,
+    parenthesized, parse_macro_input, Data, DeriveInput, Fields, Ident, LitInt, LitStr,
+    PathArguments, Token,
 };
 
 #[derive(Default)]

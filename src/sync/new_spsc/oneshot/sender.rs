@@ -1,7 +1,5 @@
-use core::{
-    marker::PhantomData,
-    task::{Context, Poll},
-};
+use core::marker::PhantomData;
+use core::task::{Context, Poll};
 
 /// The sending-half of [`oneshot::channel`](super::channel).
 pub struct Sender<T> {

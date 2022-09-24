@@ -144,7 +144,6 @@
 /// See [the module-level documentation](self) for details.
 #[doc(inline)]
 pub use drone_core_macros::simple_token;
-
 /// Defines a new token for the set of simple [`Token`]s.
 ///
 /// See [the module-level documentation](self) for details.
@@ -154,7 +153,6 @@ pub use drone_core_macros::simple_token;
 /// The tokens must not be instantiated anywhere else.
 #[doc(inline)]
 pub use drone_core_macros::unsafe_simple_tokens;
-
 /// Defines a new token for the set of [`StaticToken`]s.
 ///
 /// See [the module-level documentation](self) for details.

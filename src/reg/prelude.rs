@@ -14,7 +14,6 @@ pub use crate::reg::{
     tag::{Crt, RegAtomic, RegOwned, RegTag, Srt, Urt},
     RReg, Reg, RegHold, RoReg, WReg, WoReg,
 };
-
 #[doc(no_inline)]
 pub use crate::reg::{
     field::{

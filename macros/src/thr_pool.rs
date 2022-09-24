@@ -2,10 +2,9 @@ use heck::ToUpperCamelCase;
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
+use syn::parse::{Parse, ParseStream, Result};
 use syn::{
-    braced,
-    parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, Expr, ExprPath, Ident, LitInt, Token, Type, Visibility,
+    braced, parse_macro_input, Attribute, Expr, ExprPath, Ident, LitInt, Token, Type, Visibility,
 };
 
 struct Input {

@@ -1,13 +1,12 @@
+use alloc::sync::Arc;
+use core::fmt;
+use core::future::Future;
+use core::pin::Pin;
+use core::sync::atomic::Ordering;
+use core::task::{Context, Poll};
+
 use super::{Inner, COMPLETE};
 use crate::sync::spsc::SpscInner;
-use alloc::sync::Arc;
-use core::{
-    fmt,
-    future::Future,
-    pin::Pin,
-    sync::atomic::Ordering,
-    task::{Context, Poll},
-};
 
 const IS_TX_HALF: bool = false;
 

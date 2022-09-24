@@ -1,9 +1,8 @@
-use core::{
-    fmt,
-    marker::PhantomData,
-    pin::Pin,
-    task::{Context, Poll},
-};
+use core::fmt;
+use core::marker::PhantomData;
+use core::pin::Pin;
+use core::task::{Context, Poll};
+
 use futures::prelude::*;
 
 /// The receiving-half of [`oneshot::channel`](super::channel).

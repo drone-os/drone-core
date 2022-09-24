@@ -1,6 +1,7 @@
 //! Basic functions for dealing with memory.
 
-use core::{cell::UnsafeCell, ptr};
+use core::cell::UnsafeCell;
+use core::ptr;
 
 extern "C" {
     static BSS_BASE: UnsafeCell<usize>;
@@ -44,6 +45,7 @@ pub unsafe fn data_init() {
 ///
 /// ```no_run
 /// use core::cell::UnsafeCell;
+///
 /// use drone_core::mem;
 ///
 /// extern "C" {
@@ -74,6 +76,7 @@ pub unsafe fn zeroed_section_init(base: &UnsafeCell<usize>, end: &UnsafeCell<usi
 ///
 /// ```no_run
 /// use core::cell::UnsafeCell;
+///
 /// use drone_core::mem;
 ///
 /// extern "C" {

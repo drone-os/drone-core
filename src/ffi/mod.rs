@@ -14,21 +14,18 @@ mod c_string;
 #[doc(no_inline)]
 pub use drone_ctypes::*;
 
-pub use self::{
-    c_str::{CStr, FromBytesWithNulError},
-    c_string::{CString, IntoStringError, NulError},
-};
+pub use self::c_str::{CStr, FromBytesWithNulError};
+pub use self::c_string::{CString, IntoStringError, NulError};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use alloc::{
-        borrow::Cow::{Borrowed, Owned},
-        rc::Rc,
-        sync::Arc,
-    };
+    use alloc::borrow::Cow::{Borrowed, Owned};
+    use alloc::rc::Rc;
+    use alloc::sync::Arc;
     use core::hash::{Hash, Hasher};
     use std::collections::hash_map::DefaultHasher;
+
+    use super::*;
 
     #[test]
     fn c_to_rust() {

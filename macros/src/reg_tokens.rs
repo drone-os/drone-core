@@ -3,11 +3,8 @@ use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
-use syn::{
-    braced,
-    parse::{Parse, ParseStream, Result},
-    parse_macro_input, token, AttrStyle, Attribute, Ident, Path, Token, Visibility,
-};
+use syn::parse::{Parse, ParseStream, Result};
+use syn::{braced, parse_macro_input, token, AttrStyle, Attribute, Ident, Path, Token, Visibility};
 
 struct Input {
     prev_macro: Option<Path>,

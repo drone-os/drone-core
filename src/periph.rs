@@ -26,6 +26,7 @@
 //! # }
 //! # reg_tokens!(index => Regs);
 //! use core::mem::size_of_val;
+//!
 //! use drone_core::periph;
 //!
 //! periph::singular! {
@@ -249,7 +250,6 @@
 /// See [the module level documentation](self) for details.
 #[doc(inline)]
 pub use drone_core_macros::periph_map as map;
-
 /// Defines a singular peripheral.
 ///
 /// See [the module level documentation](self) for details.

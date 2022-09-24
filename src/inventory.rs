@@ -207,10 +207,9 @@
 //! }
 //! ```
 
-use core::{
-    marker::PhantomData,
-    ops::{Add, Deref, DerefMut, Sub},
-};
+use core::marker::PhantomData;
+use core::ops::{Add, Deref, DerefMut, Sub};
+
 use typenum::{Diff, Sum, Unsigned, U0, U1, U2, U3, U4, U5, U6, U7, U8};
 
 /// The inventory wrapper for `T`. Parameter `C` encodes the number of emitted

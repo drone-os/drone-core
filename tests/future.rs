@@ -3,16 +3,16 @@
 #![feature(prelude_import)]
 #![warn(unsafe_op_in_unsafe_fn)]
 
+use core::pin::Pin;
+use core::sync::atomic::AtomicUsize;
+use core::sync::atomic::Ordering::*;
+use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+
 #[prelude_import]
 #[allow(unused_imports)]
 use drone_core::prelude::*;
-
-use core::{
-    pin::Pin,
-    sync::atomic::{AtomicUsize, Ordering::*},
-    task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-};
-use drone_core::{sync::spsc::oneshot, thr};
+use drone_core::sync::spsc::oneshot;
+use drone_core::thr;
 use futures::prelude::*;
 
 thr::pool! {

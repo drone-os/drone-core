@@ -1,13 +1,13 @@
+use alloc::sync::Arc;
+use core::num::NonZeroUsize;
+use core::pin::Pin;
+use core::sync::atomic::Ordering;
+use core::task::{Context, Poll};
+
+use futures::stream::Stream;
+
 use super::{Inner, COMPLETE, OPTION_BITS};
 use crate::sync::spsc::{SpscInner, SpscInnerErr};
-use alloc::sync::Arc;
-use core::{
-    num::NonZeroUsize,
-    pin::Pin,
-    sync::atomic::Ordering,
-    task::{Context, Poll},
-};
-use futures::stream::Stream;
 
 const IS_TX_HALF: bool = false;
 

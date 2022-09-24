@@ -6,19 +6,15 @@
 mod receiver;
 mod sender;
 
-pub use self::{
-    receiver::Receiver,
-    sender::{SendError, Sender},
-};
-
-use crate::sync::spsc::{SpscInner, SpscInnerErr};
 use alloc::sync::Arc;
-use core::{
-    cell::UnsafeCell,
-    mem::{size_of, MaybeUninit},
-    sync::atomic::{AtomicUsize, Ordering},
-    task::Waker,
-};
+use core::cell::UnsafeCell;
+use core::mem::{size_of, MaybeUninit};
+use core::sync::atomic::{AtomicUsize, Ordering};
+use core::task::Waker;
+
+pub use self::receiver::Receiver;
+pub use self::sender::{SendError, Sender};
+use crate::sync::spsc::{SpscInner, SpscInnerErr};
 
 /// Maximum capacity of the channel.
 pub const MAX_CAPACITY: usize = 1 << size_of::<usize>() as u32 * 8 - OPTION_BITS;
@@ -107,14 +103,14 @@ impl<E> SpscInnerErr<AtomicUsize, usize> for Inner<E> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use core::{
-        num::NonZeroUsize,
-        pin::Pin,
-        sync::atomic::AtomicUsize,
-        task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-    };
+    use core::num::NonZeroUsize;
+    use core::pin::Pin;
+    use core::sync::atomic::AtomicUsize;
+    use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+
     use futures::stream::Stream;
+
+    use super::*;
 
     struct Counter(AtomicUsize);
 

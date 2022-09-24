@@ -1,11 +1,10 @@
+use alloc::sync::Arc;
+use core::sync::atomic::Ordering;
+use core::task::{Context, Poll};
+use core::{fmt, ptr};
+
 use super::{Inner, COMPLETE, NUMBER_BITS, NUMBER_MASK, RX_WAKER_STORED};
 use crate::sync::spsc::{SpscInner, SpscInnerErr};
-use alloc::sync::Arc;
-use core::{
-    fmt, ptr,
-    sync::atomic::Ordering,
-    task::{Context, Poll},
-};
 
 const IS_TX_HALF: bool = true;
 

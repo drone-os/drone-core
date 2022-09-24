@@ -1,10 +1,8 @@
 use heck::ToSnakeCase;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{
-    parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, Ident, Token, Visibility,
-};
+use syn::parse::{Parse, ParseStream, Result};
+use syn::{parse_macro_input, Attribute, Ident, Token, Visibility};
 
 struct Input {
     attrs: Vec<Attribute>,

@@ -1,17 +1,16 @@
+use core::cell::UnsafeCell;
+use core::fmt;
+use core::future::Future;
+use core::mem::MaybeUninit;
+use core::ops::{Deref, DerefMut};
+use core::pin::Pin;
+#[cfg(feature = "atomics")]
+use core::sync::atomic::{AtomicU8, Ordering};
+use core::task::{Context, Poll, Waker};
+
 use crate::sync::linked_list::{LinkedList, Node};
 #[cfg(not(feature = "atomics"))]
 use crate::sync::soft_atomic::Atomic;
-#[cfg(feature = "atomics")]
-use core::sync::atomic::{AtomicU8, Ordering};
-use core::{
-    cell::UnsafeCell,
-    fmt,
-    future::Future,
-    mem::MaybeUninit,
-    ops::{Deref, DerefMut},
-    pin::Pin,
-    task::{Context, Poll, Waker},
-};
 
 /// A mutual exclusion primitive useful for protecting shared data.
 ///
@@ -371,14 +370,14 @@ impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use alloc::sync::Arc;
-    use core::{
-        future::Future,
-        sync::atomic::{AtomicUsize, Ordering},
-        task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-    };
+    use core::future::Future;
+    use core::sync::atomic::{AtomicUsize, Ordering};
+    use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+
     use futures::pin_mut;
+
+    use super::*;
 
     #[derive(Eq, PartialEq, Debug)]
     struct NonCopy(i32);

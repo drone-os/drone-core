@@ -1,14 +1,13 @@
+use std::iter;
+
 use drone_config::{Layout, LAYOUT_CONFIG};
 use drone_macros_core::parse_error;
 use heck::ToShoutySnakeCase;
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2, TokenTree as TokenTree2};
 use quote::{format_ident, quote};
-use std::iter;
-use syn::{
-    parse::{Parse, ParseStream, Result},
-    parse_macro_input, Attribute, Ident, LitInt, LitStr, Token, Visibility,
-};
+use syn::parse::{Parse, ParseStream, Result};
+use syn::{parse_macro_input, Attribute, Ident, LitInt, LitStr, Token, Visibility};
 
 struct Input {
     layout: Ident,

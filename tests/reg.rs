@@ -1,11 +1,12 @@
 #![feature(proc_macro_hygiene)]
 #![no_implicit_prelude]
 
-use ::drone_core::{bitfield::Bitfield, reg, reg::prelude::*, token::Token};
-use ::std::{
-    assert_eq,
-    mem::{size_of, size_of_val},
-};
+use ::drone_core::bitfield::Bitfield;
+use ::drone_core::reg;
+use ::drone_core::reg::prelude::*;
+use ::drone_core::token::Token;
+use ::std::assert_eq;
+use ::std::mem::{size_of, size_of_val};
 
 reg! {
     /// Provides identification information for the processor.

@@ -71,7 +71,8 @@
 //! # }
 //! # fn main() {
 //! #     let thr = unsafe { Thrs::take() };
-//! use drone_core::{fib, thr::prelude::*};
+//! use drone_core::fib;
+//! use drone_core::thr::prelude::*;
 //!
 //! // A fiber based on a generator.
 //! // This is `impl Fiber<Input = (), Yield = (), Return = ()>`
@@ -101,24 +102,26 @@
 //! # Compound Fibers
 //!
 //! There is a number of useful compound fibers implemented in this module:
-//!
-//! | Method                                                                                       | Input / Output                                                                |
-//! |----------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
-//! | [`token.add_future(...)`](ThrFiberFuture::add_future)                                        | `Fiber<Input = (), Yield = ()/!, Return = T>`                                 |
-//! | `->`                                                                                         | `Future<Output = T>`                                                          |
-//! | [`token.add_saturating_pulse_stream(...)`](ThrFiberStreamPulse::add_saturating_pulse_stream) | `Fiber<Input = (), Yield = Option<usize>, Return = Option<usize>>`            |
-//! | `->`                                                                                         | `Stream<Item = NonZeroUsize>`                                                 |
-//! | [`token.add_pulse_try_stream(...)`](ThrFiberStreamPulse::add_pulse_try_stream)               | `Fiber<Input = (), Yield = Option<usize>, Return = Result<Option<usize>, E>>` |
-//! | `->`                                                                                         | `Stream<Item = Result<NonZeroUsize, E>>`                                      |
-//! | [`token.add_saturating_stream(...)`](ThrFiberStreamRing::add_saturating_stream)              | `Fiber<Input = (), Yield = Option<T>, Return = Option<T>>`                    |
-//! | `->`                                                                                         | `Stream<Item = T>`                                                            |
-//! | [`token.add_try_stream(...)`](ThrFiberStreamRing::add_try_stream)                            | `Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>`         |
-//! | `->`                                                                                         | `Stream<Item = Result<T, E>>`                                                 |
-//! | [`token.add_overwriting_stream(...)`](ThrFiberStreamRing::add_overwriting_stream)            | `Fiber<Input = (), Yield = Option<T>, Return = Option<T>>`                    |
-//! | `->`                                                                                         | `Stream<Item = T>`                                                            |
-//! | [`token.add_overwriting_try_stream(...)`](ThrFiberStreamRing::add_overwriting_try_stream)    | `Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>`         |
-//! | `->`                                                                                         | `Stream<Item = Result<T, E>>`                                                 |
-//!
+#![doc = "
+
+| Method                                                                                       | Input / Output                                                                |
+|----------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| [`token.add_future(...)`](ThrFiberFuture::add_future)                                        | `Fiber<Input = (), Yield = ()/!, Return = T>`                                 |
+| `->`                                                                                         | `Future<Output = T>`                                                          |
+| [`token.add_saturating_pulse_stream(...)`](ThrFiberStreamPulse::add_saturating_pulse_stream) | `Fiber<Input = (), Yield = Option<usize>, Return = Option<usize>>`            |
+| `->`                                                                                         | `Stream<Item = NonZeroUsize>`                                                 |
+| [`token.add_pulse_try_stream(...)`](ThrFiberStreamPulse::add_pulse_try_stream)               | `Fiber<Input = (), Yield = Option<usize>, Return = Result<Option<usize>, E>>` |
+| `->`                                                                                         | `Stream<Item = Result<NonZeroUsize, E>>`                                      |
+| [`token.add_saturating_stream(...)`](ThrFiberStreamRing::add_saturating_stream)              | `Fiber<Input = (), Yield = Option<T>, Return = Option<T>>`                    |
+| `->`                                                                                         | `Stream<Item = T>`                                                            |
+| [`token.add_try_stream(...)`](ThrFiberStreamRing::add_try_stream)                            | `Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>`         |
+| `->`                                                                                         | `Stream<Item = Result<T, E>>`                                                 |
+| [`token.add_overwriting_stream(...)`](ThrFiberStreamRing::add_overwriting_stream)            | `Fiber<Input = (), Yield = Option<T>, Return = Option<T>>`                    |
+| `->`                                                                                         | `Stream<Item = T>`                                                            |
+| [`token.add_overwriting_try_stream(...)`](ThrFiberStreamRing::add_overwriting_try_stream)    | `Fiber<Input = (), Yield = Option<T>, Return = Result<Option<T>, E>>`         |
+| `->`                                                                                         | `Stream<Item = Result<T, E>>`                                                 |
+
+"]
 //! In addition, each of the above methods has `*_factory` modification, which
 //! is useful for creating non-`Send` fibers.
 //!
@@ -136,7 +139,8 @@
 //! # fn main() {
 //! #     let thr = unsafe { Thrs::take() };
 //! #     async {
-//! use drone_core::{fib, thr::prelude::*};
+//! use drone_core::fib;
+//! use drone_core::thr::prelude::*;
 //!
 //! let a = thr.sys_tick.add_future(fib::new(|| {
 //!     yield;
@@ -158,17 +162,15 @@ mod generator;
 mod stream_pulse;
 mod stream_ring;
 
-pub use self::{
-    chain::Chain,
-    closure::{new_fn, new_once, FiberFn, FiberOnce, ThrFiberClosure},
-    future::{FiberFuture, ThrFiberFuture},
-    generator::{new, FiberGen, ThrFiberGen},
-    stream_pulse::{FiberStreamPulse, ThrFiberStreamPulse, TryFiberStreamPulse},
-    stream_ring::{FiberStreamRing, ThrFiberStreamRing, TryFiberStreamRing},
-};
-pub use FiberState::*;
-
 use core::pin::Pin;
+
+pub use self::chain::Chain;
+pub use self::closure::{new_fn, new_once, FiberFn, FiberOnce, ThrFiberClosure};
+pub use self::future::{FiberFuture, ThrFiberFuture};
+pub use self::generator::{new, FiberGen, ThrFiberGen};
+pub use self::stream_pulse::{FiberStreamPulse, ThrFiberStreamPulse, TryFiberStreamPulse};
+pub use self::stream_ring::{FiberStreamRing, ThrFiberStreamRing, TryFiberStreamRing};
+pub use self::FiberState::*;
 
 /// The main task unit of Drone.
 pub trait Fiber {

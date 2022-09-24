@@ -1,18 +1,15 @@
 //! Marker traits representing properties of memory-mapped registers.
 
+use crate::reg::field::{
+    RRRegFieldBit, RRRegFieldBits, RoRRegField, WWRegFieldBit, WWRegFieldBits, WoWRegField,
+};
+use crate::reg::tag::{Crt, RegTag, Srt, Urt};
 #[doc(inline)]
 pub use crate::reg::{
     field::{WoWoRegFieldBit, WoWoRegFieldBits},
     RoReg, WoReg,
 };
-
-use crate::reg::{
-    field::{
-        RRRegFieldBit, RRRegFieldBits, RoRRegField, WWRegFieldBit, WWRegFieldBits, WoWRegField,
-    },
-    tag::{Crt, RegTag, Srt, Urt},
-    RReg, RwRegUnsync, WReg, WRegAtomic, WRegUnsync,
-};
+use crate::reg::{RReg, RwRegUnsync, WReg, WRegAtomic, WRegUnsync};
 
 /// Read-write register.
 #[marker]

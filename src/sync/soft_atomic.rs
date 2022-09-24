@@ -1,10 +1,12 @@
 //! Software-implemented atomic types.
 //!
 //! Atomic types from this module don't require harware support of atomics.
-//! They are implemented with [critical sections](Critical).
+//! They are implemented with [critical sections](Interrupts).
+
+use core::cell::UnsafeCell;
+use core::{fmt, mem};
 
 use crate::platform::Interrupts;
-use core::{cell::UnsafeCell, fmt, mem};
 
 mod sealed {
     pub trait AtMostWordSized {}
@@ -79,7 +81,8 @@ impl<T: sealed::AtMostWordSized + Copy> Atomic<T> {
         prev
     }
 
-    /// Tries to perform read-modify-write sequence, returning the previus value.
+    /// Tries to perform read-modify-write sequence, returning the previus
+    /// value.
     pub fn try_modify<F: FnOnce(T) -> Option<T>>(&self, f: F) -> Result<T, T> {
         let _critical = Interrupts::enter();
         let prev = self.load();

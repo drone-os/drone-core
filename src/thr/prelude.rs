@@ -11,7 +11,6 @@
 
 #[doc(no_inline)]
 pub use crate::thr::ThrToken;
-
 #[doc(no_inline)]
 pub use crate::{
     fib::{

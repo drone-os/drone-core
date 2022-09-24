@@ -77,9 +77,7 @@
 mod allocator;
 mod pool;
 
-pub use self::{
-    allocator::{
-        allocate, allocate_zeroed, binary_search, deallocate, grow, grow_zeroed, shrink, Allocator,
-    },
-    pool::Pool,
+pub use self::allocator::{
+    allocate, allocate_zeroed, binary_search, deallocate, grow, grow_zeroed, shrink, Allocator,
 };
+pub use self::pool::Pool;

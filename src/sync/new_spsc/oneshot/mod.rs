@@ -1,14 +1,12 @@
 //! A channel for sending a single message between asynchronous tasks.
 //!
-//! See [`channel`] constructor for more.
+//! This is a single-producer, single-consumer channel.
 
 mod receiver;
 mod sender;
 
-pub use self::{
-    receiver::{Canceled, Receiver},
-    sender::Sender,
-};
+pub use self::receiver::{Canceled, Receiver};
+pub use self::sender::Sender;
 
 /// Creates a new one-shot channel, returning the sender/receiver halves.
 ///

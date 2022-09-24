@@ -1,15 +1,12 @@
-use crate::{
-    fib,
-    fib::Fiber,
-    sync::spsc::oneshot::{channel, Canceled, Receiver},
-    thr::prelude::*,
-};
-use core::{
-    future::Future,
-    intrinsics::unreachable,
-    pin::Pin,
-    task::{Context, Poll},
-};
+use core::future::Future;
+use core::intrinsics::unreachable;
+use core::pin::Pin;
+use core::task::{Context, Poll};
+
+use crate::fib;
+use crate::fib::Fiber;
+use crate::sync::spsc::oneshot::{channel, Canceled, Receiver};
+use crate::thr::prelude::*;
 
 /// A future that resolves on completion of the fiber from another thread.
 ///

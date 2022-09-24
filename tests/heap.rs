@@ -3,7 +3,8 @@
 #![no_implicit_prelude]
 
 use ::drone_core::{heap, override_layout};
-use ::std::{assert_eq, mem::size_of};
+use ::std::assert_eq;
+use ::std::mem::size_of;
 
 override_layout! { r#"
 [ram]

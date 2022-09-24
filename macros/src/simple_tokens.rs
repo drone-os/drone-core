@@ -1,13 +1,9 @@
 use heck::ToSnakeCase;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{
-    braced,
-    parse::{Parse, ParseStream, Result},
-    parse_macro_input,
-    punctuated::Punctuated,
-    Attribute, Ident, Token, Visibility,
-};
+use syn::parse::{Parse, ParseStream, Result};
+use syn::punctuated::Punctuated;
+use syn::{braced, parse_macro_input, Attribute, Ident, Token, Visibility};
 
 const TOKEN_SUFFIX: &str = "Token";
 

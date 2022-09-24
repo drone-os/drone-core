@@ -1,8 +1,11 @@
-#[cfg(not(feature = "atomics"))]
-use crate::sync::soft_atomic::Atomic;
+use core::alloc::Layout;
+use core::ptr;
+use core::ptr::NonNull;
 #[cfg(feature = "atomics")]
 use core::sync::atomic::{AtomicPtr, Ordering};
-use core::{alloc::Layout, ptr, ptr::NonNull};
+
+#[cfg(not(feature = "atomics"))]
+use crate::sync::soft_atomic::Atomic;
 
 /// The set of free memory blocks.
 ///

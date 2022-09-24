@@ -13,7 +13,5 @@ mod cfg_cond;
 mod macros;
 mod unkeywordize;
 
-pub use self::{
-    cfg_cond::{CfgCond, CfgCondExt},
-    unkeywordize::unkeywordize,
-};
+pub use self::cfg_cond::{CfgCond, CfgCondExt};
+pub use self::unkeywordize::unkeywordize;

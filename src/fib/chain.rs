@@ -1,8 +1,8 @@
-use crate::{
-    fib::RootFiber,
-    sync::linked_list::{DrainFilterRaw, LinkedList, Node as ListNode},
-};
-use core::{iter::FusedIterator, pin::Pin};
+use core::iter::FusedIterator;
+use core::pin::Pin;
+
+use crate::fib::RootFiber;
+use crate::sync::linked_list::{DrainFilterRaw, LinkedList, Node as ListNode};
 
 /// A lock-free list of fibers.
 pub struct Chain {

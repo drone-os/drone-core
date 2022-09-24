@@ -6,8 +6,12 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use crate::{fib, fib::Fiber};
-use core::{future::Future, mem::ManuallyDrop, pin::Pin};
+use core::future::Future;
+use core::mem::ManuallyDrop;
+use core::pin::Pin;
+
+use crate::fib;
+use crate::fib::Fiber;
 
 type SessFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
