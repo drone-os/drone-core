@@ -100,7 +100,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let Input { layout: heap_layout, metadata, instance, trace_stream } = parse_macro_input!(input);
     let Metadata { attrs: metadata_attrs, vis: metadata_vis, ident: metadata_ident } = &metadata;
     let Instance { attrs: instance_attrs, vis: instance_vis, ident: instance_ident } = &instance;
-    let layout = match Layout::read() {
+    let layout = match Layout::read_from_cargo() {
         Ok(layout) => layout,
         Err(err) => parse_error!("{err:#?}"),
     };

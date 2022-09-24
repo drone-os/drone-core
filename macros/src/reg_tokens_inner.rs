@@ -69,7 +69,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     let Input { attrs, vis, ident, defs, undefs } = &parse_macro_input!(input);
     let mut def_tokens = BTreeMap::new();
     let mut ctor_tokens = BTreeMap::new();
-    let mut assert_tokens = BTreeMap::new();
+    let mut claims = BTreeMap::new();
     for Def { attrs, ident, path } in defs {
         let string = ident.to_string();
         let lit_str = LitStr::new(&string, Span::call_site());
@@ -82,19 +82,19 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             #(#attrs)*
             #ident: ::drone_core::token::Token::take(),
         });
-        assert_tokens.insert(string, quote! {
-            ::drone_core::reg::assert_taken!(#lit_str);
+        claims.insert(string, quote! {
+            ::drone_core::reg::claim!(#lit_str);
         });
     }
     for Undef { ident } in undefs {
         let ident = ident.to_string();
         def_tokens.remove(&ident);
         ctor_tokens.remove(&ident);
-        assert_tokens.remove(&ident);
+        claims.remove(&ident);
     }
     let def_tokens = def_tokens.values();
     let ctor_tokens = ctor_tokens.values();
-    let assert_tokens = assert_tokens.values();
+    let claims = claims.values();
     quote! {
         #(#attrs)* #vis struct #ident {
             #(#def_tokens)*
@@ -105,7 +105,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 Self { #(#ctor_tokens)* }
             }
         }
-        #(#assert_tokens)*
+        #(#claims)*
     }
     .into()
 }

@@ -307,7 +307,7 @@ pub use drone_core_macros::reg_tokens as tokens;
 
 /// Assert exclusive ownership of the register.
 #[doc(inline)]
-pub use drone_core_macros::reg_assert_taken as assert_taken;
+pub use drone_core_macros::reg_claim as claim;
 
 #[doc(hidden)]
 pub use drone_core_macros::reg_tokens_inner as tokens_inner;
@@ -923,7 +923,7 @@ mod compile_tests {
     //! drone_core::reg!(pub FOO BAR => { address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE });
     //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
     //! reg_tokens!(index => Regs);
-    //! drone_core::reg::assert_taken!("foo_bar");
+    //! drone_core::reg::claim!("foo_bar");
     //! fn main() { unsafe { Regs::take() }; }
     //! ```
     //!
@@ -933,19 +933,19 @@ mod compile_tests {
     //! drone_core::reg!(pub FOO BAR => { address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE });
     //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
     //! reg_tokens!(index => Regs; exclude => { foo_bar });
-    //! drone_core::reg::assert_taken!("foo_bar");
+    //! drone_core::reg::claim!("foo_bar");
     //! fn main() { unsafe { Regs::take() }; }
     //! ```
     //!
     //! ```compile_fail
     //! #![feature(proc_macro_hygiene)]
-    //! drone_core::reg::assert_taken!("foo_bar");
-    //! drone_core::reg::assert_taken!(concat!("foo", "_bar"));
+    //! drone_core::reg::claim!("foo_bar");
+    //! drone_core::reg::claim!(concat!("foo", "_bar"));
     //! ```
     //!
     //! ```
     //! #![feature(proc_macro_hygiene)]
-    //! drone_core::reg::assert_taken!("foo_bar");
-    //! drone_core::reg::assert_taken!(concat!("foo", "_baz"));
+    //! drone_core::reg::claim!("foo_bar");
+    //! drone_core::reg::claim!(concat!("foo", "_baz"));
     //! ```
 }
