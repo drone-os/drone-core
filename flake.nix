@@ -60,9 +60,9 @@
 
         updateVersions = pkgs.writeShellScriptBin "update-versions" ''
           sed -i "s/\(api\.drone-os\.com\/drone-core\/\)[0-9]\+\(\.[0-9]\+\)\+/\1$(echo $1 | sed 's/\(.*\)\.[0-9]\+/\1/')/" \
-            Cargo.toml ctypes/Cargo.toml macros/Cargo.toml macros-core/Cargo.toml src/lib.rs
+            Cargo.toml macros/Cargo.toml macros-core/Cargo.toml src/lib.rs
           sed -i "/\[.*\]/h;/version = \".*\"/{x;s/\[package\]/version = \"$1\"/;t;x}" \
-            Cargo.toml ctypes/Cargo.toml macros/Cargo.toml macros-core/Cargo.toml
+            Cargo.toml macros/Cargo.toml macros-core/Cargo.toml
           sed -i "/\[.*\]/h;/version = \"=.*\"/{x;s/\[.*drone-.*\]/version = \"=$1\"/;t;x}" \
             Cargo.toml macros/Cargo.toml
           sed -i "/\[.*\]/h;/version = \".*\"/{x;s/\[.*drone-config\]/version = \"$2\"/;t;x}" \
@@ -72,7 +72,6 @@
         '';
 
         publishCrates = pkgs.writeShellScriptBin "publish-crates" ''
-          cd ctypes && cargo publish
           cd macros-core && cargo publish
           sleep 30
           cd macros && cargo publish

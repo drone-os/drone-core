@@ -1,5 +1,5 @@
 [workspace]
-members = ["ctypes", "macros", "macros-core"]
+members = ["macros", "macros-core"]
 
 [package]
 name = "drone-core"
@@ -41,10 +41,6 @@ _atomics = []
 [dependencies.drone-stream]
 version = "0.15.0"
 path = "../drone/stream"
-
-[dependencies.drone-ctypes]
-version = "=0.15.0"
-path = "ctypes"
 
 [dependencies.drone-core-macros]
 version = "=0.15.0"
