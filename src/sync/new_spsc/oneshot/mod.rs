@@ -40,7 +40,7 @@ use core::task::Waker;
 use loom::sync::atomic::AtomicU8;
 
 pub use self::receiver::{Canceled, Receiver};
-pub use self::sender::Sender;
+pub use self::sender::{Cancellation, Sender};
 #[cfg(not(any(feature = "_atomics", loom)))]
 use crate::sync::soft_atomic::Atomic;
 
@@ -71,6 +71,11 @@ const DATA_STORED: u8 = 1 << DATA_STORED_SHIFT;
 const CLOSED: u8 = 1 << CLOSED_SHIFT;
 const CLOSED_WITH_DATA: u8 = 1 << CLOSED_WITH_DATA_SHIFT;
 const HALF_DROPPED: u8 = 1 << HALF_DROPPED_SHIFT;
+
+impl<T> Unpin for Sender<T> {}
+impl<T> Unpin for Receiver<T> {}
+unsafe impl<T: Send> Send for Sender<T> {}
+unsafe impl<T: Send> Sync for Receiver<T> {}
 
 struct Shared<T> {
     #[cfg(not(any(feature = "_atomics", loom)))]

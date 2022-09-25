@@ -71,25 +71,31 @@ pub fn num_waker(num: &'static AtomicUsize) -> Waker {
     unsafe { Waker::from_raw(RawWaker::new(num as *const _ as *const (), &VTABLE)) }
 }
 
+#[track_caller]
 pub fn statemap_put(
     statemap: &'static BTreeMap<usize, BTreeMap<usize, AtomicUsize>>,
     counter: &'static AtomicUsize,
     key: usize,
 ) {
+    let value = counter.load(SeqCst);
     if let Some(map) = statemap.get(&key) {
-        let value = counter.load(SeqCst);
         if let Some(counter) = map.get(&value) {
             counter.fetch_add(1, SeqCst);
         } else {
             panic!("incorrect state value {key} => {value}");
         }
     } else {
-        panic!("incorrect state key {key}");
+        panic!("incorrect state key {key} (=> {value})");
     }
 }
 
+#[track_caller]
 pub fn statemap_check_exhaustive(
     rx_states: &'static BTreeMap<usize, BTreeMap<usize, AtomicUsize>>,
 ) {
-    assert!(rx_states.values().all(|s| s.values().all(|c| c.load(SeqCst) > 0)));
+    for (key, state) in rx_states {
+        for (value, counter) in state {
+            assert!(counter.load(SeqCst) != 0, "{key} => {value} not triggered");
+        }
+    }
 }

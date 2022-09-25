@@ -40,21 +40,35 @@ fn loom_try_recv() {
 #[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_recv() {
-    let rx_states = statemap![0 => [101, 10100], 1 => [0, 10100]];
+    let rx_states = statemap![
+        0 => [0, 10100],
+        2 => [101],
+        4 => [101, 10100],
+    ];
     loom::model(move || {
         async_context!(rx_counter, rx_waker, rx_cx);
         let (tx, mut rx) = channel::<CheckDrop>();
         let tx = loom::thread::spawn(move || drop(tx));
         let rx = loom::thread::spawn(move || match Pin::new(&mut rx).poll(&mut rx_cx) {
-            Poll::Pending => 0,
             Poll::Ready(Err(Canceled)) => {
                 assert!(rx.is_terminated());
-                1
+                0
             }
             Poll::Ready(Ok(_)) => {
                 assert!(rx.is_terminated());
-                2
+                1
             }
+            Poll::Pending => match Pin::new(&mut rx).poll(&mut rx_cx) {
+                Poll::Ready(Err(Canceled)) => {
+                    assert!(rx.is_terminated());
+                    2
+                }
+                Poll::Ready(Ok(_)) => {
+                    assert!(rx.is_terminated());
+                    3
+                }
+                Poll::Pending => 4,
+            },
         });
         tx.join().unwrap();
         statemap_put(rx_states, rx_counter, rx.join().unwrap());
@@ -65,18 +79,28 @@ fn loom_recv() {
 #[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_cancellation() {
-    let tx_states = statemap![0 => [101, 10100], 1 => [0, 10100]];
+    let tx_states = statemap![
+        0 => [0, 10100],
+        1 => [101],
+        2 => [101, 10100],
+    ];
     loom::model(move || {
         async_context!(tx_counter, tx_waker, tx_cx);
         let (mut tx, rx) = channel::<CheckDrop>();
         let rx = loom::thread::spawn(move || drop(rx));
         let tx =
             loom::thread::spawn(move || match Pin::new(&mut tx.cancellation()).poll(&mut tx_cx) {
-                Poll::Pending => 0,
                 Poll::Ready(()) => {
                     assert!(tx.is_canceled());
-                    1
+                    0
                 }
+                Poll::Pending => match Pin::new(&mut tx.cancellation()).poll(&mut tx_cx) {
+                    Poll::Ready(()) => {
+                        assert!(tx.is_canceled());
+                        1
+                    }
+                    Poll::Pending => 2,
+                },
             });
         rx.join().unwrap();
         statemap_put(tx_states, tx_counter, tx.join().unwrap());
@@ -87,18 +111,28 @@ fn loom_cancellation() {
 #[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_close_cancellation() {
-    let tx_states = statemap![0 => [101, 10100], 1 => [0, 10100]];
+    let tx_states = statemap![
+        0 => [0, 10100],
+        1 => [101],
+        2 => [101, 10100],
+    ];
     loom::model(move || {
         async_context!(tx_counter, tx_waker, tx_cx);
         let (mut tx, mut rx) = channel::<CheckDrop>();
         let rx = loom::thread::spawn(move || rx.close());
         let tx =
             loom::thread::spawn(move || match Pin::new(&mut tx.cancellation()).poll(&mut tx_cx) {
-                Poll::Pending => 0,
                 Poll::Ready(()) => {
                     assert!(tx.is_canceled());
-                    1
+                    0
                 }
+                Poll::Pending => match Pin::new(&mut tx.cancellation()).poll(&mut tx_cx) {
+                    Poll::Ready(()) => {
+                        assert!(tx.is_canceled());
+                        1
+                    }
+                    Poll::Pending => 2,
+                },
             });
         rx.join().unwrap();
         statemap_put(tx_states, tx_counter, tx.join().unwrap());
@@ -110,14 +144,16 @@ fn loom_close_cancellation() {
 #[test]
 fn loom_send_recv() {
     let rx_states = statemap![
-        10 => [101],
-        12 => [0, 10100],
-        20 => [10100],
+        11 => [0, 10100],
+        13 => [101],
+        14 => [101],
+        24 => [10100],
     ];
     let data_states = statemap![
-        10 => [1],
-        12 => [10],
-        20 => [10],
+        11 => [10],
+        13 => [10],
+        14 => [1],
+        24 => [10],
     ];
     loom::model(move || {
         async_context!(rx_counter, rx_waker, rx_cx);
@@ -131,16 +167,27 @@ fn loom_send_recv() {
             }
         });
         let rx = loom::thread::spawn(move || match Pin::new(&mut rx).poll(&mut rx_cx) {
-            Poll::Pending => 0,
             Poll::Ready(Err(Canceled)) => {
                 assert!(rx.is_terminated());
-                1
+                0
             }
             Poll::Ready(Ok(value)) => {
                 assert!(rx.is_terminated());
                 assert_eq!(value.get(10), 314);
-                2
+                1
             }
+            Poll::Pending => match Pin::new(&mut rx).poll(&mut rx_cx) {
+                Poll::Ready(Err(Canceled)) => {
+                    assert!(rx.is_terminated());
+                    2
+                }
+                Poll::Ready(Ok(value)) => {
+                    assert!(rx.is_terminated());
+                    assert_eq!(value.get(10), 314);
+                    3
+                }
+                Poll::Pending => 4,
+            },
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
         statemap_put(rx_states, rx_counter, key);
@@ -154,12 +201,12 @@ fn loom_send_recv() {
 #[test]
 fn loom_send_close_recv() {
     let rx_states = statemap![
-        12 => [0],
-        21 => [0],
+        11 => [0],
+        20 => [0],
     ];
     let data_states = statemap![
-        12 => [10],
-        21 => [10],
+        11 => [10],
+        20 => [10],
     ];
     loom::model(move || {
         async_context!(rx_counter, rx_waker, rx_cx);
@@ -175,16 +222,16 @@ fn loom_send_close_recv() {
         let rx = loom::thread::spawn(move || {
             rx.close();
             match Pin::new(&mut rx).poll(&mut rx_cx) {
-                Poll::Pending => 0,
                 Poll::Ready(Err(Canceled)) => {
                     assert!(rx.is_terminated());
-                    1
+                    0
                 }
                 Poll::Ready(Ok(value)) => {
                     assert!(rx.is_terminated());
                     assert_eq!(value.get(10), 314);
-                    2
+                    1
                 }
+                Poll::Pending => 2,
             }
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
@@ -199,9 +246,9 @@ fn loom_send_close_recv() {
 #[test]
 fn loom_send_try_recv() {
     let data_states = statemap![
-        10 => [1],
-        12 => [10],
-        20 => [10],
+        11 => [10],
+        12 => [1],
+        22 => [10],
     ];
     loom::model(move || {
         let (tx, mut rx) = channel::<CheckDrop>();
@@ -214,12 +261,12 @@ fn loom_send_try_recv() {
             }
         });
         let rx = loom::thread::spawn(move || match rx.try_recv() {
-            Ok(None) => 0,
-            Err(Canceled) => 1,
+            Err(Canceled) => 0,
             Ok(Some(value)) => {
                 assert_eq!(value.get(10), 314);
-                2
+                1
             }
+            Ok(None) => 2,
         });
         statemap_put(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
     });
@@ -230,8 +277,8 @@ fn loom_send_try_recv() {
 #[test]
 fn loom_send_close_try_recv() {
     let data_states = statemap![
-        12 => [10],
-        21 => [10],
+        11 => [10],
+        20 => [10],
     ];
     loom::model(move || {
         let (tx, mut rx) = channel::<CheckDrop>();
@@ -246,12 +293,12 @@ fn loom_send_close_try_recv() {
         let rx = loom::thread::spawn(move || {
             rx.close();
             match rx.try_recv() {
-                Ok(None) => 0,
-                Err(Canceled) => 1,
+                Err(Canceled) => 0,
                 Ok(Some(value)) => {
                     assert_eq!(value.get(10), 314);
-                    2
+                    1
                 }
+                Ok(None) => 2,
             }
         });
         statemap_put(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
@@ -263,14 +310,14 @@ fn loom_send_close_try_recv() {
 #[test]
 fn loom_recv_cancellation() {
     let tx_states = statemap![
-        10 => [101, 10100],
-        11 => [10100],
-        20 => [10100],
+        12 => [101, 10100],
+        10 => [10100],
+        22 => [10100],
     ];
     let rx_states = statemap![
-        10 => [101, 10100],
-        11 => [0, 10100],
-        20 => [10100],
+        12 => [101, 10100],
+        10 => [0, 10100],
+        22 => [10100],
     ];
     loom::model(move || {
         async_context!(tx_counter, tx_waker, tx_cx);
@@ -282,9 +329,15 @@ fn loom_recv_cancellation() {
                 Poll::Ready(()) => 20,
             });
         let rx = loom::thread::spawn(move || match Pin::new(&mut rx).poll(&mut rx_cx) {
-            Poll::Pending => 0,
-            Poll::Ready(Err(Canceled)) => 1,
-            Poll::Ready(Ok(_)) => 2,
+            Poll::Ready(Err(Canceled)) => {
+                assert!(rx.is_terminated());
+                0
+            }
+            Poll::Ready(Ok(_)) => {
+                assert!(rx.is_terminated());
+                1
+            }
+            Poll::Pending => 2,
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
         statemap_put(tx_states, tx_counter, key);

@@ -6,14 +6,15 @@ use core::{fmt, mem};
 
 use futures::prelude::*;
 
+use super::receiver::Receiver;
 use super::{
-    Receiver, Shared, CLOSED, DATA_STORED, HALF_DROPPED, RX_WAKER_STORED, TX_WAKER_STORED,
+    Shared, CLOSED, ERR_STORED, HALF_DROPPED, PARAM_BITS, RX_WAKER_STORED, TX_WAKER_STORED,
 };
 
-/// The sending-half of [`oneshot::channel`](super::channel).
-pub struct Sender<T> {
-    pub(super) ptr: NonNull<Shared<T>>,
-    phantom: PhantomData<Shared<T>>,
+/// The sending-half of [`pulse::channel`](super::channel).
+pub struct Sender<E> {
+    pub(super) ptr: NonNull<Shared<E>>,
+    phantom: PhantomData<Shared<E>>,
 }
 
 /// A future that resolves when the receiving end of a channel has hung up.
@@ -22,32 +23,70 @@ pub struct Sender<T> {
 /// [`poll_canceled`](Sender::poll_canceled).
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 #[derive(Debug)]
-pub struct Cancellation<'a, T> {
-    sender: &'a mut Sender<T>,
+pub struct Cancellation<'a, E> {
+    sender: &'a mut Sender<E>,
 }
 
-impl<T> Sender<T> {
-    pub(super) fn new(ptr: NonNull<Shared<T>>) -> Self {
+/// The error type returned from [`Sender::send`].
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SendError {
+    /// The pulses could not be sent on the channel because of the pulse counter
+    /// overflow.
+    Full,
+    /// The corresponding [`Receiver`] is dropped.
+    Canceled,
+}
+
+impl<E> Sender<E> {
+    pub(super) fn new(ptr: NonNull<Shared<E>>) -> Self {
         Self { ptr, phantom: PhantomData }
     }
 
-    /// Completes this oneshot with a successful result.
+    /// Sends `pulses` number of pulses on this channel.
+    ///
+    /// If the pulses are successfully enqueued for the remote end to receive,
+    /// then `Ok(())` is returned. If the receiving end was dropped before this
+    /// function is called, or the internal counter is full, then
+    /// `Err(SendError)` is returned.
+    pub fn send(&mut self, pulses: usize) -> Result<(), SendError> {
+        unsafe {
+            let pulses = pulses.checked_shl(PARAM_BITS).ok_or(SendError::Full)?;
+            let mut overflow = false;
+            let state = load_modify_state!(self.ptr, Acquire, Acquire, |state| {
+                state.checked_add(pulses).unwrap_or_else(|| {
+                    overflow = true;
+                    state
+                })
+            });
+            if overflow {
+                return Err(SendError::Full);
+            }
+            if state & CLOSED != 0 {
+                return Err(SendError::Canceled);
+            }
+            if state & RX_WAKER_STORED != 0 {
+                (*self.ptr.as_ref().rx_waker.get()).assume_init_ref().wake_by_ref();
+            }
+            Ok(())
+        }
+    }
+
+    /// Completes this channel with an error result.
     ///
     /// This function will consume `self` and indicate to the other end, the
-    /// [`Receiver`], that the value provided is the result of the computation
-    /// this represents.
+    /// [`Receiver`], that the value provided is the final error of this
+    /// channel.
     ///
     /// If the value is successfully enqueued for the remote end to receive,
     /// then `Ok(())` is returned. If the receiving end was dropped before this
-    /// function was called, however, then `Err(value)` is returned.
-    pub fn send(self, value: T) -> Result<(), T> {
+    /// function was called, however, then `Err(err)` is returned.
+    pub fn send_err(self, err: E) -> Result<(), E> {
         unsafe {
             let Self { ptr, .. } = self;
             mem::forget(self);
-            (*ptr.as_ref().data.get()).write(value);
-            let state = load_modify_state!(ptr, Acquire, AcqRel, |state| state
-                | DATA_STORED
-                | HALF_DROPPED);
+            (*ptr.as_ref().err.get()).write(err);
+            let state =
+                load_modify_state!(ptr, Acquire, AcqRel, |state| state | ERR_STORED | HALF_DROPPED);
             if state & RX_WAKER_STORED != 0 {
                 let waker = (*ptr.as_ref().rx_waker.get()).assume_init_read();
                 if state & CLOSED == 0 {
@@ -55,11 +94,11 @@ impl<T> Sender<T> {
                 }
             }
             if state & CLOSED != 0 {
-                let value = (*ptr.as_ref().data.get()).assume_init_read();
+                let err = (*ptr.as_ref().err.get()).assume_init_read();
                 if state & HALF_DROPPED != 0 {
                     drop(Box::from_raw(ptr.as_ptr()));
                 }
-                return Err(value);
+                return Err(err);
             }
             Ok(())
         }
@@ -74,9 +113,9 @@ impl<T> Sender<T> {
     /// dropped, which means any work required for sending should be canceled.
     ///
     /// If `Pending` is returned then the associated `Receiver` is still alive
-    /// and may be able to receive a message if sent. The current task, however,
-    /// is scheduled to receive a notification if the corresponding `Receiver`
-    /// goes away.
+    /// and may be able to receive pulses or an error if sent. The current task,
+    /// however, is scheduled to receive a notification if the corresponding
+    /// `Receiver` goes away.
     pub fn poll_canceled(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         unsafe {
             let mut state = load_state!(self.ptr, Relaxed);
@@ -100,7 +139,7 @@ impl<T> Sender<T> {
     ///
     /// This is a utility wrapping [`poll_canceled`](Sender::poll_canceled) to
     /// expose a [`Future`](core::future::Future).
-    pub fn cancellation(&mut self) -> Cancellation<'_, T> {
+    pub fn cancellation(&mut self) -> Cancellation<'_, E> {
         Cancellation { sender: self }
     }
 
@@ -119,12 +158,12 @@ impl<T> Sender<T> {
 
     /// Tests to see whether this `Sender` is connected to the given `Receiver`.
     /// That is, whether they were created by the same call to `channel`.
-    pub fn is_connected_to(&self, receiver: &Receiver<T>) -> bool {
+    pub fn is_connected_to(&self, receiver: &Receiver<E>) -> bool {
         self.ptr.as_ptr() == receiver.ptr.as_ptr()
     }
 }
 
-impl<T> Drop for Sender<T> {
+impl<E> Drop for Sender<E> {
     fn drop(&mut self) {
         unsafe {
             let state =
@@ -143,16 +182,25 @@ impl<T> Drop for Sender<T> {
     }
 }
 
-impl<T> fmt::Debug for Sender<T> {
+impl<E> fmt::Debug for Sender<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Sender").finish_non_exhaustive()
     }
 }
 
-impl<T> Future for Cancellation<'_, T> {
+impl<E> Future for Cancellation<'_, E> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         self.sender.poll_canceled(cx)
+    }
+}
+
+impl fmt::Display for SendError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SendError::Full => write!(f, "send failed because channel is full"),
+            SendError::Canceled => write!(f, "send failed because receiver is gone"),
+        }
     }
 }

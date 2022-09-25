@@ -49,3 +49,4 @@ macro_rules! load_modify_state {
 }
 
 pub mod oneshot;
+pub mod pulse;

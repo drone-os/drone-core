@@ -137,13 +137,11 @@ impl<T> Drop for Receiver<T> {
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for Receiver<T> {
+impl<T> fmt::Debug for Receiver<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Receiver").finish_non_exhaustive()
     }
 }
-
-impl<T> Unpin for Receiver<T> {}
 
 impl fmt::Display for Canceled {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
