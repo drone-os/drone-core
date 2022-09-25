@@ -1,13 +1,15 @@
+use core::cell::UnsafeCell;
 use core::marker::PhantomData;
+use core::mem::MaybeUninit;
 use core::pin::Pin;
 use core::ptr::NonNull;
-use core::task::{Context, Poll};
+use core::task::{Context, Poll, Waker};
 use core::{fmt, mem};
 
 use futures::prelude::*;
 
 use super::{
-    Receiver, Shared, CLOSED, DATA_STORED, HALF_DROPPED, RX_WAKER_STORED, TX_WAKER_STORED,
+    Receiver, Shared, State, CLOSED, DATA_STORED, HALF_DROPPED, RX_WAKER_STORED, TX_WAKER_STORED,
 };
 
 /// The sending-half of [`oneshot::channel`](super::channel).
@@ -45,8 +47,8 @@ impl<T> Sender<T> {
             let Self { ptr, .. } = self;
             mem::forget(self);
             (*ptr.as_ref().data.get()).write(value);
-            let state = load_modify_state!(ptr, Acquire, AcqRel, |state| state
-                | DATA_STORED
+            let state = load_modify_atomic!(ptr.as_ref().state, Acquire, AcqRel, |state| state
+                | if state & CLOSED == 0 { DATA_STORED } else { 0 }
                 | HALF_DROPPED);
             if state & RX_WAKER_STORED != 0 {
                 let waker = (*ptr.as_ref().rx_waker.get()).assume_init_read();
@@ -79,15 +81,16 @@ impl<T> Sender<T> {
     /// goes away.
     pub fn poll_canceled(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         unsafe {
-            let mut state = load_state!(self.ptr, Relaxed);
+            let mut state = load_atomic!(self.state(), Relaxed);
             if state & CLOSED != 0 {
                 return Poll::Ready(());
             }
             if state & TX_WAKER_STORED == 0 {
-                (*self.ptr.as_ref().tx_waker.get()).write(cx.waker().clone());
-                state = modify_state!(self.ptr, Acquire, AcqRel, |state| state | TX_WAKER_STORED);
+                (*self.tx_waker().get()).write(cx.waker().clone());
+                state =
+                    modify_atomic!(self.state(), Relaxed, Release, |state| state | TX_WAKER_STORED);
                 if state & CLOSED != 0 {
-                    (*self.ptr.as_ref().tx_waker.get()).assume_init_read();
+                    (*self.tx_waker().get()).assume_init_read();
                     return Poll::Ready(());
                 }
             }
@@ -112,7 +115,7 @@ impl<T> Sender<T> {
     /// current state, which may be subject to concurrent modification.
     pub fn is_canceled(&self) -> bool {
         unsafe {
-            let state = load_state!(self.ptr, Relaxed);
+            let state = load_atomic!(self.state(), Relaxed);
             state & CLOSED != 0
         }
     }
@@ -122,15 +125,27 @@ impl<T> Sender<T> {
     pub fn is_connected_to(&self, receiver: &Receiver<T>) -> bool {
         self.ptr.as_ptr() == receiver.ptr.as_ptr()
     }
+
+    unsafe fn state(&self) -> &State {
+        unsafe { &self.ptr.as_ref().state }
+    }
+
+    unsafe fn tx_waker(&self) -> &UnsafeCell<MaybeUninit<Waker>> {
+        unsafe { &self.ptr.as_ref().tx_waker }
+    }
+
+    unsafe fn rx_waker(&self) -> &UnsafeCell<MaybeUninit<Waker>> {
+        unsafe { &self.ptr.as_ref().rx_waker }
+    }
 }
 
 impl<T> Drop for Sender<T> {
     fn drop(&mut self) {
         unsafe {
             let state =
-                load_modify_state!(self.ptr, Relaxed, Acquire, |state| state | HALF_DROPPED);
+                load_modify_atomic!(self.state(), Relaxed, Acquire, |state| state | HALF_DROPPED);
             if state & RX_WAKER_STORED != 0 {
-                let waker = (*self.ptr.as_ref().rx_waker.get()).assume_init_read();
+                let waker = (*self.rx_waker().get()).assume_init_read();
                 if state & HALF_DROPPED == 0 {
                     waker.wake();
                     return;

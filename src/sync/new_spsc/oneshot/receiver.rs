@@ -1,16 +1,15 @@
+use core::cell::UnsafeCell;
 use core::fmt;
 use core::marker::PhantomData;
+use core::mem::MaybeUninit;
 use core::pin::Pin;
 use core::ptr::NonNull;
-use core::task::{Context, Poll};
+use core::task::{Context, Poll, Waker};
 
 use futures::future::FusedFuture;
 use futures::prelude::*;
 
-use super::{
-    Shared, CLOSED, CLOSED_WITH_DATA, CLOSED_WITH_DATA_SHIFT, DATA_STORED, DATA_STORED_SHIFT,
-    HALF_DROPPED, RX_WAKER_STORED, TX_WAKER_STORED,
-};
+use super::{Shared, State, CLOSED, DATA_STORED, HALF_DROPPED, RX_WAKER_STORED, TX_WAKER_STORED};
 
 /// The receiving-half of [`oneshot::channel`](super::channel).
 #[must_use = "futures do nothing unless you `.await` or poll them"]
@@ -38,11 +37,9 @@ impl<T> Receiver<T> {
     /// previously been sent.
     pub fn close(&mut self) {
         unsafe {
-            let state = load_modify_state!(self.ptr, Relaxed, Acquire, |state| state
-                | CLOSED
-                | (state >> DATA_STORED_SHIFT & 1) << CLOSED_WITH_DATA_SHIFT);
+            let state = load_modify_atomic!(self.state(), Relaxed, Acquire, |state| state | CLOSED);
             if state & CLOSED == 0 && state & TX_WAKER_STORED != 0 {
-                let waker = (*self.ptr.as_ref().tx_waker.get()).assume_init_read();
+                let waker = (*self.tx_waker().get()).assume_init_read();
                 if state & HALF_DROPPED == 0 {
                     waker.wake();
                 }
@@ -61,15 +58,31 @@ impl<T> Receiver<T> {
     pub fn try_recv(&mut self) -> Result<Option<T>, Canceled> {
         unsafe {
             let state =
-                load_modify_state!(self.ptr, Relaxed, Acquire, |state| state & !DATA_STORED);
-            if state & DATA_STORED != 0 && (state & CLOSED == 0 || state & CLOSED_WITH_DATA != 0) {
-                return Ok(Some((*self.ptr.as_ref().data.get()).assume_init_read()));
+                load_modify_atomic!(self.state(), Relaxed, Acquire, |state| state & !DATA_STORED);
+            if state & DATA_STORED != 0 {
+                return Ok(Some((*self.data().get()).assume_init_read()));
             }
             if state & HALF_DROPPED != 0 || state & CLOSED != 0 {
                 return Err(Canceled);
             }
             Ok(None)
         }
+    }
+
+    unsafe fn state(&self) -> &State {
+        unsafe { &self.ptr.as_ref().state }
+    }
+
+    unsafe fn tx_waker(&self) -> &UnsafeCell<MaybeUninit<Waker>> {
+        unsafe { &self.ptr.as_ref().tx_waker }
+    }
+
+    unsafe fn rx_waker(&self) -> &UnsafeCell<MaybeUninit<Waker>> {
+        unsafe { &self.ptr.as_ref().rx_waker }
+    }
+
+    unsafe fn data(&self) -> &UnsafeCell<MaybeUninit<T>> {
+        unsafe { &self.ptr.as_ref().data }
     }
 }
 
@@ -79,21 +92,21 @@ impl<T> Future for Receiver<T> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         unsafe {
             let mut state =
-                load_modify_state!(self.ptr, Relaxed, Acquire, |state| state & !DATA_STORED);
-            if state & DATA_STORED != 0 && (state & CLOSED == 0 || state & CLOSED_WITH_DATA != 0) {
-                return Poll::Ready(Ok((*self.ptr.as_ref().data.get()).assume_init_read()));
+                load_modify_atomic!(self.state(), Relaxed, Acquire, |state| state & !DATA_STORED);
+            if state & DATA_STORED != 0 {
+                return Poll::Ready(Ok((*self.data().get()).assume_init_read()));
             }
             if state & HALF_DROPPED != 0 || state & CLOSED != 0 {
                 return Poll::Ready(Err(Canceled));
             }
             if state & RX_WAKER_STORED == 0 {
-                (*self.ptr.as_ref().rx_waker.get()).write(cx.waker().clone());
-                state = modify_state!(self.ptr, Acquire, AcqRel, |state| state & !DATA_STORED
+                (*self.rx_waker().get()).write(cx.waker().clone());
+                state = modify_atomic!(self.state(), Acquire, AcqRel, |state| state & !DATA_STORED
                     | RX_WAKER_STORED);
                 if state & HALF_DROPPED != 0 {
-                    (*self.ptr.as_ref().rx_waker.get()).assume_init_read();
+                    (*self.rx_waker().get()).assume_init_read();
                     if state & DATA_STORED != 0 {
-                        return Poll::Ready(Ok((*self.ptr.as_ref().data.get()).assume_init_read()));
+                        return Poll::Ready(Ok((*self.data().get()).assume_init_read()));
                     }
                     return Poll::Ready(Err(Canceled));
                 }
@@ -106,10 +119,8 @@ impl<T> Future for Receiver<T> {
 impl<T> FusedFuture for Receiver<T> {
     fn is_terminated(&self) -> bool {
         unsafe {
-            let state = load_state!(self.ptr, Relaxed);
-            (state & HALF_DROPPED != 0 || state & CLOSED != 0)
-                && (state & DATA_STORED == 0
-                    || state & CLOSED != 0 && state & CLOSED_WITH_DATA == 0)
+            let state = load_atomic!(self.state(), Relaxed);
+            (state & HALF_DROPPED != 0 || state & CLOSED != 0) && state & DATA_STORED == 0
         }
     }
 }
@@ -117,14 +128,14 @@ impl<T> FusedFuture for Receiver<T> {
 impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
         unsafe {
-            let state = load_modify_state!(self.ptr, Relaxed, Acquire, |state| state
+            let state = load_modify_atomic!(self.state(), Relaxed, Acquire, |state| state
                 | CLOSED
                 | HALF_DROPPED);
-            if state & DATA_STORED != 0 && (state & CLOSED == 0 || state & CLOSED_WITH_DATA != 0) {
-                (*self.ptr.as_ref().data.get()).assume_init_read();
+            if state & DATA_STORED != 0 {
+                (*self.data().get()).assume_init_read();
             }
             if state & CLOSED == 0 && state & TX_WAKER_STORED != 0 {
-                let waker = (*self.ptr.as_ref().tx_waker.get()).assume_init_read();
+                let waker = (*self.tx_waker().get()).assume_init_read();
                 if state & HALF_DROPPED == 0 {
                     waker.wake();
                     return;

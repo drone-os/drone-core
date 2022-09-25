@@ -15,14 +15,13 @@
 //! Channel state is an atomic `u8` value, initially zeroed, with the following
 //! structure:
 //!
-//! `00HWCDRT`
+//! `000HCDRT`
 //!
 //! Where the bit, if set, indicates:
 //! * `T` - [`Sender`] half waker is stored
 //! * `R` - [`Receiver`] half waker is stored
 //! * `D` - data value of type `T` is stored
 //! * `C` - [`Receiver`] half is closed
-//! * `W` - [`Receiver`] half is closed, but there is pending data
 //! * `H` - one of the halves was dropped
 //! * `0` - ignored
 
@@ -62,14 +61,12 @@ const TX_WAKER_STORED_SHIFT: u8 = 0;
 const RX_WAKER_STORED_SHIFT: u8 = 1;
 const DATA_STORED_SHIFT: u8 = 2;
 const CLOSED_SHIFT: u8 = 3;
-const CLOSED_WITH_DATA_SHIFT: u8 = 4;
-const HALF_DROPPED_SHIFT: u8 = 5;
+const HALF_DROPPED_SHIFT: u8 = 4;
 
 const TX_WAKER_STORED: u8 = 1 << TX_WAKER_STORED_SHIFT;
 const RX_WAKER_STORED: u8 = 1 << RX_WAKER_STORED_SHIFT;
 const DATA_STORED: u8 = 1 << DATA_STORED_SHIFT;
 const CLOSED: u8 = 1 << CLOSED_SHIFT;
-const CLOSED_WITH_DATA: u8 = 1 << CLOSED_WITH_DATA_SHIFT;
 const HALF_DROPPED: u8 = 1 << HALF_DROPPED_SHIFT;
 
 impl<T> Unpin for Sender<T> {}
@@ -77,11 +74,13 @@ impl<T> Unpin for Receiver<T> {}
 unsafe impl<T: Send> Send for Sender<T> {}
 unsafe impl<T: Send> Sync for Receiver<T> {}
 
+#[cfg(not(any(feature = "_atomics", loom)))]
+type State = Atomic<u8>;
+#[cfg(any(feature = "_atomics", loom))]
+type State = AtomicU8;
+
 struct Shared<T> {
-    #[cfg(not(any(feature = "_atomics", loom)))]
-    state: Atomic<u8>,
-    #[cfg(any(feature = "_atomics", loom))]
-    state: AtomicU8,
+    state: State,
     data: UnsafeCell<MaybeUninit<T>>,
     rx_waker: UnsafeCell<MaybeUninit<Waker>>,
     tx_waker: UnsafeCell<MaybeUninit<Waker>>,
@@ -90,10 +89,7 @@ struct Shared<T> {
 impl<T> Shared<T> {
     fn new() -> Self {
         Self {
-            #[cfg(not(any(feature = "_atomics", loom)))]
-            state: Atomic::new(0),
-            #[cfg(any(feature = "_atomics", loom))]
-            state: AtomicU8::new(0),
+            state: State::new(0),
             data: UnsafeCell::new(MaybeUninit::uninit()),
             rx_waker: UnsafeCell::new(MaybeUninit::uninit()),
             tx_waker: UnsafeCell::new(MaybeUninit::uninit()),

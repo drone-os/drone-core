@@ -1,7 +1,14 @@
-//! A channel for sending `()` values (pulses) across asynchronous tasks. An
-//! optimized version of [`ring::channel<(), E>`](super::ring::channel).
+//! A single-producer, single-consumer channel for counting events across
+//! asynchronous tasks.
 //!
-//! This is a single-producer, single-consumer channel.
+//! It is similar to [`oneshot::channel<T>`], in the way how a single error
+//! message of type `E` can be sent. And it is similar to [`ring::channel<T,
+//! E>`] in the way that multiple values can be sent, but only of type `usize`.
+//!
+//! This channel can be seen as a shared counter. The sender half increments the
+//! counter by a given value, while the receiver half clears the counter on each
+//! poll and returns the number that was cleared. The size of the counter
+//! depends on the machine word size and defined by [`CAPACITY`].
 //!
 //! # Memory footprint
 //!
@@ -16,7 +23,7 @@
 //! Channel state is an atomic `usize` value, initially zeroed, with the
 //! following structure:
 //!
-//! `... cccccccc ccHWCERT` (exact number of bits depends on the target word
+//! `... cccccccc cccHCERT` (exact number of bits depends on the target word
 //! size)
 //!
 //! Where the bit, if set, indicates:
@@ -24,9 +31,8 @@
 //! * `R` - [`Receiver`] half waker is stored
 //! * `E` - error value of type `E` is stored
 //! * `C` - [`Receiver`] half is closed
-//! * `W` - [`Receiver`] half is closed, but there is a pending error
 //! * `H` - one of the halves was dropped
-//! * `c` - counter bits
+//! * `c` - counter value bits
 
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
@@ -38,7 +44,7 @@ use core::task::Waker;
 #[cfg(loom)]
 use loom::sync::atomic::AtomicUsize;
 
-pub use self::receiver::{Canceled, Receiver};
+pub use self::receiver::{Receiver, TryNextError};
 pub use self::sender::{Cancellation, SendError, Sender};
 #[cfg(not(any(feature = "_atomics", loom)))]
 use crate::sync::soft_atomic::Atomic;
@@ -60,19 +66,20 @@ pub fn channel<E>() -> (Sender<E>, Receiver<E>) {
     (sender, receiver)
 }
 
+/// Capacity of the pulse channel's inner counter.
+pub const CAPACITY: usize = 1 << usize::BITS - PARAM_BITS;
+
 const TX_WAKER_STORED_SHIFT: u32 = 0;
 const RX_WAKER_STORED_SHIFT: u32 = 1;
 const ERR_STORED_SHIFT: u32 = 2;
 const CLOSED_SHIFT: u32 = 3;
-const CLOSED_WITH_ERR_SHIFT: u32 = 4;
-const HALF_DROPPED_SHIFT: u32 = 5;
-const PARAM_BITS: u32 = 6;
+const HALF_DROPPED_SHIFT: u32 = 4;
+const PARAM_BITS: u32 = 5;
 
 const TX_WAKER_STORED: usize = 1 << TX_WAKER_STORED_SHIFT;
 const RX_WAKER_STORED: usize = 1 << RX_WAKER_STORED_SHIFT;
 const ERR_STORED: usize = 1 << ERR_STORED_SHIFT;
 const CLOSED: usize = 1 << CLOSED_SHIFT;
-const CLOSED_WITH_ERR: usize = 1 << CLOSED_WITH_ERR_SHIFT;
 const HALF_DROPPED: usize = 1 << HALF_DROPPED_SHIFT;
 
 impl<T> Unpin for Sender<T> {}
@@ -80,11 +87,13 @@ impl<T> Unpin for Receiver<T> {}
 unsafe impl<T: Send> Send for Sender<T> {}
 unsafe impl<T: Send> Sync for Receiver<T> {}
 
+#[cfg(not(any(feature = "_atomics", loom)))]
+type State = Atomic<usize>;
+#[cfg(any(feature = "_atomics", loom))]
+type State = AtomicUsize;
+
 struct Shared<E> {
-    #[cfg(not(any(feature = "_atomics", loom)))]
-    state: Atomic<usize>,
-    #[cfg(any(feature = "_atomics", loom))]
-    state: AtomicUsize,
+    state: State,
     err: UnsafeCell<MaybeUninit<E>>,
     rx_waker: UnsafeCell<MaybeUninit<Waker>>,
     tx_waker: UnsafeCell<MaybeUninit<Waker>>,
@@ -93,10 +102,7 @@ struct Shared<E> {
 impl<E> Shared<E> {
     fn new() -> Self {
         Self {
-            #[cfg(not(any(feature = "_atomics", loom)))]
-            state: Atomic::new(0),
-            #[cfg(any(feature = "_atomics", loom))]
-            state: AtomicUsize::new(0),
+            state: State::new(0),
             err: UnsafeCell::new(MaybeUninit::uninit()),
             rx_waker: UnsafeCell::new(MaybeUninit::uninit()),
             tx_waker: UnsafeCell::new(MaybeUninit::uninit()),

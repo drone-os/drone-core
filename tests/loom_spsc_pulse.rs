@@ -4,7 +4,7 @@ mod loom_spsc;
 use std::pin::Pin;
 use std::task::Poll;
 
-use drone_core::sync::new_spsc::pulse::{channel, Canceled};
+use drone_core::sync::new_spsc::pulse::{channel, TryNextError};
 use futures::prelude::*;
 use futures::stream::FusedStream;
 
@@ -29,7 +29,7 @@ fn loom_try_next() {
         let (tx, mut rx) = channel::<CheckDrop>();
         let tx = loom::thread::spawn(move || drop(tx));
         let rx = loom::thread::spawn(move || match rx.try_next() {
-            Err(Canceled) | Ok(None) => {}
+            Err(_) => {}
             value => panic!("{value:#?} variant is incorrect"),
         });
         tx.join().unwrap();
@@ -570,13 +570,13 @@ fn loom_send_err_try_next() {
             }
         });
         let rx = loom::thread::spawn(move || match rx.try_next() {
-            Err(Canceled) => 0,
-            Ok(Some(Ok(_))) => 1,
-            Ok(Some(Err(value))) => {
+            Err(TryNextError::Canceled) => 0,
+            Ok(Ok(_)) => 1,
+            Ok(Err(value)) => {
                 assert_eq!(value.get(10), 314);
                 2
             }
-            Ok(None) => 3,
+            Err(TryNextError::Empty) => 3,
         });
         statemap_put(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
     });
@@ -599,13 +599,13 @@ fn loom_send_err_try_next_persistent() {
         });
         let rx = loom::thread::spawn(move || {
             let value = match rx.try_next() {
-                Err(Canceled) => 0,
-                Ok(Some(Ok(_))) => 1,
-                Ok(Some(Err(value))) => {
+                Err(TryNextError::Canceled) => 0,
+                Ok(Ok(_)) => 1,
+                Ok(Err(value)) => {
                     assert_eq!(value.get(10), 314);
                     2
                 }
-                Ok(None) => 3,
+                Err(TryNextError::Empty) => 3,
             };
             (rx, value)
         });
@@ -613,13 +613,13 @@ fn loom_send_err_try_next_persistent() {
         let (mut rx, mut rx_value) = rx.join().unwrap();
         if rx_value == 3 {
             rx_value = match rx.try_next() {
-                Err(Canceled) => 3,
-                Ok(Some(Ok(_))) => 4,
-                Ok(Some(Err(value))) => {
+                Err(TryNextError::Canceled) => 3,
+                Ok(Ok(_)) => 4,
+                Ok(Err(value)) => {
                     assert_eq!(value.get(10), 314);
                     5
                 }
-                Ok(None) => 6,
+                Err(TryNextError::Empty) => 6,
             };
         }
         statemap_put(data_states, data_counter, tx_value + rx_value);
@@ -647,13 +647,13 @@ fn loom_send_err_close_try_next() {
         let rx = loom::thread::spawn(move || {
             rx.close();
             match rx.try_next() {
-                Err(Canceled) => 0,
-                Ok(Some(Ok(_))) => 1,
-                Ok(Some(Err(value))) => {
+                Err(TryNextError::Canceled) => 0,
+                Ok(Ok(_)) => 1,
+                Ok(Err(value)) => {
                     assert_eq!(value.get(10), 314);
                     2
                 }
-                Ok(None) => 3,
+                Err(TryNextError::Empty) => 3,
             }
         });
         statemap_put(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
@@ -746,13 +746,21 @@ fn loom_send_long_sequence_try_next_persistent() {
         });
         let rx = loom::thread::spawn(move || {
             let mut sum = 0;
-            sum += rx.try_next().unwrap().map_or(0, |x| x.unwrap().get());
+            sum += match rx.try_next() {
+                Ok(value) => value.unwrap().get(),
+                Err(TryNextError::Empty) => 0,
+                Err(TryNextError::Canceled) => panic!(),
+            };
             (rx, sum)
         });
         tx.join().unwrap();
         let (mut rx, mut rx_sum) = rx.join().unwrap();
         while !rx.is_terminated() {
-            rx_sum += rx.try_next().unwrap().map_or(0, |x| x.unwrap().get());
+            rx_sum += match rx.try_next() {
+                Ok(value) => value.unwrap().get(),
+                Err(TryNextError::Empty) => 0,
+                Err(TryNextError::Canceled) => panic!(),
+            };
         }
         assert_eq!(rx_sum, 6);
     });
