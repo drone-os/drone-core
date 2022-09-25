@@ -58,7 +58,6 @@
 extern crate alloc;
 
 pub mod bitfield;
-pub mod ffi;
 pub mod fib;
 pub mod heap;
 pub mod inventory;
