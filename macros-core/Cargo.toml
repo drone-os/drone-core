@@ -1,19 +1,19 @@
 [package]
 name = "drone-macros-core"
-version = "0.15.0"
-authors = ["Valentyn Valiaiev <valentine.valyaeff@gmail.com>"]
-edition = "2021"
-repository = "https://github.com/drone-os/drone-core"
-homepage = "https://www.drone-os.com/"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
 documentation = "https://api.drone-os.com/drone-core/0.15/drone_macros_core/"
-license = "MIT OR Apache-2.0"
 description = """
 Procedural macros base for Drone, an Embedded Operating System.
 """
 
 [dependencies]
 once_cell = "1.14.0"
-proc-macro2 = "1.0.43"
-quote = "1.0.21"
+proc-macro2.workspace = true
+quote.workspace = true
 regex = "1.6.0"
-syn = { version = "1.0.99", features = ["full", "extra-traits"] }
+syn = { workspace = true, features = ["full", "extra-traits"] }

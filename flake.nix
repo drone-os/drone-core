@@ -15,8 +15,8 @@
       let
         rustChannel = {
           channel = "nightly";
-          date = "2022-09-18";
-          sha256 = "eYFYpSF2PBUJVzZGZrdtDMpVfHkypzTMLWotdEVq7eM=";
+          date = "2022-09-23";
+          sha256 = "lv8DWMZm/vmAfC8RF8nwMXKp2xiMxtsthqTEs7bWyms=";
         };
 
         pkgs = nixpkgs.legacyPackages.${system};
@@ -61,12 +61,12 @@
         updateVersions = pkgs.writeShellScriptBin "update-versions" ''
           sed -i "s/\(api\.drone-os\.com\/drone-core\/\)[0-9]\+\(\.[0-9]\+\)\+/\1$(echo $1 | sed 's/\(.*\)\.[0-9]\+/\1/')/" \
             Cargo.toml macros/Cargo.toml macros-core/Cargo.toml src/lib.rs
-          sed -i "/\[.*\]/h;/version = \".*\"/{x;s/\[package\]/version = \"$1\"/;t;x}" \
-            Cargo.toml macros/Cargo.toml macros-core/Cargo.toml
+          sed -i "/\[.*\]/h;/version = \".*\"/{x;s/\[workspace.package\]/version = \"$1\"/;t;x}" \
+            Cargo.toml
           sed -i "/\[.*\]/h;/version = \"=.*\"/{x;s/\[.*drone-.*\]/version = \"=$1\"/;t;x}" \
-            Cargo.toml macros/Cargo.toml
-          sed -i "/\[.*\]/h;/version = \".*\"/{x;s/\[.*drone-config\]/version = \"$2\"/;t;x}" \
-            macros/Cargo.toml
+            Cargo.toml
+          sed -i "/\[.*\]/h;/version = \".*\"/{x;s/\[.*drone-\(stream\|config\)\]/version = \"$2\"/;t;x}" \
+            Cargo.toml
           sed -i "s/\(drone-core.*\)version = \"[^\"]\+\"/\1version = \"$1\"/" \
             src/lib.rs
         '';

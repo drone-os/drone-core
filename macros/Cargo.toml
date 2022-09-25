@@ -1,12 +1,12 @@
 [package]
 name = "drone-core-macros"
-version = "0.15.0"
-authors = ["Valentyn Valiaiev <valentine.valyaeff@gmail.com>"]
-edition = "2021"
-repository = "https://github.com/drone-os/drone-core"
-homepage = "https://www.drone-os.com/"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
 documentation = "https://api.drone-os.com/drone-core/0.15/drone_core_macros/"
-license = "MIT OR Apache-2.0"
 description = """
 Procedural macros for drone-core.
 """
@@ -14,17 +14,11 @@ Procedural macros for drone-core.
 [lib]
 proc-macro = true
 
-[dependencies.drone-macros-core]
-version = "=0.15.0"
-path = "../macros-core"
-
-[dependencies.drone-config]
-version = "0.15.0"
-path = "../../drone/config"
-
 [dependencies]
+drone-config.workspace = true
+drone-macros-core.workspace = true
 heck = "0.4.0"
 if_chain = "1.0.2"
-proc-macro2 = "1.0.43"
-quote = "1.0.21"
-syn = "1.0.99"
+proc-macro2.workspace = true
+quote.workspace = true
+syn.workspace = true
