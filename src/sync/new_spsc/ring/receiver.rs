@@ -45,8 +45,11 @@ impl<T, E> Receiver<T, E> {
     pub fn close(&mut self) {
         unsafe {
             let state = load_modify_atomic!(self.state(), Relaxed, Acquire, |state| state | CLOSED);
-            if state & HALF_DROPPED == 0 && has_ready_waker(state) {
-                (*self.tx_waker().get()).assume_init_ref().wake_by_ref();
+            if state & CLOSED == 0 && has_waker(state) {
+                let waker = (*self.tx_waker().get()).assume_init_read();
+                if state & HALF_DROPPED == 0 {
+                    waker.wake();
+                }
             }
         }
     }
@@ -81,8 +84,15 @@ impl<T, E> Receiver<T, E> {
 
     fn take_value(&self, mut state: usize, length: usize) -> T {
         unsafe {
+            let index = get_cursor(state);
+            let should_wake = if has_ready_waker(state) {
+                length == self.buf().len()
+            } else if has_flush_waker(state) {
+                length == 1
+            } else {
+                false
+            };
             let mut set_flags = 0;
-            let should_wake = self.next_should_wake(state, length);
             if should_wake {
                 set_flags |= TX_READY_WAKER_STORED | TX_FLUSH_WAKER_STORED;
             };
@@ -95,19 +105,7 @@ impl<T, E> Receiver<T, E> {
             if should_wake && state & HALF_DROPPED == 0 {
                 (*self.tx_waker().get()).assume_init_ref().wake_by_ref();
             }
-            (*self.buf().get_unchecked(get_cursor(state)).get()).assume_init_read()
-        }
-    }
-
-    unsafe fn next_should_wake(&self, state: usize, length: usize) -> bool {
-        unsafe {
-            if has_ready_waker(state) {
-                length == self.buf().len()
-            } else if has_flush_waker(state) {
-                length == 1
-            } else {
-                false
-            }
+            (*self.buf().get_unchecked(index).get()).assume_init_read()
         }
     }
 
@@ -200,9 +198,9 @@ impl<T, E> Drop for Receiver<T, E> {
             if state & ERR_STORED != 0 {
                 (*self.err().get()).assume_init_read();
             }
-            if has_waker(state) {
+            if state & CLOSED == 0 && has_waker(state) {
                 let waker = (*self.tx_waker().get()).assume_init_read();
-                if length > 0 && state & HALF_DROPPED == 0 && has_flush_waker(state) {
+                if state & HALF_DROPPED == 0 {
                     waker.wake();
                     return;
                 }

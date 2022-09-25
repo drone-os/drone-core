@@ -31,17 +31,10 @@ mod sender;
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
-#[cfg(feature = "_atomics")]
-use core::sync::atomic::AtomicU8;
 use core::task::Waker;
-
-#[cfg(loom)]
-use loom::sync::atomic::AtomicU8;
 
 pub use self::receiver::{Canceled, Receiver};
 pub use self::sender::{Cancellation, Sender};
-#[cfg(not(any(feature = "_atomics", loom)))]
-use crate::sync::soft_atomic::Atomic;
 
 /// Creates a new one-shot channel, returning the sender/receiver halves.
 ///
@@ -74,10 +67,12 @@ impl<T> Unpin for Receiver<T> {}
 unsafe impl<T: Send> Send for Sender<T> {}
 unsafe impl<T: Send> Sync for Receiver<T> {}
 
+#[cfg(feature = "_atomics")]
+type State = core::sync::atomic::AtomicU8;
+#[cfg(loom)]
+type State = loom::sync::atomic::AtomicU8;
 #[cfg(not(any(feature = "_atomics", loom)))]
-type State = Atomic<u8>;
-#[cfg(any(feature = "_atomics", loom))]
-type State = AtomicU8;
+type State = crate::sync::soft_atomic::Atomic<u8>;
 
 struct Shared<T> {
     state: State,

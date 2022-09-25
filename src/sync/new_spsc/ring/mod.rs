@@ -32,23 +32,17 @@
 //! * `c` - ring buffer cursor value bits
 //! * `l` - ring buffer length value bits
 //!
-//! The number of `c` bits equals to the number of `l` bits.
+//! The number of `c` bits equals to the number of `l` bits. If both `T` and `F`
+//! set, the waker is stored for close event.
 
 use alloc::alloc::{alloc, handle_alloc_error, Layout};
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 use core::ptr::{self, slice_from_raw_parts_mut, NonNull};
-#[cfg(feature = "_atomics")]
-use core::sync::atomic::AtomicUsize;
 use core::task::Waker;
-
-#[cfg(loom)]
-use loom::sync::atomic::AtomicUsize;
 
 pub use self::receiver::{Receiver, TryNextError};
 pub use self::sender::{SendError, Sender, TrySendError};
-#[cfg(not(any(feature = "_atomics", loom)))]
-use crate::sync::soft_atomic::Atomic;
 
 mod receiver;
 mod sender;
@@ -98,10 +92,12 @@ impl<T, E> Unpin for Receiver<T, E> {}
 unsafe impl<T: Send, E: Send> Send for Sender<T, E> {}
 unsafe impl<T: Send, E: Send> Sync for Receiver<T, E> {}
 
+#[cfg(feature = "_atomics")]
+type State = core::sync::atomic::AtomicUsize;
+#[cfg(loom)]
+type State = loom::sync::atomic::AtomicUsize;
 #[cfg(not(any(feature = "_atomics", loom)))]
-type State = Atomic<usize>;
-#[cfg(any(feature = "_atomics", loom))]
-type State = AtomicUsize;
+type State = crate::sync::soft_atomic::Atomic<usize>;
 
 struct Header<E> {
     state: State,
@@ -142,12 +138,20 @@ fn has_flush_waker(state: usize) -> bool {
     state & TX_READY_WAKER_STORED == 0 && state & TX_FLUSH_WAKER_STORED != 0
 }
 
+fn has_close_waker(state: usize) -> bool {
+    state & TX_READY_WAKER_STORED != 0 && state & TX_FLUSH_WAKER_STORED != 0
+}
+
 fn set_ready_waker(state: usize) -> usize {
     state & !TX_FLUSH_WAKER_STORED | TX_READY_WAKER_STORED
 }
 
 fn set_flush_waker(state: usize) -> usize {
     state & !TX_READY_WAKER_STORED | TX_FLUSH_WAKER_STORED
+}
+
+fn set_close_waker(state: usize) -> usize {
+    state | TX_READY_WAKER_STORED | TX_FLUSH_WAKER_STORED
 }
 
 fn get_length(state: usize) -> usize {
@@ -168,10 +172,9 @@ fn claim_next_unless_empty(state: usize, capacity: usize) -> usize {
     if length > 0 { claim_next(state, capacity, length) } else { state }
 }
 
-fn claim_next_if_full(state: usize, capacity: usize, overwrite: &mut bool) -> usize {
+fn claim_next_if_full(state: usize, capacity: usize) -> usize {
     let length = get_length(state);
-    if length == capacity {
-        *overwrite = true;
+    if state & CLOSED == 0 && length == capacity {
         claim_next(state, capacity, length)
     } else {
         state

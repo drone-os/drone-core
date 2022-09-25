@@ -9,9 +9,9 @@ use core::{fmt, mem};
 use futures::prelude::*;
 
 use super::{
-    add_cursor, add_length, claim_next_if_full, get_cursor, get_length, has_flush_waker,
-    has_ready_waker, has_waker, set_flush_waker, set_ready_waker, Receiver, Shared, State, CLOSED,
-    ERR_STORED, HALF_DROPPED, RX_WAKER_STORED,
+    add_cursor, add_length, claim_next_if_full, get_cursor, get_length, has_close_waker,
+    has_flush_waker, has_ready_waker, has_waker, set_close_waker, set_flush_waker, set_ready_waker,
+    Receiver, Shared, State, CLOSED, ERR_STORED, HALF_DROPPED, RX_WAKER_STORED,
 };
 
 /// The sending-half of [`ring::channel`](super::channel).
@@ -70,34 +70,51 @@ impl<T, E> Sender<T, E> {
 
     /// Sends a message on this channel, overwriting the oldest value stored in
     /// the ring buffer if it's full. If the receiving end was dropped before
-    /// this function was called, then `Err` is returned with the value
-    /// provided.
-    pub fn send_overwrite(&mut self, value: T) -> Result<(), T> {
+    /// this function was called, then `Err` is returned.
+    ///
+    /// # Return value
+    ///
+    /// This function returns:
+    ///
+    /// * `Ok(None)` if the given value was stored and nothing was overwritten
+    /// * `Ok(Some(overwritten))` if the ring buffer was full and the given
+    ///   value was stored in place of another value, the other value is
+    ///   returned
+    /// * `Err((value, None))` if the receiver counterpart was closed, the given
+    ///   value is returned
+    /// * `Err((value, Some(overwritten)))` if the receiver counterpart was
+    ///   closed, the given value is returned as well as another value that was
+    ///   going to be overwritten, but the operation has not completed
+    pub fn send_overwrite(&mut self, value: T) -> Result<Option<T>, (T, Option<T>)> {
         unsafe {
             let mut state = load_atomic!(self.state(), Relaxed);
-            let mut overwrite = false;
             let mut length = get_length(state);
             if length == self.buf().len() {
                 state = modify_atomic!(self.state(), Relaxed, Relaxed, |state| {
-                    claim_next_if_full(state, self.buf().len(), &mut overwrite)
+                    claim_next_if_full(state, self.buf().len())
                 });
                 length = get_length(state);
             }
+            if state & CLOSED != 0 {
+                return Err((value, None));
+            }
+            let mut overwritten = None;
             let mut index = get_cursor(state);
-            if overwrite {
-                (*self.buf().get_unchecked(index).get()).assume_init_read();
+            if length == self.buf().len() {
+                overwritten = Some((*self.buf().get_unchecked(index).get()).assume_init_read());
             } else {
                 index = add_cursor(index, length, self.buf().len());
             }
             (*self.buf().get_unchecked(index).get()).write(value);
             state = modify_atomic!(self.state(), Acquire, AcqRel, |state| add_length(state, 1));
             if state & CLOSED != 0 {
-                return Err((*self.buf().get_unchecked(index).get()).assume_init_read());
+                let value = (*self.buf().get_unchecked(index).get()).assume_init_read();
+                return Err((value, overwritten));
             }
             if state & RX_WAKER_STORED != 0 {
                 (*self.rx_waker().get()).assume_init_ref().wake_by_ref();
             }
-            Ok(())
+            Ok(overwritten)
         }
     }
 
@@ -186,7 +203,7 @@ impl<T, E> Sink<T> for Sender<T, E> {
                 }
                 state =
                     modify_atomic!(self.state(), Relaxed, Release, |state| set_ready_waker(state));
-                if state & HALF_DROPPED != 0 {
+                if state & CLOSED != 0 {
                     if write_waker {
                         (*self.tx_waker().get()).assume_init_read();
                     }
@@ -207,6 +224,9 @@ impl<T, E> Sink<T> for Sender<T, E> {
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         unsafe {
             let mut state = load_atomic!(self.state(), Relaxed);
+            if state & CLOSED != 0 {
+                return Poll::Ready(Err(SendError::Canceled));
+            }
             if get_length(state) == 0 {
                 return Poll::Ready(Ok(()));
             }
@@ -217,10 +237,13 @@ impl<T, E> Sink<T> for Sender<T, E> {
                 }
                 state =
                     modify_atomic!(self.state(), Relaxed, Release, |state| set_flush_waker(state));
-                if get_length(state) == 0 {
-                    if write_waker && state & HALF_DROPPED != 0 {
+                if state & CLOSED != 0 {
+                    if write_waker {
                         (*self.tx_waker().get()).assume_init_read();
                     }
+                    return Poll::Ready(Err(SendError::Canceled));
+                }
+                if get_length(state) == 0 {
                     return Poll::Ready(Ok(()));
                 }
             }
@@ -229,7 +252,27 @@ impl<T, E> Sink<T> for Sender<T, E> {
     }
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.poll_flush(cx)
+        unsafe {
+            let mut state = load_atomic!(self.state(), Relaxed);
+            if state & CLOSED != 0 {
+                return Poll::Ready(Ok(()));
+            }
+            if !has_close_waker(state) {
+                let write_waker = !has_waker(state);
+                if write_waker {
+                    (*self.tx_waker().get()).write(cx.waker().clone());
+                }
+                state =
+                    modify_atomic!(self.state(), Relaxed, Release, |state| set_close_waker(state));
+                if state & CLOSED != 0 {
+                    if write_waker {
+                        (*self.tx_waker().get()).assume_init_read();
+                    }
+                    return Poll::Ready(Ok(()));
+                }
+            }
+            Poll::Pending
+        }
     }
 }
 

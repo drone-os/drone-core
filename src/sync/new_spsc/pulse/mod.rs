@@ -37,17 +37,10 @@
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
-#[cfg(feature = "_atomics")]
-use core::sync::atomic::AtomicUsize;
 use core::task::Waker;
-
-#[cfg(loom)]
-use loom::sync::atomic::AtomicUsize;
 
 pub use self::receiver::{Receiver, TryNextError};
 pub use self::sender::{Cancellation, SendError, Sender};
-#[cfg(not(any(feature = "_atomics", loom)))]
-use crate::sync::soft_atomic::Atomic;
 
 mod receiver;
 mod sender;
@@ -87,10 +80,12 @@ impl<T> Unpin for Receiver<T> {}
 unsafe impl<T: Send> Send for Sender<T> {}
 unsafe impl<T: Send> Sync for Receiver<T> {}
 
+#[cfg(feature = "_atomics")]
+type State = core::sync::atomic::AtomicUsize;
+#[cfg(loom)]
+type State = loom::sync::atomic::AtomicUsize;
 #[cfg(not(any(feature = "_atomics", loom)))]
-type State = Atomic<usize>;
-#[cfg(any(feature = "_atomics", loom))]
-type State = AtomicUsize;
+type State = crate::sync::soft_atomic::Atomic<usize>;
 
 struct Shared<E> {
     state: State,

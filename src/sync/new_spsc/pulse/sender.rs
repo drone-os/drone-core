@@ -10,7 +10,8 @@ use futures::prelude::*;
 
 use super::receiver::Receiver;
 use super::{
-    Shared, State, CLOSED, ERR_STORED, HALF_DROPPED, PARAM_BITS, RX_WAKER_STORED, TX_WAKER_STORED,
+    Shared, State, CAPACITY, CLOSED, ERR_STORED, HALF_DROPPED, PARAM_BITS, RX_WAKER_STORED,
+    TX_WAKER_STORED,
 };
 
 /// The sending-half of [`pulse::channel`](super::channel).
@@ -47,22 +48,48 @@ impl<E> Sender<E> {
     /// Sends `pulses` number of pulses on this channel.
     ///
     /// If the pulses are successfully enqueued for the remote end to receive,
-    /// then `Ok(())` is returned. If the receiving end was dropped before this
-    /// function is called, or the internal counter is full, then
-    /// `Err(SendError)` is returned.
-    pub fn send(&mut self, pulses: usize) -> Result<(), SendError> {
+    /// then `Ok(())` is returned. If the receiving end is closed, then
+    /// `Err(SendError::Canceled)` is returned. If the internal counter doesn't
+    /// have enough space to add `pulses` without overflow, then
+    /// `Err(SendError::Full)` is returned.
+    pub fn send(&mut self, mut pulses: usize) -> Result<(), SendError> {
         unsafe {
-            let pulses = pulses.checked_shl(PARAM_BITS).ok_or(SendError::Full)?;
-            let mut overflow = false;
-            let state = load_modify_atomic!(self.state(), Acquire, Acquire, |state| {
-                state.checked_add(pulses).unwrap_or_else(|| {
-                    overflow = true;
-                    state
-                })
-            });
-            if overflow {
+            if pulses > CAPACITY - 1 {
                 return Err(SendError::Full);
             }
+            pulses <<= PARAM_BITS;
+            let state = load_modify_atomic!(self.state(), Acquire, Acquire, |state| state
+                .checked_add(pulses)
+                .unwrap_or(state));
+            if state.checked_add(pulses).is_none() {
+                return Err(SendError::Full);
+            }
+            if state & CLOSED != 0 {
+                return Err(SendError::Canceled);
+            }
+            if state & RX_WAKER_STORED != 0 {
+                (*self.rx_waker().get()).assume_init_ref().wake_by_ref();
+            }
+            Ok(())
+        }
+    }
+
+    /// Sends `pulses` number of pulses on this channel, possibly saturating the
+    /// internal counter instead of returning an error on overflow.
+    ///
+    /// If the pulses are successfully enqueued for the remote end to receive,
+    /// then `Ok(())` is returned. If the receiving end is closed, then
+    /// `Err(SendError::Canceled)` is returned.
+    pub fn saturating_send(&mut self, mut pulses: usize) -> Result<(), SendError> {
+        unsafe {
+            if pulses > CAPACITY - 1 {
+                pulses = (CAPACITY - 1) << PARAM_BITS;
+            } else {
+                pulses <<= PARAM_BITS;
+            }
+            let state = load_modify_atomic!(self.state(), Acquire, Acquire, |state| state
+                .checked_add(pulses)
+                .unwrap_or(state | (CAPACITY - 1) << PARAM_BITS));
             if state & CLOSED != 0 {
                 return Err(SendError::Canceled);
             }

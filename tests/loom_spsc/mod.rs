@@ -36,6 +36,21 @@ macro_rules! check_drop {
     };
 }
 
+#[allow(unused_macros)]
+macro_rules! check_drops {
+    ($counters:ident, $data:ident,[$($value:expr),+ $(,)?]) => {
+        let mut $counters = Vec::new();
+        let mut $data = Vec::new();
+        $(
+            {
+                check_drop!(counter, data, $value);
+                $counters.push(counter);
+                $data.push(data);
+            }
+        )*
+    };
+}
+
 #[derive(Debug)]
 pub struct CheckDrop(pub usize, pub &'static AtomicUsize);
 
@@ -49,9 +64,11 @@ impl CheckDrop {
 }
 
 impl Drop for CheckDrop {
+    #[track_caller]
     fn drop(&mut self) {
-        if self.1.fetch_add(1, SeqCst) > 0 {
-            panic!("unexpected drop");
+        let atomic = self.1.fetch_add(1, SeqCst);
+        if atomic > 0 {
+            panic!("unexpected drop for value {}, atomic was {}", self.0, atomic);
         }
     }
 }
