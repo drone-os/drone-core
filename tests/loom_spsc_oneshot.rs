@@ -1,7 +1,9 @@
 #![cfg(loom)]
 
 #[macro_use]
-mod loom_spsc;
+mod loom_helpers;
+#[macro_use]
+mod loom_spsc_helpers;
 
 use std::pin::Pin;
 use std::task::Poll;
@@ -10,7 +12,8 @@ use drone_core::sync::spsc::oneshot::{channel, Canceled};
 use futures::future::FusedFuture;
 use futures::prelude::*;
 
-use self::loom_spsc::*;
+use self::loom_helpers::*;
+use self::loom_spsc_helpers::*;
 
 #[test]
 fn loom_drop() {
@@ -64,7 +67,7 @@ fn loom_recv() {
             },
         });
         tx.join().unwrap();
-        statemap_put(rx_states, rx_counter, rx.join().unwrap());
+        statemap_put_counter(rx_states, rx_counter, rx.join().unwrap());
     });
     statemap_check_exhaustive(rx_states);
 }
@@ -95,7 +98,7 @@ fn loom_cancellation() {
                 },
             });
         rx.join().unwrap();
-        statemap_put(tx_states, tx_counter, tx.join().unwrap());
+        statemap_put_counter(tx_states, tx_counter, tx.join().unwrap());
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -138,7 +141,7 @@ fn loom_cancellation_persistent() {
                 Poll::Pending => 3,
             };
         }
-        statemap_put(tx_states, tx_counter, tx_value);
+        statemap_put_counter(tx_states, tx_counter, tx_value);
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -169,7 +172,7 @@ fn loom_close_cancellation() {
                 },
             });
         rx.join().unwrap();
-        statemap_put(tx_states, tx_counter, tx.join().unwrap());
+        statemap_put_counter(tx_states, tx_counter, tx.join().unwrap());
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -216,7 +219,7 @@ fn loom_close_cancellation_persistent() {
             };
         }
         drop(rx);
-        statemap_put(tx_states, tx_counter, tx_value);
+        statemap_put_counter(tx_states, tx_counter, tx_value);
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -264,8 +267,8 @@ fn loom_send_recv() {
             },
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data_states);
@@ -325,8 +328,8 @@ fn loom_send_recv_persistent() {
             };
         }
         let key = tx_value + rx_value;
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data_states);
@@ -369,8 +372,8 @@ fn loom_send_close_recv() {
             }
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data_states);
@@ -401,7 +404,7 @@ fn loom_send_try_recv() {
             }
             Ok(None) => 2,
         });
-        statemap_put(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
+        statemap_put_counter(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
     });
     statemap_check_exhaustive(data_states);
 }
@@ -442,7 +445,7 @@ fn loom_send_try_recv_persistent() {
                 Ok(None) => 4,
             };
         }
-        statemap_put(data_states, data_counter, tx_value + rx_value);
+        statemap_put_counter(data_states, data_counter, tx_value + rx_value);
     });
     statemap_check_exhaustive(data_states);
 }
@@ -474,7 +477,7 @@ fn loom_send_close_try_recv() {
                 Ok(None) => 2,
             }
         });
-        statemap_put(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
+        statemap_put_counter(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
     });
     statemap_check_exhaustive(data_states);
 }
@@ -509,8 +512,8 @@ fn loom_recv_cancellation() {
             Poll::Pending => 2,
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
-        statemap_put(tx_states, tx_counter, key);
-        statemap_put(rx_states, rx_counter, key);
+        statemap_put_counter(tx_states, tx_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
     });
     statemap_check_exhaustive(tx_states);
     statemap_check_exhaustive(rx_states);

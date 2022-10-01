@@ -83,6 +83,7 @@ macro_rules! store_atomic {
     }};
 }
 
+#[allow(unused_macros)]
 macro_rules! modify_atomic {
     ($atomic:expr, $ordering_read:ident, $ordering_cas:ident, | $old:ident | $new:expr) => {{
         #[cfg(not(any(feature = "atomics", loom)))]
@@ -104,6 +105,32 @@ macro_rules! modify_atomic {
     }};
 }
 
+#[allow(unused_macros)]
+macro_rules! try_modify_atomic {
+    ($atomic:expr, $ordering_read:ident, $ordering_cas:ident, | $old:ident | $new:expr) => {{
+        #[cfg(not(any(feature = "atomics", loom)))]
+        {
+            $atomic.try_modify(|$old| $new)
+        }
+        #[cfg(any(feature = "atomics", loom))]
+        loop {
+            if let Some(new) = $new {
+                match $atomic.compare_exchange_weak(
+                    $old,
+                    new,
+                    core::sync::atomic::Ordering::$ordering_cas,
+                    core::sync::atomic::Ordering::$ordering_read,
+                ) {
+                    Ok(state) => break Ok(state),
+                    Err(state) => $old = state,
+                }
+            } else {
+                break Err($old);
+            }
+        }
+    }};
+}
+
 macro_rules! load_modify_atomic {
     ($atomic:expr, $ordering_read:ident, $ordering_cas:ident, | $old:ident | $new:expr) => {{
         #[cfg(not(any(feature = "atomics", loom)))]
@@ -114,6 +141,20 @@ macro_rules! load_modify_atomic {
         {
             let mut $old = $atomic.load(core::sync::atomic::Ordering::$ordering_read);
             modify_atomic!($atomic, $ordering_read, $ordering_cas, |$old| $new)
+        }
+    }};
+}
+
+macro_rules! load_try_modify_atomic {
+    ($atomic:expr, $ordering_read:ident, $ordering_cas:ident, | $old:ident | $new:expr) => {{
+        #[cfg(not(any(feature = "atomics", loom)))]
+        {
+            $atomic.try_modify(|$old| $new)
+        }
+        #[cfg(any(feature = "atomics", loom))]
+        {
+            let mut $old = $atomic.load(core::sync::atomic::Ordering::$ordering_read);
+            try_modify_atomic!($atomic, $ordering_read, $ordering_cas, |$old| $new)
         }
     }};
 }

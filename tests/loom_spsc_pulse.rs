@@ -1,7 +1,9 @@
 #![cfg(loom)]
 
 #[macro_use]
-mod loom_spsc;
+mod loom_helpers;
+#[macro_use]
+mod loom_spsc_helpers;
 
 use std::pin::Pin;
 use std::task::Poll;
@@ -10,7 +12,8 @@ use drone_core::sync::spsc::pulse::{channel, TryNextError, CAPACITY};
 use futures::prelude::*;
 use futures::stream::FusedStream;
 
-use self::loom_spsc::*;
+use self::loom_helpers::*;
+use self::loom_spsc_helpers::*;
 
 #[test]
 fn loom_drop() {
@@ -66,7 +69,7 @@ fn loom_next() {
             },
         });
         tx.join().unwrap();
-        statemap_put(rx_states, rx_counter, rx.join().unwrap());
+        statemap_put_counter(rx_states, rx_counter, rx.join().unwrap());
     });
     statemap_check_exhaustive(rx_states);
 }
@@ -97,7 +100,7 @@ fn loom_cancellation() {
                 },
             });
         rx.join().unwrap();
-        statemap_put(tx_states, tx_counter, tx.join().unwrap());
+        statemap_put_counter(tx_states, tx_counter, tx.join().unwrap());
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -140,7 +143,7 @@ fn loom_cancellation_persistent() {
                 Poll::Pending => 3,
             };
         }
-        statemap_put(tx_states, tx_counter, tx_value);
+        statemap_put_counter(tx_states, tx_counter, tx_value);
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -171,7 +174,7 @@ fn loom_close_cancellation() {
                 },
             });
         rx.join().unwrap();
-        statemap_put(tx_states, tx_counter, tx.join().unwrap());
+        statemap_put_counter(tx_states, tx_counter, tx.join().unwrap());
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -218,7 +221,7 @@ fn loom_close_cancellation_persistent() {
             };
         }
         drop(rx);
-        statemap_put(tx_states, tx_counter, tx_value);
+        statemap_put_counter(tx_states, tx_counter, tx_value);
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -268,8 +271,8 @@ fn loom_send_err_next() {
             },
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data_states);
@@ -332,8 +335,8 @@ fn loom_send_err_next_persistent() {
             };
         }
         let key = tx_value + rx_value;
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data_states);
@@ -397,7 +400,7 @@ fn loom_send_send_next_persistent() {
             };
         }
         let key = tx_value + rx_value;
-        statemap_put(rx_states, rx_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
     });
     statemap_check_exhaustive(rx_states);
 }
@@ -460,7 +463,7 @@ fn loom_send_saturating_send_next_persistent() {
             };
         }
         let key = tx_value + rx_value;
-        statemap_put(rx_states, rx_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
     });
     statemap_check_exhaustive(rx_states);
 }
@@ -509,7 +512,7 @@ fn loom_send_overflowing_send_next_persistent() {
             }
             value
         });
-        statemap_put(rx_states, rx_counter, tx.join().unwrap() + rx.join().unwrap());
+        statemap_put_counter(rx_states, rx_counter, tx.join().unwrap() + rx.join().unwrap());
     });
     statemap_check_exhaustive(rx_states);
 }
@@ -601,8 +604,8 @@ fn loom_send_send_send_err_next_persistent() {
             };
         }
         let key = tx_value + rx_value;
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data_states);
@@ -646,8 +649,8 @@ fn loom_send_err_close_next() {
             }
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data_states);
@@ -679,7 +682,7 @@ fn loom_send_err_try_next() {
             }
             Err(TryNextError::Empty) => 3,
         });
-        statemap_put(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
+        statemap_put_counter(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
     });
     statemap_check_exhaustive(data_states);
 }
@@ -722,7 +725,7 @@ fn loom_send_err_try_next_persistent() {
                 Err(TryNextError::Empty) => 6,
             };
         }
-        statemap_put(data_states, data_counter, tx_value + rx_value);
+        statemap_put_counter(data_states, data_counter, tx_value + rx_value);
     });
     statemap_check_exhaustive(data_states);
 }
@@ -755,7 +758,7 @@ fn loom_send_err_close_try_next() {
                 Err(TryNextError::Empty) => 3,
             }
         });
-        statemap_put(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
+        statemap_put_counter(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
     });
     statemap_check_exhaustive(data_states);
 }
@@ -794,8 +797,8 @@ fn loom_next_cancellation() {
             Poll::Pending => 3,
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
-        statemap_put(tx_states, tx_counter, key);
-        statemap_put(rx_states, rx_counter, key);
+        statemap_put_counter(tx_states, tx_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
     });
     statemap_check_exhaustive(tx_states);
     statemap_check_exhaustive(rx_states);

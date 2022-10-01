@@ -1,3 +1,4 @@
+#![cfg(not(loom))]
 #![feature(allocator_api)]
 #![feature(slice_ptr_get)]
 #![no_implicit_prelude]

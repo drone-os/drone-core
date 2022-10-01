@@ -1,7 +1,9 @@
 #![cfg(loom)]
 
 #[macro_use]
-mod loom_spsc;
+mod loom_helpers;
+#[macro_use]
+mod loom_spsc_helpers;
 
 use std::pin::Pin;
 use std::task::Poll;
@@ -10,7 +12,8 @@ use drone_core::sync::spsc::ring::{channel, SendError, TryNextError, TrySendErro
 use futures::prelude::*;
 use futures::stream::FusedStream;
 
-use self::loom_spsc::*;
+use self::loom_helpers::*;
+use self::loom_spsc_helpers::*;
 
 #[test]
 fn loom_drop() {
@@ -66,7 +69,7 @@ fn loom_next() {
             },
         });
         tx.join().unwrap();
-        statemap_put(rx_states, rx_counter, rx.join().unwrap());
+        statemap_put_counter(rx_states, rx_counter, rx.join().unwrap());
     });
     statemap_check_exhaustive(rx_states);
 }
@@ -98,7 +101,7 @@ fn loom_poll_close() {
             _ => panic!(),
         });
         rx.join().unwrap();
-        statemap_put(tx_states, tx_counter, tx.join().unwrap());
+        statemap_put_counter(tx_states, tx_counter, tx.join().unwrap());
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -144,7 +147,7 @@ fn loom_poll_close_persistent() {
                 _ => panic!(),
             };
         }
-        statemap_put(tx_states, tx_counter, tx_value);
+        statemap_put_counter(tx_states, tx_counter, tx_value);
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -176,7 +179,7 @@ fn loom_close_poll_close() {
             _ => panic!(),
         });
         rx.join().unwrap();
-        statemap_put(tx_states, tx_counter, tx.join().unwrap());
+        statemap_put_counter(tx_states, tx_counter, tx.join().unwrap());
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -226,7 +229,7 @@ fn loom_close_poll_close_persistent() {
             };
         }
         drop(rx);
-        statemap_put(tx_states, tx_counter, tx_value);
+        statemap_put_counter(tx_states, tx_counter, tx_value);
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -245,7 +248,7 @@ fn loom_poll_flush() {
             Poll::Pending => 3,
         });
         rx.join().unwrap();
-        statemap_put(tx_states, tx_counter, tx.join().unwrap());
+        statemap_put_counter(tx_states, tx_counter, tx.join().unwrap());
     });
     statemap_check_exhaustive(tx_states);
 }
@@ -295,8 +298,8 @@ fn loom_send_err_next() {
             },
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data_states);
@@ -359,8 +362,8 @@ fn loom_send_err_next_persistent() {
             };
         }
         let key = tx_value + rx_value;
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data_states);
@@ -437,9 +440,9 @@ fn loom_feed_next_persistent() {
         }
         drop(rx);
         let key = tx_value + rx_value;
-        statemap_put(tx_states, tx_counter, key);
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
+        statemap_put_counter(tx_states, tx_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data_states);
@@ -543,10 +546,10 @@ fn loom_feed_send_err_next_persistent() {
         }
         drop(rx);
         let key = tx_value + rx_value;
-        statemap_put(tx_states, tx_counter, key);
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
-        statemap_put(err_states, err_counter, key);
+        statemap_put_counter(tx_states, tx_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
+        statemap_put_counter(err_states, err_counter, key);
     });
     statemap_check_exhaustive(tx_states);
     statemap_check_exhaustive(rx_states);
@@ -637,9 +640,9 @@ fn loom_send_next_persistent() {
         }
         drop(rx);
         let key = tx_value + rx_value;
-        statemap_put(tx_states, tx_counter, key);
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
+        statemap_put_counter(tx_states, tx_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data_states);
@@ -683,8 +686,8 @@ fn loom_send_err_close_next() {
             }
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data_states, data_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data_states, data_counter, key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data_states);
@@ -716,7 +719,7 @@ fn loom_send_err_try_next() {
             }
             Err(TryNextError::Empty) => 3,
         });
-        statemap_put(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
+        statemap_put_counter(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
     });
     statemap_check_exhaustive(data_states);
 }
@@ -759,7 +762,7 @@ fn loom_send_err_try_next_persistent() {
                 Err(TryNextError::Empty) => 6,
             };
         }
-        statemap_put(data_states, data_counter, tx_value + rx_value);
+        statemap_put_counter(data_states, data_counter, tx_value + rx_value);
     });
     statemap_check_exhaustive(data_states);
 }
@@ -792,7 +795,7 @@ fn loom_send_err_close_try_next() {
                 Err(TryNextError::Empty) => 3,
             }
         });
-        statemap_put(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
+        statemap_put_counter(data_states, data_counter, tx.join().unwrap() + rx.join().unwrap());
     });
     statemap_check_exhaustive(data_states);
 }
@@ -831,8 +834,8 @@ fn loom_next_poll_close() {
             Poll::Pending => 3,
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
-        statemap_put(tx_states, tx_counter, key);
-        statemap_put(rx_states, rx_counter, key);
+        statemap_put_counter(tx_states, tx_counter, key);
+        statemap_put_counter(rx_states, rx_counter, key);
     });
     statemap_check_exhaustive(tx_states);
     statemap_check_exhaustive(rx_states);
@@ -895,9 +898,9 @@ fn loom_send_overwrite_next() {
             Poll::Pending => 4,
         });
         let key = tx.join().unwrap() + rx.join().unwrap();
-        statemap_put(rx_states, rx_counter, key);
-        statemap_put(data0_states, data_counters[0], key);
-        statemap_put(data1_states, data_counters[1], key);
+        statemap_put_counter(rx_states, rx_counter, key);
+        statemap_put_counter(data0_states, data_counters[0], key);
+        statemap_put_counter(data1_states, data_counters[1], key);
     });
     statemap_check_exhaustive(rx_states);
     statemap_check_exhaustive(data0_states);
@@ -958,7 +961,7 @@ fn loom_try_send_long_sequence_next_persistent() {
         }
         assert_eq!(sum, 27);
         for (i, counter) in data_counters.into_iter().enumerate() {
-            statemap_put(data_states, counter, (i + 1) * 10 + remaining_len);
+            statemap_put_counter(data_states, counter, (i + 1) * 10 + remaining_len);
         }
     });
     statemap_check_exhaustive(data_states);
@@ -1019,7 +1022,7 @@ fn loom_try_send_long_sequence_try_next_persistent() {
         }
         assert_eq!(sum, 27);
         for (i, counter) in data_counters.into_iter().enumerate() {
-            statemap_put(data_states, counter, (i + 1) * 10 + remaining_len);
+            statemap_put_counter(data_states, counter, (i + 1) * 10 + remaining_len);
         }
     });
     statemap_check_exhaustive(data_states);

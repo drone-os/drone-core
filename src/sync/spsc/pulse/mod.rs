@@ -1,9 +1,10 @@
 //! A single-producer, single-consumer channel for counting events across
 //! asynchronous tasks.
 //!
-//! It is similar to [`oneshot::channel<T>`], in the way how a single error
-//! message of type `E` can be sent. And it is similar to [`ring::channel<T,
-//! E>`] in the way that multiple values can be sent, but only of type `usize`.
+//! It is similar to [`oneshot::channel<T>`](super::oneshot::channel), in the
+//! way how a single error message of type `E` can be sent. And it is similar to
+//! [`ring::channel<T, E>`](super::ring::channel) in the way that multiple
+//! values can be sent, but only of type `usize`.
 //!
 //! This channel can be seen as a shared counter. The sender half increments the
 //! counter by a given value, while the receiver half clears the counter on each

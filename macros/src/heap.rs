@@ -202,7 +202,7 @@ fn def_drone_alloc(
     };
     quote! {
         impl ::drone_core::heap::Allocator for #metadata_ident {
-            const POOL_COUNT: usize = #pools_len;
+            const POOLS_COUNT: usize = #pools_len;
             const TRACE_STREAM: ::core::option::Option<u8> = #trace_stream;
 
             #[inline]
