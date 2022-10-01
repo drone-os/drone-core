@@ -4,7 +4,7 @@ mod loom_spsc;
 use std::pin::Pin;
 use std::task::Poll;
 
-use drone_core::sync::new_spsc::ring::{channel, SendError, TryNextError, TrySendError};
+use drone_core::sync::spsc::ring::{channel, SendError, TryNextError, TrySendError};
 use futures::prelude::*;
 use futures::stream::FusedStream;
 

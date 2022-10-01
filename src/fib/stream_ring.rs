@@ -5,7 +5,7 @@ use core::task::{Context, Poll};
 use futures::Stream;
 
 use crate::fib::{self, Fiber};
-use crate::sync::spsc::ring::{channel, Receiver, SendError, SendErrorKind};
+use crate::sync::spsc::ring::{channel, Receiver, SendError, TrySendError};
 use crate::thr::prelude::*;
 
 /// A stream of `T` from the fiber in another thread.
@@ -264,35 +264,32 @@ where
             }
             match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
                 fib::Yielded(None) => {}
-                fib::Yielded(Some(value)) => match tx.send(value) {
+                fib::Yielded(Some(value)) => match tx.try_send(value) {
                     Ok(()) => {}
-                    Err(SendError { value, kind }) => match kind {
-                        SendErrorKind::Canceled => {
+                    Err(TrySendError { err: SendError::Canceled, value: _ }) => {
+                        break;
+                    }
+                    Err(TrySendError { err: SendError::Full, value }) => match overflow(value) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            drop(tx.send_err(err));
                             break;
                         }
-                        SendErrorKind::Overflow => match overflow(value) {
-                            Ok(()) => {}
-                            Err(err) => {
-                                drop(tx.send_err(err));
-                                break;
-                            }
-                        },
                     },
                 },
                 fib::Complete(value) => {
                     match map(value) {
                         Ok(None) => {}
-                        Ok(Some(value)) => match tx.send(value) {
-                            Ok(()) => {}
-                            Err(SendError { value, kind }) => match kind {
-                                SendErrorKind::Canceled => {}
-                                SendErrorKind::Overflow => match overflow(value) {
+                        Ok(Some(value)) => match tx.try_send(value) {
+                            Ok(()) | Err(TrySendError { err: SendError::Canceled, value: _ }) => {}
+                            Err(TrySendError { err: SendError::Full, value }) => {
+                                match overflow(value) {
                                     Ok(()) => {}
                                     Err(err) => {
                                         drop(tx.send_err(err));
                                     }
-                                },
-                            },
+                                }
+                            }
                         },
                         Err(err) => {
                             drop(tx.send_err(err));
@@ -329,7 +326,7 @@ where
             match unsafe { Pin::new_unchecked(&mut fib) }.resume(()) {
                 fib::Yielded(None) => {}
                 fib::Yielded(Some(value)) => match tx.send_overwrite(value) {
-                    Ok(()) => (),
+                    Ok(_) => (),
                     Err(_) => break,
                 },
                 fib::Complete(value) => {

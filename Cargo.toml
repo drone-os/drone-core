@@ -65,7 +65,6 @@ maintenance = { status = "actively-developed" }
 default = []
 std = ["futures/std"]
 atomics = []
-_atomics = []
 
 [dependencies]
 drone-core-macros.workspace = true

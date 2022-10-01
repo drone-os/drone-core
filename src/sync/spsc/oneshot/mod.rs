@@ -1,139 +1,93 @@
 //! A channel for sending a single message between asynchronous tasks.
 //!
-//! See [`channel`] constructor for more.
+//! This is a single-producer, single-consumer channel.
+//!
+//! # Memory footprint
+//!
+//! Call to [`channel`] creates one allocation of an inner shared object. Each
+//! returned half is a word-sized pointer to the shared object.
+//!
+//! The shared object consists of a the generic type `T`, byte-sized state
+//! field, and two double-word-sized [`Waker`] objects.
+//!
+//! # State field structure
+//!
+//! Channel state is an atomic `u8` value, initially zeroed, with the following
+//! structure:
+//!
+//! `000HCDRT`
+//!
+//! Where the bit, if set, indicates:
+//! * `T` - [`Sender`] half waker is stored
+//! * `R` - [`Receiver`] half waker is stored
+//! * `D` - data value of type `T` is stored
+//! * `C` - [`Receiver`] half is closed
+//! * `H` - one of the halves was dropped
+//! * `0` - ignored
 
 mod receiver;
 mod sender;
 
-use alloc::sync::Arc;
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
-use core::sync::atomic::{AtomicU8, Ordering};
+use core::ptr::NonNull;
 use core::task::Waker;
 
 pub use self::receiver::{Canceled, Receiver};
-pub use self::sender::Sender;
-use crate::sync::spsc::SpscInner;
-
-#[allow(clippy::identity_op)]
-const TX_WAKER_STORED: u8 = 1 << 0;
-const RX_WAKER_STORED: u8 = 1 << 1;
-const COMPLETE: u8 = 1 << 2;
-
-struct Inner<T> {
-    state: AtomicU8,
-    data: UnsafeCell<Option<T>>,
-    rx_waker: UnsafeCell<MaybeUninit<Waker>>,
-    tx_waker: UnsafeCell<MaybeUninit<Waker>>,
-}
+pub use self::sender::{Cancellation, Sender};
 
 /// Creates a new one-shot channel, returning the sender/receiver halves.
 ///
 /// The [`Sender`] half is used to signal the end of a computation and provide
 /// its value. The [`Receiver`] half is a [`Future`](core::future::Future)
 /// resolving to the value that was given to the [`Sender`] half.
-#[inline]
+///
+/// See [the module-level documentation](self) for details.
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
-    let inner = Arc::new(Inner::new());
-    let sender = Sender::new(Arc::clone(&inner));
-    let receiver = Receiver::new(inner);
+    let shared = unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(Shared::new()))) };
+    let sender = Sender::new(shared);
+    let receiver = Receiver::new(shared);
     (sender, receiver)
 }
 
-unsafe impl<T: Send> Send for Inner<T> {}
-unsafe impl<T: Send> Sync for Inner<T> {}
+const TX_WAKER_STORED_SHIFT: u8 = 0;
+const RX_WAKER_STORED_SHIFT: u8 = 1;
+const DATA_STORED_SHIFT: u8 = 2;
+const CLOSED_SHIFT: u8 = 3;
+const HALF_DROPPED_SHIFT: u8 = 4;
 
-impl<T> Inner<T> {
-    #[inline]
+const TX_WAKER_STORED: u8 = 1 << TX_WAKER_STORED_SHIFT;
+const RX_WAKER_STORED: u8 = 1 << RX_WAKER_STORED_SHIFT;
+const DATA_STORED: u8 = 1 << DATA_STORED_SHIFT;
+const CLOSED: u8 = 1 << CLOSED_SHIFT;
+const HALF_DROPPED: u8 = 1 << HALF_DROPPED_SHIFT;
+
+impl<T> Unpin for Sender<T> {}
+impl<T> Unpin for Receiver<T> {}
+unsafe impl<T: Send> Send for Sender<T> {}
+unsafe impl<T: Send> Sync for Receiver<T> {}
+
+#[cfg(all(feature = "atomics", not(loom)))]
+type State = core::sync::atomic::AtomicU8;
+#[cfg(all(feature = "atomics", loom))]
+type State = loom::sync::atomic::AtomicU8;
+#[cfg(not(feature = "atomics"))]
+type State = crate::sync::soft_atomic::Atomic<u8>;
+
+struct Shared<T> {
+    state: State,
+    data: UnsafeCell<MaybeUninit<T>>,
+    rx_waker: UnsafeCell<MaybeUninit<Waker>>,
+    tx_waker: UnsafeCell<MaybeUninit<Waker>>,
+}
+
+impl<T> Shared<T> {
     fn new() -> Self {
         Self {
-            state: AtomicU8::new(0),
-            data: UnsafeCell::new(None),
-            rx_waker: UnsafeCell::new(MaybeUninit::zeroed()),
-            tx_waker: UnsafeCell::new(MaybeUninit::zeroed()),
+            state: State::new(0),
+            data: UnsafeCell::new(MaybeUninit::uninit()),
+            rx_waker: UnsafeCell::new(MaybeUninit::uninit()),
+            tx_waker: UnsafeCell::new(MaybeUninit::uninit()),
         }
-    }
-}
-
-impl<T> SpscInner<AtomicU8, u8> for Inner<T> {
-    const COMPLETE: u8 = COMPLETE;
-    const RX_WAKER_STORED: u8 = RX_WAKER_STORED;
-    const TX_WAKER_STORED: u8 = TX_WAKER_STORED;
-    const ZERO: u8 = 0;
-
-    #[inline]
-    fn state_load(&self, order: Ordering) -> u8 {
-        self.state.load(order)
-    }
-
-    #[inline]
-    fn compare_exchange_weak(
-        &self,
-        current: u8,
-        new: u8,
-        success: Ordering,
-        failure: Ordering,
-    ) -> Result<u8, u8> {
-        self.state.compare_exchange_weak(current, new, success, failure)
-    }
-
-    #[inline]
-    unsafe fn rx_waker_mut(&self) -> &mut MaybeUninit<Waker> {
-        unsafe { &mut *self.rx_waker.get() }
-    }
-
-    #[inline]
-    unsafe fn tx_waker_mut(&self) -> &mut MaybeUninit<Waker> {
-        unsafe { &mut *self.tx_waker.get() }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use core::future::Future;
-    use core::pin::Pin;
-    use core::sync::atomic::AtomicUsize;
-    use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
-
-    use super::*;
-
-    struct Counter(AtomicUsize);
-
-    impl Counter {
-        fn to_waker(&'static self) -> Waker {
-            unsafe fn clone(counter: *const ()) -> RawWaker {
-                RawWaker::new(counter, &VTABLE)
-            }
-            unsafe fn wake(counter: *const ()) {
-                unsafe { (*(counter as *const Counter)).0.fetch_add(1, Ordering::SeqCst) };
-            }
-            static VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake, drop);
-            unsafe { Waker::from_raw(RawWaker::new(self as *const _ as *const (), &VTABLE)) }
-        }
-    }
-
-    #[test]
-    fn send_sync() {
-        static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (tx, mut rx) = channel::<usize>();
-        assert_eq!(tx.send(314), Ok(()));
-        let waker = COUNTER.to_waker();
-        let mut cx = Context::from_waker(&waker);
-        COUNTER.0.store(0, Ordering::SeqCst);
-        assert_eq!(Pin::new(&mut rx).poll(&mut cx), Poll::Ready(Ok(314)));
-        assert_eq!(COUNTER.0.load(Ordering::SeqCst), 0);
-    }
-
-    #[test]
-    fn send_async() {
-        static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (tx, mut rx) = channel::<usize>();
-        let waker = COUNTER.to_waker();
-        let mut cx = Context::from_waker(&waker);
-        COUNTER.0.store(0, Ordering::SeqCst);
-        assert_eq!(Pin::new(&mut rx).poll(&mut cx), Poll::Pending);
-        assert_eq!(tx.send(314), Ok(()));
-        assert_eq!(Pin::new(&mut rx).poll(&mut cx), Poll::Ready(Ok(314)));
-        assert_eq!(COUNTER.0.load(Ordering::SeqCst), 1);
     }
 }

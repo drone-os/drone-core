@@ -1,195 +1,106 @@
-//! A single-producer, single-consumer queue for sending pulses across
+//! A single-producer, single-consumer channel for counting events across
 //! asynchronous tasks.
 //!
-//! See [`channel`] constructor for more.
+//! It is similar to [`oneshot::channel<T>`], in the way how a single error
+//! message of type `E` can be sent. And it is similar to [`ring::channel<T,
+//! E>`] in the way that multiple values can be sent, but only of type `usize`.
+//!
+//! This channel can be seen as a shared counter. The sender half increments the
+//! counter by a given value, while the receiver half clears the counter on each
+//! poll and returns the number that was cleared. The size of the counter
+//! depends on the machine word size and defined by [`CAPACITY`].
+//!
+//! # Memory footprint
+//!
+//! Call to [`channel`] creates one allocation of an inner shared object. Each
+//! returned half is a word-sized pointer to the shared object.
+//!
+//! The shared object consists of a the generic type `E`, word-sized state
+//! field, and two double-word-sized [`Waker`] objects.
+//!
+//! # State field structure
+//!
+//! Channel state is an atomic `usize` value, initially zeroed, with the
+//! following structure:
+//!
+//! `... cccccccc cccHCERT` (exact number of bits depends on the target word
+//! size)
+//!
+//! Where the bit, if set, indicates:
+//! * `T` - [`Sender`] half waker is stored
+//! * `R` - [`Receiver`] half waker is stored
+//! * `E` - error value of type `E` is stored
+//! * `C` - [`Receiver`] half is closed
+//! * `H` - one of the halves was dropped
+//! * `c` - counter value bits
+
+use core::cell::UnsafeCell;
+use core::mem::MaybeUninit;
+use core::ptr::NonNull;
+use core::task::Waker;
+
+pub use self::receiver::{Receiver, TryNextError};
+pub use self::sender::{Cancellation, SendError, Sender};
 
 mod receiver;
 mod sender;
 
-use alloc::sync::Arc;
-use core::cell::UnsafeCell;
-use core::mem::{size_of, MaybeUninit};
-use core::sync::atomic::{AtomicUsize, Ordering};
-use core::task::Waker;
+/// Creates a new pulse channel, returning the sender/receiver halves.
+///
+/// The [`Sender`] half is used to send a pack of pulses. The [`Receiver`] half
+/// is a [`Stream`](futures::stream::Stream) that emits the number of pulses
+/// generated since the last poll.
+///
+/// See [the module-level documentation](self) for details.
+pub fn channel<E>() -> (Sender<E>, Receiver<E>) {
+    let shared = unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(Shared::new()))) };
+    let sender = Sender::new(shared);
+    let receiver = Receiver::new(shared);
+    (sender, receiver)
+}
 
-pub use self::receiver::Receiver;
-pub use self::sender::{SendError, Sender};
-use crate::sync::spsc::{SpscInner, SpscInnerErr};
+/// Capacity of the pulse channel's inner counter.
+pub const CAPACITY: usize = 1 << usize::BITS - PARAM_BITS;
 
-/// Maximum capacity of the channel.
-pub const MAX_CAPACITY: usize = 1 << size_of::<usize>() as u32 * 8 - OPTION_BITS;
+const TX_WAKER_STORED_SHIFT: u32 = 0;
+const RX_WAKER_STORED_SHIFT: u32 = 1;
+const ERR_STORED_SHIFT: u32 = 2;
+const CLOSED_SHIFT: u32 = 3;
+const HALF_DROPPED_SHIFT: u32 = 4;
+const PARAM_BITS: u32 = 5;
 
-#[allow(clippy::identity_op)]
-const TX_WAKER_STORED: usize = 1 << 0;
-const RX_WAKER_STORED: usize = 1 << 1;
-const COMPLETE: usize = 1 << 2;
-const OPTION_BITS: u32 = 3;
+const TX_WAKER_STORED: usize = 1 << TX_WAKER_STORED_SHIFT;
+const RX_WAKER_STORED: usize = 1 << RX_WAKER_STORED_SHIFT;
+const ERR_STORED: usize = 1 << ERR_STORED_SHIFT;
+const CLOSED: usize = 1 << CLOSED_SHIFT;
+const HALF_DROPPED: usize = 1 << HALF_DROPPED_SHIFT;
 
-struct Inner<E> {
-    state: AtomicUsize,
-    err: UnsafeCell<Option<E>>,
+impl<T> Unpin for Sender<T> {}
+impl<T> Unpin for Receiver<T> {}
+unsafe impl<T: Send> Send for Sender<T> {}
+unsafe impl<T: Send> Sync for Receiver<T> {}
+
+#[cfg(all(feature = "atomics", not(loom)))]
+type State = core::sync::atomic::AtomicUsize;
+#[cfg(all(feature = "atomics", loom))]
+type State = loom::sync::atomic::AtomicUsize;
+#[cfg(not(feature = "atomics"))]
+type State = crate::sync::soft_atomic::Atomic<usize>;
+
+struct Shared<E> {
+    state: State,
+    err: UnsafeCell<MaybeUninit<E>>,
     rx_waker: UnsafeCell<MaybeUninit<Waker>>,
     tx_waker: UnsafeCell<MaybeUninit<Waker>>,
 }
 
-/// Creates a new pulse channel, returning the sender/receiver halves.
-///
-/// The [`Sender`] half is used to signal a number of pulses. The [`Receiver`]
-/// half is a [`Stream`](futures::stream::Stream) that reads the number of
-/// pulses signaled from the last polling.
-#[inline]
-pub fn channel<E>() -> (Sender<E>, Receiver<E>) {
-    let inner = Arc::new(Inner::new());
-    let sender = Sender::new(Arc::clone(&inner));
-    let receiver = Receiver::new(inner);
-    (sender, receiver)
-}
-
-unsafe impl<E: Send> Send for Inner<E> {}
-unsafe impl<E: Send> Sync for Inner<E> {}
-
-impl<E> Inner<E> {
-    #[inline]
+impl<E> Shared<E> {
     fn new() -> Self {
         Self {
-            state: AtomicUsize::new(0),
-            err: UnsafeCell::new(None),
-            rx_waker: UnsafeCell::new(MaybeUninit::zeroed()),
-            tx_waker: UnsafeCell::new(MaybeUninit::zeroed()),
+            state: State::new(0),
+            err: UnsafeCell::new(MaybeUninit::uninit()),
+            rx_waker: UnsafeCell::new(MaybeUninit::uninit()),
+            tx_waker: UnsafeCell::new(MaybeUninit::uninit()),
         }
-    }
-}
-
-impl<E> SpscInner<AtomicUsize, usize> for Inner<E> {
-    const COMPLETE: usize = COMPLETE;
-    const RX_WAKER_STORED: usize = RX_WAKER_STORED;
-    const TX_WAKER_STORED: usize = TX_WAKER_STORED;
-    const ZERO: usize = 0;
-
-    #[inline]
-    fn state_load(&self, order: Ordering) -> usize {
-        self.state.load(order)
-    }
-
-    #[inline]
-    fn compare_exchange_weak(
-        &self,
-        current: usize,
-        new: usize,
-        success: Ordering,
-        failure: Ordering,
-    ) -> Result<usize, usize> {
-        self.state.compare_exchange_weak(current, new, success, failure)
-    }
-
-    #[inline]
-    unsafe fn rx_waker_mut(&self) -> &mut MaybeUninit<Waker> {
-        unsafe { &mut *self.rx_waker.get() }
-    }
-
-    #[inline]
-    unsafe fn tx_waker_mut(&self) -> &mut MaybeUninit<Waker> {
-        unsafe { &mut *self.tx_waker.get() }
-    }
-}
-
-impl<E> SpscInnerErr<AtomicUsize, usize> for Inner<E> {
-    type Error = E;
-
-    unsafe fn err_mut(&self) -> &mut Option<Self::Error> {
-        unsafe { &mut *self.err.get() }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use core::num::NonZeroUsize;
-    use core::pin::Pin;
-    use core::sync::atomic::AtomicUsize;
-    use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
-
-    use futures::stream::Stream;
-
-    use super::*;
-
-    struct Counter(AtomicUsize);
-
-    impl Counter {
-        fn to_waker(&'static self) -> Waker {
-            unsafe fn clone(counter: *const ()) -> RawWaker {
-                RawWaker::new(counter, &VTABLE)
-            }
-            unsafe fn wake(counter: *const ()) {
-                unsafe { (*(counter as *const Counter)).0.fetch_add(1, Ordering::SeqCst) };
-            }
-            static VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake, drop);
-            unsafe { Waker::from_raw(RawWaker::new(self as *const _ as *const (), &VTABLE)) }
-        }
-    }
-
-    #[test]
-    fn send_sync() {
-        static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (mut tx, mut rx) = channel::<()>();
-        assert_eq!(tx.send(1).unwrap(), ());
-        drop(tx);
-        let waker = COUNTER.to_waker();
-        let mut cx = Context::from_waker(&waker);
-        assert_eq!(
-            Pin::new(&mut rx).poll_next(&mut cx),
-            Poll::Ready(Some(Ok(NonZeroUsize::new(1).unwrap())))
-        );
-        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
-        assert_eq!(COUNTER.0.load(Ordering::SeqCst), 0);
-    }
-
-    #[test]
-    fn send_async() {
-        static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (mut tx, mut rx) = channel::<()>();
-        let waker = COUNTER.to_waker();
-        let mut cx = Context::from_waker(&waker);
-        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
-        assert_eq!(tx.send(1).unwrap(), ());
-        assert_eq!(
-            Pin::new(&mut rx).poll_next(&mut cx),
-            Poll::Ready(Some(Ok(NonZeroUsize::new(1).unwrap())))
-        );
-        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
-        drop(tx);
-        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
-        assert_eq!(COUNTER.0.load(Ordering::SeqCst), 2);
-    }
-
-    #[test]
-    fn send_err() {
-        static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (tx, mut rx) = channel::<()>();
-        assert_eq!(tx.send_err(()).unwrap(), ());
-        let waker = COUNTER.to_waker();
-        let mut cx = Context::from_waker(&waker);
-        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(Some(Err(()))));
-        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
-        assert_eq!(COUNTER.0.load(Ordering::SeqCst), 0);
-    }
-
-    #[test]
-    fn recv_many() {
-        static COUNTER: Counter = Counter(AtomicUsize::new(0));
-        let (mut tx, mut rx) = channel::<()>();
-        let waker = COUNTER.to_waker();
-        let mut cx = Context::from_waker(&waker);
-        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
-        assert_eq!(tx.send(1).unwrap(), ());
-        assert_eq!(tx.send(1).unwrap(), ());
-        assert_eq!(tx.send(1).unwrap(), ());
-        assert_eq!(
-            Pin::new(&mut rx).poll_next(&mut cx),
-            Poll::Ready(Some(Ok(NonZeroUsize::new(3).unwrap())))
-        );
-        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Pending);
-        drop(tx);
-        assert_eq!(Pin::new(&mut rx).poll_next(&mut cx), Poll::Ready(None));
-        assert_eq!(COUNTER.0.load(Ordering::SeqCst), 4);
     }
 }

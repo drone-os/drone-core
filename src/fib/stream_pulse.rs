@@ -157,7 +157,7 @@ where
                     Err(SendError::Canceled) => {
                         break;
                     }
-                    Err(SendError::Overflow) => match overflow() {
+                    Err(SendError::Full) => match overflow() {
                         Ok(()) => {}
                         Err(err) => {
                             drop(tx.send_err(err));
@@ -170,7 +170,7 @@ where
                         Ok(None) => {}
                         Ok(Some(pulses)) => match tx.send(pulses) {
                             Ok(()) | Err(SendError::Canceled) => {}
-                            Err(SendError::Overflow) => match overflow() {
+                            Err(SendError::Full) => match overflow() {
                                 Ok(()) => {}
                                 Err(err) => {
                                     drop(tx.send_err(err));
