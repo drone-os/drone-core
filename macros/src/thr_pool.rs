@@ -259,9 +259,9 @@ fn def_thr(
             }
 
             #[inline]
-            fn current() -> *const ::core::sync::atomic::AtomicU16 {
-                static CURRENT: ::core::sync::atomic::AtomicU16 =
-                    ::core::sync::atomic::AtomicU16::new(0);
+            fn current() -> *const ::drone_core::thr::CurrentState {
+                static CURRENT: ::drone_core::thr::CurrentState =
+                    ::drone_core::thr::CurrentState::new(0);
                 &CURRENT
             }
 

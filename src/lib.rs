@@ -57,6 +57,67 @@
 
 extern crate alloc;
 
+macro_rules! load_atomic {
+    ($atomic:expr, $ordering:ident) => {{
+        #[cfg(not(any(feature = "atomics", loom)))]
+        {
+            $atomic.load()
+        }
+        #[cfg(any(feature = "atomics", loom))]
+        {
+            $atomic.load(core::sync::atomic::Ordering::$ordering)
+        }
+    }};
+}
+
+macro_rules! store_atomic {
+    ($atomic:expr, $value:expr, $ordering:ident) => {{
+        #[cfg(not(any(feature = "atomics", loom)))]
+        {
+            $atomic.store($value)
+        }
+        #[cfg(any(feature = "atomics", loom))]
+        {
+            $atomic.store($value, core::sync::atomic::Ordering::$ordering)
+        }
+    }};
+}
+
+macro_rules! modify_atomic {
+    ($atomic:expr, $ordering_read:ident, $ordering_cas:ident, | $old:ident | $new:expr) => {{
+        #[cfg(not(any(feature = "atomics", loom)))]
+        {
+            $atomic.modify(|$old| $new)
+        }
+        #[cfg(any(feature = "atomics", loom))]
+        loop {
+            match $atomic.compare_exchange_weak(
+                $old,
+                $new,
+                core::sync::atomic::Ordering::$ordering_cas,
+                core::sync::atomic::Ordering::$ordering_read,
+            ) {
+                Ok(state) => break state,
+                Err(state) => $old = state,
+            }
+        }
+    }};
+}
+
+macro_rules! load_modify_atomic {
+    ($atomic:expr, $ordering_read:ident, $ordering_cas:ident, | $old:ident | $new:expr) => {{
+        #[cfg(not(any(feature = "atomics", loom)))]
+        {
+            $atomic.modify(|$old| $new)
+        }
+        #[cfg(any(feature = "atomics", loom))]
+        {
+            let mut $old = $atomic.load(core::sync::atomic::Ordering::$ordering_read);
+            modify_atomic!($atomic, $ordering_read, $ordering_cas, |$old| $new)
+        }
+    }};
+}
+
 pub mod bitfield;
 pub mod fib;
 pub mod heap;

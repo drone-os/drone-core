@@ -1,3 +1,5 @@
+#![cfg(loom)]
+
 #[macro_use]
 mod loom_spsc;
 
@@ -10,7 +12,6 @@ use futures::stream::FusedStream;
 
 use self::loom_spsc::*;
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_drop() {
     loom::model(|| {
@@ -22,7 +23,6 @@ fn loom_drop() {
     });
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_try_next() {
     loom::model(|| {
@@ -37,7 +37,6 @@ fn loom_try_next() {
     });
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_next() {
     let rx_states = statemap![
@@ -72,7 +71,6 @@ fn loom_next() {
     statemap_check_exhaustive(rx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_cancellation() {
     let tx_states = statemap![
@@ -104,7 +102,6 @@ fn loom_cancellation() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_cancellation_persistent() {
     let tx_states = statemap![
@@ -148,7 +145,6 @@ fn loom_cancellation_persistent() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_close_cancellation() {
     let tx_states = statemap![
@@ -180,7 +176,6 @@ fn loom_close_cancellation() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_close_cancellation_persistent() {
     let tx_states = statemap![
@@ -228,7 +223,6 @@ fn loom_close_cancellation_persistent() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_err_next() {
     let rx_states = statemap![
@@ -281,7 +275,6 @@ fn loom_send_err_next() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_err_next_persistent() {
     let rx_states = statemap![
@@ -346,7 +339,6 @@ fn loom_send_err_next_persistent() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_send_next_persistent() {
     let rx_states = statemap![
@@ -410,7 +402,6 @@ fn loom_send_send_next_persistent() {
     statemap_check_exhaustive(rx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_saturating_send_next_persistent() {
     let rx_states = statemap![
@@ -474,7 +465,6 @@ fn loom_send_saturating_send_next_persistent() {
     statemap_check_exhaustive(rx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_overflowing_send_next_persistent() {
     let rx_states = statemap![
@@ -524,7 +514,6 @@ fn loom_send_overflowing_send_next_persistent() {
     statemap_check_exhaustive(rx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_send_send_err_next_persistent() {
     let rx_states = statemap![
@@ -619,7 +608,6 @@ fn loom_send_send_send_err_next_persistent() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_err_close_next() {
     let rx_states = statemap![
@@ -665,7 +653,6 @@ fn loom_send_err_close_next() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_err_try_next() {
     let data_states = statemap![
@@ -697,7 +684,6 @@ fn loom_send_err_try_next() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_err_try_next_persistent() {
     let data_states = statemap![
@@ -741,7 +727,6 @@ fn loom_send_err_try_next_persistent() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_err_close_try_next() {
     let data_states = statemap![
@@ -775,7 +760,6 @@ fn loom_send_err_close_try_next() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_next_cancellation() {
     let tx_states = statemap![
@@ -817,7 +801,6 @@ fn loom_next_cancellation() {
     statemap_check_exhaustive(rx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_long_sequence_next_persistent() {
     loom::model(move || {
@@ -844,7 +827,6 @@ fn loom_send_long_sequence_next_persistent() {
     });
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_long_sequence_try_next_persistent() {
     loom::model(move || {

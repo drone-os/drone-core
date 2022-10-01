@@ -35,6 +35,9 @@ pub struct Atomic<T: sealed::AtMostWordSized + Copy> {
     inner: UnsafeCell<T>,
 }
 
+unsafe impl<T: sealed::AtMostWordSized + Copy> Send for Atomic<T> {}
+unsafe impl<T: sealed::AtMostWordSized + Copy> Sync for Atomic<T> {}
+
 impl<T: sealed::AtMostWordSized + Copy> Atomic<T> {
     /// Creates a new `Atomic<T>`.
     pub const fn new(value: T) -> Self {

@@ -1,3 +1,4 @@
+#![cfg(feature = "atomics")]
 #![no_implicit_prelude]
 
 use ::drone_core::thr;

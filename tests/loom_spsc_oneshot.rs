@@ -1,3 +1,5 @@
+#![cfg(loom)]
+
 #[macro_use]
 mod loom_spsc;
 
@@ -10,7 +12,6 @@ use futures::prelude::*;
 
 use self::loom_spsc::*;
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_drop() {
     loom::model(|| {
@@ -22,7 +23,6 @@ fn loom_drop() {
     });
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_try_recv() {
     loom::model(|| {
@@ -37,7 +37,6 @@ fn loom_try_recv() {
     });
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_recv() {
     let rx_states = statemap![
@@ -70,7 +69,6 @@ fn loom_recv() {
     statemap_check_exhaustive(rx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_cancellation() {
     let tx_states = statemap![
@@ -102,7 +100,6 @@ fn loom_cancellation() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_cancellation_persistent() {
     let tx_states = statemap![
@@ -146,7 +143,6 @@ fn loom_cancellation_persistent() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_close_cancellation() {
     let tx_states = statemap![
@@ -178,7 +174,6 @@ fn loom_close_cancellation() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_close_cancellation_persistent() {
     let tx_states = statemap![
@@ -226,7 +221,6 @@ fn loom_close_cancellation_persistent() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_recv() {
     let rx_states = statemap![
@@ -277,7 +271,6 @@ fn loom_send_recv() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_recv_persistent() {
     let rx_states = statemap![
@@ -339,7 +332,6 @@ fn loom_send_recv_persistent() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_close_recv() {
     let rx_states = statemap![
@@ -384,7 +376,6 @@ fn loom_send_close_recv() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_try_recv() {
     let data_states = statemap![
@@ -415,7 +406,6 @@ fn loom_send_try_recv() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_try_recv_persistent() {
     let data_states = statemap![
@@ -457,7 +447,6 @@ fn loom_send_try_recv_persistent() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_close_try_recv() {
     let data_states = statemap![
@@ -490,7 +479,6 @@ fn loom_send_close_try_recv() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_recv_cancellation() {
     let tx_states = statemap![

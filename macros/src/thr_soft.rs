@@ -172,7 +172,8 @@ fn def_pool(
         ::drone_core::thr::pool! {
             #(#thr_attrs)*
             thread => #thr_vis #thr_ident {
-                priority: ::core::sync::atomic::AtomicU8 = ::core::sync::atomic::AtomicU8::new(0);
+                priority: ::drone_core::thr::PriorityState =
+                    ::drone_core::thr::PriorityState::new(0);
                 #thr_tokens
             };
 
@@ -207,24 +208,24 @@ fn def_soft(thr: &Thr, set_pending: Option<&ExprPath>) -> TokenStream2 {
     quote! {
         unsafe impl ::drone_core::thr::SoftThread for #thr_ident {
             #[inline]
-            fn pending() -> *const ::core::sync::atomic::AtomicU32 {
+            fn pending() -> *const ::drone_core::thr::PendingState {
                 #[allow(clippy::declare_interior_mutable_const)]
-                const VALUE: ::core::sync::atomic::AtomicU32 =
-                    ::core::sync::atomic::AtomicU32::new(0);
+                const VALUE: ::drone_core::thr::PendingState =
+                    ::drone_core::thr::PendingState::new(0);
                 const COUNT: usize = ::drone_core::thr::pending_size::<#thr_ident>();
-                static PENDING: [::core::sync::atomic::AtomicU32; COUNT] = [VALUE; COUNT];
+                static PENDING: [::drone_core::thr::PendingState; COUNT] = [VALUE; COUNT];
                 PENDING.as_ptr()
             }
 
             #[inline]
-            fn pending_priority() -> *const ::core::sync::atomic::AtomicU8 {
-                static PENDING_PRIORITY: ::core::sync::atomic::AtomicU8 =
-                    ::core::sync::atomic::AtomicU8::new(0);
+            fn pending_priority() -> *const ::drone_core::thr::PendingPriorityState {
+                static PENDING_PRIORITY: ::drone_core::thr::PendingPriorityState =
+                    ::drone_core::thr::PendingPriorityState::new(0);
                 &PENDING_PRIORITY
             }
 
             #[inline]
-            fn priority(&self) -> *const ::core::sync::atomic::AtomicU8 {
+            fn priority(&self) -> *const ::drone_core::thr::PriorityState {
                 &self.priority
             }
 

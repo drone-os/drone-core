@@ -35,19 +35,25 @@ const fn pending_bit<T: SoftThread>(thr_idx: u16) -> u32 {
 }
 
 #[cfg(not(feature = "atomics"))]
-type PendingState = Atomic<u32>;
+#[doc(hidden)]
+pub type PendingState = Atomic<u32>;
 #[cfg(feature = "atomics")]
-type PendingState = AtomicU32;
+#[doc(hidden)]
+pub type PendingState = AtomicU32;
 
 #[cfg(not(feature = "atomics"))]
-type PendingPriorityState = Atomic<u8>;
+#[doc(hidden)]
+pub type PendingPriorityState = Atomic<u8>;
 #[cfg(feature = "atomics")]
-type PendingPriorityState = AtomicU8;
+#[doc(hidden)]
+pub type PendingPriorityState = AtomicU8;
 
 #[cfg(not(feature = "atomics"))]
-type PriorityState = Atomic<u8>;
+#[doc(hidden)]
+pub type PriorityState = Atomic<u8>;
 #[cfg(feature = "atomics")]
-type PriorityState = AtomicU8;
+#[doc(hidden)]
+pub type PriorityState = AtomicU8;
 
 /// Software-managed thread.
 ///

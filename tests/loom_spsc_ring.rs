@@ -1,3 +1,5 @@
+#![cfg(loom)]
+
 #[macro_use]
 mod loom_spsc;
 
@@ -10,7 +12,6 @@ use futures::stream::FusedStream;
 
 use self::loom_spsc::*;
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_drop() {
     loom::model(|| {
@@ -22,7 +23,6 @@ fn loom_drop() {
     });
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_try_next() {
     loom::model(|| {
@@ -37,7 +37,6 @@ fn loom_try_next() {
     });
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_next() {
     let rx_states = statemap![
@@ -72,7 +71,6 @@ fn loom_next() {
     statemap_check_exhaustive(rx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_poll_close() {
     let tx_states = statemap![
@@ -105,7 +103,6 @@ fn loom_poll_close() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_poll_close_persistent() {
     let tx_states = statemap![
@@ -152,7 +149,6 @@ fn loom_poll_close_persistent() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_close_poll_close() {
     let tx_states = statemap![
@@ -185,7 +181,6 @@ fn loom_close_poll_close() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_close_poll_close_persistent() {
     let tx_states = statemap![
@@ -236,7 +231,6 @@ fn loom_close_poll_close_persistent() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_poll_flush() {
     let tx_states = statemap![0 => [0], 1 => [0]];
@@ -256,7 +250,6 @@ fn loom_poll_flush() {
     statemap_check_exhaustive(tx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_err_next() {
     let rx_states = statemap![
@@ -309,7 +302,6 @@ fn loom_send_err_next() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_err_next_persistent() {
     let rx_states = statemap![
@@ -374,7 +366,6 @@ fn loom_send_err_next_persistent() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_feed_next_persistent() {
     let tx_states = statemap![
@@ -454,7 +445,6 @@ fn loom_feed_next_persistent() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_feed_send_err_next_persistent() {
     let tx_states = statemap![
@@ -564,7 +554,6 @@ fn loom_feed_send_err_next_persistent() {
     statemap_check_exhaustive(err_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_next_persistent() {
     let tx_states = statemap![
@@ -656,7 +645,6 @@ fn loom_send_next_persistent() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_err_close_next() {
     let rx_states = statemap![
@@ -702,7 +690,6 @@ fn loom_send_err_close_next() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_err_try_next() {
     let data_states = statemap![
@@ -734,7 +721,6 @@ fn loom_send_err_try_next() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_err_try_next_persistent() {
     let data_states = statemap![
@@ -778,7 +764,6 @@ fn loom_send_err_try_next_persistent() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_err_close_try_next() {
     let data_states = statemap![
@@ -812,7 +797,6 @@ fn loom_send_err_close_try_next() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_next_poll_close() {
     let tx_states = statemap![
@@ -854,7 +838,6 @@ fn loom_next_poll_close() {
     statemap_check_exhaustive(rx_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_send_overwrite_next() {
     let rx_states = statemap![
@@ -921,7 +904,6 @@ fn loom_send_overwrite_next() {
     statemap_check_exhaustive(data1_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_try_send_long_sequence_next_persistent() {
     let data_states = statemap![
@@ -982,7 +964,6 @@ fn loom_try_send_long_sequence_next_persistent() {
     statemap_check_exhaustive(data_states);
 }
 
-#[cfg_attr(not(loom), ignore)]
 #[test]
 fn loom_try_send_long_sequence_try_next_persistent() {
     let data_states = statemap![

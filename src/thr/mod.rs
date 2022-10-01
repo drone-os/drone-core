@@ -54,9 +54,6 @@ pub mod prelude;
 mod exec;
 mod soft;
 
-#[cfg(feature = "atomics")]
-use core::sync::atomic::{AtomicU16, Ordering};
-
 /// Defines a thread pool.
 ///
 /// See [the module level documentation](self) for details.
@@ -69,11 +66,19 @@ pub use drone_core_macros::thr_pool as pool;
 pub use drone_core_macros::thr_soft as soft;
 
 pub use self::exec::{ExecOutput, ThrExec};
-pub use self::soft::{pending_size, SoftThrToken, SoftThread, PRIORITY_LEVELS};
+pub use self::soft::{
+    pending_size, PendingPriorityState, PendingState, PriorityState, SoftThrToken, SoftThread,
+    PRIORITY_LEVELS,
+};
 use crate::fib::{Chain, RootFiber};
-#[cfg(not(feature = "atomics"))]
-use crate::sync::soft_atomic::Atomic;
 use crate::token::Token;
+
+#[cfg(not(feature = "atomics"))]
+#[doc(hidden)]
+pub type CurrentState = crate::sync::soft_atomic::Atomic<u16>;
+#[cfg(feature = "atomics")]
+#[doc(hidden)]
+pub type CurrentState = core::sync::atomic::AtomicU16;
 
 /// Basic thread.
 ///
@@ -95,12 +100,8 @@ pub unsafe trait Thread: Sized + Sync + 'static {
     /// method on the corresponding thread token instance.
     fn pool() -> *const Self;
 
-    #[cfg(not(feature = "atomics"))]
     /// Returns a raw pointer to the current thread index storage.
-    fn current() -> *const Atomic<u16>;
-    #[cfg(feature = "atomics")]
-    /// Returns a raw pointer to the current thread index storage.
-    fn current() -> *const AtomicU16;
+    fn current() -> *const CurrentState;
 
     /// Returns a reference to the fiber chain.
     fn fib_chain(&self) -> &Chain;
@@ -133,10 +134,7 @@ pub unsafe trait Thread: Sized + Sync + 'static {
     #[inline]
     fn local_checked() -> Option<&'static Self::Local> {
         unsafe {
-            #[cfg(not(feature = "atomics"))]
-            let current = (*Self::current()).load();
-            #[cfg(feature = "atomics")]
-            let current = (*Self::current()).load(Ordering::Relaxed);
+            let current = load_atomic!(*Self::current(), Relaxed);
             (current != 0)
                 .then(|| (*Self::pool().add(usize::from(current) - 1)).local_opaque().reveal())
         }
@@ -160,19 +158,11 @@ pub unsafe trait Thread: Sized + Sync + 'static {
     /// * `thr_idx` must be less than [`Thread::COUNT`].
     #[inline]
     unsafe fn call(thr_idx: u16, f: unsafe fn(&'static Self)) {
-        #[cfg(not(feature = "atomics"))]
         unsafe {
-            let preempted = (*Self::current()).load();
-            (*Self::current()).store(thr_idx + 1);
+            let preempted = load_atomic!(*Self::current(), Relaxed);
+            store_atomic!(*Self::current(), thr_idx + 1, Relaxed);
             f(&*Self::pool().add(usize::from(thr_idx)));
-            (*Self::current()).store(preempted);
-        }
-        #[cfg(feature = "atomics")]
-        unsafe {
-            let preempted = (*Self::current()).load(Ordering::Relaxed);
-            (*Self::current()).store(thr_idx + 1, Ordering::Relaxed);
-            f(&*Self::pool().add(usize::from(thr_idx)));
-            (*Self::current()).store(preempted, Ordering::Relaxed);
+            store_atomic!(*Self::current(), preempted, Relaxed);
         }
     }
 }
