@@ -76,24 +76,26 @@ unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 unsafe impl<T: ?Sized + Send> Send for MutexLockFuture<'_, T> {}
 
 impl<T> Mutex<T> {
-    /// Creates a new mutex in an unlocked state ready for use.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use drone_core::sync::Mutex;
-    ///
-    /// let mutex = Mutex::new(0);
-    /// ```
-    #[inline]
-    pub const fn new(data: T) -> Self {
-        Self {
-            #[cfg(not(feature = "atomics"))]
-            state: Atomic::new(0),
-            #[cfg(feature = "atomics")]
-            state: AtomicU8::new(0),
-            waiters: LinkedList::new(),
-            data: UnsafeCell::new(data),
+    maybe_const_fn! {
+        /// Creates a new mutex in an unlocked state ready for use.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use drone_core::sync::Mutex;
+        ///
+        /// let mutex = Mutex::new(0);
+        /// ```
+        #[inline]
+        pub const fn new(data: T) -> Self {
+            Self {
+                #[cfg(not(feature = "atomics"))]
+                state: Atomic::new(0),
+                #[cfg(feature = "atomics")]
+                state: AtomicU8::new(0),
+                waiters: LinkedList::new(),
+                data: UnsafeCell::new(data),
+            }
         }
     }
 

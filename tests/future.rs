@@ -1,3 +1,4 @@
+#![cfg(not(loom))]
 #![feature(generators)]
 #![feature(never_type)]
 #![feature(prelude_import)]

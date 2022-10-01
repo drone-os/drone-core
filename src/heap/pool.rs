@@ -28,15 +28,6 @@ pub struct Pool {
 
 unsafe impl Sync for Pool {}
 
-macro_rules! maybe_const_fn {
-    ($(#[$($attr:tt)*])* $vis:vis const fn $name:ident($($args:tt)*) -> $ret:ty { $($body:tt)* }) => {
-        #[cfg(not(loom))]
-        $(#[$($attr)*])* $vis const fn $name($($args)*) -> $ret { $($body)* }
-        #[cfg(loom)]
-        $(#[$($attr)*])* $vis fn $name($($args)*) -> $ret { $($body)* }
-    };
-}
-
 impl Pool {
     maybe_const_fn! {
         /// Creates a new `Pool`.

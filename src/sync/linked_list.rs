@@ -4,18 +4,17 @@ use core::iter::{FromIterator, FusedIterator};
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
 use core::ptr;
-#[cfg(feature = "atomics")]
-use core::sync::atomic::{AtomicPtr, Ordering};
 
+#[cfg(all(feature = "atomics", not(loom)))]
+type AtomicPtr<T> = core::sync::atomic::AtomicPtr<Node<T>>;
+#[cfg(all(feature = "atomics", loom))]
+type AtomicPtr<T> = loom::sync::atomic::AtomicPtr<Node<T>>;
 #[cfg(not(feature = "atomics"))]
-use crate::sync::soft_atomic::Atomic;
+type AtomicPtr<T> = crate::sync::soft_atomic::Atomic<*mut Node<T>>;
 
 /// A lock-free singly-linked list.
 pub struct LinkedList<T> {
-    #[cfg(not(feature = "atomics"))]
-    head: Atomic<*mut Node<T>>,
-    #[cfg(feature = "atomics")]
-    head: AtomicPtr<Node<T>>,
+    head: AtomicPtr<T>,
 }
 
 /// A node of [`LinkedList`].
@@ -51,10 +50,7 @@ pub struct DrainFilterRaw<'a, T, F>
 where
     F: FnMut(*mut Node<T>) -> bool,
 {
-    #[cfg(not(feature = "atomics"))]
-    head: &'a Atomic<*mut Node<T>>,
-    #[cfg(feature = "atomics")]
-    head: &'a AtomicPtr<Node<T>>,
+    head: &'a AtomicPtr<T>,
     prev: *mut Node<T>,
     curr: *mut Node<T>,
     filter: F,
@@ -63,22 +59,18 @@ where
 unsafe impl<T> Sync for LinkedList<T> {}
 
 impl<T> LinkedList<T> {
-    /// Creates an empty [`LinkedList`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use drone_core::sync::LinkedList;
-    ///
-    /// let list: LinkedList<u32> = LinkedList::new();
-    /// ```
-    #[inline]
-    pub const fn new() -> Self {
-        Self {
-            #[cfg(not(feature = "atomics"))]
-            head: Atomic::new(ptr::null_mut()),
-            #[cfg(feature = "atomics")]
-            head: AtomicPtr::new(ptr::null_mut()),
+    maybe_const_fn! {
+        /// Creates an empty [`LinkedList`].
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use drone_core::sync::LinkedList;
+        ///
+        /// let list: LinkedList<u32> = LinkedList::new();
+        /// ```
+        pub const fn new() -> Self {
+            Self { head: AtomicPtr::new(ptr::null_mut()) }
         }
     }
 
@@ -97,13 +89,8 @@ impl<T> LinkedList<T> {
     /// list.push("foo");
     /// assert!(!list.is_empty());
     /// ```
-    #[inline]
     pub fn is_empty(&self) -> bool {
-        #[cfg(not(feature = "atomics"))]
-        let head = self.head.load();
-        #[cfg(feature = "atomics")]
-        let head = self.head.load(Ordering::Relaxed);
-        head.is_null()
+        load_atomic!(self.head, Relaxed).is_null()
     }
 
     /// Adds an element first in the list.
@@ -122,7 +109,6 @@ impl<T> LinkedList<T> {
     /// assert_eq!(list.pop().unwrap(), 1);
     /// assert_eq!(list.pop().unwrap(), 2);
     /// ```
-    #[inline]
     pub fn push(&self, data: T) {
         unsafe { self.push_raw(Box::into_raw(Box::new(Node::from(data)))) };
     }
@@ -148,25 +134,11 @@ impl<T> LinkedList<T> {
     /// The `node` parameter must point to a valid allocation. Other list
     /// methods, which drop nodes in-place, assume that `node` is created using
     /// [`Box::from_raw`].
-    #[inline]
     pub unsafe fn push_raw(&self, node: *mut Node<T>) {
-        let modify = |curr| {
-            unsafe { (*node).next = curr };
+        load_modify_atomic!(self.head, Relaxed, Relaxed, |curr| unsafe {
+            (*node).next = curr;
             node
-        };
-        #[cfg(not(feature = "atomics"))]
-        self.head.modify(modify);
-        #[cfg(feature = "atomics")]
-        loop {
-            let curr = self.head.load(Ordering::Relaxed);
-            if self
-                .head
-                .compare_exchange_weak(curr, modify(curr), Ordering::Release, Ordering::Relaxed)
-                .is_ok()
-            {
-                break;
-            }
-        }
+        });
     }
 
     /// Removes the first element and returns it, or `None` if the list is
@@ -188,7 +160,6 @@ impl<T> LinkedList<T> {
     /// assert_eq!(d.pop(), Some(1));
     /// assert_eq!(d.pop(), None);
     /// ```
-    #[inline]
     pub fn pop(&self) -> Option<T> {
         unsafe { self.pop_raw().map(|node| Box::from_raw(node).value) }
     }
@@ -218,28 +189,11 @@ impl<T> LinkedList<T> {
     /// # Safety
     ///
     /// It's responsibility of the caller to de-allocate the node.
-    #[inline]
     pub unsafe fn pop_raw(&self) -> Option<*mut Node<T>> {
-        let modify = |curr: *mut Node<T>| (!curr.is_null()).then(|| unsafe { (*curr).next });
-        #[cfg(not(feature = "atomics"))]
-        {
-            self.head.try_modify(modify).ok()
-        }
-        #[cfg(feature = "atomics")]
-        loop {
-            let curr = self.head.load(Ordering::Acquire);
-            if let Some(next) = modify(curr) {
-                if self
-                    .head
-                    .compare_exchange_weak(curr, next, Ordering::Relaxed, Ordering::Relaxed)
-                    .is_ok()
-                {
-                    break Some(curr);
-                }
-            } else {
-                break None;
-            }
-        }
+        load_try_modify_atomic!(self.head, Acquire, Acquire, |curr| unsafe {
+            (!curr.is_null()).then(|| (*curr).next)
+        })
+        .ok()
     }
 
     /// Provides a forward iterator with mutable references.
@@ -265,7 +219,6 @@ impl<T> LinkedList<T> {
     /// assert_eq!(iter.next(), Some(&mut 10));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[inline]
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         // Because `self` is a unique reference, no node can be deleted.
         unsafe { self.iter_mut_unchecked() }
@@ -281,15 +234,8 @@ impl<T> LinkedList<T> {
     /// * Nodes shouldn't be removed.
     /// * No other methods that produce mutable references (including this
     ///   method) should be called.
-    #[inline]
     pub unsafe fn iter_mut_unchecked(&self) -> IterMut<'_, T> {
-        IterMut {
-            #[cfg(not(feature = "atomics"))]
-            curr: self.head.load(),
-            #[cfg(feature = "atomics")]
-            curr: self.head.load(Ordering::Acquire),
-            marker: PhantomData,
-        }
+        IterMut { curr: load_atomic!(self.head, Acquire), marker: PhantomData }
     }
 
     /// Creates an iterator which uses a closure to determine if an element
@@ -318,7 +264,6 @@ impl<T> LinkedList<T> {
     /// assert_eq!(evens.into_iter().collect::<Vec<_>>(), vec![2, 4, 6, 8, 14]);
     /// assert_eq!(odds.into_iter().collect::<Vec<_>>(), vec![15, 13, 11, 9, 5, 3, 1]);
     /// ```
-    #[inline]
     pub fn drain_filter<'a, F: 'a>(
         &'a mut self,
         mut filter: F,
@@ -342,7 +287,6 @@ impl<T> LinkedList<T> {
     /// * Nodes shouldn't be removed.
     /// * No other methods that produce mutable references (including this
     ///   method) should be called.
-    #[inline]
     pub unsafe fn drain_filter_raw<F>(
         &self,
         filter: F,
@@ -353,19 +297,15 @@ impl<T> LinkedList<T> {
         DrainFilterRaw {
             head: &self.head,
             prev: ptr::null_mut(),
-            #[cfg(not(feature = "atomics"))]
-            curr: self.head.load(),
-            #[cfg(feature = "atomics")]
-            curr: self.head.load(Ordering::Acquire),
+            curr: load_atomic!(self.head, Acquire),
             filter,
         }
     }
 }
 
 impl<T> Drop for LinkedList<T> {
-    #[inline]
     fn drop(&mut self) {
-        let mut curr = *self.head.get_mut();
+        let mut curr = load_atomic!(self.head, Acquire);
         while !curr.is_null() {
             let next = unsafe { (*curr).next };
             drop(unsafe { Box::from_raw(curr) });
@@ -375,7 +315,6 @@ impl<T> Drop for LinkedList<T> {
 }
 
 impl<T> Extend<T> for LinkedList<T> {
-    #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         for elem in iter {
             self.push(elem);
@@ -384,14 +323,12 @@ impl<T> Extend<T> for LinkedList<T> {
 }
 
 impl<'a, T: 'a + Copy> Extend<&'a T> for LinkedList<T> {
-    #[inline]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().copied());
     }
 }
 
 impl<T> FromIterator<T> for LinkedList<T> {
-    #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut list = Self::new();
         list.extend(iter);
@@ -403,7 +340,6 @@ impl<T> IntoIterator for LinkedList<T> {
     type IntoIter = IntoIter<T>;
     type Item = T;
 
-    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         IntoIter { list: self }
     }
@@ -412,14 +348,13 @@ impl<T> IntoIterator for LinkedList<T> {
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
-    #[inline]
     fn next(&mut self) -> Option<T> {
-        let curr = *self.list.head.get_mut();
+        let curr = load_atomic!(self.list.head, Acquire);
         if curr.is_null() {
             None
         } else {
             let next = unsafe { (*curr).next };
-            *self.list.head.get_mut() = next;
+            store_atomic!(self.list.head, next, Relaxed);
             Some(unsafe { Box::from_raw(curr) }.value)
         }
     }
@@ -430,7 +365,6 @@ impl<T> FusedIterator for IntoIter<T> {}
 impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
-    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.curr.is_null() {
             None
@@ -449,7 +383,6 @@ where
     F: FnMut(*mut Node<T>) -> bool,
 {
     /// Returns `true` if the iterator has reached the end of the linked list.
-    #[inline]
     pub fn is_end(&self) -> bool {
         self.raw.is_end()
     }
@@ -461,7 +394,6 @@ where
 {
     type Item = T;
 
-    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.raw.next().map(|node| unsafe { Box::from_raw(node).value })
     }
@@ -474,26 +406,18 @@ where
     F: FnMut(*mut Node<T>) -> bool,
 {
     /// Returns `true` if the iterator has reached the end of the linked list.
-    #[inline]
     pub fn is_end(&self) -> bool {
         self.curr.is_null()
     }
 
     fn cut_out(&mut self, next: *mut Node<T>) {
         if self.prev.is_null() {
-            #[cfg(not(feature = "atomics"))]
-            let result = self.head.try_modify(|curr| (curr == self.curr).then_some(next));
-            #[cfg(feature = "atomics")]
-            let result =
-                self.head.compare_exchange(self.curr, next, Ordering::Relaxed, Ordering::Relaxed);
-            match result {
-                Ok(_) => return,
-                Err(prev) => {
-                    self.prev = prev;
-                    while unsafe { (*self.prev).next } != self.curr {
-                        self.prev = unsafe { (*self.prev).next };
-                    }
-                }
+            let result = load_try_modify_atomic!(self.head, Relaxed, Relaxed, |head| {
+                (head == self.curr).then_some(next)
+            });
+            self.prev = if let Err(prev) = result { prev } else { return };
+            while unsafe { (*self.prev).next } != self.curr {
+                self.prev = unsafe { (*self.prev).next };
             }
         }
         unsafe { (*self.prev).next = next };
@@ -506,7 +430,6 @@ where
 {
     type Item = *mut Node<T>;
 
-    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         while !self.is_end() {
             let next = unsafe { (*self.curr).next };
@@ -527,7 +450,6 @@ impl<T, F> Drop for DrainFilterRaw<'_, T, F>
 where
     F: FnMut(*mut Node<T>) -> bool,
 {
-    #[inline]
     fn drop(&mut self) {
         self.for_each(drop);
     }
@@ -536,7 +458,6 @@ where
 impl<T, F> FusedIterator for DrainFilterRaw<'_, T, F> where F: FnMut(*mut Node<T>) -> bool {}
 
 impl<T> From<T> for Node<T> {
-    #[inline]
     fn from(value: T) -> Self {
         Self { value, next: ptr::null_mut() }
     }
@@ -545,14 +466,12 @@ impl<T> From<T> for Node<T> {
 impl<T> Deref for Node<T> {
     type Target = T;
 
-    #[inline]
     fn deref(&self) -> &T {
         &self.value
     }
 }
 
 impl<T> DerefMut for Node<T> {
-    #[inline]
     fn deref_mut(&mut self) -> &mut T {
         &mut self.value
     }

@@ -25,10 +25,12 @@ where
 }
 
 impl Chain {
-    /// Creates an empty fiber chain.
-    #[inline]
-    pub const fn new() -> Self {
-        Self { list: LinkedList::new() }
+    maybe_const_fn! {
+        /// Creates an empty fiber chain.
+        #[inline]
+        pub const fn new() -> Self {
+            Self { list: LinkedList::new() }
+        }
     }
 
     /// Adds a fiber first in the chain.
