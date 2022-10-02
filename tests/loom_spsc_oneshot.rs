@@ -2,8 +2,6 @@
 
 #[macro_use]
 mod loom_helpers;
-#[macro_use]
-mod loom_spsc_helpers;
 
 use std::pin::Pin;
 use std::task::Poll;
@@ -13,7 +11,6 @@ use futures::future::FusedFuture;
 use futures::prelude::*;
 
 use self::loom_helpers::*;
-use self::loom_spsc_helpers::*;
 
 #[test]
 fn loom_drop() {

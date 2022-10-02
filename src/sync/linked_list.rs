@@ -451,7 +451,11 @@ where
     F: FnMut(*mut Node<T>) -> bool,
 {
     fn drop(&mut self) {
-        self.for_each(drop);
+        unsafe {
+            for node in self {
+                drop(Box::from_raw(node));
+            }
+        }
     }
 }
 
