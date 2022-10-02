@@ -1,16 +1,28 @@
 use core::cell::UnsafeCell;
 use core::fmt;
 use core::future::Future;
+use core::hint::unreachable_unchecked;
 use core::mem::MaybeUninit;
 use core::ops::{Deref, DerefMut};
 use core::pin::Pin;
-#[cfg(feature = "atomics")]
-use core::sync::atomic::{AtomicU8, Ordering};
+use core::ptr::NonNull;
 use core::task::{Context, Poll, Waker};
 
 use crate::sync::linked_list::{LinkedList, Node};
+
+#[cfg(all(feature = "atomics", not(loom)))]
+type MutexState = core::sync::atomic::AtomicU8;
+#[cfg(all(feature = "atomics", loom))]
+type MutexState = loom::sync::atomic::AtomicU8;
 #[cfg(not(feature = "atomics"))]
-use crate::sync::soft_atomic::Atomic;
+type MutexState = crate::sync::soft_atomic::Atomic<u8>;
+
+#[cfg(all(feature = "atomics", not(loom)))]
+type WaiterTaken = core::sync::atomic::AtomicBool;
+#[cfg(all(feature = "atomics", loom))]
+type WaiterTaken = loom::sync::atomic::AtomicBool;
+#[cfg(not(feature = "atomics"))]
+type WaiterTaken = crate::sync::soft_atomic::Atomic<bool>;
 
 /// A mutual exclusion primitive useful for protecting shared data.
 ///
@@ -24,16 +36,13 @@ use crate::sync::soft_atomic::Atomic;
 /// [`lock`]: Self::lock
 /// [`try_lock`]: Self::try_lock
 pub struct Mutex<T: ?Sized> {
-    #[cfg(not(feature = "atomics"))]
-    state: Atomic<u8>,
-    #[cfg(feature = "atomics")]
-    state: AtomicU8,
+    state: MutexState,
     waiters: LinkedList<Waiter>,
     data: UnsafeCell<T>,
 }
 
-const DATA_LOCKED: u8 = 1 << 0;
-const WAITERS_LOCKED: u8 = 1 << 1;
+const DATA_LOCK: u8 = 1 << 0;
+const WAITERS_LOCK: u8 = 1 << 1;
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
 /// dropped (falls out of scope), the lock will be unlocked.
@@ -53,21 +62,16 @@ pub struct MutexGuard<'a, T: ?Sized> {
 
 /// A future which resolves when the target mutex has been successfully
 /// acquired.
+#[must_use = "futures do nothing unless you `.await` or poll them"]
 pub struct MutexLockFuture<'a, T: ?Sized> {
     mutex: &'a Mutex<T>,
-    waiter: Option<*const Node<Waiter>>,
+    waiter: Option<NonNull<Node<Waiter>>>,
 }
 
 struct Waiter {
-    #[cfg(not(feature = "atomics"))]
-    state: Atomic<u8>,
-    #[cfg(feature = "atomics")]
-    state: AtomicU8,
-    wakers: [UnsafeCell<MaybeUninit<Waker>>; 2],
+    taken: WaiterTaken,
+    waker: UnsafeCell<MaybeUninit<Waker>>,
 }
-
-const WAITER_INDEX: u8 = 1 << 0;
-const WAITER_DISABLED: u8 = 1 << 1;
 
 unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
 unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
@@ -86,13 +90,9 @@ impl<T> Mutex<T> {
         ///
         /// let mutex = Mutex::new(0);
         /// ```
-        #[inline]
         pub const fn new(data: T) -> Self {
             Self {
-                #[cfg(not(feature = "atomics"))]
-                state: Atomic::new(0),
-                #[cfg(feature = "atomics")]
-                state: AtomicU8::new(0),
+                state: MutexState::new(0),
                 waiters: LinkedList::new(),
                 data: UnsafeCell::new(data),
             }
@@ -109,7 +109,6 @@ impl<T> Mutex<T> {
     /// let mutex = Mutex::new(0);
     /// assert_eq!(mutex.into_inner(), 0);
     /// ```
-    #[inline]
     pub fn into_inner(self) -> T {
         self.data.into_inner()
     }
@@ -121,20 +120,18 @@ impl<T: ?Sized> Mutex<T> {
     /// If the lock could not be acquired at this time, then [`None`] is
     /// returned. Otherwise, an RAII guard is returned. The lock will be
     /// unlocked when the guard is dropped.
-    #[inline]
     pub fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
-        #[cfg(not(feature = "atomics"))]
-        let fetch = self.state.modify(|state| state | DATA_LOCKED);
-        #[cfg(feature = "atomics")]
-        let fetch = self.state.fetch_or(DATA_LOCKED, Ordering::Acquire);
-        if fetch & DATA_LOCKED == 0 { Some(MutexGuard { mutex: self }) } else { None }
+        if fetch_or_atomic!(self.state, DATA_LOCK, Acquire) & DATA_LOCK == 0 {
+            Some(MutexGuard { mutex: self })
+        } else {
+            None
+        }
     }
 
     /// Acquires this lock asynchronously.
     ///
     /// This method returns a future that will resolve once the lock has been
     /// successfully acquired.
-    #[inline]
     pub fn lock(&self) -> MutexLockFuture<'_, T> {
         MutexLockFuture { mutex: self, waiter: None }
     }
@@ -153,48 +150,24 @@ impl<T: ?Sized> Mutex<T> {
     /// *mutex.get_mut() = 10;
     /// assert_eq!(*mutex.try_lock().unwrap(), 10);
     /// ```
-    #[inline]
     pub fn get_mut(&mut self) -> &mut T {
         unsafe { &mut *self.data.get() }
     }
 
     fn unlock(&self) {
-        #[cfg(not(feature = "atomics"))]
-        let fetch = self.state.modify(|state| state | WAITERS_LOCKED);
-        #[cfg(feature = "atomics")]
-        let fetch = self.state.fetch_or(WAITERS_LOCKED, Ordering::Acquire);
-        let waiters_lock = fetch & WAITERS_LOCKED == 0;
-        if waiters_lock {
+        let state = load_modify_atomic!(self.state, Acquire, AcqRel, |state| {
+            state & !DATA_LOCK | WAITERS_LOCK
+        });
+        if state & WAITERS_LOCK == 0 {
             // This is the only place where nodes can be removed.
-            unsafe {
-                self.waiters
-                    .drain_filter_raw(|waiter| (*waiter).is_disabled())
-                    .for_each(|node| drop(Box::from_raw(node)));
-            }
+            unsafe { self.waiters.drain_filter_raw(|waiter| (*waiter).is_taken()) };
+            fetch_and_atomic!(self.state, !WAITERS_LOCK, Release);
         }
-        #[cfg(not(feature = "atomics"))]
-        self.state.modify(|state| state & !DATA_LOCKED);
-        #[cfg(feature = "atomics")]
-        self.state.fetch_and(!DATA_LOCKED, Ordering::Release);
-        // At this stage no nodes can't be removed.
         for waiter in unsafe { self.waiters.iter_mut_unchecked() } {
-            if waiter.wake() {
+            if let Some(waker) = waiter.take() {
+                waker.wake();
                 break;
             }
-        }
-        if waiters_lock {
-            #[cfg(not(feature = "atomics"))]
-            self.state.modify(|state| state & !WAITERS_LOCKED);
-            #[cfg(feature = "atomics")]
-            self.state.fetch_and(!WAITERS_LOCKED, Ordering::Release);
-        }
-    }
-}
-
-impl<T: ?Sized> MutexLockFuture<'_, T> {
-    fn disable_waiter(&mut self) {
-        if let Some(waiter) = self.waiter.take() {
-            unsafe { (*waiter).disable() };
         }
     }
 }
@@ -203,20 +176,26 @@ impl<'a, T: ?Sized> Future for MutexLockFuture<'a, T> {
     type Output = MutexGuard<'a, T>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Some(lock) = self.mutex.try_lock() {
-            self.disable_waiter();
-            return Poll::Ready(lock);
-        }
-        if let Some(waiter) = self.waiter {
-            unsafe { (*waiter).register(cx.waker()) };
-        } else {
-            let waiter = Box::into_raw(Box::new(Node::from(Waiter::from(cx.waker().clone()))));
-            self.waiter = Some(waiter);
-            unsafe { self.mutex.waiters.push_raw(waiter) };
-        }
-        if let Some(lock) = self.mutex.try_lock() {
-            self.disable_waiter();
-            return Poll::Ready(lock);
+        unsafe {
+            if let Some(lock) = self.mutex.try_lock() {
+                if let Some(waiter) = self.waiter.take() {
+                    waiter.as_ref().take();
+                }
+                return Poll::Ready(lock);
+            }
+            if self.waiter.is_none() {
+                let waiter = Box::into_raw(Box::new(Node::from(Waiter::from(cx.waker().clone()))));
+                self.waiter = Some(NonNull::new_unchecked(waiter));
+                self.mutex.waiters.push_raw(waiter);
+                if let Some(lock) = self.mutex.try_lock() {
+                    if let Some(waiter) = self.waiter.take() {
+                        waiter.as_ref().take();
+                    } else {
+                        unreachable_unchecked();
+                    }
+                    return Poll::Ready(lock);
+                }
+            }
         }
         Poll::Pending
     }
@@ -225,7 +204,7 @@ impl<'a, T: ?Sized> Future for MutexLockFuture<'a, T> {
 impl<T: ?Sized> Drop for MutexLockFuture<'_, T> {
     fn drop(&mut self) {
         if let Some(waiter) = self.waiter {
-            if unsafe { (*waiter).disable() } & WAITER_DISABLED != 0 {
+            if unsafe { waiter.as_ref().take().is_none() } {
                 // This future was awoken, but then dropped before it could
                 // acquire the lock. Try to lock the mutex and then immediately
                 // unlock to wake up another thread.
@@ -236,67 +215,29 @@ impl<T: ?Sized> Drop for MutexLockFuture<'_, T> {
 }
 
 impl Waiter {
-    fn register(&self, waker: &Waker) {
-        #[cfg(not(feature = "atomics"))]
-        let state = self.state.load();
-        #[cfg(feature = "atomics")]
-        let state = self.state.load(Ordering::Acquire);
-        let mut index = (state & WAITER_INDEX) as usize;
-        if state & WAITER_DISABLED != 0
-            || !waker
-                .will_wake(unsafe { (*self.wakers.get_unchecked(index).get()).assume_init_ref() })
-        {
-            index = (index + 1) % 2;
-            unsafe { (*self.wakers.get_unchecked(index).get()).write(waker.clone()) };
-            #[cfg(not(feature = "atomics"))]
-            self.state.store(index as u8);
-            #[cfg(feature = "atomics")]
-            self.state.store(index as u8, Ordering::Release);
-        }
-    }
-
-    fn wake(&self) -> bool {
-        let state = self.disable();
-        if state & WAITER_DISABLED == 0 {
-            let index = (state & WAITER_INDEX) as usize;
-            unsafe { (*self.wakers.get_unchecked(index).get()).assume_init_read().wake() };
-            true
+    fn take(&self) -> Option<Waker> {
+        if swap_atomic!(self.taken, true, Acquire) {
+            None
         } else {
-            false
+            unsafe { Some((*self.waker.get()).assume_init_read()) }
         }
     }
 
-    fn disable(&self) -> u8 {
-        #[cfg(not(feature = "atomics"))]
-        {
-            self.state.modify(|state| state | WAITER_DISABLED)
-        }
-        #[cfg(feature = "atomics")]
-        {
-            self.state.fetch_or(WAITER_DISABLED, Ordering::Relaxed)
-        }
-    }
-
-    fn is_disabled(&self) -> bool {
-        #[cfg(not(feature = "atomics"))]
-        let state = self.state.load();
-        #[cfg(feature = "atomics")]
-        let state = self.state.load(Ordering::Relaxed);
-        state & WAITER_DISABLED != 0
+    fn is_taken(&self) -> bool {
+        load_atomic!(self.taken, Relaxed)
     }
 }
 
 impl From<Waker> for Waiter {
     fn from(waker: Waker) -> Self {
-        Self {
-            #[cfg(not(feature = "atomics"))]
-            state: Atomic::new(0),
-            #[cfg(feature = "atomics")]
-            state: AtomicU8::new(0),
-            wakers: [
-                UnsafeCell::new(MaybeUninit::new(waker)),
-                UnsafeCell::new(MaybeUninit::uninit()),
-            ],
+        Self { taken: WaiterTaken::new(false), waker: UnsafeCell::new(MaybeUninit::new(waker)) }
+    }
+}
+
+impl Drop for Waiter {
+    fn drop(&mut self) {
+        if !load_atomic!(self.taken, Acquire) {
+            unsafe { (*self.waker.get()).assume_init_read() };
         }
     }
 }
@@ -304,7 +245,6 @@ impl From<Waker> for Waiter {
 impl<T> From<T> for Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use. This is
     /// equivalent to [`Mutex::new`].
-    #[inline]
     fn from(data: T) -> Self {
         Self::new(data)
     }
@@ -312,7 +252,6 @@ impl<T> From<T> for Mutex<T> {
 
 impl<T: ?Sized + Default> Default for Mutex<T> {
     /// Creates a `Mutex<T>`, with the `Default` value for T.
-    #[inline]
     fn default() -> Self {
         Self::new(Default::default())
     }
@@ -338,21 +277,18 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
 impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
 
-    #[inline]
     fn deref(&self) -> &T {
         unsafe { &*self.mutex.data.get() }
     }
 }
 
 impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
-    #[inline]
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.mutex.data.get() }
     }
 }
 
 impl<T: ?Sized> Drop for MutexGuard<'_, T> {
-    #[inline]
     fn drop(&mut self) {
         self.mutex.unlock();
     }

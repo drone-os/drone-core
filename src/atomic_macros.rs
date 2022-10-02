@@ -100,6 +100,45 @@ macro_rules! load_try_modify_atomic {
     }};
 }
 
+macro_rules! swap_atomic {
+    ($atomic:expr, $value:expr, $ordering:ident) => {{
+        #[cfg(not(any(feature = "atomics", loom)))]
+        {
+            $atomic.swap($value)
+        }
+        #[cfg(any(feature = "atomics", loom))]
+        {
+            $atomic.swap($value, core::sync::atomic::Ordering::$ordering)
+        }
+    }};
+}
+
+macro_rules! fetch_or_atomic {
+    ($atomic:expr, $value:expr, $ordering:ident) => {{
+        #[cfg(not(any(feature = "atomics", loom)))]
+        {
+            $atomic.modify(|old| old | $value)
+        }
+        #[cfg(any(feature = "atomics", loom))]
+        {
+            $atomic.fetch_or($value, core::sync::atomic::Ordering::$ordering)
+        }
+    }};
+}
+
+macro_rules! fetch_and_atomic {
+    ($atomic:expr, $value:expr, $ordering:ident) => {{
+        #[cfg(not(any(feature = "atomics", loom)))]
+        {
+            $atomic.modify(|old| old & $value)
+        }
+        #[cfg(any(feature = "atomics", loom))]
+        {
+            $atomic.fetch_and($value, core::sync::atomic::Ordering::$ordering)
+        }
+    }};
+}
+
 macro_rules! maybe_const_fn {
     ($(#[$($attr:tt)*])* $vis:vis const fn $name:ident($($args:tt)*) -> $ret:ty { $($body:tt)* }) => {
         #[cfg(not(loom))]
