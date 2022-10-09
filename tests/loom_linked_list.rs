@@ -148,7 +148,7 @@ fn loom_drain_filter_raw() {
         list.push(x);
         list.push(y);
         let drained = loom::thread::spawn(move || unsafe {
-            list.drain_filter_raw(|_| true).map(|x| Box::from_raw(x)).collect::<Vec<_>>()
+            list.drain_filter_raw(|_| true).map(|x| Box::from_raw(x.cast_mut())).collect::<Vec<_>>()
         });
         let z = loom::thread::spawn(move || list.push(z));
         let mut drained = drained.join().unwrap();
@@ -179,7 +179,9 @@ fn loom_drain_filter_raw_drop() {
         let list: &'static _ = Box::leak(Box::new(LinkedList::new()));
         list.push(x);
         list.push(y);
-        let drained = loom::thread::spawn(move || unsafe { list.drain_filter_raw(|_| true) });
+        let drained = loom::thread::spawn(move || unsafe {
+            list.drain_filter_raw(|_| true).for_each(|x| drop(Box::from_raw(x.cast_mut())))
+        });
         drained.join().unwrap();
         assert!(list.is_empty());
         statemap_put_counter(data0_states, data_counters[0], 0);

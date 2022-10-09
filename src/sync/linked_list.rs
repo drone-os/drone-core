@@ -30,25 +30,30 @@ pub struct IntoIter<T> {
     list: LinkedList<T>,
 }
 
-/// An iterator produced by [`LinkedList::iter_mut`] or
-/// [`LinkedList::iter_mut_unchecked`].
+/// An iterator produced by [`LinkedList::iter_mut`].
 pub struct IterMut<'a, T> {
-    curr: *mut Node<T>,
+    raw: IterRaw<T>,
     marker: PhantomData<&'a mut Node<T>>,
+}
+
+/// An iterator produced by [`LinkedList::iter_raw`].
+pub struct IterRaw<T> {
+    curr: *const Node<T>,
 }
 
 /// An iterator produced by [`LinkedList::drain_filter`].
 pub struct DrainFilter<'a, T, F>
 where
-    F: FnMut(*mut Node<T>) -> bool,
+    F: FnMut(*const Node<T>) -> bool,
 {
     raw: DrainFilterRaw<'a, T, F>,
+    marker: PhantomData<&'a mut Node<T>>,
 }
 
 /// An iterator produced by [`LinkedList::drain_filter_raw`].
 pub struct DrainFilterRaw<'a, T, F>
 where
-    F: FnMut(*mut Node<T>) -> bool,
+    F: FnMut(*const Node<T>) -> bool,
 {
     head: &'a AtomicPtr<T>,
     prev: *mut Node<T>,
@@ -135,7 +140,7 @@ impl<T> LinkedList<T> {
     /// methods, which drop nodes in-place, assume that `node` is created using
     /// [`Box::from_raw`].
     pub unsafe fn push_raw(&self, node: *mut Node<T>) {
-        load_modify_atomic!(self.head, Relaxed, Relaxed, |curr| unsafe {
+        load_modify_atomic!(self.head, Relaxed, Release, |curr| unsafe {
             (*node).next = curr;
             node
         });
@@ -221,7 +226,7 @@ impl<T> LinkedList<T> {
     /// ```
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         // Because `self` is a unique reference, no node can be deleted.
-        unsafe { self.iter_mut_unchecked() }
+        unsafe { IterMut { raw: self.iter_raw(), marker: PhantomData } }
     }
 
     /// Unsafe variant of [`iter_mut`](LinkedList::iter_mut) with non-mutable
@@ -229,13 +234,9 @@ impl<T> LinkedList<T> {
     ///
     /// # Safety
     ///
-    /// While the returned iterator is alive:
-    ///
-    /// * Nodes shouldn't be removed.
-    /// * No other methods that produce mutable references (including this
-    ///   method) should be called.
-    pub unsafe fn iter_mut_unchecked(&self) -> IterMut<'_, T> {
-        IterMut { curr: load_atomic!(self.head, Acquire), marker: PhantomData }
+    /// While the returned iterator is alive nodes must not be removed.
+    pub unsafe fn iter_raw(&self) -> IterRaw<T> {
+        IterRaw { curr: load_atomic!(self.head, Acquire) }
     }
 
     /// Creates an iterator which uses a closure to determine if an element
@@ -267,13 +268,18 @@ impl<T> LinkedList<T> {
     pub fn drain_filter<'a, F: 'a>(
         &'a mut self,
         mut filter: F,
-    ) -> DrainFilter<'_, T, impl FnMut(*mut Node<T>) -> bool>
+    ) -> DrainFilter<'_, T, impl FnMut(*const Node<T>) -> bool>
     where
         F: FnMut(&mut T) -> bool,
     {
         // Because `self` is a unique reference, both safety invariants are
         // upholding.
-        unsafe { DrainFilter { raw: self.drain_filter_raw(move |node| filter(&mut *node)) } }
+        unsafe {
+            DrainFilter {
+                raw: self.drain_filter_raw(move |node| filter(&mut *node.cast_mut())),
+                marker: PhantomData,
+            }
+        }
     }
 
     /// Raw variant of [`drain_filter`](LinkedList::drain_filter).
@@ -282,17 +288,13 @@ impl<T> LinkedList<T> {
     ///
     /// It's responsibility of the caller to de-allocate returned nodes.
     ///
-    /// While the returned iterator is alive:
-    ///
-    /// * Nodes shouldn't be removed.
-    /// * No other methods that produce mutable references (including this
-    ///   method) should be called.
+    /// While the returned iterator is alive nodes must not be removed.
     pub unsafe fn drain_filter_raw<F>(
         &self,
         filter: F,
-    ) -> DrainFilterRaw<'_, T, impl FnMut(*mut Node<T>) -> bool>
+    ) -> DrainFilterRaw<'_, T, impl FnMut(*const Node<T>) -> bool>
     where
-        F: FnMut(*mut Node<T>) -> bool,
+        F: FnMut(*const Node<T>) -> bool,
     {
         DrainFilterRaw {
             head: &self.head,
@@ -354,7 +356,7 @@ impl<T> Iterator for IntoIter<T> {
             None
         } else {
             let next = unsafe { (*curr).next };
-            store_atomic!(self.list.head, next, Relaxed);
+            store_atomic!(self.list.head, next, Release);
             Some(unsafe { Box::from_raw(curr) }.value)
         }
     }
@@ -366,21 +368,31 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.curr.is_null() {
-            None
-        } else {
-            let curr = self.curr;
-            self.curr = unsafe { (*self.curr).next };
-            Some(unsafe { &mut (*curr).value })
-        }
+        self.raw.next().map(|node| unsafe { &mut (*node.cast_mut()).value })
     }
 }
 
 impl<T> FusedIterator for IterMut<'_, T> {}
 
+impl<T> Iterator for IterRaw<T> {
+    type Item = *const Node<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.curr.is_null() {
+            None
+        } else {
+            let curr = self.curr;
+            self.curr = unsafe { (*self.curr).next };
+            Some(curr)
+        }
+    }
+}
+
+impl<T> FusedIterator for IterRaw<T> {}
+
 impl<T, F> DrainFilter<'_, T, F>
 where
-    F: FnMut(*mut Node<T>) -> bool,
+    F: FnMut(*const Node<T>) -> bool,
 {
     /// Returns `true` if the iterator has reached the end of the linked list.
     pub fn is_end(&self) -> bool {
@@ -390,20 +402,29 @@ where
 
 impl<T, F> Iterator for DrainFilter<'_, T, F>
 where
-    F: FnMut(*mut Node<T>) -> bool,
+    F: FnMut(*const Node<T>) -> bool,
 {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.raw.next().map(|node| unsafe { Box::from_raw(node).value })
+        self.raw.next().map(|node| unsafe { Box::from_raw(node.cast_mut()).value })
     }
 }
 
-impl<T, F> FusedIterator for DrainFilter<'_, T, F> where F: FnMut(*mut Node<T>) -> bool {}
+impl<T, F> FusedIterator for DrainFilter<'_, T, F> where F: FnMut(*const Node<T>) -> bool {}
+
+impl<T, F> Drop for DrainFilter<'_, T, F>
+where
+    F: FnMut(*const Node<T>) -> bool,
+{
+    fn drop(&mut self) {
+        self.for_each(drop);
+    }
+}
 
 impl<T, F> DrainFilterRaw<'_, T, F>
 where
-    F: FnMut(*mut Node<T>) -> bool,
+    F: FnMut(*const Node<T>) -> bool,
 {
     /// Returns `true` if the iterator has reached the end of the linked list.
     pub fn is_end(&self) -> bool {
@@ -426,9 +447,9 @@ where
 
 impl<T, F> Iterator for DrainFilterRaw<'_, T, F>
 where
-    F: FnMut(*mut Node<T>) -> bool,
+    F: FnMut(*const Node<T>) -> bool,
 {
-    type Item = *mut Node<T>;
+    type Item = *const Node<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while !self.is_end() {
@@ -446,20 +467,7 @@ where
     }
 }
 
-impl<T, F> Drop for DrainFilterRaw<'_, T, F>
-where
-    F: FnMut(*mut Node<T>) -> bool,
-{
-    fn drop(&mut self) {
-        unsafe {
-            for node in self {
-                drop(Box::from_raw(node));
-            }
-        }
-    }
-}
-
-impl<T, F> FusedIterator for DrainFilterRaw<'_, T, F> where F: FnMut(*mut Node<T>) -> bool {}
+impl<T, F> FusedIterator for DrainFilterRaw<'_, T, F> where F: FnMut(*const Node<T>) -> bool {}
 
 impl<T> From<T> for Node<T> {
     fn from(value: T) -> Self {

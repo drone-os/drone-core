@@ -11,11 +11,11 @@ use core::task::{Context, Poll, Waker};
 use crate::sync::linked_list::{LinkedList, Node};
 
 #[cfg(all(feature = "atomics", not(loom)))]
-type MutexState = core::sync::atomic::AtomicU8;
+type DataLocked = core::sync::atomic::AtomicBool;
 #[cfg(all(feature = "atomics", loom))]
-type MutexState = loom::sync::atomic::AtomicU8;
+type DataLocked = loom::sync::atomic::AtomicBool;
 #[cfg(not(feature = "atomics"))]
-type MutexState = crate::sync::soft_atomic::Atomic<u8>;
+type DataLocked = crate::sync::soft_atomic::Atomic<bool>;
 
 #[cfg(all(feature = "atomics", not(loom)))]
 type WaiterTaken = core::sync::atomic::AtomicBool;
@@ -36,13 +36,10 @@ type WaiterTaken = crate::sync::soft_atomic::Atomic<bool>;
 /// [`lock`]: Self::lock
 /// [`try_lock`]: Self::try_lock
 pub struct Mutex<T: ?Sized> {
-    state: MutexState,
+    locked: DataLocked,
     waiters: LinkedList<Waiter>,
     data: UnsafeCell<T>,
 }
-
-const DATA_LOCK: u8 = 1 << 0;
-const WAITERS_LOCK: u8 = 1 << 1;
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
 /// dropped (falls out of scope), the lock will be unlocked.
@@ -92,7 +89,7 @@ impl<T> Mutex<T> {
         /// ```
         pub const fn new(data: T) -> Self {
             Self {
-                state: MutexState::new(0),
+                locked: DataLocked::new(false),
                 waiters: LinkedList::new(),
                 data: UnsafeCell::new(data),
             }
@@ -121,10 +118,10 @@ impl<T: ?Sized> Mutex<T> {
     /// returned. Otherwise, an RAII guard is returned. The lock will be
     /// unlocked when the guard is dropped.
     pub fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
-        if fetch_or_atomic!(self.state, DATA_LOCK, Acquire) & DATA_LOCK == 0 {
-            Some(MutexGuard { mutex: self })
-        } else {
+        if swap_atomic!(self.locked, true, Acquire) {
             None
+        } else {
+            Some(MutexGuard { mutex: self })
         }
     }
 
@@ -155,19 +152,22 @@ impl<T: ?Sized> Mutex<T> {
     }
 
     fn unlock(&self) {
-        let state = load_modify_atomic!(self.state, Acquire, AcqRel, |state| {
-            state & !DATA_LOCK | WAITERS_LOCK
-        });
-        if state & WAITERS_LOCK == 0 {
+        let mut next_waker = None;
+        unsafe {
             // This is the only place where nodes can be removed.
-            unsafe { self.waiters.drain_filter_raw(|waiter| (*waiter).is_taken()) };
-            fetch_and_atomic!(self.state, !WAITERS_LOCK, Release);
-        }
-        for waiter in unsafe { self.waiters.iter_mut_unchecked() } {
-            if let Some(waker) = waiter.take() {
-                waker.wake();
-                break;
+            self.waiters
+                .drain_filter_raw(|waiter| (*waiter).is_taken())
+                .for_each(|node| drop(Box::from_raw(node.cast_mut())));
+            for waiter in self.waiters.iter_raw() {
+                if let Some(waker) = (*waiter).take() {
+                    next_waker = Some(waker);
+                    break;
+                }
             }
+        }
+        store_atomic!(self.locked, false, Release);
+        if let Some(waker) = next_waker {
+            waker.wake();
         }
     }
 }
@@ -183,7 +183,7 @@ impl<'a, T: ?Sized> Future for MutexLockFuture<'a, T> {
                 }
                 return Poll::Ready(lock);
             }
-            if self.waiter.is_none() {
+            if self.waiter.map_or(true, |waiter| waiter.as_ref().is_taken()) {
                 let waiter = Box::into_raw(Box::new(Node::from(Waiter::from(cx.waker().clone()))));
                 self.waiter = Some(NonNull::new_unchecked(waiter));
                 self.mutex.waiters.push_raw(waiter);
@@ -205,9 +205,8 @@ impl<T: ?Sized> Drop for MutexLockFuture<'_, T> {
     fn drop(&mut self) {
         if let Some(waiter) = self.waiter {
             if unsafe { waiter.as_ref().take().is_none() } {
-                // This future was awoken, but then dropped before it could
-                // acquire the lock. Try to lock the mutex and then immediately
-                // unlock to wake up another thread.
+                // This future was awoken, but then dropped before it could acquire the lock.
+                // Try to lock the mutex and then immediately unlock to wake up another thread.
                 drop(self.mutex.try_lock());
             }
         }

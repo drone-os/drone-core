@@ -19,7 +19,7 @@ pub struct Node<F> {
 /// An iterator produced by [`Chain::drain`].
 pub struct Drain<'a, F>
 where
-    F: FnMut(*mut ListNode<Node<()>>) -> bool,
+    F: FnMut(*const ListNode<Node<()>>) -> bool,
 {
     inner: DrainFilterRaw<'a, Node<()>, F>,
 }
@@ -80,7 +80,7 @@ impl Chain {
     /// This method must not be called again when the previous iterator is still
     /// alive.
     #[inline]
-    pub unsafe fn drain(&self) -> Drain<'_, impl FnMut(*mut ListNode<Node<()>>) -> bool> {
+    pub unsafe fn drain(&self) -> Drain<'_, impl FnMut(*const ListNode<Node<()>>) -> bool> {
         // This is the only place where nodes are getting removed. This cannot
         // run concurrently because of the safety invariant of this function.
         unsafe { Drain { inner: self.list.drain_filter_raw(Node::filter) } }
@@ -95,12 +95,12 @@ impl Drop for Chain {
 }
 
 impl Node<()> {
-    fn filter(node: *mut ListNode<Self>) -> bool {
-        unsafe { ((*node).advance)(node) }
+    fn filter(node: *const ListNode<Self>) -> bool {
+        unsafe { ((*node).advance)(node.cast_mut()) }
     }
 
-    fn delete(node: *mut ListNode<Self>) {
-        unsafe { ((*node).deallocate)(node) }
+    fn delete(node: *const ListNode<Self>) {
+        unsafe { ((*node).deallocate)(node.cast_mut()) }
     }
 }
 
@@ -129,7 +129,7 @@ impl<F: RootFiber> Node<F> {
 
 impl<F> Drain<'_, F>
 where
-    F: FnMut(*mut ListNode<Node<()>>) -> bool,
+    F: FnMut(*const ListNode<Node<()>>) -> bool,
 {
     /// Returns `true` if there are no fibers left in the chain.
     #[inline]
@@ -140,7 +140,7 @@ where
 
 impl<F> Iterator for Drain<'_, F>
 where
-    F: FnMut(*mut ListNode<Node<()>>) -> bool,
+    F: FnMut(*const ListNode<Node<()>>) -> bool,
 {
     type Item = ();
 
@@ -150,4 +150,13 @@ where
     }
 }
 
-impl<F> FusedIterator for Drain<'_, F> where F: FnMut(*mut ListNode<Node<()>>) -> bool {}
+impl<F> FusedIterator for Drain<'_, F> where F: FnMut(*const ListNode<Node<()>>) -> bool {}
+
+impl<F> Drop for Drain<'_, F>
+where
+    F: FnMut(*const ListNode<Node<()>>) -> bool,
+{
+    fn drop(&mut self) {
+        self.for_each(drop);
+    }
+}
