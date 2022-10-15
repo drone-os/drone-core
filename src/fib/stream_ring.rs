@@ -1,12 +1,10 @@
-use core::convert::identity;
-use core::pin::Pin;
-use core::task::{Context, Poll};
-
-use futures::Stream;
-
 use crate::fib::{self, Fiber};
 use crate::sync::spsc::ring::{channel, Receiver, SendError, TrySendError};
 use crate::thr::prelude::*;
+use core::convert::identity;
+use core::pin::Pin;
+use core::task::{Context, Poll};
+use futures::Stream;
 
 /// A stream of `T` from the fiber in another thread.
 ///

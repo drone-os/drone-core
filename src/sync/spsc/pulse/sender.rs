@@ -1,3 +1,8 @@
+use super::receiver::Receiver;
+use super::{
+    Shared, State, CAPACITY, CLOSED, ERR_STORED, HALF_DROPPED, PARAM_BITS, RX_WAKER_STORED,
+    TX_WAKER_STORED,
+};
 use core::cell::UnsafeCell;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
@@ -5,14 +10,7 @@ use core::pin::Pin;
 use core::ptr::NonNull;
 use core::task::{Context, Poll, Waker};
 use core::{fmt, mem};
-
 use futures::prelude::*;
-
-use super::receiver::Receiver;
-use super::{
-    Shared, State, CAPACITY, CLOSED, ERR_STORED, HALF_DROPPED, PARAM_BITS, RX_WAKER_STORED,
-    TX_WAKER_STORED,
-};
 
 /// The sending-half of [`pulse::channel`](super::channel).
 pub struct Sender<E> {

@@ -1,11 +1,9 @@
 #![cfg_attr(feature = "std", allow(unused_imports, unused_variables))]
 
-use core::ptr;
-
-use drone_stream::{Runtime, HEADER_LENGTH};
-
 use super::{STREAM_CORE0_BUF_BASE, STREAM_CORE0_BUF_END};
 use crate::platform::Interrupts;
+use core::ptr;
+use drone_stream::{Runtime, HEADER_LENGTH};
 
 const DEFAULT_TRANSACTION_LENGTH: u8 = 64;
 

@@ -1,7 +1,6 @@
+use super::SoftThread;
 use core::marker::PhantomData;
 use core::task::{RawWaker, RawWakerVTable, Waker};
-
-use super::SoftThread;
 
 #[repr(transparent)]
 pub struct SoftWaker<T: SoftThread> {

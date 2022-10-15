@@ -45,7 +45,6 @@ pub unsafe fn data_init() {
 ///
 /// ```no_run
 /// use core::cell::UnsafeCell;
-///
 /// use drone_core::mem;
 ///
 /// extern "C" {
@@ -76,7 +75,6 @@ pub unsafe fn zeroed_section_init(base: &UnsafeCell<usize>, end: &UnsafeCell<usi
 ///
 /// ```no_run
 /// use core::cell::UnsafeCell;
-///
 /// use drone_core::mem;
 ///
 /// extern "C" {

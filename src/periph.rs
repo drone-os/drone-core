@@ -26,7 +26,6 @@
 //! # }
 //! # reg_tokens!(index => Regs);
 //! use core::mem::size_of_val;
-//!
 //! use drone_core::periph;
 //!
 //! periph::singular! {

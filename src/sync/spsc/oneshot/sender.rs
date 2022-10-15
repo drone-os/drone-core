@@ -1,3 +1,6 @@
+use super::{
+    Receiver, Shared, State, CLOSED, DATA_STORED, HALF_DROPPED, RX_WAKER_STORED, TX_WAKER_STORED,
+};
 use core::cell::UnsafeCell;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
@@ -5,12 +8,7 @@ use core::pin::Pin;
 use core::ptr::NonNull;
 use core::task::{Context, Poll, Waker};
 use core::{fmt, mem};
-
 use futures::prelude::*;
-
-use super::{
-    Receiver, Shared, State, CLOSED, DATA_STORED, HALF_DROPPED, RX_WAKER_STORED, TX_WAKER_STORED,
-};
 
 /// The sending-half of [`oneshot::channel`](super::channel).
 pub struct Sender<T> {

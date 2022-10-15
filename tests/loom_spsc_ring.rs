@@ -3,14 +3,12 @@
 #[macro_use]
 mod loom_helpers;
 
-use std::pin::Pin;
-use std::task::Poll;
-
+use self::loom_helpers::*;
 use drone_core::sync::spsc::ring::{channel, SendError, TryNextError, TrySendError};
 use futures::prelude::*;
 use futures::stream::FusedStream;
-
-use self::loom_helpers::*;
+use std::pin::Pin;
+use std::task::Poll;
 
 #[test]
 fn loom_drop() {

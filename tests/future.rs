@@ -8,7 +8,6 @@ use core::pin::Pin;
 use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering::*;
 use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
-
 #[prelude_import]
 #[allow(unused_imports)]
 use drone_core::prelude::*;

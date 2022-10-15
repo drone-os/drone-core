@@ -1,3 +1,4 @@
+use super::{Shared, State, CLOSED, DATA_STORED, HALF_DROPPED, RX_WAKER_STORED, TX_WAKER_STORED};
 use core::cell::UnsafeCell;
 use core::fmt;
 use core::marker::PhantomData;
@@ -5,11 +6,8 @@ use core::mem::MaybeUninit;
 use core::pin::Pin;
 use core::ptr::NonNull;
 use core::task::{Context, Poll, Waker};
-
 use futures::future::FusedFuture;
 use futures::prelude::*;
-
-use super::{Shared, State, CLOSED, DATA_STORED, HALF_DROPPED, RX_WAKER_STORED, TX_WAKER_STORED};
 
 /// The receiving-half of [`oneshot::channel`](super::channel).
 #[must_use = "futures do nothing unless you `.await` or poll them"]

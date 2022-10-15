@@ -1,9 +1,8 @@
+use super::pool::{Fits, Pool};
 use core::alloc::{AllocError, Layout};
 use core::ptr;
 use core::ptr::NonNull;
 use core::slice::SliceIndex;
-
-use super::pool::{Fits, Pool};
 
 /// Allocator for a generic memory pools layout.
 ///
@@ -141,10 +140,9 @@ pub unsafe fn shrink<A: Allocator>(
 }
 
 mod trace {
+    use crate::stream::Stream;
     use core::alloc::Layout;
     use core::mem;
-
-    use crate::stream::Stream;
 
     #[inline(always)]
     pub(super) fn allocate(trace_stream: u8, layout: Layout) {

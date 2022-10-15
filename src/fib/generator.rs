@@ -1,8 +1,7 @@
-use core::ops::{Generator, GeneratorState};
-use core::pin::Pin;
-
 use crate::fib::{Fiber, FiberState, RootFiber};
 use crate::thr::prelude::*;
+use core::ops::{Generator, GeneratorState};
+use core::pin::Pin;
 
 /// Fiber for [`Generator`].
 ///

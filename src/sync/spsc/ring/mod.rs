@@ -35,14 +35,13 @@
 //! The number of `c` bits equals to the number of `l` bits. If both `T` and `F`
 //! set, the waker is stored for close event.
 
+pub use self::receiver::{Receiver, TryNextError};
+pub use self::sender::{SendError, Sender, TrySendError};
 use alloc::alloc::{alloc, handle_alloc_error, Layout};
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 use core::ptr::{self, slice_from_raw_parts_mut, NonNull};
 use core::task::Waker;
-
-pub use self::receiver::{Receiver, TryNextError};
-pub use self::sender::{SendError, Sender, TrySendError};
 
 mod receiver;
 mod sender;

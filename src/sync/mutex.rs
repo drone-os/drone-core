@@ -1,3 +1,4 @@
+use crate::sync::linked_list::{LinkedList, Node};
 use core::cell::UnsafeCell;
 use core::fmt;
 use core::future::Future;
@@ -7,8 +8,6 @@ use core::ops::{Deref, DerefMut};
 use core::pin::Pin;
 use core::ptr::NonNull;
 use core::task::{Context, Poll, Waker};
-
-use crate::sync::linked_list::{LinkedList, Node};
 
 #[cfg(all(feature = "atomics", not(loom)))]
 type DataLocked = core::sync::atomic::AtomicBool;
@@ -307,14 +306,12 @@ impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use alloc::sync::Arc;
     use core::future::Future;
     use core::sync::atomic::{AtomicUsize, Ordering};
     use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
-
     use futures::pin_mut;
-
-    use super::*;
 
     #[derive(Eq, PartialEq, Debug)]
     struct NonCopy(i32);

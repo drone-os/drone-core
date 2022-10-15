@@ -28,13 +28,12 @@
 mod receiver;
 mod sender;
 
+pub use self::receiver::{Canceled, Receiver};
+pub use self::sender::{Cancellation, Sender};
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 use core::task::Waker;
-
-pub use self::receiver::{Canceled, Receiver};
-pub use self::sender::{Cancellation, Sender};
 
 /// Creates a new one-shot channel, returning the sender/receiver halves.
 ///

@@ -54,6 +54,13 @@ pub mod prelude;
 mod exec;
 mod soft;
 
+pub use self::exec::{ExecOutput, ThrExec};
+pub use self::soft::{
+    pending_size, PendingPriorityState, PendingState, PriorityState, SoftThrToken, SoftThread,
+    PRIORITY_LEVELS,
+};
+use crate::fib::{Chain, RootFiber};
+use crate::token::Token;
 /// Defines a thread pool.
 ///
 /// See [the module level documentation](self) for details.
@@ -64,14 +71,6 @@ pub use drone_core_macros::thr_pool as pool;
 /// See [the module level documentation](self) for details.
 #[doc(inline)]
 pub use drone_core_macros::thr_soft as soft;
-
-pub use self::exec::{ExecOutput, ThrExec};
-pub use self::soft::{
-    pending_size, PendingPriorityState, PendingState, PriorityState, SoftThrToken, SoftThread,
-    PRIORITY_LEVELS,
-};
-use crate::fib::{Chain, RootFiber};
-use crate::token::Token;
 
 #[cfg(not(feature = "atomics"))]
 #[doc(hidden)]

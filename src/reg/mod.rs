@@ -205,7 +205,6 @@
 //! # #![feature(proc_macro_hygiene)]
 //!
 //! use core::mem::size_of_val;
-//!
 //! use drone_core::reg;
 //! use drone_core::reg::prelude::*;
 //! use drone_core::token::Token;
@@ -312,8 +311,10 @@ pub mod marker;
 pub mod prelude;
 pub mod tag;
 
+use self::tag::{Crt, RegAtomic, RegOwned, RegTag, Srt, Urt};
+use crate::bitfield::Bitfield;
+use crate::token::Token;
 use core::ptr::{read_volatile, write_volatile};
-
 /// Assert exclusive ownership of the register.
 #[doc(inline)]
 pub use drone_core_macros::reg_claim as claim;
@@ -324,10 +325,6 @@ pub use drone_core_macros::reg_claim as claim;
 pub use drone_core_macros::reg_tokens as tokens;
 #[doc(hidden)]
 pub use drone_core_macros::reg_tokens_inner as tokens_inner;
-
-use self::tag::{Crt, RegAtomic, RegOwned, RegTag, Srt, Urt};
-use crate::bitfield::Bitfield;
-use crate::token::Token;
 
 /// The base trait for a memory-mapped register token.
 pub trait Reg<T: RegTag>: Token + Sync {

@@ -12,6 +12,9 @@
 //! use drone_core::prelude::*;
 //! ```
 
+#[cfg(not(feature = "std"))]
+#[doc(no_inline)]
+pub use crate::{dbg, eprint, eprintln, print, println};
 #[doc(no_inline)]
 pub use alloc::{
     borrow::ToOwned,
@@ -24,7 +27,3 @@ pub use core::prelude::rust_2021::*;
 #[cfg(feature = "std")]
 #[doc(no_inline)]
 pub use std::{dbg, eprint, eprintln, print, println};
-
-#[cfg(not(feature = "std"))]
-#[doc(no_inline)]
-pub use crate::{dbg, eprint, eprintln, print, println};

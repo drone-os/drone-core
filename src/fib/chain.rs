@@ -1,8 +1,7 @@
-use core::iter::FusedIterator;
-use core::pin::Pin;
-
 use crate::fib::RootFiber;
 use crate::sync::linked_list::{DrainFilterRaw, LinkedList, Node as ListNode};
+use core::iter::FusedIterator;
+use core::pin::Pin;
 
 /// A lock-free list of fibers.
 pub struct Chain {

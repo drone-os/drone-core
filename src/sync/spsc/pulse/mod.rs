@@ -35,13 +35,12 @@
 //! * `H` - one of the halves was dropped
 //! * `c` - counter value bits
 
+pub use self::receiver::{Receiver, TryNextError};
+pub use self::sender::{Cancellation, SendError, Sender};
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 use core::task::Waker;
-
-pub use self::receiver::{Receiver, TryNextError};
-pub use self::sender::{Cancellation, SendError, Sender};
 
 mod receiver;
 mod sender;

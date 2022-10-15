@@ -162,8 +162,6 @@ mod generator;
 mod stream_pulse;
 mod stream_ring;
 
-use core::pin::Pin;
-
 pub use self::chain::Chain;
 pub use self::closure::{new_fn, new_once, FiberFn, FiberOnce, ThrFiberClosure};
 pub use self::future::{FiberFuture, ThrFiberFuture};
@@ -171,6 +169,7 @@ pub use self::generator::{new, FiberGen, ThrFiberGen};
 pub use self::stream_pulse::{FiberStreamPulse, ThrFiberStreamPulse, TryFiberStreamPulse};
 pub use self::stream_ring::{FiberStreamRing, ThrFiberStreamRing, TryFiberStreamRing};
 pub use self::FiberState::*;
+use core::pin::Pin;
 
 /// The main task unit of Drone.
 pub trait Fiber {

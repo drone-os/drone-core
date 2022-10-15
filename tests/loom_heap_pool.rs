@@ -3,9 +3,8 @@
 #[macro_use]
 mod loom_helpers;
 
-use drone_core::heap::Pool;
-
 use self::loom_helpers::*;
+use drone_core::heap::Pool;
 
 const SIZE: isize = 16;
 

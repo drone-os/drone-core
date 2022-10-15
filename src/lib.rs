@@ -79,6 +79,9 @@ pub mod token;
 #[cfg(not(feature = "std"))]
 mod lang_items;
 
+#[prelude_import]
+#[allow(unused_imports)]
+use crate::prelude::*;
 /// Defines dynamic memory structures.
 ///
 /// See [the module level documentation](mod@heap) for details.
@@ -96,10 +99,6 @@ pub use drone_core_macros::periph;
 /// See [the module level documentation](mod@reg) for details.
 #[doc(inline)]
 pub use drone_core_macros::reg;
-
-#[prelude_import]
-#[allow(unused_imports)]
-use crate::prelude::*;
 
 /// Re-exports for use inside macros.
 #[doc(hidden)]

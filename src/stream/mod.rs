@@ -8,15 +8,13 @@
 mod macros;
 mod runtime;
 
+use self::runtime::LocalRuntime;
+use crate::mem::zeroed_section_init;
 use core::cell::{SyncUnsafeCell, UnsafeCell};
 use core::fmt::Write;
 use core::{fmt, mem, ptr};
-
 pub use drone_stream::STREAM_COUNT;
 use drone_stream::{Runtime, BOOTSTRAP_SEQUENCE, BOOTSTRAP_SEQUENCE_LENGTH};
-
-use self::runtime::LocalRuntime;
-use crate::mem::zeroed_section_init;
 
 extern "C" {
     static STREAM_CORE0_RT_BASE: UnsafeCell<usize>;

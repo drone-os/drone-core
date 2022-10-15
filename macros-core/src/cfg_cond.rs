@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
+use crate::parse_ident;
 use proc_macro2::TokenStream;
 use quote::quote;
+use std::collections::HashMap;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{bracketed, parenthesized, Ident, LitStr, Token};
-
-use crate::parse_ident;
 
 /// List of conditional compilation clauses.
 #[derive(Default, Clone, Debug)]

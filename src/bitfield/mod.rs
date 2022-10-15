@@ -52,13 +52,12 @@
 
 mod bits;
 
+pub use self::bits::Bits;
 /// Defines a new [`Bitfield`].
 ///
 /// See [the module level documentation](self) for details.
 #[doc(inline)]
 pub use drone_core_macros::Bitfield;
-
-pub use self::bits::Bits;
 
 /// An integer value treated as a sequence of bits, which can be toggled
 /// individually.

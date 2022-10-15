@@ -1,3 +1,8 @@
+use super::{
+    add_cursor, add_length, claim_next_if_full, get_cursor, get_length, has_close_waker,
+    has_flush_waker, has_ready_waker, has_waker, set_close_waker, set_flush_waker, set_ready_waker,
+    Receiver, Shared, State, CLOSED, ERR_STORED, HALF_DROPPED, RX_WAKER_STORED,
+};
 use core::cell::UnsafeCell;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
@@ -5,14 +10,7 @@ use core::pin::Pin;
 use core::ptr::NonNull;
 use core::task::{Context, Poll, Waker};
 use core::{fmt, mem};
-
 use futures::prelude::*;
-
-use super::{
-    add_cursor, add_length, claim_next_if_full, get_cursor, get_length, has_close_waker,
-    has_flush_waker, has_ready_waker, has_waker, set_close_waker, set_flush_waker, set_ready_waker,
-    Receiver, Shared, State, CLOSED, ERR_STORED, HALF_DROPPED, RX_WAKER_STORED,
-};
 
 /// The sending-half of [`ring::channel`](super::channel).
 pub struct Sender<T, E> {

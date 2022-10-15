@@ -1,10 +1,9 @@
-use std::collections::HashSet;
-
 use drone_macros_core::unkeywordize;
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
+use std::collections::HashSet;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{braced, parse_macro_input, Attribute, Ident, LitInt, LitStr, Token, Visibility};
 

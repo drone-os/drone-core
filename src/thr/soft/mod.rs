@@ -1,15 +1,14 @@
 mod wake;
 
+use self::wake::SoftWaker;
+use crate::thr::{ThrExec, ThrToken, Thread};
+#[cfg(not(feature = "atomics"))]
+use crate::{platform::Interrupts, sync::soft_atomic::Atomic};
 #[cfg(not(feature = "atomics"))]
 use core::mem;
 #[cfg(feature = "atomics")]
 use core::sync::atomic::{AtomicU32, AtomicU8, Ordering};
 use core::task::Waker;
-
-use self::wake::SoftWaker;
-use crate::thr::{ThrExec, ThrToken, Thread};
-#[cfg(not(feature = "atomics"))]
-use crate::{platform::Interrupts, sync::soft_atomic::Atomic};
 
 /// Number of priority levels.
 pub const PRIORITY_LEVELS: u8 = 27;

@@ -3,10 +3,9 @@
 //! Atomic types from this module don't require harware support of atomics.
 //! They are implemented with [critical sections](Interrupts).
 
+use crate::platform::Interrupts;
 use core::cell::UnsafeCell;
 use core::{fmt, mem};
-
-use crate::platform::Interrupts;
 
 mod sealed {
     pub trait AtMostWordSized {}

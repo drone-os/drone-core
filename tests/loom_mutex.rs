@@ -3,14 +3,12 @@
 #[macro_use]
 mod loom_helpers;
 
+use self::loom_helpers::*;
 use core::sync::atomic::Ordering::SeqCst;
-use std::pin::Pin;
-use std::task::Poll;
-
 use drone_core::sync::Mutex;
 use futures::prelude::*;
-
-use self::loom_helpers::*;
+use std::pin::Pin;
+use std::task::Poll;
 
 #[test]
 fn loom_lock() {

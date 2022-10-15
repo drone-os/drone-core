@@ -1,7 +1,6 @@
+use crate::{eprintln, platform};
 use core::alloc::Layout;
 use core::panic::PanicInfo;
-
-use crate::{eprintln, platform};
 
 #[panic_handler]
 fn begin_panic(pi: &PanicInfo<'_>) -> ! {

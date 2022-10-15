@@ -3,9 +3,8 @@
 #[macro_use]
 mod loom_helpers;
 
-use drone_core::sync::LinkedList;
-
 use self::loom_helpers::*;
+use drone_core::sync::LinkedList;
 
 #[test]
 fn loom_drop() {

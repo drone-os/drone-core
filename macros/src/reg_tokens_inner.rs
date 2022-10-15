@@ -1,8 +1,7 @@
-use std::collections::BTreeMap;
-
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
+use std::collections::BTreeMap;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{braced, parse_macro_input, Attribute, Ident, LitStr, Path, Token, Visibility};
 
