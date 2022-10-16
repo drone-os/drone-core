@@ -64,7 +64,8 @@ maintenance = { status = "actively-developed" }
 [features]
 default = []
 std = ["futures/std"]
-atomics = []
+atomics = [] # use hardware atomics from core::sync::atomic
+xip = [] # enable optimizations for execute in place
 
 [dependencies]
 drone-core-macros.workspace = true

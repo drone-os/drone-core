@@ -75,31 +75,35 @@ impl<T: sealed::AtMostWordSized + Copy> Atomic<T> {
     }
 
     /// Stores a value into the atomic, returning the previous value.
+    #[inline]
     pub fn swap(&self, value: T) -> T {
-        let _critical = Interrupts::pause();
-        unsafe { mem::replace(&mut *self.inner.get(), value) }
+        Interrupts::paused(|| unsafe { mem::replace(&mut *self.inner.get(), value) })
     }
 
     /// Performs read-modify-write sequence, returning the previus value.
+    #[inline]
     pub fn modify<F: FnOnce(T) -> T>(&self, f: F) -> T {
-        let _critical = Interrupts::pause();
-        let prev = self.load();
-        let next = f(prev);
-        self.store(next);
-        prev
+        Interrupts::paused(|| {
+            let prev = self.load();
+            let next = f(prev);
+            self.store(next);
+            prev
+        })
     }
 
     /// Tries to perform read-modify-write sequence, returning the previus
     /// value.
+    #[inline]
     pub fn try_modify<F: FnOnce(T) -> Option<T>>(&self, f: F) -> Result<T, T> {
-        let _critical = Interrupts::pause();
-        let prev = self.load();
-        if let Some(next) = f(prev) {
-            self.store(next);
-            Ok(prev)
-        } else {
-            Err(prev)
-        }
+        Interrupts::paused(|| {
+            let prev = self.load();
+            if let Some(next) = f(prev) {
+                self.store(next);
+                Ok(prev)
+            } else {
+                Err(prev)
+            }
+        })
     }
 }
 

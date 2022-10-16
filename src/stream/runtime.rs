@@ -31,6 +31,7 @@ impl LocalRuntime for Runtime {
         }
     }
 
+    #[allow(clippy::blocks_in_if_conditions)]
     unsafe fn write_transaction(&mut self, stream: u8, buffer: *const u8, length: u8) {
         #[cfg(feature = "std")]
         return unimplemented!();
@@ -38,8 +39,7 @@ impl LocalRuntime for Runtime {
         unsafe {
             let buffer_size =
                 (STREAM_CORE0_BUF_END.get() as usize - STREAM_CORE0_BUF_BASE.get() as usize) as u32;
-            loop {
-                let _critical = Interrupts::pause();
+            while Interrupts::paused(|| {
                 let read_cursor = ptr::addr_of!(self.read_cursor).read_volatile();
                 let write_cursor = ptr::addr_of!(self.write_cursor).read_volatile();
                 let wrapped = write_cursor >= read_cursor;
@@ -52,13 +52,13 @@ impl LocalRuntime for Runtime {
                         next_write_cursor = 0;
                     }
                     if next_write_cursor == read_cursor {
-                        continue;
+                        return true;
                     }
                     *cursor = stream;
                     *cursor.add(1) = length;
                     cursor.add(2).copy_from_nonoverlapping(buffer, usize::from(length));
                     ptr::addr_of_mut!(self.write_cursor).write_volatile(next_write_cursor);
-                    break;
+                    return false;
                 }
                 if wrapped {
                     if available > HEADER_LENGTH {
@@ -67,7 +67,8 @@ impl LocalRuntime for Runtime {
                     }
                     ptr::addr_of_mut!(self.write_cursor).write_volatile(0);
                 }
-            }
+                true
+            }) {}
         }
     }
 }
