@@ -64,6 +64,8 @@ const HALF_DROPPED: u8 = 1 << HALF_DROPPED_SHIFT;
 impl<T> Unpin for Sender<T> {}
 impl<T> Unpin for Receiver<T> {}
 unsafe impl<T: Send> Send for Sender<T> {}
+unsafe impl<T: Send> Sync for Sender<T> {}
+unsafe impl<T: Send> Send for Receiver<T> {}
 unsafe impl<T: Send> Sync for Receiver<T> {}
 
 #[cfg(all(feature = "atomics", not(loom)))]

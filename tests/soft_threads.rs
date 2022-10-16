@@ -1,5 +1,4 @@
 #![cfg(not(loom))]
-#![cfg(feature = "atomics")]
 #![no_implicit_prelude]
 
 use ::drone_core::thr;
@@ -7,7 +6,6 @@ use ::drone_core::thr::{pending_size, SoftThrToken, SoftThread, ThrExec, PRIORIT
 use ::drone_core::token::Token;
 use ::std::assert_eq;
 use ::std::clone::Clone;
-use ::std::sync::atomic::Ordering;
 use ::std::sync::{Arc, Mutex};
 use ::std::vec::Vec;
 
@@ -106,8 +104,12 @@ fn test_priorities() {
     });
     thr_0.wakeup();
     assert_eq!(*log.lock().unwrap(), &[0, 3, 4, 2, 1]);
-    assert_eq!(unsafe { &*Thr::pending_priority() }.load(Ordering::Relaxed), 0);
     for i in 0..pending_size::<Thr>() {
-        assert_eq!(unsafe { &*Thr::pending().add(i) }.load(Ordering::Relaxed), 0);
+        let cell = unsafe { &*Thr::pending().add(i) };
+        #[cfg(feature = "atomics")]
+        let cell = cell.load(::std::sync::atomic::Ordering::Relaxed);
+        #[cfg(not(feature = "atomics"))]
+        let cell = cell.load();
+        assert_eq!(cell, 0);
     }
 }

@@ -218,13 +218,6 @@ fn def_soft(thr: &Thr, set_pending: Option<&ExprPath>) -> TokenStream2 {
             }
 
             #[inline]
-            fn pending_priority() -> *const ::drone_core::thr::PendingPriorityState {
-                static PENDING_PRIORITY: ::drone_core::thr::PendingPriorityState =
-                    ::drone_core::thr::PendingPriorityState::new(0);
-                &PENDING_PRIORITY
-            }
-
-            #[inline]
             fn priority(&self) -> *const ::drone_core::thr::PriorityState {
                 &self.priority
             }

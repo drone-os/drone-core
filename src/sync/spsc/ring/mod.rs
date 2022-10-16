@@ -89,6 +89,8 @@ const COUNT_MASK: usize = (1 << COUNT_BITS) - 1;
 impl<T, E> Unpin for Sender<T, E> {}
 impl<T, E> Unpin for Receiver<T, E> {}
 unsafe impl<T: Send, E: Send> Send for Sender<T, E> {}
+unsafe impl<T: Send, E: Send> Sync for Sender<T, E> {}
+unsafe impl<T: Send, E: Send> Send for Receiver<T, E> {}
 unsafe impl<T: Send, E: Send> Sync for Receiver<T, E> {}
 
 #[cfg(all(feature = "atomics", not(loom)))]

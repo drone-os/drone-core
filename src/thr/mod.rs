@@ -56,8 +56,7 @@ mod soft;
 
 pub use self::exec::{ExecOutput, ThrExec};
 pub use self::soft::{
-    pending_size, PendingPriorityState, PendingState, PriorityState, SoftThrToken, SoftThread,
-    PRIORITY_LEVELS,
+    pending_size, PendingState, PriorityState, SoftThrToken, SoftThread, PRIORITY_LEVELS,
 };
 use crate::fib::{Chain, RootFiber};
 use crate::token::Token;
