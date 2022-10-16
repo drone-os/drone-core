@@ -152,6 +152,7 @@ impl<T, E> Sender<T, E> {
 
     /// Tests to see whether this `Sender`'s corresponding `Receiver` has been
     /// dropped.
+    #[inline]
     pub fn is_canceled(&self) -> bool {
         unsafe {
             let state = load_atomic!(self.state(), Relaxed);
@@ -161,6 +162,7 @@ impl<T, E> Sender<T, E> {
 
     /// Tests to see whether this `Sender` is connected to the given `Receiver`.
     /// That is, whether they were created by the same call to `channel`.
+    #[inline]
     pub fn is_connected_to(&self, receiver: &Receiver<T, E>) -> bool {
         self.ptr.as_ptr() == receiver.ptr.as_ptr()
     }
@@ -215,6 +217,7 @@ impl<T, E> Sink<T> for Sender<T, E> {
         }
     }
 
+    #[inline]
     fn start_send(mut self: Pin<&mut Self>, value: T) -> Result<(), Self::Error> {
         self.try_send(value).map_err(|e| e.err)
     }

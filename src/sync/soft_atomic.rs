@@ -39,31 +39,37 @@ unsafe impl<T: sealed::AtMostWordSized + Copy> Sync for Atomic<T> {}
 
 impl<T: sealed::AtMostWordSized + Copy> Atomic<T> {
     /// Creates a new `Atomic<T>`.
+    #[inline]
     pub const fn new(value: T) -> Self {
         Self { inner: UnsafeCell::new(value) }
     }
 
     /// Consumes the atomic and returns the contained value.
+    #[inline]
     pub fn into_inner(self) -> T {
         self.inner.into_inner()
     }
 
     /// Returns a mutable reference to the underlying value.
+    #[inline]
     pub fn get_mut(&mut self) -> &mut T {
         self.inner.get_mut()
     }
 
     /// Returns a mutable pointer to the underlying value.
+    #[inline]
     pub fn as_mut_ptr(&self) -> *mut T {
         self.inner.get()
     }
 
     /// Loads a value from the atomic.
+    #[inline]
     pub fn load(&self) -> T {
         unsafe { *self.inner.get() }
     }
 
     /// Stores a value into the atomic.
+    #[inline]
     pub fn store(&self, value: T) {
         unsafe { *self.inner.get() = value };
     }

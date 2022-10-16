@@ -74,6 +74,7 @@ impl<T> LinkedList<T> {
         ///
         /// let list: LinkedList<u32> = LinkedList::new();
         /// ```
+        #[inline]
         pub const fn new() -> Self {
             Self { head: AtomicPtr::new(ptr::null_mut()) }
         }
@@ -94,6 +95,7 @@ impl<T> LinkedList<T> {
     /// list.push("foo");
     /// assert!(!list.is_empty());
     /// ```
+    #[inline]
     pub fn is_empty(&self) -> bool {
         load_atomic!(self.head, Relaxed).is_null()
     }
@@ -114,6 +116,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(list.pop().unwrap(), 1);
     /// assert_eq!(list.pop().unwrap(), 2);
     /// ```
+    #[inline]
     pub fn push(&self, data: T) {
         unsafe { self.push_raw(Box::into_raw(Box::new(Node::from(data)))) };
     }
@@ -139,6 +142,7 @@ impl<T> LinkedList<T> {
     /// The `node` parameter must point to a valid allocation. Other list
     /// methods, which drop nodes in-place, assume that `node` is created using
     /// [`Box::from_raw`].
+    #[inline]
     pub unsafe fn push_raw(&self, node: *mut Node<T>) {
         load_modify_atomic!(self.head, Relaxed, Release, |curr| unsafe {
             (*node).next = curr;
@@ -165,6 +169,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(d.pop(), Some(1));
     /// assert_eq!(d.pop(), None);
     /// ```
+    #[inline]
     pub fn pop(&self) -> Option<T> {
         unsafe { self.pop_raw().map(|node| Box::from_raw(node).value) }
     }
@@ -194,6 +199,7 @@ impl<T> LinkedList<T> {
     /// # Safety
     ///
     /// It's responsibility of the caller to de-allocate the node.
+    #[inline]
     pub unsafe fn pop_raw(&self) -> Option<*mut Node<T>> {
         load_try_modify_atomic!(self.head, Acquire, Acquire, |curr| unsafe {
             (!curr.is_null()).then(|| (*curr).next)
@@ -224,6 +230,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(iter.next(), Some(&mut 10));
     /// assert_eq!(iter.next(), None);
     /// ```
+    #[inline]
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         // Because `self` is a unique reference, no node can be deleted.
         unsafe { IterMut { raw: self.iter_raw(), marker: PhantomData } }
@@ -235,6 +242,7 @@ impl<T> LinkedList<T> {
     /// # Safety
     ///
     /// While the returned iterator is alive nodes must not be removed.
+    #[inline]
     pub unsafe fn iter_raw(&self) -> IterRaw<T> {
         IterRaw { curr: load_atomic!(self.head, Acquire) }
     }
@@ -265,6 +273,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(evens.into_iter().collect::<Vec<_>>(), vec![2, 4, 6, 8, 14]);
     /// assert_eq!(odds.into_iter().collect::<Vec<_>>(), vec![15, 13, 11, 9, 5, 3, 1]);
     /// ```
+    #[inline]
     pub fn drain_filter<'a, F: 'a>(
         &'a mut self,
         mut filter: F,
@@ -289,6 +298,7 @@ impl<T> LinkedList<T> {
     /// It's responsibility of the caller to de-allocate returned nodes.
     ///
     /// While the returned iterator is alive nodes must not be removed.
+    #[inline]
     pub unsafe fn drain_filter_raw<F>(
         &self,
         filter: F,
@@ -325,12 +335,14 @@ impl<T> Extend<T> for LinkedList<T> {
 }
 
 impl<'a, T: 'a + Copy> Extend<&'a T> for LinkedList<T> {
+    #[inline]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().copied());
     }
 }
 
 impl<T> FromIterator<T> for LinkedList<T> {
+    #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut list = Self::new();
         list.extend(iter);
@@ -342,6 +354,7 @@ impl<T> IntoIterator for LinkedList<T> {
     type IntoIter = IntoIter<T>;
     type Item = T;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         IntoIter { list: self }
     }
@@ -395,6 +408,7 @@ where
     F: FnMut(*const Node<T>) -> bool,
 {
     /// Returns `true` if the iterator has reached the end of the linked list.
+    #[inline]
     pub fn is_end(&self) -> bool {
         self.raw.is_end()
     }
@@ -427,6 +441,7 @@ where
     F: FnMut(*const Node<T>) -> bool,
 {
     /// Returns `true` if the iterator has reached the end of the linked list.
+    #[inline]
     pub fn is_end(&self) -> bool {
         self.curr.is_null()
     }
@@ -470,6 +485,7 @@ where
 impl<T, F> FusedIterator for DrainFilterRaw<'_, T, F> where F: FnMut(*const Node<T>) -> bool {}
 
 impl<T> From<T> for Node<T> {
+    #[inline]
     fn from(value: T) -> Self {
         Self { value, next: ptr::null_mut() }
     }
@@ -478,12 +494,14 @@ impl<T> From<T> for Node<T> {
 impl<T> Deref for Node<T> {
     type Target = T;
 
+    #[inline]
     fn deref(&self) -> &T {
         &self.value
     }
 }
 
 impl<T> DerefMut for Node<T> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut T {
         &mut self.value
     }

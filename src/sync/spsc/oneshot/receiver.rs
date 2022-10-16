@@ -115,6 +115,7 @@ impl<T> Future for Receiver<T> {
 }
 
 impl<T> FusedFuture for Receiver<T> {
+    #[inline]
     fn is_terminated(&self) -> bool {
         unsafe {
             let state = load_atomic!(self.state(), Relaxed);

@@ -168,6 +168,7 @@ impl<E> Sender<E> {
     ///
     /// This is a utility wrapping [`poll_canceled`](Sender::poll_canceled) to
     /// expose a [`Future`](core::future::Future).
+    #[inline]
     pub fn cancellation(&mut self) -> Cancellation<'_, E> {
         Cancellation { sender: self }
     }
@@ -178,6 +179,7 @@ impl<E> Sender<E> {
     /// Unlike [`poll_canceled`](Sender::poll_canceled), this function does not
     /// enqueue a task for wakeup upon cancellation, but merely reports the
     /// current state, which may be subject to concurrent modification.
+    #[inline]
     pub fn is_canceled(&self) -> bool {
         unsafe {
             let state = load_atomic!(self.state(), Relaxed);
@@ -187,6 +189,7 @@ impl<E> Sender<E> {
 
     /// Tests to see whether this `Sender` is connected to the given `Receiver`.
     /// That is, whether they were created by the same call to `channel`.
+    #[inline]
     pub fn is_connected_to(&self, receiver: &Receiver<E>) -> bool {
         self.ptr.as_ptr() == receiver.ptr.as_ptr()
     }
@@ -232,6 +235,7 @@ impl<E> fmt::Debug for Sender<E> {
 impl<E> Future for Cancellation<'_, E> {
     type Output = ();
 
+    #[inline]
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         self.sender.poll_canceled(cx)
     }

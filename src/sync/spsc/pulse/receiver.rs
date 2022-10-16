@@ -149,6 +149,7 @@ impl<E> Stream for Receiver<E> {
 }
 
 impl<E> FusedStream for Receiver<E> {
+    #[inline]
     fn is_terminated(&self) -> bool {
         unsafe {
             let state = load_atomic!(self.state(), Relaxed);

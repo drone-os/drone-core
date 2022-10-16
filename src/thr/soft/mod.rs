@@ -143,16 +143,19 @@ pub trait SoftThrToken: ThrToken {
     type SoftThread: SoftThread;
 
     /// Returns a reference to the software-managed thread object.
+    #[inline]
     fn to_soft_thr(self) -> &'static Self::SoftThread {
         unsafe { &*Self::SoftThread::pool().add(usize::from(Self::THR_IDX)) }
     }
 
     /// Sets the thread pending.
+    #[inline]
     fn set_pending(self) {
         unsafe { Self::SoftThread::set_pending(Self::THR_IDX) };
     }
 
     /// Clears the thread pending state.
+    #[inline]
     fn clear_pending(self) {
         unsafe {
             clear_pending(
@@ -164,6 +167,7 @@ pub trait SoftThrToken: ThrToken {
     }
 
     /// Returns `true` if the thread is pending.
+    #[inline]
     fn is_pending(self) -> bool {
         unsafe {
             is_pending(
@@ -175,6 +179,7 @@ pub trait SoftThrToken: ThrToken {
     }
 
     /// Reads the priority of the thread.
+    #[inline]
     fn priority(self) -> u8 {
         unsafe { load_atomic!(*self.to_soft_thr().priority(), Relaxed) }
     }
@@ -184,6 +189,7 @@ pub trait SoftThrToken: ThrToken {
     /// # Panics
     ///
     /// If `priority` is greater than or equals to [`PRIORITY_LEVELS`].
+    #[inline]
     fn set_priority(self, priority: u8) {
         assert!(priority < PRIORITY_LEVELS);
         unsafe { store_atomic!(*self.to_soft_thr().priority(), priority, Relaxed) };
@@ -195,10 +201,12 @@ impl<S: SoftThread, T: ThrToken<Thread = S>> SoftThrToken for T {
 }
 
 impl<T: SoftThrToken> ThrExec for T {
+    #[inline]
     fn wakeup(self) {
         SoftWaker::<T::SoftThread>::new(T::THR_IDX).wakeup();
     }
 
+    #[inline]
     fn waker(self) -> Waker {
         SoftWaker::<T::SoftThread>::new(T::THR_IDX).to_waker()
     }

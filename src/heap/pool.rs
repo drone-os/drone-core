@@ -31,6 +31,7 @@ unsafe impl Sync for Pool {}
 impl Pool {
     maybe_const_fn! {
         /// Creates a new `Pool`.
+        #[inline]
         pub const fn new(address: usize, size: usize, count: usize) -> Self {
             Self {
                 size,
@@ -42,6 +43,7 @@ impl Pool {
     }
 
     /// Returns the block size.
+    #[inline]
     pub const fn size(&self) -> usize {
         self.size
     }

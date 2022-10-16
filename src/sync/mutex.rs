@@ -86,6 +86,7 @@ impl<T> Mutex<T> {
         ///
         /// let mutex = Mutex::new(0);
         /// ```
+        #[inline]
         pub const fn new(data: T) -> Self {
             Self {
                 locked: DataLocked::new(false),
@@ -105,6 +106,7 @@ impl<T> Mutex<T> {
     /// let mutex = Mutex::new(0);
     /// assert_eq!(mutex.into_inner(), 0);
     /// ```
+    #[inline]
     pub fn into_inner(self) -> T {
         self.data.into_inner()
     }
@@ -128,6 +130,7 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// This method returns a future that will resolve once the lock has been
     /// successfully acquired.
+    #[inline]
     pub fn lock(&self) -> MutexLockFuture<'_, T> {
         MutexLockFuture { mutex: self, waiter: None }
     }
@@ -146,6 +149,7 @@ impl<T: ?Sized> Mutex<T> {
     /// *mutex.get_mut() = 10;
     /// assert_eq!(*mutex.try_lock().unwrap(), 10);
     /// ```
+    #[inline]
     pub fn get_mut(&mut self) -> &mut T {
         unsafe { &mut *self.data.get() }
     }
@@ -243,6 +247,7 @@ impl Drop for Waiter {
 impl<T> From<T> for Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use. This is
     /// equivalent to [`Mutex::new`].
+    #[inline]
     fn from(data: T) -> Self {
         Self::new(data)
     }
@@ -250,6 +255,7 @@ impl<T> From<T> for Mutex<T> {
 
 impl<T: ?Sized + Default> Default for Mutex<T> {
     /// Creates a `Mutex<T>`, with the `Default` value for T.
+    #[inline]
     fn default() -> Self {
         Self::new(Default::default())
     }
@@ -275,12 +281,14 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
 impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
 
+    #[inline]
     fn deref(&self) -> &T {
         unsafe { &*self.mutex.data.get() }
     }
 }
 
 impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.mutex.data.get() }
     }
