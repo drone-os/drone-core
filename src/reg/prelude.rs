@@ -21,5 +21,19 @@ pub use crate::reg::{
         WWRegFieldBit as _, WWRegFieldBits as _, WoWoRegField as _, WoWoRegFieldBit as _,
         WoWoRegFieldBits as _,
     },
-    RegRef as _, RwRegUnsync as _, WRegAtomic as _, WRegUnsync as _,
+    RwRegUnsync as _, WRegAtomic as _, WRegUnsync as _,
+};
+#[cfg(feature = "atomics")]
+#[doc(no_inline)]
+pub use crate::reg::{
+    field::{WRwRegFieldAtomic as _, WRwRegFieldBitAtomic as _, WRwRegFieldBitsAtomic as _},
+    RwRegAtomic as _,
+};
+#[cfg(not(feature = "atomics"))]
+#[doc(no_inline)]
+pub use crate::reg::{
+    field::{
+        WRwRegFieldBitSoftAtomic as _, WRwRegFieldBitsSoftAtomic as _, WRwRegFieldSoftAtomic as _,
+    },
+    RwRegSoftAtomic as _,
 };

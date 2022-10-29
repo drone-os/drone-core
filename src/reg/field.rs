@@ -3,6 +3,12 @@
 //! See [the top-level module documentation](self) for details.
 
 use crate::bitfield::{Bitfield, Bits};
+#[cfg(feature = "atomics")]
+pub use crate::reg::atomic::{WRwRegFieldAtomic, WRwRegFieldBitAtomic, WRwRegFieldBitsAtomic};
+#[cfg(not(feature = "atomics"))]
+pub use crate::reg::soft_atomic::{
+    WRwRegFieldBitSoftAtomic, WRwRegFieldBitsSoftAtomic, WRwRegFieldSoftAtomic,
+};
 use crate::reg::tag::{Crt, RegAtomic, RegTag, Srt, Urt};
 use crate::reg::{RReg, Reg, WReg, WoReg};
 use crate::token::Token;

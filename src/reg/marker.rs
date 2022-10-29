@@ -4,6 +4,19 @@ use crate::reg::field::{
     RRRegFieldBit, RRRegFieldBits, RoRRegField, WWRegFieldBit, WWRegFieldBits, WoWRegField,
 };
 use crate::reg::tag::{Crt, RegTag, Srt, Urt};
+#[cfg(feature = "atomics")]
+use crate::reg::{
+    field::{WRwRegFieldBitAtomic, WRwRegFieldBitsAtomic},
+    RwRegAtomic,
+};
+#[cfg(not(feature = "atomics"))]
+use crate::reg::{
+    field::{
+        WRwRegFieldBitSoftAtomic as WRwRegFieldBitAtomic,
+        WRwRegFieldBitsSoftAtomic as WRwRegFieldBitsAtomic,
+    },
+    RwRegSoftAtomic as RwRegAtomic,
+};
 #[doc(inline)]
 pub use crate::reg::{
     field::{WoWoRegFieldBit, WoWoRegFieldBits},
@@ -32,14 +45,14 @@ where
 pub trait URwReg
 where
     Self: RwReg<Urt>,
-    Self: for<'a> RwRegUnsync<'a>,
+    Self: RwRegUnsync,
 {
 }
 
 impl<R> URwReg for R
 where
     R: RwReg<Urt>,
-    R: for<'a> RwRegUnsync<'a>,
+    R: RwRegUnsync,
 {
 }
 
@@ -58,14 +71,14 @@ impl<R> URoReg for R where R: RoReg<Urt> {}
 pub trait UWoReg
 where
     Self: WoReg<Urt>,
-    Self: for<'a> WRegUnsync<'a>,
+    Self: WRegUnsync,
 {
 }
 
 impl<R> UWoReg for R
 where
     R: WoReg<Urt>,
-    R: for<'a> WRegUnsync<'a>,
+    R: WRegUnsync,
 {
 }
 
@@ -74,14 +87,14 @@ where
 pub trait SRwReg
 where
     Self: RwReg<Srt>,
-    Self: for<'a> WRegAtomic<'a, Srt>,
+    Self: WRegAtomic<Srt>,
 {
 }
 
 impl<R> SRwReg for R
 where
     R: RwReg<Srt>,
-    R: for<'a> WRegAtomic<'a, Srt>,
+    R: WRegAtomic<Srt>,
 {
 }
 
@@ -100,14 +113,14 @@ impl<R> SRoReg for R where R: RoReg<Srt> {}
 pub trait SWoReg
 where
     Self: WoReg<Srt>,
-    Self: for<'a> WRegAtomic<'a, Srt>,
+    Self: WRegAtomic<Srt>,
 {
 }
 
 impl<R> SWoReg for R
 where
     R: WoReg<Srt>,
-    R: for<'a> WRegAtomic<'a, Srt>,
+    R: WRegAtomic<Srt>,
 {
 }
 
@@ -116,7 +129,7 @@ where
 pub trait CRwReg
 where
     Self: RwReg<Crt>,
-    Self: for<'a> WRegAtomic<'a, Crt>,
+    Self: RwRegAtomic<Crt>,
     Self: Copy,
 {
 }
@@ -124,7 +137,7 @@ where
 impl<R> CRwReg for R
 where
     R: RwReg<Crt>,
-    R: for<'a> WRegAtomic<'a, Crt>,
+    R: RwRegAtomic<Crt>,
     R: Copy,
 {
 }
@@ -150,7 +163,7 @@ where
 pub trait CWoReg
 where
     Self: WoReg<Crt>,
-    Self: for<'a> WRegAtomic<'a, Crt>,
+    Self: WRegAtomic<Crt>,
     Self: Copy,
 {
 }
@@ -158,7 +171,7 @@ where
 impl<R> CWoReg for R
 where
     R: WoReg<Crt>,
-    R: for<'a> WRegAtomic<'a, Crt>,
+    R: WRegAtomic<Crt>,
     R: Copy,
 {
 }
@@ -472,6 +485,7 @@ where
 pub trait SRwRwRegFieldBit
 where
     Self: RwRwRegFieldBit<Srt>,
+    Self: WRwRegFieldBitAtomic<Srt>,
     Self::Reg: SRwReg,
 {
 }
@@ -479,6 +493,7 @@ where
 impl<R> SRwRwRegFieldBit for R
 where
     R: RwRwRegFieldBit<Srt>,
+    R: WRwRegFieldBitAtomic<Srt>,
     R::Reg: SRwReg,
 {
 }
@@ -488,6 +503,7 @@ where
 pub trait SRwRwRegFieldBits
 where
     Self: RwRwRegFieldBits<Srt>,
+    Self: WRwRegFieldBitsAtomic<Srt>,
     Self::Reg: SRwReg,
 {
 }
@@ -495,6 +511,7 @@ where
 impl<R> SRwRwRegFieldBits for R
 where
     R: RwRwRegFieldBits<Srt>,
+    R: WRwRegFieldBitsAtomic<Srt>,
     R::Reg: SRwReg,
 {
 }
@@ -504,6 +521,7 @@ where
 pub trait SWoRwRegFieldBit
 where
     Self: WoRwRegFieldBit<Srt>,
+    Self: WRwRegFieldBitAtomic<Srt>,
     Self::Reg: SRwReg,
 {
 }
@@ -511,6 +529,7 @@ where
 impl<R> SWoRwRegFieldBit for R
 where
     R: WoRwRegFieldBit<Srt>,
+    R: WRwRegFieldBitAtomic<Srt>,
     R::Reg: SRwReg,
 {
 }
@@ -520,6 +539,7 @@ where
 pub trait SWoRwRegFieldBits
 where
     Self: WoRwRegFieldBits<Srt>,
+    Self: WRwRegFieldBitsAtomic<Srt>,
     Self::Reg: SRwReg,
 {
 }
@@ -527,6 +547,7 @@ where
 impl<R> SWoRwRegFieldBits for R
 where
     R: WoRwRegFieldBits<Srt>,
+    R: WRwRegFieldBitsAtomic<Srt>,
     R::Reg: SRwReg,
 {
 }
@@ -632,6 +653,7 @@ where
 pub trait CRwRwRegFieldBit
 where
     Self: RwRwRegFieldBit<Crt>,
+    Self: WRwRegFieldBitAtomic<Crt>,
     Self: Copy,
     Self::Reg: CRwReg,
 {
@@ -640,6 +662,7 @@ where
 impl<R> CRwRwRegFieldBit for R
 where
     R: RwRwRegFieldBit<Crt>,
+    R: WRwRegFieldBitAtomic<Crt>,
     R: Copy,
     R::Reg: CRwReg,
 {
@@ -650,6 +673,7 @@ where
 pub trait CRwRwRegFieldBits
 where
     Self: RwRwRegFieldBits<Crt>,
+    Self: WRwRegFieldBitsAtomic<Crt>,
     Self: Copy,
     Self::Reg: CRwReg,
 {
@@ -658,6 +682,7 @@ where
 impl<R> CRwRwRegFieldBits for R
 where
     R: RwRwRegFieldBits<Crt>,
+    R: WRwRegFieldBitsAtomic<Crt>,
     R: Copy,
     R::Reg: CRwReg,
 {
@@ -668,6 +693,7 @@ where
 pub trait CWoRwRegFieldBit
 where
     Self: WoRwRegFieldBit<Crt>,
+    Self: WRwRegFieldBitAtomic<Crt>,
     Self: Copy,
     Self::Reg: CRwReg,
 {
@@ -676,6 +702,7 @@ where
 impl<R> CWoRwRegFieldBit for R
 where
     R: WoRwRegFieldBit<Crt>,
+    R: WRwRegFieldBitAtomic<Crt>,
     R: Copy,
     R::Reg: CRwReg,
 {
@@ -686,6 +713,7 @@ where
 pub trait CWoRwRegFieldBits
 where
     Self: WoRwRegFieldBits<Crt>,
+    Self: WRwRegFieldBitsAtomic<Crt>,
     Self: Copy,
     Self::Reg: CRwReg,
 {
@@ -694,6 +722,7 @@ where
 impl<R> CWoRwRegFieldBits for R
 where
     R: WoRwRegFieldBits<Crt>,
+    R: WRwRegFieldBitsAtomic<Crt>,
     R: Copy,
     R::Reg: CRwReg,
 {

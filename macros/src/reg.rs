@@ -369,6 +369,7 @@ impl Variant {
 
                 impl<#t: ::drone_core::reg::tag::RegTag> ::drone_core::reg::Reg<#t> for Reg<#t> {
                     type Val = Val;
+                    type Hold<'a> = Hold<'a, #t>;
                     type UReg = Reg<::drone_core::reg::tag::Urt>;
                     type SReg = Reg<::drone_core::reg::tag::Srt>;
                     type CReg = Reg<::drone_core::reg::tag::Crt>;
@@ -380,16 +381,9 @@ impl Variant {
                     unsafe fn val_from(bits: #val_ty) -> Val {
                         Val(bits)
                     }
-                }
-
-                impl<'a, #t> ::drone_core::reg::RegRef<'a, #t> for Reg<#t>
-                where
-                    #t: ::drone_core::reg::tag::RegTag + 'a,
-                {
-                    type Hold = Hold<'a, #t>;
 
                     #[inline]
-                    fn hold(&'a self, val: Self::Val) -> Self::Hold {
+                    fn hold<'a>(&'a self, val: Self::Val) -> Self::Hold<'a> {
                         Hold { reg: self, val }
                     }
                 }

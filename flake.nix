@@ -55,7 +55,7 @@
           cargo test --package drone-core --features std
           cargo test --package drone-core --features std,atomics
           RUSTFLAGS='--cfg loom' cargo test --package drone-core --features std,atomics --release loom
-          RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --workspace
+          RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --workspace --features atomics
         '';
 
         updateVersions = pkgs.writeShellScriptBin "update-versions" ''

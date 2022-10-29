@@ -23,6 +23,7 @@
 
 #![feature(allocator_api)]
 #![feature(alloc_layout_extra)]
+#![feature(atomic_from_mut)]
 #![feature(core_intrinsics)]
 #![feature(exhaustive_patterns)]
 #![feature(generators)]
