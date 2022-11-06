@@ -373,9 +373,6 @@ use self::tag::{Crt, RegAtomic, RegOwned, RegTag, Srt, Urt};
 use crate::bitfield::Bitfield;
 use crate::token::Token;
 use core::ptr::{read_volatile, write_volatile};
-/// Assert exclusive ownership of the register.
-#[doc(inline)]
-pub use drone_core_macros::reg_claim as claim;
 /// A macro to define a macro to define a set of register tokens.
 ///
 /// See [the module level documentation](self) for details.
@@ -908,39 +905,6 @@ mod compile_tests {
     //! ```
     //!
     //! ```compile_fail
-    //! #![feature(proc_macro_hygiene)]
-    //! use drone_core::token::Token;
-    //! drone_core::reg!(pub FOO BAR => { address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE });
-    //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
-    //! reg_tokens!(index => Regs1);
-    //! reg_tokens!(index => Regs2);
-    //! fn main() {
-    //!     unsafe { Regs1::take() };
-    //!     unsafe { Regs2::take() };
-    //! }
-    //! ```
-    //!
-    //! ```compile_fail
-    //! #![feature(proc_macro_hygiene)]
-    //! use drone_core::token::Token;
-    //! drone_core::reg!(pub FOO BAR => { address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE });
-    //! #[macro_use]
-    //! mod x {
-    //!     drone_core::reg::tokens!(macro reg_tokens1; crate; crate::x; pub mod FOO { BAR; });
-    //! }
-    //! #[macro_use]
-    //! mod y {
-    //!     drone_core::reg::tokens!(macro reg_tokens2; crate; crate::y; pub mod FOO { BAR; });
-    //! }
-    //! reg_tokens1!(index => Regs1);
-    //! reg_tokens2!(index => Regs2);
-    //! fn main() {
-    //!     unsafe { Regs1::take() };
-    //!     unsafe { Regs2::take() };
-    //! }
-    //! ```
-    //!
-    //! ```compile_fail
     //! use drone_core::{reg::prelude::*, token::Token};
     //! drone_core::reg! {
     //!     pub TIM1 CCMR1_Input => {
@@ -973,37 +937,5 @@ mod compile_tests {
     //!     let reg = unsafe { Regs::take() };
     //!     reg.foo_bar;
     //! }
-    //! ```
-    //!
-    //! ```compile_fail
-    //! #![feature(proc_macro_hygiene)]
-    //! use drone_core::token::Token;
-    //! drone_core::reg!(pub FOO BAR => { address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE });
-    //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
-    //! reg_tokens!(index => Regs);
-    //! drone_core::reg::claim!("foo_bar");
-    //! fn main() { unsafe { Regs::take() }; }
-    //! ```
-    //!
-    //! ```
-    //! #![feature(proc_macro_hygiene)]
-    //! use drone_core::token::Token;
-    //! drone_core::reg!(pub FOO BAR => { address => 0xDEAD_BEEF; size => 0x20; reset => 0xBEEF_CACE });
-    //! drone_core::reg::tokens!(macro reg_tokens; crate; crate; pub mod FOO { BAR; });
-    //! reg_tokens!(index => Regs; exclude => { foo_bar });
-    //! drone_core::reg::claim!("foo_bar");
-    //! fn main() { unsafe { Regs::take() }; }
-    //! ```
-    //!
-    //! ```compile_fail
-    //! #![feature(proc_macro_hygiene)]
-    //! drone_core::reg::claim!("foo_bar");
-    //! drone_core::reg::claim!(concat!("foo", "_bar"));
-    //! ```
-    //!
-    //! ```
-    //! #![feature(proc_macro_hygiene)]
-    //! drone_core::reg::claim!("foo_bar");
-    //! drone_core::reg::claim!(concat!("foo", "_baz"));
     //! ```
 }

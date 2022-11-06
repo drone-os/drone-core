@@ -15,7 +15,6 @@ mod periph;
 mod periph_map;
 mod periph_singular;
 mod reg;
-mod reg_claim;
 mod reg_tokens;
 mod reg_tokens_inner;
 mod simple_token;
@@ -59,11 +58,6 @@ pub fn periph_singular(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn reg(input: TokenStream) -> TokenStream {
     reg::proc_macro(input)
-}
-
-#[proc_macro]
-pub fn reg_claim(input: TokenStream) -> TokenStream {
-    reg_claim::proc_macro(input)
 }
 
 #[proc_macro]
