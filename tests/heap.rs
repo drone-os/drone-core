@@ -55,6 +55,6 @@ fn assert_global_alloc<T: ::core::alloc::GlobalAlloc>() {}
 #[test]
 fn size() {
     assert_global_alloc::<HeapPrimary>();
-    assert_eq!(size_of::<HeapPrimary>(), size_of::<heap::Pool>() * 3);
-    assert_eq!(size_of::<HeapSecondary>(), size_of::<heap::Pool>() * 2);
+    assert_eq!(size_of::<HeapPrimary>(), size_of::<heap::Pool>() * 3 + size_of::<usize>());
+    assert_eq!(size_of::<HeapSecondary>(), size_of::<heap::Pool>() * 2 + size_of::<usize>());
 }

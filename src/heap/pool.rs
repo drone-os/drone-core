@@ -1,5 +1,7 @@
 use core::alloc::Layout;
-use core::ptr::{self, NonNull};
+use core::ops::Range;
+use core::ptr;
+use core::ptr::NonNull;
 
 #[cfg(all(feature = "atomics", not(loom)))]
 type AtomicPtr = core::sync::atomic::AtomicPtr<u8>;
@@ -94,18 +96,26 @@ impl Pool {
     }
 }
 
-pub trait Fits: Copy {
-    fn fits(self, pool: &Pool) -> bool;
+pub fn pool_range_by_layout(pools: &[Pool], layout: &Layout) -> Range<usize> {
+    let first = binary_search(pools, |pool| layout.size() <= pool.size);
+    first..pools.len()
 }
 
-impl<'a> Fits for &'a Layout {
-    fn fits(self, pool: &Pool) -> bool {
-        self.size() <= pool.size
-    }
+pub fn pool_by_ptr(pools: &[Pool], base: *mut u8, ptr: NonNull<u8>) -> Option<usize> {
+    let index = binary_search(pools, |pool| ptr.as_ptr() < pool.edge);
+    (index < pools.len() && (index > 0 || ptr.as_ptr() >= base)).then_some(index)
 }
 
-impl Fits for NonNull<u8> {
-    fn fits(self, pool: &Pool) -> bool {
-        self.as_ptr().cast::<u8>() < pool.edge
+fn binary_search<F: FnMut(&Pool) -> bool>(pools: &[Pool], mut f: F) -> usize {
+    let (mut left, mut right) = (0, pools.len());
+    while right > left {
+        let middle = left + (right - left >> 1);
+        let pool = unsafe { pools.get_unchecked(middle) };
+        if f(pool) {
+            right = middle;
+        } else {
+            left = middle + 1;
+        }
     }
+    left
 }

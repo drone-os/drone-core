@@ -120,8 +120,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     .take(pools_len)
     .collect::<Vec<_>>();
 
-    let drone_alloc = def_drone_alloc(&metadata, trace_stream, pools_len);
-    let core_alloc = def_core_alloc(&metadata);
+    let core_alloc = def_core_alloc(&metadata, trace_stream.as_ref());
     let global_alloc = instance_attrs
         .clone()
         .into_iter()
@@ -140,7 +139,9 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 
     quote! {
         #(#metadata_attrs)*
+        #[repr(C)]
         #metadata_vis struct #metadata_ident {
+            base: *mut u8,
             pools: [::drone_core::heap::Pool; #pools_len],
         }
 
@@ -148,10 +149,13 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         #[link_section = #section]
         #instance_vis static #instance_ident: #metadata_ident = #metadata_ident::new();
 
+        unsafe impl ::core::marker::Sync for #metadata_ident {}
+
         impl #metadata_ident {
             /// Creates a instance of this new heap metadata.
             pub const fn new() -> Self {
                 Self {
+                    base: ::core::ptr::null_mut(), // actual address will be set by drone-ld
                     pools: [
                         #(#pools_tokens)*
                     ],
@@ -181,44 +185,30 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
             }
         }
 
-        #drone_alloc
         #core_alloc
         #global_alloc
     }
     .into()
 }
 
-fn def_drone_alloc(
-    metadata: &Metadata,
-    trace_stream: Option<LitInt>,
-    pools_len: usize,
-) -> TokenStream2 {
+#[allow(clippy::too_many_lines)]
+fn def_core_alloc(metadata: &Metadata, trace_stream: Option<&LitInt>) -> TokenStream2 {
     let Metadata { ident: metadata_ident, .. } = metadata;
-    let trace_stream = if let Some(trace_stream) = trace_stream {
-        quote!(::core::option::Option::Some(#trace_stream))
-    } else {
-        quote!(::core::option::Option::None)
-    };
-    quote! {
-        impl ::drone_core::heap::Allocator for #metadata_ident {
-            const POOLS_COUNT: usize = #pools_len;
-            const TRACE_STREAM: ::core::option::Option<u8> = #trace_stream;
-
-            #[inline]
-            unsafe fn get_pool_unchecked<I>(&self, index: I) -> &I::Output
-            where
-                I: ::core::slice::SliceIndex<[::drone_core::heap::Pool]>,
-            {
-                self.pools.get_unchecked(index)
-            }
-        }
-    }
-}
-
-fn def_core_alloc(metadata: &Metadata) -> TokenStream2 {
-    let Metadata { ident: metadata_ident, .. } = metadata;
+    let trace_allocate = trace_stream
+        .map(|stream| quote!(::drone_core::heap::trace::allocate(#stream, layout);))
+        .into_iter();
+    let trace_deallocate = trace_stream
+        .map(|stream| quote!(::drone_core::heap::trace::deallocate(#stream, layout);))
+        .into_iter();
+    let trace_grow = trace_stream
+        .map(|stream| quote!(::drone_core::heap::trace::grow(#stream, old_layout, new_layout);))
+        .into_iter();
+    let trace_shrink = trace_stream
+        .map(|stream| quote!(::drone_core::heap::trace::shrink(#stream, old_layout, new_layout);))
+        .into_iter();
     quote! {
         unsafe impl ::core::alloc::Allocator for #metadata_ident {
+            #[inline]
             fn allocate(
                 &self,
                 layout: ::core::alloc::Layout,
@@ -226,9 +216,14 @@ fn def_core_alloc(metadata: &Metadata) -> TokenStream2 {
                 ::core::ptr::NonNull<[u8]>,
                 ::core::alloc::AllocError,
             > {
-                ::drone_core::heap::allocate(self, layout)
+                #(#trace_allocate)*
+                ::drone_core::heap::allocate(
+                    &self.pools,
+                    layout,
+                )
             }
 
+            #[inline]
             fn allocate_zeroed(
                 &self,
                 layout: ::core::alloc::Layout,
@@ -236,17 +231,28 @@ fn def_core_alloc(metadata: &Metadata) -> TokenStream2 {
                 ::core::ptr::NonNull<[u8]>,
                 ::core::alloc::AllocError,
             > {
-                ::drone_core::heap::allocate_zeroed(self, layout)
+                ::drone_core::heap::allocate_zeroed(
+                    &self.pools,
+                    layout,
+                )
             }
 
+            #[inline]
             unsafe fn deallocate(
                 &self,
                 ptr: ::core::ptr::NonNull<u8>,
                 layout: ::core::alloc::Layout,
             ) {
-                ::drone_core::heap::deallocate(self, ptr, layout)
+                #(#trace_deallocate)*
+                ::drone_core::heap::deallocate(
+                    &self.pools,
+                    self.base,
+                    ptr,
+                    layout,
+                )
             }
 
+            #[inline]
             unsafe fn grow(
                 &self,
                 ptr: ::core::ptr::NonNull<u8>,
@@ -256,9 +262,17 @@ fn def_core_alloc(metadata: &Metadata) -> TokenStream2 {
                 ::core::ptr::NonNull<[u8]>,
                 ::core::alloc::AllocError,
             > {
-                ::drone_core::heap::grow(self, ptr, old_layout, new_layout)
+                #(#trace_grow)*
+                ::drone_core::heap::grow(
+                    &self.pools,
+                    self.base,
+                    ptr,
+                    old_layout,
+                    new_layout,
+                )
             }
 
+            #[inline]
             unsafe fn grow_zeroed(
                 &self,
                 ptr: ::core::ptr::NonNull<u8>,
@@ -268,9 +282,16 @@ fn def_core_alloc(metadata: &Metadata) -> TokenStream2 {
                 ::core::ptr::NonNull<[u8]>,
                 ::core::alloc::AllocError,
             > {
-                ::drone_core::heap::grow_zeroed(self, ptr, old_layout, new_layout)
+                ::drone_core::heap::grow_zeroed(
+                    &self.pools,
+                    self.base,
+                    ptr,
+                    old_layout,
+                    new_layout,
+                )
             }
 
+            #[inline]
             unsafe fn shrink(
                 &self,
                 ptr: ::core::ptr::NonNull<u8>,
@@ -280,7 +301,14 @@ fn def_core_alloc(metadata: &Metadata) -> TokenStream2 {
                 ::core::ptr::NonNull<[u8]>,
                 ::core::alloc::AllocError,
             > {
-                ::drone_core::heap::shrink(self, ptr, old_layout, new_layout)
+                #(#trace_shrink)*
+                ::drone_core::heap::shrink(
+                    &self.pools,
+                    self.base,
+                    ptr,
+                    old_layout,
+                    new_layout,
+                )
             }
         }
     }
@@ -290,14 +318,16 @@ fn def_global_alloc(metadata: &Metadata) -> TokenStream2 {
     let Metadata { ident: metadata_ident, .. } = metadata;
     quote! {
         unsafe impl ::core::alloc::GlobalAlloc for #metadata_ident {
+            #[inline]
             unsafe fn alloc(&self, layout: ::core::alloc::Layout) -> *mut u8 {
-                ::drone_core::heap::allocate(self, layout)
+                ::core::alloc::Allocator::allocate(self, layout)
                     .map(|ptr| ptr.as_mut_ptr())
                     .unwrap_or(::core::ptr::null_mut())
             }
 
+            #[inline]
             unsafe fn dealloc(&self, ptr: *mut u8, layout: ::core::alloc::Layout) {
-                ::drone_core::heap::deallocate(
+                ::core::alloc::Allocator::deallocate(
                     self,
                     ::core::ptr::NonNull::new_unchecked(ptr),
                     layout,
