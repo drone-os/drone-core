@@ -172,10 +172,10 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     static #heap_rt_end: ::core::cell::UnsafeCell<usize>;
                 }
                 unsafe {
-                    ::drone_core::mem::data_section_init(
-                        &#heap_rt_load,
-                        &#heap_rt_base,
-                        &#heap_rt_end,
+                    ::core::ptr::copy_nonoverlapping(
+                        #heap_rt_load.get(),
+                        #heap_rt_base.get(),
+                        (#heap_rt_end.get() as usize - #heap_rt_base.get() as usize) >> 2,
                     );
                 }
             }

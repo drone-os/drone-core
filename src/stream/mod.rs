@@ -9,7 +9,6 @@ mod macros;
 mod runtime;
 
 use self::runtime::LocalRuntime;
-use crate::mem::zeroed_section_init;
 use core::cell::{SyncUnsafeCell, UnsafeCell};
 use core::fmt::Write;
 use core::{fmt, mem, ptr};
@@ -70,7 +69,8 @@ pub fn init() {
             // Invalidate the bootstrap sequence.
             *STREAM_CORE0_BUF_BASE.get() = 0;
         } else {
-            zeroed_section_init(&STREAM_CORE0_RT_BASE, &STREAM_CORE0_RT_END);
+            let length = STREAM_CORE0_RT_END.get() as usize - STREAM_CORE0_RT_BASE.get() as usize;
+            ptr::write_bytes(STREAM_CORE0_RT_BASE.get(), 0, length >> 2);
         }
     }
 }
