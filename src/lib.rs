@@ -100,9 +100,14 @@ pub use drone_core_macros::periph;
 /// See [the module level documentation](mod@reg) for details.
 #[doc(inline)]
 pub use drone_core_macros::reg;
+/// Defines Drone Stream structures.
+///
+/// See [the module level documentation](mod@stream) for details.
+#[doc(inline)]
+pub use drone_core_macros::stream;
 
 /// Re-exports for use inside macros.
 #[doc(hidden)]
 pub mod _rt {
-    pub use ::core;
+    pub use ::{core, drone_stream};
 }

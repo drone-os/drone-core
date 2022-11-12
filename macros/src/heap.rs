@@ -102,11 +102,11 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
         Ok(layout) => layout,
         Err(err) => parse_error!("{err:#?}"),
     };
-
     let pools = match layout.heap.get(&heap_layout.to_string()) {
         Some(heap) => &heap.pools,
         None => parse_error!("Couldn't find heap.{heap_layout} in {LAYOUT_CONFIG}"),
     };
+
     let heap_layout_shouty_snk = heap_layout.to_string().to_shouty_snake_case();
     let heap_rt_load = format_ident!("HEAP_{}_RT_LOAD", heap_layout_shouty_snk);
     let heap_rt_base = format_ident!("HEAP_{}_RT_BASE", heap_layout_shouty_snk);
@@ -194,18 +194,14 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
 #[allow(clippy::too_many_lines)]
 fn def_core_alloc(metadata: &Metadata, trace_stream: Option<&LitInt>) -> TokenStream2 {
     let Metadata { ident: metadata_ident, .. } = metadata;
-    let trace_allocate = trace_stream
-        .map(|stream| quote!(::drone_core::heap::trace::allocate(#stream, layout);))
-        .into_iter();
-    let trace_deallocate = trace_stream
-        .map(|stream| quote!(::drone_core::heap::trace::deallocate(#stream, layout);))
-        .into_iter();
+    let trace_allocate =
+        trace_stream.map(|stream| quote!(::drone_core::heap::trace::allocate(#stream, layout);));
+    let trace_deallocate =
+        trace_stream.map(|stream| quote!(::drone_core::heap::trace::deallocate(#stream, layout);));
     let trace_grow = trace_stream
-        .map(|stream| quote!(::drone_core::heap::trace::grow(#stream, old_layout, new_layout);))
-        .into_iter();
+        .map(|stream| quote!(::drone_core::heap::trace::grow(#stream, old_layout, new_layout);));
     let trace_shrink = trace_stream
-        .map(|stream| quote!(::drone_core::heap::trace::shrink(#stream, old_layout, new_layout);))
-        .into_iter();
+        .map(|stream| quote!(::drone_core::heap::trace::shrink(#stream, old_layout, new_layout);));
     quote! {
         unsafe impl ::core::alloc::Allocator for #metadata_ident {
             #[inline]
@@ -216,7 +212,7 @@ fn def_core_alloc(metadata: &Metadata, trace_stream: Option<&LitInt>) -> TokenSt
                 ::core::ptr::NonNull<[u8]>,
                 ::core::alloc::AllocError,
             > {
-                #(#trace_allocate)*
+                #trace_allocate
                 ::drone_core::heap::allocate(
                     &self.pools,
                     layout,
@@ -243,7 +239,7 @@ fn def_core_alloc(metadata: &Metadata, trace_stream: Option<&LitInt>) -> TokenSt
                 ptr: ::core::ptr::NonNull<u8>,
                 layout: ::core::alloc::Layout,
             ) {
-                #(#trace_deallocate)*
+                #trace_deallocate
                 ::drone_core::heap::deallocate(
                     &self.pools,
                     self.base,
@@ -262,7 +258,7 @@ fn def_core_alloc(metadata: &Metadata, trace_stream: Option<&LitInt>) -> TokenSt
                 ::core::ptr::NonNull<[u8]>,
                 ::core::alloc::AllocError,
             > {
-                #(#trace_grow)*
+                #trace_grow
                 ::drone_core::heap::grow(
                     &self.pools,
                     self.base,
@@ -301,7 +297,7 @@ fn def_core_alloc(metadata: &Metadata, trace_stream: Option<&LitInt>) -> TokenSt
                 ::core::ptr::NonNull<[u8]>,
                 ::core::alloc::AllocError,
             > {
-                #(#trace_shrink)*
+                #trace_shrink
                 ::drone_core::heap::shrink(
                     &self.pools,
                     self.base,

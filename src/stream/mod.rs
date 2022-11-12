@@ -3,34 +3,23 @@
 //! This module implements standard output/error interface, which mimics Rust's
 //! standard library.
 
-#![cfg_attr(feature = "std", allow(unused_imports, dead_code, unreachable_code))]
+#![cfg_attr(feature = "std", allow(unused_imports, dead_code, unreachable_code, unused_variables))]
 
 mod macros;
 mod runtime;
 
-use self::runtime::LocalRuntime;
-use core::cell::{SyncUnsafeCell, UnsafeCell};
+use self::runtime::{LocalGlobalRuntime, LocalRuntime};
+use crate::platform::stream_rt;
+use core::cell::SyncUnsafeCell;
 use core::fmt::Write;
+use core::mem::size_of;
 use core::{fmt, mem, ptr};
 pub use drone_stream::STREAM_COUNT;
-use drone_stream::{Runtime, BOOTSTRAP_SEQUENCE, BOOTSTRAP_SEQUENCE_LENGTH};
+use drone_stream::{GlobalRuntime, Runtime, BOOTSTRAP_SEQUENCE, BOOTSTRAP_SEQUENCE_LENGTH};
 
-extern "C" {
-    static STREAM_CORE0_RT_BASE: UnsafeCell<usize>;
-    static STREAM_CORE0_RT_END: UnsafeCell<usize>;
-    static STREAM_CORE0_BUF_BASE: UnsafeCell<u8>;
-    static STREAM_CORE0_BUF_END: UnsafeCell<u8>;
-}
-
-#[doc(hidden)]
-#[link_section = ".stream_core0_rt"]
+#[link_section = ".stream_rt"]
 #[no_mangle]
-#[used]
-static RT: SyncUnsafeCell<Runtime> = SyncUnsafeCell::new(Runtime::zeroed());
-
-unsafe fn rt() -> &'static mut Runtime {
-    unsafe { &mut *RT.get() }
-}
+static GLOBAL_RT: SyncUnsafeCell<GlobalRuntime> = SyncUnsafeCell::new(GlobalRuntime::zeroed());
 
 /// Stream number of the standard output.
 pub const STDOUT_STREAM: u8 = 0;
@@ -42,15 +31,16 @@ pub const STDERR_STREAM: u8 = 1;
 #[derive(Clone, Copy)]
 pub struct Stream(u8);
 
-/// Initializes the Drone Stream runtime.
-pub fn init() {
+#[doc(hidden)]
+#[inline(never)]
+pub unsafe fn init(rt: *mut Runtime, buffer_size: u32, init_global: bool) {
     #[cfg(feature = "std")]
     return unimplemented!();
     #[cfg(not(feature = "std"))]
     unsafe {
         // Check if the debug probe wants to modify the runtime structure as
         // soon as possible.
-        let mut buffer = STREAM_CORE0_BUF_BASE.get();
+        let mut buffer = rt.add(1).cast::<u8>();
         let mut sample = BOOTSTRAP_SEQUENCE.as_ptr();
         let mut counter = BOOTSTRAP_SEQUENCE_LENGTH;
         while counter > 0 && *buffer == *sample {
@@ -60,17 +50,23 @@ pub fn init() {
         }
         if counter == 0 {
             // Found the valid bootstrap sequence. Copy the bytes, which follow
-            // it, into the runtime structure.
-            ptr::copy_nonoverlapping(
-                buffer,
-                STREAM_CORE0_BUF_BASE.get().sub(mem::size_of::<Runtime>()),
-                mem::size_of::<Runtime>(),
-            );
+            // it, into the runtime structures.
+            ptr::copy_nonoverlapping(buffer, rt.cast::<u8>(), mem::size_of::<Runtime>());
+            buffer = buffer.add(mem::size_of::<Runtime>());
+            if init_global {
+                ptr::copy_nonoverlapping(
+                    buffer,
+                    GLOBAL_RT.get().cast(),
+                    mem::size_of::<GlobalRuntime>(),
+                );
+            }
             // Invalidate the bootstrap sequence.
-            *STREAM_CORE0_BUF_BASE.get() = 0;
+            *rt.add(1).cast::<u8>() = 0;
         } else {
-            let length = STREAM_CORE0_RT_END.get() as usize - STREAM_CORE0_RT_BASE.get() as usize;
-            ptr::write_bytes(STREAM_CORE0_RT_BASE.get(), 0, length >> 2);
+            if init_global {
+                ptr::write_bytes(GLOBAL_RT.get().cast::<u8>(), 0, size_of::<GlobalRuntime>());
+            }
+            *rt = Runtime { buffer_size, read_cursor: 0, write_cursor: 0 };
         }
     }
 }
@@ -104,6 +100,7 @@ pub fn stderr() -> Stream {
 /// }
 /// ```
 #[inline(never)]
+#[export_name = "stream_write_str"]
 pub fn write_str(stream: u8, value: &str) {
     let _ = Stream::new(stream).write_str(value);
 }
@@ -127,6 +124,7 @@ pub fn write_str(stream: u8, value: &str) {
 /// }
 /// ```
 #[inline(never)]
+#[export_name = "stream_write_fmt"]
 pub fn write_fmt(stream: u8, args: fmt::Arguments<'_>) {
     let _ = Stream::new(stream).write_fmt(args);
 }
@@ -148,7 +146,7 @@ impl Stream {
     #[inline]
     pub fn is_enabled(self) -> bool {
         let Self(stream) = self;
-        unsafe { rt().is_enabled(stream) }
+        unsafe { (*GLOBAL_RT.get()).is_enabled(stream) }
     }
 
     /// Writes a sequence of bytes to this stream.
@@ -160,7 +158,7 @@ impl Stream {
     #[inline]
     pub fn write_bytes(self, bytes: &[u8]) -> Self {
         let Self(stream) = self;
-        unsafe { rt().write_bytes(stream, bytes.as_ptr(), bytes.len()) };
+        unsafe { (*stream_rt()).write_bytes(stream, bytes.as_ptr(), bytes.len()) };
         self
     }
 
@@ -174,7 +172,7 @@ impl Stream {
     pub fn write_transaction(self, bytes: &[u8]) -> Self {
         let Self(stream) = self;
         let length = bytes.len().try_into().expect("maximum transaction length exceeded");
-        unsafe { rt().write_transaction(stream, bytes.as_ptr(), length) };
+        unsafe { (*stream_rt()).write_transaction(stream, bytes.as_ptr(), length) };
         self
     }
 
@@ -198,7 +196,7 @@ impl Write for Stream {
 }
 
 mod sealed {
-    use super::{rt, LocalRuntime};
+    use super::{stream_rt, LocalRuntime};
 
     pub trait StreamWrite: Copy {
         fn stream_write(stream: u8, value: Self);
@@ -210,7 +208,9 @@ mod sealed {
                 #[inline]
                 fn stream_write(stream: u8, value: Self) {
                     let bytes = value.to_ne_bytes();
-                    unsafe { rt().write_transaction(stream, bytes.as_ptr(), bytes.len() as u8) };
+                    unsafe {
+                        (*stream_rt()).write_transaction(stream, bytes.as_ptr(), bytes.len() as u8);
+                    }
                 }
             }
         };

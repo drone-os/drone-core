@@ -6,6 +6,7 @@ mod interrputs;
 
 pub use self::interrputs::Interrupts;
 use core::cell::UnsafeCell;
+use drone_stream::Runtime;
 
 extern "C" {
     fn drone_reset() -> !;
@@ -13,6 +14,7 @@ extern "C" {
     fn drone_restore_interrupts(status: u32);
     fn drone_data_section_init(load: *const usize, base: *mut usize, end: *const usize);
     fn drone_zeroed_section_init(base: *mut usize, end: *const usize);
+    fn drone_stream_runtime() -> *mut Runtime;
 }
 
 /// Requests system reset.
@@ -100,5 +102,16 @@ pub unsafe fn data_section_init(
     #[cfg(not(feature = "std"))]
     unsafe {
         drone_data_section_init(load.get(), base.get(), end.get());
+    }
+}
+
+/// Returns a mutable reference to the Drone Stream runtime.
+#[inline]
+pub fn stream_rt() -> *mut Runtime {
+    #[cfg(feature = "std")]
+    return unimplemented!();
+    #[cfg(not(feature = "std"))]
+    unsafe {
+        drone_stream_runtime()
     }
 }
