@@ -12,8 +12,8 @@ extern "C" {
     fn drone_reset() -> !;
     fn drone_save_and_disable_interrupts() -> u32;
     fn drone_restore_interrupts(status: u32);
-    fn drone_data_section_init(load: *const usize, base: *mut usize, end: *const usize);
-    fn drone_zeroed_section_init(base: *mut usize, end: *const usize);
+    fn drone_data_mem_init(load: *const usize, base: *mut usize, end: *const usize);
+    fn drone_zeroed_mem_init(base: *mut usize, end: *const usize);
     fn drone_stream_runtime() -> *mut Runtime;
 }
 
@@ -30,9 +30,9 @@ pub fn reset() -> ! {
     }
 }
 
-/// Initializes a zeroed section in RAM memory.
+/// Fills a memory region with zeros without using compiler built-ins.
 ///
-/// See also [`data_section_init`].
+/// See also [`data_mem_init`].
 ///
 /// # Examples
 ///
@@ -46,7 +46,7 @@ pub fn reset() -> ! {
 /// }
 ///
 /// unsafe {
-///     platform::zeroed_section_init(&BSS_BASE, &BSS_END);
+///     platform::zeroed_mem_init(&BSS_BASE, &BSS_END);
 /// }
 /// ```
 ///
@@ -54,20 +54,21 @@ pub fn reset() -> ! {
 ///
 /// This function is very unsafe, because it directly overwrites the memory.
 #[inline]
-pub unsafe fn zeroed_section_init(base: &UnsafeCell<usize>, end: &UnsafeCell<usize>) {
+pub unsafe fn zeroed_mem_init(base: &UnsafeCell<usize>, end: &UnsafeCell<usize>) {
     // Need to use assembly code, because pure Rust code can be optimized to use the
     // compiler builtin `memcpy`, which may be not available yet.
     #[cfg(feature = "std")]
     return unimplemented!();
     #[cfg(not(feature = "std"))]
     unsafe {
-        drone_zeroed_section_init(base.get(), end.get());
+        drone_zeroed_mem_init(base.get(), end.get());
     }
 }
 
-/// Initializes a data section in RAM memory.
+/// Copies bytes from one memory region to another without using compiler
+/// built-ins.
 ///
-/// See also [`zeroed_section_init`].
+/// See also [`zeroed_mem_init`].
 ///
 /// # Examples
 ///
@@ -82,7 +83,7 @@ pub unsafe fn zeroed_section_init(base: &UnsafeCell<usize>, end: &UnsafeCell<usi
 /// }
 ///
 /// unsafe {
-///     platform::data_section_init(&DATA_LOAD, &DATA_BASE, &DATA_END);
+///     platform::data_mem_init(&DATA_LOAD, &DATA_BASE, &DATA_END);
 /// }
 /// ```
 ///
@@ -90,7 +91,7 @@ pub unsafe fn zeroed_section_init(base: &UnsafeCell<usize>, end: &UnsafeCell<usi
 ///
 /// This function is very unsafe, because it directly overwrites the memory.
 #[inline]
-pub unsafe fn data_section_init(
+pub unsafe fn data_mem_init(
     load: &UnsafeCell<usize>,
     base: &UnsafeCell<usize>,
     end: &UnsafeCell<usize>,
@@ -101,7 +102,7 @@ pub unsafe fn data_section_init(
     return unimplemented!();
     #[cfg(not(feature = "std"))]
     unsafe {
-        drone_data_section_init(load.get(), base.get(), end.get());
+        drone_data_mem_init(load.get(), base.get(), end.get());
     }
 }
 

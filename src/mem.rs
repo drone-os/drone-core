@@ -1,6 +1,6 @@
 //! Basic functions for dealing with memory.
 
-use crate::platform::{data_section_init, zeroed_section_init};
+use crate::platform::{data_mem_init, zeroed_mem_init};
 use core::cell::UnsafeCell;
 
 extern "C" {
@@ -11,28 +11,18 @@ extern "C" {
     static DATA_END: UnsafeCell<usize>;
 }
 
-/// Initializes the `BSS` mutable memory section.
+/// Initializes global mutable memory.
 ///
-/// This function **must** be called as early as possible.
-///
-/// See also [`data_init`].
-///
-/// # Safety
-///
-/// This function reverts the state of initially zeroed mutable statics.
-pub unsafe fn bss_init() {
-    unsafe { zeroed_section_init(&BSS_BASE, &BSS_END) };
-}
-
-/// Initializes the `DATA` mutable memory section.
-///
-/// This function **must** be called as early as possible.
-///
-/// See also [`bss_init`].
+/// This function **must** be called as early as possible, because it
+/// initializes `static` variables.
 ///
 /// # Safety
 ///
-/// This function reverts the state of initially non-zeroed mutable statics.
-pub unsafe fn data_init() {
-    unsafe { data_section_init(&DATA_LOAD, &DATA_BASE, &DATA_END) };
+/// This function must be called only once and before using any global
+/// variables.
+pub unsafe fn init() {
+    unsafe {
+        zeroed_mem_init(&BSS_BASE, &BSS_END);
+        data_mem_init(&DATA_LOAD, &DATA_BASE, &DATA_END);
+    }
 }
