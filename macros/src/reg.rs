@@ -327,7 +327,10 @@ impl Variant {
             }
         }
         if self.fields.is_empty() {
-            struct_tokens.push(quote!(_marker: ::core::marker::PhantomData<#t>));
+            struct_tokens.push(quote! {
+                #[allow(missing_docs)]
+                pub _marker: ::core::marker::PhantomData<#t>
+            });
             ctor_tokens.push(quote!(_marker: ::core::marker::PhantomData));
         }
         for ident in &self.traits {

@@ -565,6 +565,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             #(#c_tokens)*
                         }
                     });
+                    if u_fields_tokens.is_empty() {
+                        u_fields_tokens.push(quote! {
+                            #[allow(missing_docs)]
+                            pub _marker: ::core::marker::PhantomData<T>,
+                        });
+                    }
                     tokens.push(quote! {
                         #reg_attrs
                         #[allow(missing_docs)]
@@ -572,6 +578,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             #(#u_fields_tokens)*
                         }
                     });
+                    if s_fields_tokens.is_empty() {
+                        s_fields_tokens.push(quote! {
+                            #[allow(missing_docs)]
+                            pub _marker: ::core::marker::PhantomData<T>,
+                        });
+                    }
                     tokens.push(quote! {
                         #reg_attrs
                         #[allow(missing_docs)]
@@ -579,6 +591,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             #(#s_fields_tokens)*
                         }
                     });
+                    if c_fields_tokens.is_empty() {
+                        c_fields_tokens.push(quote! {
+                            #[allow(missing_docs)]
+                            pub _marker: ::core::marker::PhantomData<T>,
+                        });
+                    }
                     tokens.push(quote! {
                         #reg_attrs
                         #[allow(missing_docs)]
@@ -724,6 +742,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             #(#c_tokens)*
                         }
                     });
+                    if u_fields_tokens.is_empty() {
+                        u_fields_tokens.push(quote! {
+                            #[allow(missing_docs)]
+                            pub _marker: ::core::marker::PhantomData<T>,
+                        });
+                    }
                     tokens.push(quote! {
                         #reg_attrs
                         #[allow(missing_docs)]
@@ -731,6 +755,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             #(#u_fields_tokens)*
                         }
                     });
+                    if s_fields_tokens.is_empty() {
+                        s_fields_tokens.push(quote! {
+                            #[allow(missing_docs)]
+                            pub _marker: ::core::marker::PhantomData<T>,
+                        });
+                    }
                     tokens.push(quote! {
                         #reg_attrs
                         #[allow(missing_docs)]
@@ -738,6 +768,12 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             #(#s_fields_tokens)*
                         }
                     });
+                    if c_fields_tokens.is_empty() {
+                        c_fields_tokens.push(quote! {
+                            #[allow(missing_docs)]
+                            pub _marker: ::core::marker::PhantomData<T>,
+                        });
+                    }
                     tokens.push(quote! {
                         #reg_attrs
                         #[allow(missing_docs)]

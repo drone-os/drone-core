@@ -280,7 +280,6 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 }
                 let reg_root = &quote!(#root_path::#block_path_ident::#var_path_ident);
                 let mut reg_fields_tokens = Vec::new();
-                let mut fields_reg_tokens = Vec::new();
                 let mut fields_tokens = Vec::new();
                 let mut u_tokens = Vec::new();
                 let mut s_tokens = Vec::new();
@@ -456,7 +455,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                                 &self.#field_path_ident
                             }
                         });
-                        fields_reg_tokens.push(quote! {
+                        fields_tokens.push(quote! {
                             #struct_attrs
                             #field_ident: #field_path_ident
                         });
@@ -466,9 +465,17 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                         });
                     }
                 }
-                let reg_fields_tokens = &reg_fields_tokens;
-                let fields_reg_tokens = &fields_reg_tokens;
-                let fields_tokens = &fields_tokens;
+                let mut reg_fields_constructor_tokens = reg_fields_tokens.clone();
+                let mut reg_fields_destructor_tokens = reg_fields_tokens;
+                let mut fields_constructor_tokens = fields_tokens.clone();
+                let mut fields_destructor_tokens = fields_tokens;
+                if reg_fields_constructor_tokens.is_empty() {
+                    reg_fields_constructor_tokens
+                        .push(quote!(_marker: ::core::marker::PhantomData));
+                    reg_fields_destructor_tokens.push(quote!(_marker));
+                    fields_constructor_tokens.push(quote!(_marker: ::core::marker::PhantomData));
+                    fields_destructor_tokens.push(quote!(_marker));
+                }
                 if var_path.is_none() {
                     tokens.push(quote! {
                         #reg_attrs
@@ -568,17 +575,15 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             #[inline]
                             fn from_fields(map: #u_fields<#periph_ty>) -> Self {
                                 let #u_fields {
-                                    #(#fields_reg_tokens,)*
-                                    #(#fields_tokens,)*
+                                    #(#fields_destructor_tokens,)*
                                 } = map;
-                                Self { #(#reg_fields_tokens),* }
+                                Self { #(#reg_fields_constructor_tokens),* }
                             }
                             #[inline]
                             fn into_fields(self) -> #u_fields<#periph_ty> {
-                                let Self { #(#reg_fields_tokens),* } = self;
+                                let Self { #(#reg_fields_destructor_tokens),* } = self;
                                 #u_fields {
-                                    #(#fields_reg_tokens,)*
-                                    #(#fields_tokens,)*
+                                    #(#fields_constructor_tokens,)*
                                 }
                             }
                             #(#u_tokens)*
@@ -591,17 +596,15 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             #[inline]
                             fn from_fields(map: #s_fields<#periph_ty>) -> Self {
                                 let #s_fields {
-                                    #(#fields_reg_tokens,)*
-                                    #(#fields_tokens,)*
+                                    #(#fields_destructor_tokens,)*
                                 } = map;
-                                Self { #(#reg_fields_tokens),* }
+                                Self { #(#reg_fields_constructor_tokens),* }
                             }
                             #[inline]
                             fn into_fields(self) -> #s_fields<#periph_ty> {
-                                let Self { #(#reg_fields_tokens),* } = self;
+                                let Self { #(#reg_fields_destructor_tokens),* } = self;
                                 #s_fields {
-                                    #(#fields_reg_tokens,)*
-                                    #(#fields_tokens,)*
+                                    #(#fields_constructor_tokens,)*
                                 }
                             }
                             #(#s_tokens)*
@@ -614,17 +617,15 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                             #[inline]
                             fn from_fields(map: #c_fields<#periph_ty>) -> Self {
                                 let #c_fields {
-                                    #(#fields_reg_tokens,)*
-                                    #(#fields_tokens,)*
+                                    #(#fields_destructor_tokens,)*
                                 } = map;
-                                Self { #(#reg_fields_tokens),* }
+                                Self { #(#reg_fields_constructor_tokens),* }
                             }
                             #[inline]
                             fn into_fields(self) -> #c_fields<#periph_ty> {
-                                let Self { #(#reg_fields_tokens),* } = self;
+                                let Self { #(#reg_fields_destructor_tokens),* } = self;
                                 #c_fields {
-                                    #(#fields_reg_tokens,)*
-                                    #(#fields_tokens,)*
+                                    #(#fields_constructor_tokens,)*
                                 }
                             }
                             #(#c_tokens)*
