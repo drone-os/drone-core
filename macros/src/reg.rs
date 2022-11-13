@@ -165,14 +165,22 @@ impl Parse for Field {
 
 impl Variant {
     #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
-    fn generate(&self) -> TokenStream2 {
+    fn generate(&mut self) -> TokenStream2 {
         let t = format_ident!("_T");
         let val_ty = format_ident!("u{}", self.size);
         let mut imports = self.traits.iter().cloned().collect::<HashSet<_>>();
         let mut tokens = Vec::new();
         let mut struct_tokens = Vec::new();
         let mut ctor_tokens = Vec::new();
-        for Field { attrs, ident, offset, width, traits } in &self.fields {
+        for Field { attrs, ident, offset, width, traits } in &mut self.fields {
+            let mut force_bits = false;
+            traits.retain(|t| {
+                if t == "ForceBits" {
+                    force_bits = true;
+                    return false;
+                }
+                true
+            });
             let field_snk = ident.to_string().to_snake_case();
             let mut field_cml = ident.to_string().to_upper_camel_case();
             if field_cml == "Val" {
@@ -216,12 +224,12 @@ impl Variant {
                     const WIDTH: usize = #width;
                 }
             });
-            for ident in traits {
+            for ident in &*traits {
                 tokens.push(quote! {
                     impl<#t: ::drone_core::reg::tag::RegTag> #ident<#t> for #field_cml<#t> {}
                 });
             }
-            if width.base10_digits() == "1" {
+            if width.base10_digits() == "1" && !force_bits {
                 tokens.push(quote! {
                     impl<#t> ::drone_core::reg::field::RegFieldBit<#t> for #field_cml<#t>
                     where
@@ -344,7 +352,7 @@ impl Variant {
             let imports = imports.iter();
             quote!(use super::{#(#imports),*};)
         };
-        let Variant { attrs, vis, address, reset, .. } = self;
+        let Variant { attrs, vis, address, reset, .. } = &self;
         let reg_full = self.reg_full();
 
         quote! {
@@ -437,8 +445,8 @@ fn parse_traits(input: ParseStream<'_>) -> Result<Vec<Ident>> {
 }
 
 pub fn proc_macro(input: TokenStream) -> TokenStream {
-    let Input { variants } = parse_macro_input!(input);
-    let reg_tokens = variants.iter().map(Variant::generate).collect::<Vec<_>>();
+    let Input { mut variants } = parse_macro_input!(input);
+    let reg_tokens = variants.iter_mut().map(Variant::generate).collect::<Vec<_>>();
     let mut variant_tokens = Vec::new();
     for (i, reg_src) in variants.iter().enumerate() {
         for (j, reg_dst) in variants.iter().enumerate() {
