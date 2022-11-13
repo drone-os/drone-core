@@ -17,6 +17,56 @@ extern "C" {
     fn drone_stream_runtime() -> *mut Runtime;
 }
 
+/// Runs a predicate in a tight loop. Stops when the predicate returns `false`.
+///
+/// This is an equivalent to `while f() {}`. Using this ubiquitously makes it
+/// much easier to find tight loops.
+///
+/// See also [`spin_until`](crate::spin_until).
+///
+/// # Examples
+///
+/// ```
+/// use drone_core::spin_while;
+/// let mut i = 0;
+/// let mut poll = || {
+///     i += 1;
+///     i
+/// };
+/// spin_while!(poll() < 10);
+/// ```
+#[macro_export]
+macro_rules! spin_while {
+    ($pred:expr) => {
+        while $pred {}
+    };
+}
+
+/// Runs a predicate in a tight loop. Stops when the predicate returns `true`.
+///
+/// This is an equivalent to `while !f() {}`. Using this ubiquitously makes it
+/// much easier to find tight loops.
+///
+/// See also [`spin_while`](crate::spin_while).
+///
+/// # Examples
+///
+/// ```
+/// use drone_core::spin_until;
+/// let mut i = 0;
+/// let mut poll = || {
+///     i += 1;
+///     i
+/// };
+/// spin_until!(poll() == 10);
+/// ```
+#[macro_export]
+macro_rules! spin_until {
+    ($pred:expr) => {
+        $crate::spin_while!(!$pred)
+    };
+}
+
 /// Requests system reset.
 ///
 /// This function never returns.
