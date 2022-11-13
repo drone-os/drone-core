@@ -139,6 +139,8 @@
 | [`as_sync`](Reg::as_sync)               |            |          |
 | [`default_val`](Reg::default_val)       |            |          |
 | [`default`](Reg::default)               |            |          |
+| [`zeroed_val`](Reg::zeroed_val)         |            |          |
+| [`zeroed`](Reg::zeroed)                 |            |          |
 | [`hold`](Reg::hold)                     |            |          |
 | [`load`](RReg::load)                    | read       |          |
 | [`load_val`](RReg::load_val)            | read       |          |
@@ -370,7 +372,7 @@ pub use self::atomic::RwRegAtomic;
 #[cfg(not(feature = "atomics"))]
 pub use self::soft_atomic::RwRegSoftAtomic;
 use self::tag::{Crt, RegAtomic, RegOwned, RegTag, Srt, Urt};
-use crate::bitfield::Bitfield;
+use crate::bitfield::{Bitfield, Bits};
 use crate::token::Token;
 use core::ptr::{read_volatile, write_volatile};
 /// A macro to define a macro to define a set of register tokens.
@@ -465,6 +467,15 @@ pub trait Reg<T: RegTag>: Token + Sync {
         unsafe { Self::val_from(Self::RESET) }
     }
 
+    /// Creates a new opaque register value, and initializes it with all zero
+    /// bits.
+    ///
+    /// See also [`zeroed`](Reg::zeroed).
+    #[inline]
+    fn zeroed_val(&self) -> Self::Val {
+        unsafe { Self::val_from(<<Self::Val as Bitfield>::Bits as Bits>::from_usize(0)) }
+    }
+
     /// Creates a new exposed register value, and initializes it with the reset
     /// value.
     ///
@@ -473,6 +484,16 @@ pub trait Reg<T: RegTag>: Token + Sync {
     #[inline]
     fn default<'a>(&'a self) -> Self::Hold<'a> {
         self.hold(self.default_val())
+    }
+
+    /// Creates a new exposed register value, and initializes it with all zero
+    /// bits.
+    ///
+    /// See also [`zeroed_val`](Reg::zeroed_val).
+    #[allow(clippy::needless_lifetimes)]
+    #[inline]
+    fn zeroed<'a>(&'a self) -> Self::Hold<'a> {
+        self.hold(self.zeroed_val())
     }
 }
 
