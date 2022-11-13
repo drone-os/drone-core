@@ -84,7 +84,7 @@ impl Parse for Variant {
             } else if ident == "fields" {
                 fields.extend(Field::parse_list(&input2)?);
             } else {
-                return Err(input2.error(format!("unknown key: `{}`", ident)));
+                return Err(input2.error(format!("unknown key: `{ident}`")));
             }
             if !input2.is_empty() {
                 input2.parse::<Token![;]>()?;
@@ -147,7 +147,7 @@ impl Parse for Field {
             } else if ident == "traits" {
                 traits.extend(parse_traits(&input2)?);
             } else {
-                return Err(input2.error(format!("unknown key: `{}`", ident)));
+                return Err(input2.error(format!("unknown key: `{ident}`")));
             }
             if !input2.is_empty() {
                 input2.parse::<Token![;]>()?;

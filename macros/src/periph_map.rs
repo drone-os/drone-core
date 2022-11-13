@@ -58,7 +58,7 @@ impl Parse for Input {
         let macro_ident = input.parse::<Ident>()?;
         if !macro_ident.to_string().starts_with(MACRO_PREFIX) {
             return Err(
-                input.error(format!("Expected an ident which starts with `{}`", MACRO_PREFIX))
+                input.error(format!("Expected an ident which starts with `{MACRO_PREFIX}`"))
             );
         }
         input.parse::<Token![;]>()?;
@@ -225,8 +225,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                     variant;
                 let (var_snk, var_cml) = if let Some(variant_ident) = variant_ident {
                     (
-                        format!("{}_{}", reg_snk, variant_ident.to_string().to_snake_case()),
-                        format!("{}{}", reg_cml, variant_ident.to_string().to_upper_camel_case()),
+                        format!("{reg_snk}_{}", variant_ident.to_string().to_snake_case()),
+                        format!("{reg_cml}{}", variant_ident.to_string().to_upper_camel_case()),
                     )
                 } else {
                     (reg_snk.clone(), reg_cml.clone())

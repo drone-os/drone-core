@@ -15,8 +15,8 @@
       let
         rustChannel = {
           channel = "nightly";
-          date = "2022-09-23";
-          sha256 = "lv8DWMZm/vmAfC8RF8nwMXKp2xiMxtsthqTEs7bWyms=";
+          date = "2022-11-12";
+          sha256 = "NZrKSshDgITZuDSffP89NpZl/pQlblc7arXatkV+O9A=";
         };
 
         pkgs = nixpkgs.legacyPackages.${system};
@@ -36,10 +36,10 @@
             src = pkgs.fetchFromGitHub {
               owner = "orium";
               repo = name;
-              rev = "v0.7.2";
-              sha256 = "sha256-jMFBdfSd3hz3YdI1TZjJFJGzcSIrry+4zgUgV51MlZ4=";
+              rev = "v0.7.3";
+              sha256 = "qzit/uYkyWiOqpO5sHYo2hKJvOhovcO+oVbq/Bo2HsI=";
             };
-            cargoSha256 = "sha256-2swM8GLyYDyrSXzaKNbG4u1//X35Oa4SCKPqiMVhwxY=";
+            cargoSha256 = "lbyLVmSLNt4mt6hQbJnCuNL1Y1/2E/81sVpLYOkv7w8=";
             nativeBuildInputs = [ pkgs.pkg-config ];
             buildInputs = [ pkgs.openssl ];
             doCheck = false;

@@ -38,9 +38,7 @@ impl Parse for Token {
         if name.ends_with(TOKEN_SUFFIX) {
             name.truncate(name.len() - TOKEN_SUFFIX.len());
         } else {
-            return Err(
-                input.error(format!("Expected an ident which ends with `{}`", TOKEN_SUFFIX))
-            );
+            return Err(input.error(format!("Expected an ident which ends with `{TOKEN_SUFFIX}`")));
         }
         Ok(Self { name })
     }

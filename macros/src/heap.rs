@@ -62,7 +62,7 @@ impl Parse for Input {
                     return Err(input.error("multiple `trace_stream` specifications"));
                 }
             } else {
-                return Err(input.error(format!("unknown key: `{}`", ident)));
+                return Err(input.error(format!("unknown key: `{ident}`")));
             }
             if !input.is_empty() {
                 input.parse::<Token![;]>()?;

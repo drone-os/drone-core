@@ -95,7 +95,7 @@ impl Parse for Input {
                     return Err(input.error("multiple `resume` specifications"));
                 }
             } else {
-                return Err(input.error(format!("unknown key: `{}`", ident)));
+                return Err(input.error(format!("unknown key: `{ident}`")));
             }
             if !input.is_empty() {
                 input.parse::<Token![;]>()?;
@@ -217,7 +217,7 @@ fn def_thr(
     let count = LitInt::new(&format!("{}_u16", threads.len()), Span::call_site());
     let mut threads_tokens = Vec::new();
     for idx in 0..threads.len() {
-        let idx = LitInt::new(&format!("{}_u16", idx), Span::call_site());
+        let idx = LitInt::new(&format!("{idx}_u16"), Span::call_site());
         threads_tokens.push(quote! {
             #thr_ident::new(#idx)
         });
@@ -345,7 +345,7 @@ fn def_thr_token(
     let mut tokens = Vec::new();
     let field_ident = format_ident!("{}", ident);
     let struct_ident = format_ident!("{}", ident.to_string().to_upper_camel_case());
-    let idx = LitInt::new(&format!("{}_u16", idx), Span::call_site());
+    let idx = LitInt::new(&format!("{idx}_u16"), Span::call_site());
     tokens.push(quote! {
         #(#attrs)*
         #[derive(Clone, Copy)]

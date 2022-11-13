@@ -149,8 +149,8 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
                 let Variant { ident: variant_ident, size, traits, fields } = variant;
                 let (var_snk, var_cml) = if let Some(variant_ident) = variant_ident {
                     (
-                        format!("{}_{}", reg_snk, variant_ident.to_string().to_snake_case()),
-                        format!("{}{}", reg_cml, variant_ident.to_string().to_upper_camel_case()),
+                        format!("{reg_snk}_{}", variant_ident.to_string().to_snake_case()),
+                        format!("{reg_cml}{}", variant_ident.to_string().to_upper_camel_case()),
                     )
                 } else {
                     (reg_snk.clone(), reg_cml.clone())

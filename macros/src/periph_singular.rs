@@ -42,7 +42,7 @@ impl Parse for Input {
         let macro_ident = input.parse::<Ident>()?;
         if !macro_ident.to_string().starts_with(MACRO_PREFIX) {
             return Err(
-                input.error(format!("Expected an ident which starts with `{}`", MACRO_PREFIX))
+                input.error(format!("Expected an ident which starts with `{MACRO_PREFIX}`"))
             );
         }
         input.parse::<Token![;]>()?;
@@ -51,9 +51,7 @@ impl Parse for Input {
         input.parse::<Token![struct]>()?;
         let struct_ident = input.parse::<Ident>()?;
         if !struct_ident.to_string().ends_with(STRUCT_SUFFIX) {
-            return Err(
-                input.error(format!("Expected an ident which ends with `{}`", STRUCT_SUFFIX))
-            );
+            return Err(input.error(format!("Expected an ident which ends with `{STRUCT_SUFFIX}`")));
         }
         input.parse::<Token![;]>()?;
         let root_path = input.parse()?;

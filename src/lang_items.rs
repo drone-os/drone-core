@@ -8,8 +8,8 @@ fn begin_panic(pi: &PanicInfo<'_>) -> ! {
     platform::reset()
 }
 
-#[lang = "oom"]
-fn oom(layout: Layout) -> ! {
-    eprintln!("Couldn't allocate memory of size {}. Aborting!", layout.size());
+#[alloc_error_handler]
+fn alloc_error_handler(layout: Layout) -> ! {
+    eprintln!("memory allocation of {} bytes failed", layout.size());
     platform::reset()
 }
