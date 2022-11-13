@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "std", allow(unused_imports, unused_variables))]
+#![cfg_attr(feature = "host", allow(unused_imports, unused_variables))]
 
 use super::{drone_restore_interrupts, drone_save_and_disable_interrupts};
 
@@ -60,9 +60,9 @@ impl Interrupts {
     #[inline]
     pub fn pause() -> Self {
         Self {
-            #[cfg(feature = "std")]
+            #[cfg(feature = "host")]
             save: 0,
-            #[cfg(not(feature = "std"))]
+            #[cfg(not(feature = "host"))]
             save: unsafe { drone_save_and_disable_interrupts() },
         }
     }
@@ -97,7 +97,7 @@ impl Interrupts {
 impl Drop for Interrupts {
     fn drop(&mut self) {
         let Self { save } = *self;
-        #[cfg(not(feature = "std"))]
+        #[cfg(not(feature = "host"))]
         unsafe {
             drone_restore_interrupts(save);
         }

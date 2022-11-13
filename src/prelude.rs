@@ -12,7 +12,7 @@
 //! use drone_core::prelude::*;
 //! ```
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "host"))]
 #[doc(no_inline)]
 pub use crate::{dbg, eprint, eprintln, print, println};
 #[doc(no_inline)]
@@ -24,6 +24,6 @@ pub use alloc::{
 };
 #[doc(no_inline)]
 pub use core::prelude::rust_2021::*;
-#[cfg(feature = "std")]
+#[cfg(feature = "host")]
 #[doc(no_inline)]
 pub use std::{dbg, eprint, eprintln, print, println};

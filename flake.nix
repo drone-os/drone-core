@@ -52,9 +52,9 @@
           cargo clippy --workspace -- --deny warnings
           cargo clippy --workspace --features atomics -- --deny warnings
           cargo test --workspace --exclude drone-core
-          cargo test --package drone-core --features std
-          cargo test --package drone-core --features std,atomics
-          RUSTFLAGS='--cfg loom' cargo test --package drone-core --features std,atomics --release loom
+          cargo test --package drone-core --features host
+          cargo test --package drone-core --features host,atomics
+          RUSTFLAGS='--cfg loom' cargo test --package drone-core --features host,atomics --release loom
           RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --workspace --features atomics
         '';
 

@@ -3,7 +3,7 @@
 //! This module implements standard output/error interface, which mimics Rust's
 //! standard library.
 
-#![cfg_attr(feature = "std", allow(unused_imports, dead_code, unreachable_code, unused_variables))]
+#![cfg_attr(feature = "host", allow(unused_imports, dead_code, unreachable_code, unused_variables))]
 
 mod macros;
 mod runtime;
@@ -34,9 +34,9 @@ pub struct Stream(u8);
 #[doc(hidden)]
 #[inline(never)]
 pub unsafe fn init(rt: *mut Runtime, buffer_size: u32, init_global: bool) {
-    #[cfg(feature = "std")]
+    #[cfg(feature = "host")]
     return unimplemented!();
-    #[cfg(not(feature = "std"))]
+    #[cfg(not(feature = "host"))]
     unsafe {
         // Check if the debug probe wants to modify the runtime structure as
         // soon as possible.

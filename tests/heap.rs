@@ -38,7 +38,7 @@ heap! {
     #[doc = "test attribute"]
     metadata => pub HeapPrimary;
     /// Test doc attribute
-    #[cfg_attr(not(feature = "std"), global_allocator)]
+    #[cfg_attr(not(feature = "host"), global_allocator)]
     #[doc = "test attribute"]
     instance => pub HEAP_PRIMARY;
 }

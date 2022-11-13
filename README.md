@@ -21,11 +21,11 @@ Add the crate to your `Cargo.toml` dependencies:
 drone-core = { version = "0.15.0" }
 ```
 
-Add or extend `std` feature as follows:
+Add or extend `host` feature as follows:
 
 ```toml
 [features]
-std = ["drone-core/std"]
+host = ["drone-core/host"]
 ```
 
 <!-- cargo-rdme end -->

@@ -14,11 +14,11 @@
 //! drone-core = { version = "0.15.0" }
 //! ```
 //!
-//! Add or extend `std` feature as follows:
+//! Add or extend `host` feature as follows:
 //!
 //! ```toml
 //! [features]
-//! std = ["drone-core/std"]
+//! host = ["drone-core/host"]
 //! ```
 
 #![feature(allocator_api)]
@@ -50,7 +50,7 @@
     clippy::use_self,
     clippy::used_underscore_binding
 )]
-#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(feature = "host"), no_std)]
 
 extern crate alloc;
 
@@ -73,7 +73,7 @@ pub mod sync;
 pub mod thr;
 pub mod token;
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "host"))]
 mod lang_items;
 
 #[prelude_import]

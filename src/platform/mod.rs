@@ -1,6 +1,6 @@
 //! CPU management.
 
-#![cfg_attr(feature = "std", allow(dead_code, unreachable_code, unused_variables))]
+#![cfg_attr(feature = "host", allow(dead_code, unreachable_code, unused_variables))]
 
 mod interrputs;
 
@@ -72,9 +72,9 @@ macro_rules! spin_until {
 /// This function never returns.
 #[inline]
 pub fn reset() -> ! {
-    #[cfg(feature = "std")]
+    #[cfg(feature = "host")]
     return unimplemented!();
-    #[cfg(not(feature = "std"))]
+    #[cfg(not(feature = "host"))]
     unsafe {
         drone_reset()
     }
@@ -107,9 +107,9 @@ pub fn reset() -> ! {
 pub unsafe fn zeroed_mem_init(base: &UnsafeCell<usize>, end: &UnsafeCell<usize>) {
     // Need to use assembly code, because pure Rust code can be optimized to use the
     // compiler builtin `memcpy`, which may be not available yet.
-    #[cfg(feature = "std")]
+    #[cfg(feature = "host")]
     return unimplemented!();
-    #[cfg(not(feature = "std"))]
+    #[cfg(not(feature = "host"))]
     unsafe {
         drone_zeroed_mem_init(base.get(), end.get());
     }
@@ -148,9 +148,9 @@ pub unsafe fn data_mem_init(
 ) {
     // Need to use assembly code, because pure Rust code can be optimized to use the
     // compiler builtin `memset`, which may be not available yet.
-    #[cfg(feature = "std")]
+    #[cfg(feature = "host")]
     return unimplemented!();
-    #[cfg(not(feature = "std"))]
+    #[cfg(not(feature = "host"))]
     unsafe {
         drone_data_mem_init(load.get(), base.get(), end.get());
     }
@@ -159,9 +159,9 @@ pub unsafe fn data_mem_init(
 /// Returns a mutable reference to the Drone Stream runtime.
 #[inline]
 pub fn stream_rt() -> *mut Runtime {
-    #[cfg(feature = "std")]
+    #[cfg(feature = "host")]
     return unimplemented!();
-    #[cfg(not(feature = "std"))]
+    #[cfg(not(feature = "host"))]
     unsafe {
         drone_stream_runtime()
     }

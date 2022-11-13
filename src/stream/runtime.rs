@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "std", allow(unused_imports, unused_variables))]
+#![cfg_attr(feature = "host", allow(unused_imports, unused_variables))]
 
 use crate::platform::Interrupts;
 use core::ptr;
@@ -40,9 +40,9 @@ impl LocalRuntime for Runtime {
     #[inline(never)]
     #[export_name = "stream_write_transaction"]
     unsafe fn write_transaction(&mut self, stream: u8, buffer: *const u8, length: u8) {
-        #[cfg(feature = "std")]
+        #[cfg(feature = "host")]
         return unimplemented!();
-        #[cfg(not(feature = "std"))]
+        #[cfg(not(feature = "host"))]
         unsafe {
             while Interrupts::paused(|| {
                 let read_cursor = ptr::addr_of!(self.read_cursor).read_volatile();

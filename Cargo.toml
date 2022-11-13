@@ -63,7 +63,7 @@ maintenance = { status = "actively-developed" }
 
 [features]
 default = []
-std = ["futures/std"]
+host = ["futures/std"]
 atomics = [] # use hardware atomics from core::sync::atomic
 xip = [] # enable optimizations for execute in place
 
