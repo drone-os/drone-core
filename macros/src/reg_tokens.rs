@@ -20,6 +20,7 @@ struct Block {
     attrs: Vec<Attribute>,
     vis: Visibility,
     ident: Ident,
+    skip: bool,
     regs: Vec<Reg>,
 }
 
@@ -77,6 +78,7 @@ impl Parse for Block {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
         input.parse::<Token![mod]>()?;
+        let skip = input.parse::<Option<Token![!]>>()?.is_some();
         let ident = input.parse()?;
         let content;
         braced!(content in input);
@@ -84,7 +86,7 @@ impl Parse for Block {
         while !content.is_empty() {
             regs.push(content.parse()?);
         }
-        Ok(Self { attrs, vis, ident, regs })
+        Ok(Self { attrs, vis, ident, skip, regs })
     }
 }
 
@@ -162,7 +164,9 @@ fn make_macro(
 ) -> Vec<TokenStream2> {
     let mut tokens = Vec::new();
     let mut defs = Vec::new();
-    for Block { attrs: block_attrs, vis: block_vis, ident: block_ident, regs } in blocks {
+    for Block { attrs: block_attrs, vis: block_vis, ident: block_ident, skip: block_skip, regs } in
+        blocks
+    {
         let block_snk = block_ident.to_string().to_snake_case();
         let block_name = format_ident!("{}", unkeywordize(&block_snk));
         let mut block_tokens = Vec::new();
@@ -173,10 +177,12 @@ fn make_macro(
             let reg_snk = reg_ident.to_string().to_snake_case();
             let reg_long = format_ident!("{}_{}", block_snk, reg_snk);
             let reg_short = format_ident!("{}", unkeywordize(&reg_snk));
-            block_tokens.push(quote! {
-                pub use #root_path::#reg_long as #reg_short;
-                pub use #root_path::#reg_long::Reg as #reg_cml;
-            });
+            if !block_skip {
+                block_tokens.push(quote! {
+                    pub use #root_path::#reg_long as #reg_short;
+                    pub use #root_path::#reg_long::Reg as #reg_cml;
+                });
+            }
             if !skip {
                 let macro_root_path = macro_root_path.iter();
                 defs.push(quote! {
@@ -185,12 +191,14 @@ fn make_macro(
                 });
             }
         }
-        tokens.push(quote! {
-            #(#block_attrs)*
-            #block_vis mod #block_name {
-                #(#block_tokens)*
-            }
-        });
+        if !block_skip {
+            tokens.push(quote! {
+                #(#block_attrs)*
+                #block_vis mod #block_name {
+                    #(#block_tokens)*
+                }
+            });
+        }
     }
     let macro_vis = if macro_export { quote!(#[macro_export]) } else { quote!() };
     let macro_tokens = if let Some(prev_macro) = prev_macro {
