@@ -64,6 +64,10 @@ where
     /// Reads the value from the register memory, toggles the bit, writes the
     /// value back to the register memory, repeat if interrupted.
     fn toggle_bit(&self);
+
+    /// Reads the value from the register memory, writes the bit, writes the
+    /// value back to the register memory, repeat if interrupted.
+    fn write_bit(&self, bit: bool);
 }
 
 /// Software-implemented atomic operations for writable multiple-bit field of
@@ -155,6 +159,13 @@ where
     fn toggle_bit(&self) {
         self.modify(|val| {
             self.toggle(val);
+        });
+    }
+
+    #[inline]
+    fn write_bit(&self, bit: bool) {
+        self.modify(|val| {
+            self.write(val, bit);
         });
     }
 }

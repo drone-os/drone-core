@@ -256,6 +256,7 @@ impl Variant {
                     let set_field = format_ident!("set_{}", field_snk);
                     let clear_field = format_ident!("clear_{}", field_snk);
                     let toggle_field = format_ident!("toggle_{}", field_snk);
+                    let write_field = format_ident!("write_{}", field_snk);
                     tokens.push(quote! {
                         #[allow(clippy::len_without_is_empty)]
                         impl<'a, #t: ::drone_core::reg::tag::RegTag> Hold<'a, #t> {
@@ -285,6 +286,17 @@ impl Variant {
                                 ::drone_core::reg::field::WWRegFieldBit::toggle(
                                     &self.reg.#field_ident,
                                     &mut self.val,
+                                );
+                                self
+                            }
+
+                            #(#attrs)*
+                            #[inline]
+                            pub fn #write_field(&mut self, bit: bool) -> &mut Self {
+                                ::drone_core::reg::field::WWRegFieldBit::write(
+                                    &self.reg.#field_ident,
+                                    &mut self.val,
+                                    bit,
                                 );
                                 self
                             }

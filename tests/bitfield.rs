@@ -61,6 +61,18 @@ fn toggle_bit() {
 }
 
 #[test]
+fn write_bit() {
+    let mut x = Byte(0b1010_1010);
+    unsafe {
+        x.write_bit(0, true);
+        x.write_bit(7, false);
+        x.write_bit(4, false);
+        x.write_bit(3, true);
+    }
+    assert_eq!(x.bits(), 0b0010_1011);
+}
+
+#[test]
 fn read_bits() {
     let x = Byte(0b1010_0110);
     assert_eq!(unsafe { x.read_bits(0, 0) }, 0b0);

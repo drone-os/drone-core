@@ -162,6 +162,7 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
                     let set_bit = format_ident!("set_{}", ident);
                     let clear_bit = format_ident!("clear_{}", ident);
                     let toggle_bit = format_ident!("toggle_{}", ident);
+                    let write_bit = format_ident!("write_{}", ident);
                     fields.push(quote! {
                         #[allow(clippy::unnecessary_cast)]
                         #(#attrs)*
@@ -188,6 +189,16 @@ pub fn proc_macro_derive(input: TokenStream) -> TokenStream {
                         pub fn #toggle_bit(&mut self) -> &mut Self {
                             unsafe {
                                 ::drone_core::bitfield::Bitfield::toggle_bit(self, #offset as #bits);
+                            }
+                            self
+                        }
+                    });
+                    fields.push(quote! {
+                        #[allow(clippy::unnecessary_cast)]
+                        #(#attrs)*
+                        pub fn #write_bit(&mut self, bit: bool) -> &mut Self {
+                            unsafe {
+                                ::drone_core::bitfield::Bitfield::write_bit(self, #offset as #bits, bit);
                             }
                             self
                         }

@@ -91,9 +91,11 @@
 | [`set`](field::WWRegFieldBit::set)                  | one-bit   | write | write      |
 | [`clear`](field::WWRegFieldBit::clear)              | one-bit   | write | write      |
 | [`toggle`](field::WWRegFieldBit::toggle)            | one-bit   | write | write      |
+| [`write`](field::WWRegFieldBit::write)              | one-bit   | write | write      |
 | [`set_bit`](field::WoWoRegFieldBit::set_bit)        | one-bit   | write | write-only |
 | [`clear_bit`](field::WoWoRegFieldBit::clear_bit)    | one-bit   | write | write-only |
 | [`toggle_bit`](field::WoWoRegFieldBit::toggle_bit)  | one-bit   | write | write-only |
+| [`write_bit`](field::WoWoRegFieldBit::write_bit)    | one-bit   | write | write-only |
 | [`read`](field::RRRegFieldBits::read)               | multi-bit | read  | read       |
 | [`read_bits`](field::RRRegFieldBits::read_bits)     | multi-bit | read  | read       |
 | [`write`](field::WWRegFieldBits::write)             | multi-bit | write | write      |
@@ -110,6 +112,7 @@
 | [`set_bit`](field::WRwRegFieldBitAtomic::set_bit)        | one-bit   | write | read-write | Srt, Crt |
 | [`clear_bit`](field::WRwRegFieldBitAtomic::clear_bit)    | one-bit   | write | read-write | Srt, Crt |
 | [`toggle_bit`](field::WRwRegFieldBitAtomic::toggle_bit)  | one-bit   | write | read-write | Srt, Crt |
+| [`write_bit`](field::WRwRegFieldBitAtomic::write_bit)    | one-bit   | write | read-write | Srt, Crt |
 | [`write_bits`](field::WRwRegFieldBitsAtomic::write_bits) | multi-bit | write | read-write | Srt, Crt |
 
 "
@@ -124,6 +127,7 @@
 | [`set_bit`](field::WRwRegFieldBitSoftAtomic::set_bit)        | one-bit   | write | read-write | Srt, Crt |
 | [`clear_bit`](field::WRwRegFieldBitSoftAtomic::clear_bit)    | one-bit   | write | read-write | Srt, Crt |
 | [`toggle_bit`](field::WRwRegFieldBitSoftAtomic::toggle_bit)  | one-bit   | write | read-write | Srt, Crt |
+| [`write_bit`](field::WRwRegFieldBitSoftAtomic::write_bit)    | one-bit   | write | read-write | Srt, Crt |
 | [`write_bits`](field::WRwRegFieldBitsSoftAtomic::write_bits) | multi-bit | write | read-write | Srt, Crt |
 
 "
@@ -196,6 +200,7 @@
 | `set_foo()` ([`set`](field::WWRegFieldBit::set))            | one-bit   | write |
 | `clear_foo()` ([`clear`](field::WWRegFieldBit::clear))      | one-bit   | write |
 | `toggle_foo()` ([`toggle`](field::WWRegFieldBit::toggle))   | one-bit   | write |
+| `write_foo(bit)` ([`write`](field::WWRegFieldBit::write))   | one-bit   | write |
 | `write_foo(bits)` ([`write`](field::WWRegFieldBits::write)) | multi-bit | write |
 
 "]

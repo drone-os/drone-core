@@ -113,6 +113,16 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
         *self.bits_mut() = self.bits() ^ bit_at(offset);
     }
 
+    /// Writes the bit at `offset`
+    ///
+    /// # Safety
+    ///
+    /// `offset` must not exceed the integer size.
+    #[inline]
+    unsafe fn write_bit(&mut self, offset: Self::Bits, bit: bool) {
+        *self.bits_mut() = self.bits() & !bit_at(offset) | maybe_bit_at(bit, offset);
+    }
+
     /// Returns `width` number of bits at `offset` position.
     ///
     /// # Safety
@@ -142,8 +152,12 @@ pub trait Bitfield: Sized + Send + Sync + Clone + Copy + 'static {
     }
 }
 
+fn maybe_bit_at<T: Bits>(bit: bool, offset: T) -> T {
+    T::from_usize(bit.into()) << offset
+}
+
 fn bit_at<T: Bits>(offset: T) -> T {
-    T::from_usize(1) << offset
+    maybe_bit_at(true, offset)
 }
 
 fn bit_mask<T: Bits>(width: T) -> T {

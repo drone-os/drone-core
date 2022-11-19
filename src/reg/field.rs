@@ -176,6 +176,9 @@ where
 
     /// Toggles the bit in `val`.
     fn toggle(&self, val: &mut <Self::Reg as Reg<T>>::Val);
+
+    /// Writes the bit value in `val`.
+    fn write(&self, val: &mut <Self::Reg as Reg<T>>::Val, bit: bool);
 }
 
 /// Write-only single-bit field of write-only register.
@@ -192,6 +195,10 @@ where
 
     /// Writes the reset value with the bit toggled into the register memory.
     fn toggle_bit(&self);
+
+    /// Writes the reset value with the bit set to `bit` into the register
+    /// memory.
+    fn write_bit(&self, bit: bool);
 }
 
 /// Readable multiple-bit field of readable register.
@@ -316,6 +323,16 @@ where
             ));
         }
     }
+
+    #[inline]
+    fn write(&self, val: &mut <Self::Reg as Reg<T>>::Val, bit: bool) {
+        unsafe {
+            val.write_bit(
+                <<Self::Reg as Reg<T>>::Val as Bitfield>::Bits::from_usize(Self::OFFSET),
+                bit,
+            );
+        }
+    }
 }
 
 impl<T, R> WoWoRegFieldBit<T> for R
@@ -342,6 +359,13 @@ where
     fn toggle_bit(&self) {
         self.store(|val| {
             self.toggle(val);
+        });
+    }
+
+    #[inline]
+    fn write_bit(&self, bit: bool) {
+        self.store(|val| {
+            self.write(val, bit);
         });
     }
 }
