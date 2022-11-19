@@ -212,7 +212,7 @@ pub mod gpio {
 
     periph! {
         pub trait GpioMap {}
-        pub struct GpioPeriph;
+        pub struct Gpio;
 
         RCC {
             AHB2ENR {
@@ -329,7 +329,7 @@ pub mod tim {
 
     periph! {
         pub trait TimMap {}
-        pub struct TimPeriph;
+        pub struct Tim;
 
         TIM {
             CCMR1 {
@@ -430,7 +430,7 @@ pub mod uarte {
 
     periph! {
         pub trait UarteMap {}
-        pub struct UartePeriph;
+        pub struct Uarte;
 
         UARTE {
             TASKS_STARTTX {
@@ -474,7 +474,7 @@ fn concrete() {
     use gpio::*;
     let reg = unsafe { Regs::take() };
     let gpio_c = periph_gpio_c!(reg);
-    let GpioPeriph { rcc_ahb2enr_gpioen, rcc_ahb2enr_gpiorst: (), gpio_odr, gpio_idr: () } = gpio_c;
+    let Gpio { rcc_ahb2enr_gpioen, rcc_ahb2enr_gpiorst: (), gpio_odr, gpio_idr: () } = gpio_c;
     let gpio_odr = gpio_odr.into_unsync();
     let gpio_odr = gpio_odr.into_sync();
     let SGpioOdrFields { odr0, odr1: () } = gpio_odr.into_fields();
@@ -493,8 +493,8 @@ fn concrete() {
 #[test]
 fn generic_without_holes() {
     use gpio::*;
-    fn f<T: GpioMap + GpioOdrOdr1 + GpioIdr + GpioIdrIdr1>(gpio: GpioPeriph<T>) {
-        let GpioPeriph { rcc_ahb2enr_gpioen, rcc_ahb2enr_gpiorst: _, gpio_odr, gpio_idr: _ } = gpio;
+    fn f<T: GpioMap + GpioOdrOdr1 + GpioIdr + GpioIdrIdr1>(gpio: Gpio<T>) {
+        let Gpio { rcc_ahb2enr_gpioen, rcc_ahb2enr_gpiorst: _, gpio_odr, gpio_idr: _ } = gpio;
         let gpio_odr = gpio_odr.into_unsync();
         let gpio_odr = gpio_odr.into_sync();
         let SGpioOdrFields { odr0, odr1 } = gpio_odr.into_fields();
@@ -518,8 +518,8 @@ fn generic_without_holes() {
 #[test]
 fn generic_with_holes() {
     use gpio::*;
-    fn f<T: GpioMap>(gpio: GpioPeriph<T>) {
-        let GpioPeriph { rcc_ahb2enr_gpioen, rcc_ahb2enr_gpiorst: _, gpio_odr, gpio_idr: _ } = gpio;
+    fn f<T: GpioMap>(gpio: Gpio<T>) {
+        let Gpio { rcc_ahb2enr_gpioen, rcc_ahb2enr_gpiorst: _, gpio_odr, gpio_idr: _ } = gpio;
         let gpio_odr = gpio_odr.into_unsync();
         let gpio_odr = gpio_odr.into_sync();
         let SGpioOdrFields { odr0, odr1 } = gpio_odr.into_fields();
@@ -544,13 +544,12 @@ fn variants() {
     let reg = unsafe { Regs::take() };
     let tim1 = periph_tim1!(reg);
     let tim2 = periph_tim2!(reg);
-    let TimPeriph { tim_ccmr1_output: tim1_ccmr1_output, tim_ccmr2_output: tim1_ccmr2_output } =
-        tim1;
+    let Tim { tim_ccmr1_output: tim1_ccmr1_output, tim_ccmr2_output: tim1_ccmr2_output } = tim1;
     let tim1_ccmr1_input = tim1_ccmr1_output.into_input();
     let _tim1_ccmr1_output = tim1_ccmr1_input.into_output();
     let tim1_ccmr2_input = tim1_ccmr2_output.into_input();
     let _tim1_ccmr2_output = tim1_ccmr2_input.into_output();
-    let TimPeriph { tim_ccmr1_output: tim2_ccmr1_output, tim_ccmr2_output: () } = tim2;
+    let Tim { tim_ccmr1_output: tim2_ccmr1_output, tim_ccmr2_output: () } = tim2;
     let tim2_ccmr1_input = tim2_ccmr1_output.into_input();
     let _tim2_ccmr1_output = tim2_ccmr1_input.into_output();
 }
@@ -558,8 +557,8 @@ fn variants() {
 #[test]
 fn generic_variants_with_holes() {
     use tim::*;
-    fn f<T: TimMap>(tim: TimPeriph<T>) {
-        let TimPeriph { tim_ccmr1_output, tim_ccmr2_output: _ } = tim;
+    fn f<T: TimMap>(tim: Tim<T>) {
+        let Tim { tim_ccmr1_output, tim_ccmr2_output: _ } = tim;
         let tim_ccmr1_input = tim_ccmr1_output.into_input();
         let _tim_ccmr1_output = tim_ccmr1_input.into_output();
     }
@@ -571,8 +570,8 @@ fn generic_variants_with_holes() {
 #[test]
 fn generic_variants_without_holes() {
     use tim::*;
-    fn f<T: TimMap + TimCcmr2Output + TimCcmr2Input>(tim: TimPeriph<T>) {
-        let TimPeriph { tim_ccmr1_output, tim_ccmr2_output } = tim;
+    fn f<T: TimMap + TimCcmr2Output + TimCcmr2Input>(tim: Tim<T>) {
+        let Tim { tim_ccmr1_output, tim_ccmr2_output } = tim;
         let tim_ccmr1_input = tim_ccmr1_output.into_input();
         let _tim_ccmr1_output = tim_ccmr1_input.into_output();
         let tim_ccmr2_input = tim_ccmr2_output.into_input();

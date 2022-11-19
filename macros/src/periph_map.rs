@@ -654,7 +654,7 @@ pub fn proc_macro(input: TokenStream) -> TokenStream {
     }
     let mut periph_name_cml = periph_trait.to_string();
     periph_name_cml.truncate(periph_name_cml.len() - TRAIT_SUFFIX.len());
-    let periph_struct = format_ident!("{}Periph", periph_name_cml);
+    let periph_struct = format_ident!("{periph_name_cml}");
     for (features, macro_tokens) in macro_tokens.as_slice().transpose() {
         let attrs = features.attrs();
         let macro_root_path = macro_root_path.iter().collect::<Vec<_>>();

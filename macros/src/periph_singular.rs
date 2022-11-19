@@ -6,7 +6,6 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::{braced, parse_macro_input, Attribute, Ident, Path, Token};
 
 const MACRO_PREFIX: &str = "periph_";
-const STRUCT_SUFFIX: &str = "Periph";
 
 struct Input {
     macro_attrs: Vec<Attribute>,
@@ -50,9 +49,6 @@ impl Parse for Input {
         input.parse::<Token![pub]>()?;
         input.parse::<Token![struct]>()?;
         let struct_ident = input.parse::<Ident>()?;
-        if !struct_ident.to_string().ends_with(STRUCT_SUFFIX) {
-            return Err(input.error(format!("Expected an ident which ends with `{STRUCT_SUFFIX}`")));
-        }
         input.parse::<Token![;]>()?;
         let root_path = input.parse()?;
         input.parse::<Token![;]>()?;

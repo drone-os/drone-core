@@ -32,7 +32,7 @@
 //!     /// Extracts RTC register tokens.
 //!     pub macro periph_rtc;
 //!     /// Real-Time Clock peripheral.
-//!     pub struct RtcPeriph;
+//!     pub struct Rtc;
 //!
 //!     // Path prefix to reach registers.
 //!     crate;
@@ -62,7 +62,7 @@
 //! # mod _scope {
 //! #     use super::*;
 //! /// Real-Time Clock.
-//! pub struct RtcPeriph {
+//! pub struct Rtc {
 //!     pub rcc_apb1enr1_rtcapben: rcc::apb1enr1::Rtcapben<Srt>,
 //!     pub rtc_tr: rtc::Tr<Srt>,
 //!     pub rtc_dr: rtc::Dr<Srt>,
@@ -72,7 +72,7 @@
 //! /// Extracts RTC register tokens.
 //! macro_rules! periph_rtc {
 //!     ($reg:ident) => {
-//!         RtcPeriph {
+//!         Rtc {
 //!             rcc_apb1enr1_rtcapben: $reg.rcc_apb1enr1.rtcapben,
 //!             rtc_tr: $reg.rtc_tr,
 //!             rtc_dr: $reg.rtc_dr,
@@ -145,10 +145,9 @@
 //!         // can be placed here.
 //!     }
 //!     // This will be the peripheral struct with public fields corresponding to
-//!     // registers and/or register fields. The signature is
-//!     // `struct UartPeriph<T: UartMap>`.
+//!     // registers and/or register fields. The signature is `struct Uart<T: UartMap>`.
 //!     /// Generic Universal Asynchronous Receiver/Transmitter peripheral.
-//!     pub struct UartPeriph;
+//!     pub struct Uart;
 //!
 //!     // With RCC namespace...
 //!     RCC {
@@ -234,10 +233,10 @@
 //!
 //! // Here is how we define a function generic over all variants of the peripheral.
 //! // Optional fields will not be available even if the concrete peripheral has them.
-//! fn basic_fields<T: UartMap>(uart: UartPeriph<T>) {}
+//! fn basic_fields<T: UartMap>(uart: Uart<T>) {}
 //!
 //! // Here is a generic function over peripherals that have all optional fields.
-//! fn opt_fields<T>(uart: UartPeriph<T>)
+//! fn opt_fields<T>(uart: Uart<T>)
 //! where
 //!     T: UartMap + RccApbenrUartrst + UartCr1Eobie + UartRtorRto,
 //! {
