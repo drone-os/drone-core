@@ -36,45 +36,168 @@ impl LocalRuntime for Runtime {
         }
     }
 
-    #[allow(clippy::blocks_in_if_conditions)]
     #[inline(never)]
     #[export_name = "stream_write_transaction"]
     unsafe fn write_transaction(&mut self, stream: u8, buffer: *const u8, length: u8) {
         #[cfg(feature = "host")]
         return unimplemented!();
         #[cfg(not(feature = "host"))]
+        loop {
+            let complete = Interrupts::paused(|| unsafe {
+                let transaction = Transaction {
+                    buffer: ptr::addr_of_mut!(*self).add(1).cast::<u8>(),
+                    buffer_size: self.buffer_size,
+                    write_cursor: ptr::addr_of_mut!(self.write_cursor),
+                    read_cursor: ptr::addr_of!(self.read_cursor),
+                    stream,
+                    source: buffer,
+                    source_size: length,
+                };
+                transaction.write()
+            });
+            if complete {
+                break;
+            }
+        }
+    }
+}
+
+struct Transaction {
+    buffer: *mut u8,
+    buffer_size: u32,
+    write_cursor: *mut u32,
+    read_cursor: *const u32,
+    stream: u8,
+    source: *const u8,
+    source_size: u8,
+}
+
+impl Transaction {
+    unsafe fn write(self) -> bool {
         unsafe {
-            while Interrupts::paused(|| {
-                let read_cursor = ptr::addr_of!(self.read_cursor).read_volatile();
-                let write_cursor = ptr::addr_of!(self.write_cursor).read_volatile();
-                let wrapped = write_cursor >= read_cursor;
-                let available = if wrapped { self.buffer_size } else { read_cursor } - write_cursor;
-                let frame_length = u32::from(length) + HEADER_LENGTH;
-                let cursor =
-                    ptr::addr_of_mut!(*self).add(1).cast::<u8>().add(write_cursor as usize);
-                if available >= frame_length {
-                    let mut next_write_cursor = write_cursor + frame_length;
-                    if next_write_cursor == self.buffer_size {
-                        next_write_cursor = 0;
-                    }
-                    if next_write_cursor == read_cursor {
-                        return true;
-                    }
-                    *cursor = stream;
-                    *cursor.add(1) = length;
-                    cursor.add(2).copy_from_nonoverlapping(buffer, usize::from(length));
-                    ptr::addr_of_mut!(self.write_cursor).write_volatile(next_write_cursor);
+            let read_cursor = self.read_cursor.read_volatile();
+            let write_cursor = self.write_cursor.read_volatile();
+            let wrapped = write_cursor >= read_cursor;
+            let available = if wrapped { self.buffer_size } else { read_cursor } - write_cursor;
+            let frame_length = u32::from(self.source_size) + HEADER_LENGTH;
+            let cursor = self.buffer.add(write_cursor as usize);
+            if available >= frame_length {
+                let mut next_write_cursor = write_cursor + frame_length;
+                if next_write_cursor == self.buffer_size {
+                    next_write_cursor = 0;
+                }
+                if next_write_cursor == read_cursor {
                     return false;
                 }
-                if wrapped {
-                    if available > HEADER_LENGTH {
-                        *cursor = 0xFF;
-                        *cursor.add(1) = (available - HEADER_LENGTH) as u8;
-                    }
-                    ptr::addr_of_mut!(self.write_cursor).write_volatile(0);
-                }
-                true
-            }) {}
+                *cursor = self.stream;
+                *cursor.add(1) = self.source_size;
+                cursor.add(2).copy_from_nonoverlapping(self.source, usize::from(self.source_size));
+                self.write_cursor.write_volatile(next_write_cursor);
+                return true;
+            }
+            if wrapped && read_cursor != 0 {
+                *cursor = 0xFF;
+                self.write_cursor.write_volatile(0);
+            }
+            false
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Runtime {
+        write_cursor: u32,
+        read_cursor: u32,
+        buffer: Vec<u8>,
+    }
+
+    impl Runtime {
+        fn new(buffer: &[u8]) -> Self {
+            Self { write_cursor: 0, read_cursor: 0, buffer: buffer.to_vec() }
+        }
+
+        fn write(&mut self, stream: u8, source: &[u8]) -> bool {
+            let transaction = Transaction {
+                buffer: self.buffer.as_mut_ptr(),
+                buffer_size: self.buffer.len() as u32,
+                write_cursor: &mut self.write_cursor,
+                read_cursor: &self.read_cursor,
+                stream,
+                source: source.as_ptr(),
+                source_size: source.len() as u8,
+            };
+            unsafe { transaction.write() }
+        }
+    }
+
+    #[test]
+    fn test_biggest() {
+        let mut runtime = Runtime::new(&[0; 8]);
+        assert!(runtime.write(42, b"hello"));
+        assert_eq!(&runtime.buffer[2..7], b"hello");
+        assert_eq!(runtime.write_cursor, 7);
+        assert_eq!(runtime.buffer[0], 42);
+        assert_eq!(runtime.buffer[1], 5);
+    }
+
+    #[test]
+    fn test_overflow() {
+        let mut runtime = Runtime::new(&[0; 7]);
+        assert!(!runtime.write(0, b"hello"));
+    }
+
+    #[test]
+    fn test_to_the_end() {
+        let mut runtime = Runtime::new(&[0; 11]);
+        runtime.write_cursor = 4;
+        runtime.read_cursor = 4;
+        assert!(runtime.write(42, b"hello"));
+        assert_eq!(&runtime.buffer[6..11], b"hello");
+        assert_eq!(runtime.write_cursor, 0);
+        assert_eq!(runtime.buffer[4], 42);
+        assert_eq!(runtime.buffer[5], 5);
+    }
+
+    #[test]
+    fn test_to_the_end_overflow() {
+        let mut runtime = Runtime::new(&[0; 11]);
+        runtime.write_cursor = 4;
+        runtime.read_cursor = 0;
+        assert!(!runtime.write(42, b"hello"));
+    }
+
+    #[test]
+    fn test_in_the_middle() {
+        let mut runtime = Runtime::new(&[0; 11]);
+        runtime.write_cursor = 2;
+        runtime.read_cursor = 10;
+        assert!(runtime.write(42, b"hello"));
+        assert_eq!(&runtime.buffer[4..9], b"hello");
+        assert_eq!(runtime.write_cursor, 9);
+        assert_eq!(runtime.buffer[2], 42);
+        assert_eq!(runtime.buffer[3], 5);
+    }
+
+    #[test]
+    fn test_wrap() {
+        let mut runtime = Runtime::new(&[0; 8]);
+        runtime.write_cursor = 2;
+        runtime.read_cursor = 2;
+        assert!(!runtime.write(42, b"hello"));
+        assert_eq!(runtime.write_cursor, 0);
+        assert_eq!(runtime.buffer[2], 0xFF);
+    }
+
+    #[test]
+    fn test_wrap_when_read_cursor_zero() {
+        let mut runtime = Runtime::new(&[0; 8]);
+        runtime.write_cursor = 2;
+        runtime.read_cursor = 0;
+        assert!(!runtime.write(42, b"hello"));
+        assert_eq!(runtime.write_cursor, 2);
+        assert_ne!(runtime.buffer[2], 0xFF);
     }
 }
