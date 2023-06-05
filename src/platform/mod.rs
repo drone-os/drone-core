@@ -2,9 +2,9 @@
 
 #![cfg_attr(feature = "host", allow(dead_code, unreachable_code, unused_variables))]
 
-mod interrputs;
+mod interrupts;
 
-pub use self::interrputs::Interrupts;
+pub use self::interrupts::Interrupts;
 use core::cell::UnsafeCell;
 use drone_stream::Runtime;
 
